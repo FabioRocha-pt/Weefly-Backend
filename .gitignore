@@ -29,3 +29,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude & Graphify local configs
+.claude.json
+.claude/
+
+# Graphify tool
+graphify-out/
+graphify.exe
+graphify

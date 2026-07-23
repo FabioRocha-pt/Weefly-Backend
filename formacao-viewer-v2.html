@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3LS — Formações</title>
+<style>
+:root{
+  --brand-600:#0E9384;--brand-700:#0B7A6E;--brand-100:#D6F2EE;--brand-50:#EDFAF8;
+  --ink-900:#1A222E;--ink-700:#3A4454;--ink-600:#5A6270;--ink-400:#98A1AE;--ink-300:#BCC3CD;
+  --surface:#fff;--surface-alt:#F5F7F9;--bg:#EAEEF2;--border:#E4E8ED;--border-strong:#CDD3DB;
+  --success-bg:#D9F2E4;--success-fg:#14663B;
+  --warning-bg:#FDEED3;--warning-fg:#8A5A0B;
+  --danger-bg:#FDE8E8;--danger-fg:#A61B2B;
+  --purple-bg:#EDE9FE;--purple-fg:#5B21B6;
+  --r-lg:16px;--r-md:10px;--r-pill:999px;
+  --focus:0 0 0 3px rgba(14,147,132,.35);
+  --shadow:0 1px 2px rgba(26,34,46,.05),0 4px 16px rgba(26,34,46,.06);
+  font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink-900);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:none;box-shadow:var(--focus)}
+button{font:inherit;cursor:pointer}
+
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:24px;padding:0 28px;height:60px;position:sticky;top:0;z-index:20}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:20px;letter-spacing:-.02em}
+.logo svg{display:block}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:16px}
+.notif-btn{position:relative;width:38px;height:38px;border-radius:50%;border:none;background:var(--surface-alt);color:var(--ink-600);display:flex;align-items:center;justify-content:center}
+.notif-btn:hover{background:var(--border)}
+.notif-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger-fg);border:2px solid var(--surface)}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2B6CB0,#0E9384);color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+
+.shell{display:flex;gap:24px;padding:24px 28px;max-width:1280px;margin:0 auto}
+.sidebar{width:210px;flex:none;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:14px 10px;display:flex;flex-direction:column;min-height:calc(100vh - 108px)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-md);color:var(--ink-600);font-weight:500;text-decoration:none;font-size:13px}
+.nav a svg{flex:none}
+.nav a:hover{background:var(--surface-alt);color:var(--ink-900)}
+.nav a.active{background:var(--brand-50);color:var(--brand-700);font-weight:700}
+.user-card{margin-top:auto;display:flex;align-items:center;gap:10px;background:var(--surface-alt);border-radius:var(--r-md);padding:10px 12px}
+.user-card b{display:block;font-size:13px}
+.user-card span{font-size:12px;color:var(--ink-600)}
+
+main{flex:1;min-width:0}
+.breadcrumb{font-size:13px;color:var(--ink-600);margin-bottom:6px}
+.breadcrumb a{color:var(--ink-600);text-decoration:none;cursor:pointer}
+.breadcrumb a:hover{color:var(--brand-700);text-decoration:underline}
+h1{font-size:24px;letter-spacing:-.02em;margin-bottom:4px}
+.page-subtitle{color:var(--ink-600);font-size:14px;margin-bottom:24px}
+.card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:20px 24px}
+.stat-card .num{font-size:28px;font-weight:800;letter-spacing:-.02em}
+.stat-card .lbl{font-size:13px;color:var(--ink-600);margin-top:2px}
+.stat-card.accent .num{color:var(--brand-600)}
+
+/* Formation grid */
+.formation-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.f-card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.f-card:hover{transform:translateY(-2px);box-shadow:0 4px 24px rgba(26,34,46,.1)}
+.f-cover{height:140px;position:relative}
+.f-cover .f-badge{position:absolute;top:12px;right:12px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:var(--r-pill)}
+.f-badge.em-curso{background:var(--brand-50);color:var(--brand-700)}
+.f-badge.concluida{background:var(--success-bg);color:var(--success-fg)}
+.f-badge.nao-iniciada{background:var(--surface-alt);color:var(--ink-600)}
+.f-body{padding:16px 20px}
+.f-body h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.f-body .f-meta{font-size:12px;color:var(--ink-600);display:flex;gap:12px;margin-bottom:12px}
+.f-body .f-meta span{display:flex;align-items:center;gap:4px}
+.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-bar .fill{height:100%;border-radius:3px;background:var(--brand-600);transition:width .4s}
+.progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-600);margin-top:6px}
+
+/* Hero */
+.f-hero{background:linear-gradient(135deg,#1A3A4A 0%,#0E9384 100%);border-radius:var(--r-lg);padding:28px 32px;color:#fff;margin-bottom:24px;display:flex;gap:24px;align-items:center}
+.f-hero-info{flex:1}
+.f-hero-info h1{color:#fff;margin-bottom:6px;font-size:22px}
+.f-hero-meta{display:flex;gap:16px;font-size:13px;opacity:.85;margin-bottom:14px;flex-wrap:wrap}
+.f-hero-meta span{display:flex;align-items:center;gap:5px}
+.f-hero-progress{display:flex;align-items:center;gap:12px}
+.f-hero-progress .progress-bar{flex:1;height:8px;background:rgba(255,255,255,.2)}
+.f-hero-progress .progress-bar .fill{background:#fff}
+.f-hero-progress .pct{font-size:14px;font-weight:700}
+
+/* Layout */
+.f-layout{display:grid;grid-template-columns:280px 1fr;gap:20px}
+
+/* Module nav */
+.mod-nav{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:8px 0;align-self:start;position:sticky;top:84px}
+.mod-nav-title{padding:14px 20px 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-600)}
+.mod-section{border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:4px}
+.mod-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.mod-nav-item{display:flex;align-items:flex-start;gap:10px;padding:10px 18px;cursor:pointer;border-left:3px solid transparent;transition:all .12s}
+.mod-nav-item:hover{background:var(--surface-alt)}
+.mod-nav-item.active{background:var(--brand-50);border-left-color:var(--brand-600)}
+.mod-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border-strong);display:flex;align-items:center;justify-content:center;flex:none;font-size:10px;color:transparent;margin-top:1px;transition:all .15s}
+.mod-nav-item.active .mod-check{border-color:var(--brand-600)}
+.mod-nav-item.completed .mod-check{background:var(--brand-600);border-color:var(--brand-600);color:#fff}
+.mod-nav-info{flex:1;min-width:0}
+.mod-nav-info h4{font-size:13px;font-weight:600;color:var(--ink-700);margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mod-nav-info p{font-size:11px;color:var(--ink-400)}
+.mod-nav-item.active .mod-nav-info h4{color:var(--brand-700)}
+
+/* Quiz indicator in nav */
+.quiz-nav{display:flex;align-items:center;gap:10px;padding:8px 18px;cursor:pointer;border-left:3px solid transparent;font-size:12px;color:var(--ink-400);transition:all .12s}
+.quiz-nav:hover{background:var(--surface-alt)}
+.quiz-nav.active{background:var(--purple-bg);border-left-color:var(--purple-fg);color:var(--purple-fg)}
+.quiz-nav .q-icon{width:18px;height:18px;border-radius:50%;background:var(--purple-bg);color:var(--purple-fg);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.quiz-nav.passed .q-icon{background:var(--success-bg);color:var(--success-fg)}
+.quiz-nav.active .q-icon{background:var(--purple-fg);color:#fff}
+
+/* Final quiz nav */
+.final-quiz-nav{border-top:2px solid var(--border);margin-top:4px;padding-top:8px}
+.final-quiz-nav .mod-nav-item .mod-check{background:var(--purple-bg);border-color:var(--purple-bg);color:var(--purple-fg);font-weight:700;font-size:12px}
+
+/* Content area */
+.content-area{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:28px 32px}
+.content-area h2{font-size:18px;font-weight:700;margin-bottom:6px}
+.c-meta{font-size:12px;color:var(--ink-600);margin-bottom:20px;display:flex;gap:14px}
+.c-meta span{display:flex;align-items:center;gap:4px}
+
+/* Video */
+.video-player{background:#0D1117;border-radius:var(--r-md);aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;cursor:pointer}
+.video-player:hover .play-btn{transform:scale(1.08)}
+.play-btn{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;transition:transform .2s}
+.play-btn svg{margin-left:3px}
+.video-duration{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.7);color:#fff;font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px}
+
+/* Text */
+.text-content{font-size:15px;line-height:1.7;color:var(--ink-700)}
+.text-content p+p{margin-top:10px}
+.text-content h3{font-size:16px;font-weight:700;color:var(--ink-900);margin:18px 0 6px}
+.text-content ul{margin:8px 0 8px 20px}
+.text-content li{margin-bottom:3px}
+
+/* Audio */
+.audio-player{background:var(--surface-alt);border-radius:var(--r-md);padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.audio-play{width:38px;height:38px;border-radius:50%;background:var(--brand-600);color:#fff;border:none;display:flex;align-items:center;justify-content:center;flex:none}
+.audio-play:hover{background:var(--brand-700)}
+.audio-track{flex:1}
+.audio-bar{height:4px;background:var(--border);border-radius:2px;margin-bottom:4px;position:relative}
+.audio-bar .fill{position:absolute;top:0;left:0;height:100%;background:var(--brand-600);border-radius:2px;width:35%}
+.audio-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-400)}
+
+/* Resources */
+.resource-link{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:8px;text-decoration:none;color:var(--ink-900);transition:all .15s}
+.resource-link:hover{border-color:var(--brand-600);background:var(--brand-50)}
+.resource-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;font-size:15px}
+.resource-icon.pdf{background:#FDE8E8;color:#A61B2B}
+.resource-icon.link{background:var(--brand-50);color:var(--brand-700)}
+.resource-info{flex:1}
+.resource-info b{display:block;font-size:13px}
+.resource-info span{font-size:11px;color:var(--ink-400)}
+
+/* Buttons */
+.btn{padding:10px 20px;border-radius:var(--r-pill);font-weight:600;font-size:14px;transition:all .15s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--brand-600);border:none;color:#fff}
+.btn-primary:hover{background:var(--brand-700)}
+.btn-outline{background:var(--surface);border:1.5px solid var(--border);color:var(--ink-700)}
+.btn-outline:hover{border-color:var(--brand-600);color:var(--brand-700)}
+.btn-ghost{background:transparent;border:none;color:var(--ink-600)}
+.btn-success{background:var(--success-fg);border:none;color:#fff}
+.btn-success:hover{background:#0F5530}
+.btn-purple{background:var(--purple-fg);border:none;color:#fff}
+.btn-purple:hover{background:#4C1D95}
+.btn:disabled{opacity:.4;cursor:default;pointer-events:none}
+.content-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:18px;border-top:1px solid var(--border)}
+
+/* Quiz styles */
+.quiz-banner{background:var(--purple-bg);border:1px solid #C4B5FD;border-radius:var(--r-md);padding:20px 24px;margin-top:24px;display:flex;align-items:center;gap:16px}
+.quiz-banner .qb-icon{width:44px;height:44px;border-radius:50%;background:var(--purple-fg);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex:none}
+.quiz-banner .qb-info{flex:1}
+.quiz-banner .qb-info h4{font-size:14px;font-weight:700;color:var(--purple-fg);margin-bottom:2px}
+.quiz-banner .qb-info p{font-size:12px;color:#6D28D9;opacity:.75}
+.quiz-banner.passed{background:var(--success-bg);border-color:#86EFAC}
+.quiz-banner.passed .qb-icon{background:var(--success-fg)}
+.quiz-banner.passed .qb-info h4{color:var(--success-fg)}
+.quiz-banner.passed .qb-info p{color:var(--success-fg);opacity:.7}
+
+.quiz-card{padding:28px 32px}
+.quiz-intro{text-align:center;padding:32px 16px}
+.quiz-intro h2{font-size:20px;margin-bottom:8px}
+.quiz-intro p{color:var(--ink-600);max-width:400px;margin:0 auto 20px;font-size:14px}
+.quiz-progress{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.quiz-progress .bar{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.quiz-progress .bar .fill{height:100%;background:var(--brand-600);border-radius:3px;transition:width .3s}
+.quiz-progress .label{font-size:12px;color:var(--ink-600);font-weight:600;white-space:nowrap}
+.q-num{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--brand-600);margin-bottom:6px}
+.quiz-question h3{font-size:16px;font-weight:600;margin-bottom:14px}
+.quiz-option{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px solid var(--border);border-radius:var(--r-md);margin-bottom:8px;cursor:pointer;transition:all .12s;font-size:14px}
+.quiz-option:hover{border-color:var(--brand-600);background:var(--brand-50)}
+.quiz-option.selected{border-color:var(--brand-600);background:var(--brand-50);font-weight:600}
+.quiz-option.correct{border-color:var(--success-fg);background:var(--success-bg);color:var(--success-fg);font-weight:600;cursor:default}
+.quiz-option.wrong{border-color:var(--danger-fg);background:var(--danger-bg);color:var(--danger-fg);cursor:default}
+.quiz-radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--border-strong);flex:none;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.quiz-option.selected .quiz-radio{border-color:var(--brand-600);background:var(--brand-600)}
+.quiz-option.selected .quiz-radio::after{content:'';width:6px;height:6px;border-radius:50%;background:#fff}
+.quiz-option.correct .quiz-radio{border-color:var(--success-fg);background:var(--success-fg)}
+.quiz-option.correct .quiz-radio::after{content:'✓';color:#fff;font-size:10px;font-weight:700}
+.quiz-option.wrong .quiz-radio{border-color:var(--danger-fg);background:var(--danger-fg)}
+.quiz-option.wrong .quiz-radio::after{content:'✕';color:#fff;font-size:10px;font-weight:700}
+
+.result-circle{width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;margin:0 auto 16px}
+.result-circle.pass{background:var(--success-bg);color:var(--success-fg)}
+.result-circle.fail{background:var(--danger-bg);color:var(--danger-fg)}
+.result-circle .pct{font-size:30px;font-weight:800}
+.result-circle .lbl{font-size:11px;font-weight:600}
+
+/* Responsive */
+@media(max-width:960px){
+  .shell{flex-direction:column;padding:16px}
+  .sidebar{width:100%;min-height:0}
+  .f-layout{grid-template-columns:1fr}
+  .mod-nav{position:static}
+  .stats-row{grid-template-columns:1fr}
+  .f-hero{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M14 2 24 8 14 14 4 8Z" fill="#0E9384"/><path d="M14 10 24 16 14 22 4 16Z" fill="#0B7A6E" opacity=".75"/><path d="M14 18 24 24 14 28 4 24Z" fill="#14313B" opacity=".9"/></svg>
+    3LS
+  </div>
+  <div class="topbar-right">
+    <button class="notif-btn" title="Notificações"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="notif-dot"></span></button>
+    <div class="avatar" title="Ana Semedo">AS</div>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar">
+    <nav class="nav" id="sidebar-nav"></nav>
+    <div class="user-card">
+      <div class="avatar" style="width:32px;height:32px;font-size:11px">AS</div>
+      <div><b>Ana Semedo</b><span>Formanda</span></div>
+    </div>
+  </aside>
+  <main id="main-content"></main>
+</div>
+
+<script>
+// ===== DATA =====
+const formations = [
+  { id:1,name:'Culinária Avançada',cat:'Formação Técnica',duration:'6 meses',start:'Mar 2025',progress:45,status:'em-curso',color:'linear-gradient(135deg,#244A5E,#0E9384)',
+    modules:[
+      { id:1,name:'Introdução à cozinha profissional',duration:'2h 30min',completed:true,quizPassed:true,
+        blocks:[
+          {type:'video',title:'Boas-vindas e visão geral',duration:'12:34'},
+          {type:'text',title:'Manual do formando',content:'<h3>Bem-vinda à formação</h3><p>Esta formação foi desenhada para profissionais que desejam aprofundar as suas competências culinárias. Ao longo dos módulos, vamos explorar técnicas avançadas de preparação, apresentação e gestão de cozinha.</p><p>Cada módulo combina vídeos demonstrativos, textos de apoio e recursos complementares.</p>'},
+          {type:'audio',title:'Podcast: História da gastronomia cabo-verdiana',duration:'24:18'},
+          {type:'link',title:'Guia de segurança alimentar',url:'#',format:'PDF · 2.4MB'}
+        ],
+        quiz:{title:'Quiz: Introdução',passing:70,questions:[
+          {q:'Qual é o principal objectivo desta formação?',opts:['Cozinhar em casa','Aprofundar competências culinárias profissionais','Aprender receitas simples','Gestão de restaurantes'],correct:1},
+          {q:'Que tipo de conteúdos estão disponíveis em cada módulo?',opts:['Apenas vídeos','Apenas textos','Vídeos, textos, áudios e recursos','Apenas quizzes'],correct:2}
+        ]}
+      },
+      { id:2,name:'Técnicas de corte e preparação',duration:'3h 15min',completed:true,quizPassed:true,
+        blocks:[
+          {type:'video',title:'Técnicas de corte: julienne, brunoise, chiffonade',duration:'18:42'},
+          {type:'text',title:'Exercício prático',content:'<h3>Exercício: pratica os cortes</h3><p>Usando os ingredientes listados, pratica cada corte demonstrado no vídeo:</p><ul><li>Cenoura — julienne (palitos finos 3mm)</li><li>Cebola — brunoise (cubos 2mm)</li><li>Manjericão — chiffonade (tiras finas)</li></ul>'},
+          {type:'link',title:'Vídeo: Gordon Ramsay Knife Skills',url:'#',format:'YouTube · 8:30'}
+        ],
+        quiz:{title:'Quiz: Técnicas de corte',passing:70,questions:[
+          {q:'Qual técnica de corte produz cubos de aproximadamente 2mm?',opts:['Julienne','Chiffonade','Brunoise','Concassé'],correct:2},
+          {q:'Qual é a forma correcta do corte julienne?',opts:['Cubos pequenos','Palitos finos','Tiras largas','Meias-luas'],correct:1},
+          {q:'Para que tipo de ingrediente é mais adequada a chiffonade?',opts:['Cenouras','Cebolas','Folhas e ervas','Carne'],correct:2}
+        ]}
+      },
+      { id:3,name:'Molhos clássicos e contemporâneos',duration:'2h 45min',completed:false,quizPassed:false,
+        blocks:[
+          {type:'video',title:'Os 5 molhos-mãe da cozinha francesa',duration:'22:15'},
+          {type:'text',title:'Receitas base',content:'<h3>Béchamel</h3><p>60g manteiga, 60g farinha, 500ml leite, noz-moscada, sal e pimenta. Derrete a manteiga, adiciona a farinha e mexa durante 2 minutos. Junta o leite aos poucos sem parar de mexer.</p><h3>Velouté</h3><p>Mesmo processo mas com fundo claro de galinha em vez de leite. A base para inúmeras variações.</p>'},
+          {type:'audio',title:'Entrevista: Chef Maria Tavares',duration:'18:05'}
+        ],
+        quiz:{title:'Quiz: Molhos',passing:70,questions:[
+          {q:'Qual NÃO é um dos 5 molhos-mãe da cozinha francesa?',opts:['Béchamel','Velouté','Chimichurri','Hollandaise'],correct:2},
+          {q:'Qual é a base do molho Velouté?',opts:['Leite','Tomate','Fundo claro','Manteiga clarificada'],correct:2}
+        ]}
+      },
+      { id:4,name:'Apresentação e empratamento',duration:'1h 50min',completed:false,quizPassed:false,
+        blocks:[
+          {type:'video',title:'Princípios de empratamento moderno',duration:'15:20'},
+          {type:'text',title:'As regras de ouro',content:'<p>O empratamento é a primeira impressão. Regras fundamentais:</p><ul><li>Altura: cria dimensão vertical</li><li>Cores: mínimo 3 contrastantes</li><li>Espaço negativo: o prato não deve parecer cheio</li><li>Escolhe simetria ou assimetria e mantém</li></ul>'}
+        ],
+        quiz:{title:'Quiz: Empratamento',passing:70,questions:[
+          {q:'O que significa "espaço negativo" no empratamento?',opts:['Usar pratos escuros','Deixar áreas vazias no prato','Cobrir todo o prato','Usar ingredientes pretos'],correct:1},
+          {q:'Quantas cores contrastantes mínimas são recomendadas?',opts:['1','2','3','5'],correct:2}
+        ]}
+      }
+    ],
+    finalQuiz:{title:'Quiz final: Culinária Avançada',passing:70,questions:[
+      {q:'Qual NÃO é um dos 5 molhos-mãe?',opts:['Béchamel','Velouté','Chimichurri','Hollandaise'],correct:2},
+      {q:'Qual técnica produz cubos de 2mm?',opts:['Julienne','Chiffonade','Brunoise','Concassé'],correct:2},
+      {q:'O que é "espaço negativo" no empratamento?',opts:['Pratos escuros','Áreas vazias no prato','Todo coberto com molho','Ingredientes pretos'],correct:1},
+      {q:'Qual é a base do Velouté?',opts:['Leite','Tomate','Fundo claro','Manteiga clarificada'],correct:2},
+      {q:'Mínimo de cores contrastantes num prato?',opts:['1','2','3','5'],correct:2},
+      {q:'Para que serve a chiffonade?',opts:['Cenouras','Cebolas','Folhas e ervas','Carne'],correct:2}
+    ]}
+  },
+  {id:2,name:'Liderança e Gestão de Equipas',cat:'Desenvolvimento Pessoal',duration:'3 meses',start:'Jan 2025',progress:100,status:'concluida',color:'linear-gradient(135deg,#5E2450,#B0632B)',modules:[],finalQuiz:null},
+  {id:3,name:'Literacia Financeira',cat:'Finanças',duration:'4 meses',start:'Jun 2025',progress:0,status:'nao-iniciada',color:'linear-gradient(135deg,#1F3A6E,#3AA0A8)',modules:[],finalQuiz:null},
+  {id:4,name:'Design Web e App',cat:'Tecnologia',duration:'5 meses',start:'Abr 2025',progress:30,status:'em-curso',color:'linear-gradient(135deg,#2D1B69,#6D28D9)',modules:[],finalQuiz:null}
+];
+
+// ===== STATE =====
+let view='list', curF=null, curModIdx=0, subView='content'; // subView: 'content'|'modquiz'|'finalquiz'
+let qState=null; // {qi,answers,submitted}
+
+function goView(v,data){
+  view=v;
+  if(data)curF=data;
+  if(v==='list'){curF=null;curModIdx=0;subView='content';qState=null;}
+  renderSidebar();render();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function goModule(i){curModIdx=i;subView='content';qState=null;render();window.scrollTo({top:0,behavior:'smooth'});}
+function goModQuiz(i){curModIdx=i;subView='modquiz';qState=null;render();window.scrollTo({top:0,behavior:'smooth'});}
+function goFinalQuiz(){subView='finalquiz';qState=null;render();window.scrollTo({top:0,behavior:'smooth'});}
+
+function renderSidebar(){
+  const items=[
+    {id:'dash',label:'Dashboard',icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>'},
+    {id:'form',label:'Formações',icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>'},
+    {id:'notif',label:'Notificações',icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>'}
+  ];
+  document.getElementById('sidebar-nav').innerHTML=items.map(i=>`<a href="#" class="${i.id==='form'?'active':''}" onclick="event.preventDefault();${i.id==='form'?"goView('list')":"goView('list')"}">${i.icon}${i.label}</a>`).join('');
+}
+
+function render(){
+  const el=document.getElementById('main-content');
+  if(view==='list')renderList(el);
+  else renderDetail(el);
+}
+
+function updateProgress(){
+  if(!curF||!curF.modules.length)return;
+  const total=curF.modules.length*2+1; // each module content+quiz + final
+  let done=0;
+  curF.modules.forEach(m=>{if(m.completed)done++;if(m.quizPassed)done++;});
+  curF.progress=Math.round((done/total)*100);
+}
+
+// ===== LIST =====
+function renderList(el){
+  const em=formations.filter(f=>f.status==='em-curso').length;
+  const dn=formations.filter(f=>f.status==='concluida').length;
+  el.innerHTML=`
+    <nav class="breadcrumb">Dashboard / <b>As minhas formações</b></nav>
+    <h1>As minhas formações</h1>
+    <p class="page-subtitle">Acompanha o teu progresso e continua a aprender.</p>
+    <div class="stats-row">
+      <div class="stat-card"><div class="num">${formations.length}</div><div class="lbl">Formações inscritas</div></div>
+      <div class="stat-card accent"><div class="num">${em}</div><div class="lbl">Em curso</div></div>
+      <div class="stat-card"><div class="num">${dn}</div><div class="lbl">Concluídas</div></div>
+    </div>
+    <div class="formation-grid">${formations.map((f,i)=>`
+      <div class="f-card" onclick="goView('detail',formations[${i}])">
+        <div class="f-cover" style="background:${f.color}">
+          <span class="f-badge ${f.status}">${{['em-curso']:'Em curso',concluida:'Concluída',['nao-iniciada']:'Não iniciada'}[f.status]}</span>
+        </div>
+        <div class="f-body">
+          <h3>${f.name}</h3>
+          <div class="f-meta"><span>${f.cat}</span><span>${f.duration}</span></div>
+          <div class="progress-bar"><div class="fill" style="width:${f.progress}%"></div></div>
+          <div class="progress-label"><span>${f.progress}% concluído</span><span>${f.start}</span></div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+}
+
+// ===== DETAIL =====
+function renderDetail(el){
+  if(!curF||!curF.modules.length){
+    el.innerHTML=`<nav class="breadcrumb"><a onclick="goView('list')">Formações</a> / ${curF?curF.name:'—'}</nav>
+      <div class="card" style="padding:60px;text-align:center"><p style="color:var(--ink-400)">Formação sem conteúdo disponível.</p>
+      <button class="btn btn-outline" style="margin-top:16px" onclick="goView('list')">← Voltar</button></div>`;
+    return;
+  }
+  updateProgress();
+  const mod=curF.modules[curModIdx];
+  el.innerHTML=`
+    <nav class="breadcrumb"><a onclick="goView('list')">Formações</a> / ${curF.name}</nav>
+    <div class="f-hero">
+      <div class="f-hero-info">
+        <h1>${curF.name}</h1>
+        <div class="f-hero-meta">
+          <span>${curF.cat}</span><span>${curF.duration}</span><span>${curF.modules.length} módulos + quiz final</span>
+        </div>
+        <div class="f-hero-progress">
+          <div class="progress-bar"><div class="fill" style="width:${curF.progress}%"></div></div>
+          <span class="pct">${curF.progress}%</span>
+        </div>
+      </div>
+    </div>
+    <div class="f-layout">
+      ${renderModNav()}
+      <div class="content-area">${
+        subView==='content'?renderModContent(mod):
+        subView==='modquiz'?renderQuizUI(mod.quiz,mod):
+        renderQuizUI(curF.finalQuiz,null)
+      }</div>
+    </div>`;
+}
+
+function renderModNav(){
+  let h=`<div class="mod-nav"><div class="mod-nav-title">Programa do curso</div>`;
+  curF.modules.forEach((m,i)=>{
+    const isActive=subView==='content'&&curModIdx===i;
+    const qActive=subView==='modquiz'&&curModIdx===i;
+    h+=`<div class="mod-section">
+      <div class="mod-nav-item ${isActive?'active':''} ${m.completed?'completed':''}" onclick="goModule(${i})">
+        <div class="mod-check">${m.completed?'✓':''}</div>
+        <div class="mod-nav-info"><h4>${m.name}</h4><p>${m.duration} · ${m.blocks.length} conteúdos</p></div>
+      </div>
+      ${m.quiz?`<div class="quiz-nav ${qActive?'active':''} ${m.quizPassed?'passed':''}" onclick="goModQuiz(${i})">
+        <div class="q-icon">${m.quizPassed?'✓':'?'}</div>
+        <span>${m.quizPassed?'Quiz concluído':'Quiz da aula'} · ${m.quiz.questions.length}p</span>
+      </div>`:''}
+    </div>`;
+  });
+  const fqActive=subView==='finalquiz';
+  h+=`<div class="final-quiz-nav">
+    <div class="mod-nav-item ${fqActive?'active':''}" onclick="goFinalQuiz()" style="gap:10px">
+      <div class="mod-check" style="background:var(--purple-bg);border-color:var(--purple-bg);color:var(--purple-fg);font-weight:700">★</div>
+      <div class="mod-nav-info"><h4>Quiz final</h4><p>${curF.finalQuiz?curF.finalQuiz.questions.length+' perguntas':''}</p></div>
+    </div>
+  </div></div>`;
+  return h;
+}
+
+// ===== MODULE CONTENT =====
+function renderModContent(mod){
+  let h=`<h2>${mod.name}</h2><div class="c-meta"><span>${mod.duration}</span><span>${mod.blocks.length} conteúdos</span></div>`;
+
+  mod.blocks.forEach(b=>{
+    if(b.type==='video'){
+      h+=`<div class="video-player"><div class="play-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21"/></svg></div><span class="video-duration">${b.duration}</span></div>
+        <p style="font-weight:600;margin-bottom:16px">${b.title}</p>`;
+    }else if(b.type==='text'){
+      h+=`<div class="text-content">${b.content}</div><div style="height:16px"></div>`;
+    }else if(b.type==='audio'){
+      h+=`<div class="audio-player"><button class="audio-play"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21"/></svg></button>
+        <div class="audio-track"><div class="audio-bar"><div class="fill"></div></div><div class="audio-meta"><span>0:00</span><span>${b.duration}</span></div></div></div>
+        <p style="font-size:13px;color:var(--ink-600);margin-bottom:14px">${b.title}</p>`;
+    }else if(b.type==='link'){
+      h+=`<a href="#" class="resource-link" onclick="event.preventDefault()">
+        <div class="resource-icon ${b.format&&b.format.includes('PDF')?'pdf':'link'}">${b.format&&b.format.includes('PDF')?'📄':'↗'}</div>
+        <div class="resource-info"><b>${b.title}</b><span>${b.format||'Link externo'}</span></div></a>`;
+    }
+  });
+
+  // Quiz banner after content
+  if(mod.quiz){
+    if(mod.quizPassed){
+      h+=`<div class="quiz-banner passed">
+        <div class="qb-icon">✓</div>
+        <div class="qb-info"><h4>Quiz da aula concluído</h4><p>Respondeste correctamente e desbloqueaste o próximo módulo.</p></div>
+      </div>`;
+    }else{
+      h+=`<div class="quiz-banner">
+        <div class="qb-icon">?</div>
+        <div class="qb-info"><h4>Quiz da aula disponível</h4><p>${mod.quiz.questions.length} perguntas · mínimo ${mod.quiz.passing}% para avançar</p></div>
+        <button class="btn btn-purple" onclick="goModQuiz(${curModIdx})">Fazer quiz</button>
+      </div>`;
+    }
+  }
+
+  // Navigation
+  h+=`<div class="content-nav">
+    <button class="btn btn-outline" ${curModIdx===0?'disabled':''} onclick="goModule(${curModIdx-1})">← Módulo anterior</button>`;
+  if(!mod.quizPassed&&mod.quiz){
+    h+=`<button class="btn btn-purple" onclick="goModQuiz(${curModIdx})">Fazer quiz da aula →</button>`;
+  }else if(curModIdx<curF.modules.length-1){
+    h+=`<button class="btn btn-primary" onclick="goModule(${curModIdx+1})">Próximo módulo →</button>`;
+  }else{
+    h+=`<button class="btn btn-purple" onclick="goFinalQuiz()">Quiz final →</button>`;
+  }
+  h+=`</div>`;
+  return h;
+}
+
+// ===== QUIZ ENGINE (reusable for module + final) =====
+function renderQuizUI(quiz,mod){
+  if(!quiz)return'<p style="color:var(--ink-400);text-align:center;padding:40px">Quiz não disponível.</p>';
+  const isFinal=!mod;
+  const title=quiz.title;
+
+  if(!qState)qState={qi:0,answers:[],submitted:false,started:false};
+
+  if(!qState.started){
+    const allModQuizDone=curF.modules.every(m=>!m.quiz||m.quizPassed);
+    return`<div class="quiz-intro">
+      <div style="width:56px;height:56px;border-radius:50%;background:${isFinal?'var(--purple-bg)':'var(--brand-50)'};color:${isFinal?'var(--purple-fg)':'var(--brand-600)'};display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;font-weight:700">${isFinal?'★':'?'}</div>
+      <h2>${title}</h2>
+      <p>${quiz.questions.length} perguntas de escolha múltipla. Nota mínima: ${quiz.passing}%.</p>
+      ${isFinal&&!allModQuizDone?`<div style="background:var(--warning-bg);color:var(--warning-fg);padding:10px 16px;border-radius:var(--r-md);font-size:13px;margin-bottom:16px;max-width:400px;margin-left:auto;margin-right:auto">
+        Completa os quizzes de todos os módulos antes de fazer o quiz final.
+      </div>
+      <button class="btn btn-outline" disabled>Começar quiz</button>`
+      :`<button class="btn ${isFinal?'btn-purple':'btn-primary'}" onclick="qState.started=true;render()">Começar quiz</button>`}
+    </div>`;
+  }
+
+  if(!qState.submitted){
+    const q=quiz.questions[qState.qi];
+    const sel=qState.answers[qState.qi];
+    const pct=((qState.qi)/quiz.questions.length)*100;
+    return`<div class="quiz-progress"><div class="bar"><div class="fill" style="width:${pct}%"></div></div>
+      <span class="label">${qState.qi+1} / ${quiz.questions.length}</span></div>
+      <div class="q-num">Pergunta ${qState.qi+1}</div>
+      <h3 style="font-size:16px;font-weight:600;margin-bottom:14px">${q.q}</h3>
+      ${q.opts.map((o,i)=>`<div class="quiz-option ${sel===i?'selected':''}" onclick="qState.answers[qState.qi]=${i};render()""><div class="quiz-radio"></div>${o}</div>`).join('')}
+      <div style="display:flex;justify-content:space-between;margin-top:20px">
+        <button class="btn btn-outline" ${qState.qi===0?'disabled':''} onclick="qState.qi--;render()">← Anterior</button>
+        ${qState.qi<quiz.questions.length-1
+          ?`<button class="btn btn-primary" ${sel===undefined?'disabled':''} onclick="qState.qi++;render()">Próxima →</button>`
+          :`<button class="btn btn-success" ${sel===undefined?'disabled':''} onclick="submitQuiz(${isFinal?'true':'false'})">Submeter ✓</button>`}
+      </div>`;
+  }
+
+  // Results
+  const correct=qState.answers.reduce((s,a,i)=>s+(a===quiz.questions[i].correct?1:0),0);
+  const pct=Math.round((correct/quiz.questions.length)*100);
+  const passed=pct>=quiz.passing;
+
+  let h=`<div style="text-align:center;padding:20px 0">
+    <div class="result-circle ${passed?'pass':'fail'}"><span class="pct">${pct}%</span><span class="lbl">${correct}/${quiz.questions.length}</span></div>
+    <h2 style="margin-bottom:6px">${passed?'Aprovada!':'Nota insuficiente'}</h2>
+    <p style="color:var(--ink-600);max-width:380px;margin:0 auto 20px;font-size:14px">${
+      passed?(isFinal?'Parabéns! Completaste a formação. O certificado ficará disponível.':'Excelente! Podes avançar para o próximo módulo.')
+      :`Precisavas de ${quiz.passing}%. Revê o conteúdo e tenta novamente.`
+    }</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      ${!passed?`<button class="btn btn-primary" onclick="qState=null;render()">Tentar novamente</button>`:''}
+      ${passed&&!isFinal&&curModIdx<curF.modules.length-1?`<button class="btn btn-primary" onclick="goModule(${curModIdx+1})">Próximo módulo →</button>`:''}
+      ${passed&&isFinal?`<button class="btn btn-success" onclick="goView('list')">Ver certificado</button>`:''}
+      <button class="btn btn-outline" onclick="${isFinal?`goModule(${curF.modules.length-1})`:`goModule(${curModIdx})`}">Voltar ao conteúdo</button>
+    </div>
+  </div>`;
+
+  h+=`<div style="border-top:1px solid var(--border);margin-top:24px;padding-top:20px">
+    <h3 style="font-size:15px;font-weight:600;margin-bottom:14px">Revisão das respostas</h3>
+    ${quiz.questions.map((q,i)=>{
+      const ans=qState.answers[i];
+      return`<div style="margin-bottom:18px">
+        <div class="q-num">Pergunta ${i+1}</div>
+        <p style="font-weight:600;margin-bottom:8px;font-size:14px">${q.q}</p>
+        ${q.opts.map((o,j)=>{
+          let c='';
+          if(j===q.correct)c='correct';
+          else if(j===ans&&ans!==q.correct)c='wrong';
+          return`<div class="quiz-option ${c}" style="cursor:default;padding:8px 12px;font-size:13px"><div class="quiz-radio"></div>${o}</div>`;
+        }).join('')}
+      </div>`;
+    }).join('')}
+  </div>`;
+  return h;
+}
+
+function submitQuiz(isFinal){
+  qState.submitted=true;
+  const quiz=isFinal?curF.finalQuiz:curF.modules[curModIdx].quiz;
+  const correct=qState.answers.reduce((s,a,i)=>s+(a===quiz.questions[i].correct?1:0),0);
+  const pct=Math.round((correct/quiz.questions.length)*100);
+  const passed=pct>=quiz.passing;
+  if(passed){
+    if(!isFinal){
+      curF.modules[curModIdx].quizPassed=true;
+      curF.modules[curModIdx].completed=true;
+    }
+  }
+  updateProgress();
+  render();
+}
+
+// ===== INIT =====
+renderSidebar();render();
+</script>
+</body>
+</html>

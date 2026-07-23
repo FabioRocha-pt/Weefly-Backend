@@ -64,6 +64,29 @@ export const COUNTRIES = [
   { value: "GW", label: "Guiné-Bissau" },
 ]
 
+// --- Concierge · Travel Request options -------------------------------------
+
+export type TripType = "round_trip" | "one_way" | "multi_city"
+export type CabinClass = "economy" | "business" | "first"
+export type PassengerTitle = "mr" | "ms"
+
+export const TRIP_TYPES: { value: TripType; label: string }[] = [
+  { value: "round_trip", label: "Ida e volta" },
+  { value: "one_way", label: "Só ida" },
+  { value: "multi_city", label: "Multi-destino" },
+]
+
+export const CABIN_CLASSES: { value: CabinClass; label: string }[] = [
+  { value: "economy", label: "Económica" },
+  { value: "business", label: "Executiva" },
+  { value: "first", label: "Primeira" },
+]
+
+export const PASSENGER_TITLES: { value: PassengerTitle; label: string }[] = [
+  { value: "mr", label: "Sr." },
+  { value: "ms", label: "Sra." },
+]
+
 export const PHONE_PREFIXES = [
   { value: "+238", label: "+238 (Cabo Verde)" },
   { value: "+351", label: "+351 (Portugal)" },

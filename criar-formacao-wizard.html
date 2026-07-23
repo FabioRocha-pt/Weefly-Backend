@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3LS — Criar formação</title>
+<style>
+:root {
+  --brand-600:#0E9384; --brand-700:#0B7A6E; --brand-100:#D6F2EE; --brand-50:#EDFAF8;
+  --ink-900:#1A222E; --ink-700:#3A4454; --ink-600:#5A6270; --ink-400:#98A1AE; --ink-300:#BCC3CD;
+  --surface:#fff; --surface-alt:#F5F7F9; --bg:#EAEEF2; --border:#E4E8ED; --border-strong:#CDD3DB;
+  --success-bg:#D9F2E4; --success-fg:#14663B;
+  --warning-bg:#FDEED3; --warning-fg:#8A5A0B;
+  --danger-bg:#FDE8E8; --danger-fg:#A61B2B;
+  --r-lg:16px; --r-md:10px; --r-pill:999px;
+  --focus:0 0 0 3px rgba(14,147,132,.35);
+  --shadow:0 1px 2px rgba(26,34,46,.05),0 4px 16px rgba(26,34,46,.06);
+  font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink-900);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box-shadow:var(--focus)}
+
+/* === TOPBAR === */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:24px;padding:0 28px;height:60px;position:sticky;top:0;z-index:20}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:20px;letter-spacing:-.02em}
+.logo svg{display:block}
+.topbar .avatar{margin-left:auto;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0E9384,#2B6CB0);color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+
+/* === SHELL === */
+.shell{display:flex;gap:24px;padding:24px 28px;max-width:1280px;margin:0 auto}
+
+/* === SIDEBAR === */
+.sidebar{width:210px;flex:none;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:14px 10px;display:flex;flex-direction:column;min-height:calc(100vh - 108px)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-md);color:var(--ink-600);font-weight:500;text-decoration:none;font-size:13px}
+.nav a svg{flex:none}
+.nav a:hover{background:var(--surface-alt);color:var(--ink-900)}
+.nav a.active{background:var(--brand-50);color:var(--brand-700);font-weight:700}
+.user-card{margin-top:auto;display:flex;align-items:center;gap:10px;background:var(--surface-alt);border-radius:var(--r-md);padding:10px 12px}
+.user-card b{display:block;font-size:13px}
+.user-card span{font-size:12px;color:var(--ink-600)}
+.uc-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#0E9384,#2B6CB0);color:#fff;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;flex:none}
+
+/* === MAIN === */
+main{flex:1;min-width:0}
+.breadcrumb{font-size:13px;color:var(--ink-600);margin-bottom:6px}
+.breadcrumb a{color:var(--ink-600);text-decoration:none}
+.breadcrumb a:hover{color:var(--brand-700);text-decoration:underline}
+h1{font-size:24px;letter-spacing:-.02em;margin-bottom:20px}
+
+/* === STEPPER === */
+.stepper{display:flex;align-items:center;gap:0;margin-bottom:28px;position:relative}
+.step-item{display:flex;align-items:center;gap:10px;cursor:pointer;position:relative;padding:6px 0}
+.step-item+.step-item{margin-left:12px}
+.step-item+.step-item::before{content:'';width:32px;height:2px;background:var(--border);position:absolute;left:-22px;top:50%}
+.step-item.done+.step-item::before,.step-item.active+.step-item::before{background:var(--brand-600)}
+.step-circle{width:36px;height:36px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--ink-400);background:var(--surface);flex:none;transition:all .2s}
+.step-item.active .step-circle{border-color:var(--brand-600);background:var(--brand-600);color:#fff}
+.step-item.done .step-circle{border-color:var(--brand-600);background:var(--brand-600);color:#fff}
+.step-label{font-size:13px;font-weight:500;color:var(--ink-400);white-space:nowrap}
+.step-item.active .step-label{color:var(--ink-900);font-weight:700}
+.step-item.done .step-label{color:var(--brand-700)}
+
+/* === CARD === */
+.card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:28px 32px;margin-bottom:20px}
+
+/* === FORMS === */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;margin-bottom:20px}
+.form-row.c3{grid-template-columns:1fr 1fr 1fr}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.span2{grid-column:1/-1}
+.form-group label{font-size:12px;font-weight:600;color:var(--ink-700);text-transform:uppercase;letter-spacing:.03em}
+.form-group label .req{color:var(--danger-fg)}
+input[type="text"],input[type="date"],input[type="number"],input[type="time"],select,textarea{
+  font:inherit;font-size:14px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface-alt);color:var(--ink-900);width:100%}
+input:hover,select:hover,textarea:hover{border-color:var(--border-strong)}
+input:focus,select:focus,textarea:focus{border-color:var(--brand-600);background:var(--surface)}
+textarea{resize:vertical;min-height:100px;line-height:1.5}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%235A6270'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+
+/* Upload area */
+.upload-area{border:2px dashed var(--border);border-radius:var(--r-md);padding:24px;text-align:center;cursor:pointer;color:var(--ink-600);transition:border-color .2s,background .2s}
+.upload-area:hover{border-color:var(--brand-600);background:var(--brand-50)}
+.upload-area svg{margin:0 auto 8px;display:block}
+.upload-area .hint{font-size:12px;color:var(--ink-400);margin-top:4px}
+
+/* === PERSON CARD === */
+.person-card{border:1px solid var(--border);border-radius:var(--r-md);padding:20px;display:grid;grid-template-columns:auto 1fr;gap:12px 20px;align-items:start}
+.person-card+.person-card{margin-top:16px}
+.person-role{grid-column:1/-1;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--brand-700);display:flex;align-items:center;gap:6px}
+.person-photo{width:80px;height:80px;border-radius:50%;background:var(--surface-alt);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-400)}
+.person-photo:hover{border-color:var(--brand-600);color:var(--brand-600)}
+.person-fields{display:flex;flex-direction:column;gap:12px}
+.autofill-badge{font-size:11px;background:var(--brand-50);color:var(--brand-700);padding:2px 8px;border-radius:var(--r-pill);font-weight:600}
+
+/* === MODULE CARD === */
+.module-card{border:1px solid var(--border);border-radius:var(--r-md);padding:16px 20px;display:flex;align-items:center;gap:14px;background:var(--surface);transition:box-shadow .15s}
+.module-card:hover{box-shadow:0 2px 8px rgba(26,34,46,.08)}
+.module-card+.module-card{margin-top:10px}
+.module-card.dragging{opacity:.5;box-shadow:0 4px 20px rgba(14,147,132,.2)}
+.drag-handle{cursor:grab;color:var(--ink-400);display:flex;flex-direction:column;gap:2px;padding:4px}
+.drag-handle span{display:block;width:14px;height:2px;background:var(--ink-300);border-radius:1px}
+.module-num{width:32px;height:32px;border-radius:50%;background:var(--brand-50);color:var(--brand-700);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex:none}
+.module-info{flex:1}
+.module-info input{border:none;background:transparent;font-weight:600;font-size:14px;color:var(--ink-900);padding:2px 0;width:100%}
+.module-info input:focus{outline:none;border-bottom:2px solid var(--brand-600)}
+.module-meta{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;color:var(--ink-600)}
+.module-actions{display:flex;gap:4px}
+.module-actions button{width:34px;height:34px;border:none;background:transparent;border-radius:var(--r-md);cursor:pointer;color:var(--ink-400);display:flex;align-items:center;justify-content:center}
+.module-actions button:hover{background:var(--surface-alt);color:var(--ink-900)}
+.module-actions button.danger:hover{background:var(--danger-bg);color:var(--danger-fg)}
+.time-group{display:flex;align-items:center;gap:4px}
+.time-group input{width:48px;text-align:center;padding:6px 4px;font-size:13px;font-weight:600}
+.time-group .sep{color:var(--ink-400);font-weight:700}
+.add-module{border:2px dashed var(--border);border-radius:var(--r-md);padding:14px;text-align:center;cursor:pointer;color:var(--brand-600);font-weight:600;font-size:14px;margin-top:12px;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.add-module:hover{border-color:var(--brand-600);background:var(--brand-50)}
+
+/* === STEP 4: SPLIT VIEW === */
+.split{display:grid;grid-template-columns:240px 1fr;gap:0;min-height:480px;border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden}
+.split-left{background:var(--surface-alt);border-right:1px solid var(--border);padding:16px 0}
+.split-left-head{padding:0 16px 12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-600)}
+.mod-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--ink-600);border-left:3px solid transparent}
+.mod-item:hover{background:var(--surface);color:var(--ink-900)}
+.mod-item.active{background:var(--surface);color:var(--brand-700);font-weight:700;border-left-color:var(--brand-600)}
+.mod-item .mod-dot{width:8px;height:8px;border-radius:50%;border:2px solid var(--ink-400);flex:none}
+.mod-item.active .mod-dot{background:var(--brand-600);border-color:var(--brand-600)}
+.mod-item.has-content .mod-dot{background:var(--brand-100);border-color:var(--brand-600)}
+.split-right{padding:20px 24px;overflow-y:auto;max-height:600px}
+.split-right-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.split-right-head h3{font-size:16px;font-weight:600}
+.add-block-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-pill);border:1px solid var(--brand-600);background:var(--surface);color:var(--brand-600);font:inherit;font-weight:600;font-size:13px;cursor:pointer}
+.add-block-btn:hover{background:var(--brand-50)}
+
+/* Block type picker */
+.block-picker{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--shadow);padding:8px;margin-bottom:16px;gap:6px;flex-wrap:wrap}
+.block-picker.open{display:flex}
+.block-type{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r-md);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:500;color:var(--ink-700);background:var(--surface);transition:all .15s}
+.block-type:hover{border-color:var(--brand-600);background:var(--brand-50);color:var(--brand-700)}
+.block-type svg{flex:none}
+
+/* Content blocks */
+.content-block{border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:10px;background:var(--surface);transition:box-shadow .15s}
+.content-block:hover{box-shadow:0 2px 8px rgba(26,34,46,.06)}
+.content-block.dragging{opacity:.4;border-color:var(--brand-600)}
+.content-block.drag-over{border-color:var(--brand-600);border-style:dashed;background:var(--brand-50)}
+.block-header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:grab}
+.block-header .block-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex:none}
+.block-header .block-icon.video{background:#EDE9FE;color:#6D28D9}
+.block-header .block-icon.video-link{background:#E0E7FF;color:#4338CA}
+.block-header .block-icon.image{background:#FEF3C7;color:#92400E}
+.block-header .block-icon.link{background:#D1FAE5;color:#065F46}
+.block-header .block-icon.audio{background:#FCE7F3;color:#9D174D}
+.block-header .block-icon.audio-link{background:#FDE2E9;color:#831843}
+.block-header .block-icon.text{background:#E0F2FE;color:#0369A1}
+.block-label{font-weight:600;font-size:13px;flex:1}
+.block-actions{display:flex;gap:2px}
+.block-actions button{width:30px;height:30px;border:none;background:transparent;border-radius:6px;cursor:pointer;color:var(--ink-400);display:flex;align-items:center;justify-content:center;font-size:16px}
+.block-actions button:hover{background:var(--surface-alt);color:var(--ink-900)}
+.block-actions button.danger:hover{background:var(--danger-bg);color:var(--danger-fg)}
+.block-body{padding:14px}
+.block-body input,.block-body textarea{width:100%;font:inherit;font-size:13px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-alt)}
+.block-body textarea{min-height:80px;resize:vertical}
+.block-upload{border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;color:var(--ink-600);font-size:13px;cursor:pointer}
+.block-upload:hover{border-color:var(--brand-600);background:var(--brand-50)}
+.block-upload svg{margin:0 auto 6px;display:block}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--ink-400)}
+.empty-state svg{margin:0 auto 12px;display:block}
+.empty-state p{font-size:14px;margin-bottom:4px}
+.empty-state small{font-size:12px}
+
+/* === FOOTER ACTIONS === */
+.wizard-footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:20px 0}
+.btn{font:inherit;font-weight:600;cursor:pointer;padding:11px 22px;border-radius:var(--r-pill);font-size:14px;transition:all .15s}
+.btn-ghost{background:transparent;border:none;color:var(--brand-600)}
+.btn-ghost:hover{background:var(--brand-50)}
+.btn-outline{background:var(--surface);border:1.5px solid var(--brand-600);color:var(--brand-600)}
+.btn-outline:hover{background:var(--brand-50)}
+.btn-primary{background:var(--brand-600);border:1.5px solid var(--brand-600);color:#fff}
+.btn-primary:hover{background:var(--brand-700);border-color:var(--brand-700)}
+.btn:disabled{opacity:.4;cursor:default}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M14 2 24 8 14 14 4 8Z" fill="#0E9384"/><path d="M14 10 24 16 14 22 4 16Z" fill="#0B7A6E" opacity=".75"/><path d="M14 18 24 24 14 28 4 24Z" fill="#14313B" opacity=".9"/></svg>
+    3LS
+  </div>
+  <div class="avatar" title="Jair Oliveira">JO</div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar">
+    <nav class="nav">
+      <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
+      <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/></svg>Empresas</a>
+      <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Utilizadores</a>
+      <a href="#" class="active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>Formações</a>
+      <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg>Pacotes</a>
+      <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Notificações</a>
+    </nav>
+    <div class="user-card">
+      <div class="uc-avatar">JO</div>
+      <div><b>Jair Oliveira</b><span>Admin</span></div>
+    </div>
+  </aside>
+
+  <main>
+    <nav class="breadcrumb"><a href="#">Formações</a> / Criar formação</nav>
+    <h1>Criar formação</h1>
+
+    <!-- STEPPER -->
+    <div class="stepper" id="stepper"></div>
+
+    <!-- STEP PANELS -->
+    <div id="step-panels"></div>
+
+    <!-- FOOTER -->
+    <div class="wizard-footer">
+      <button class="btn btn-ghost" onclick="if(confirm('Descartar alterações?'))location.reload()">Cancelar</button>
+      <button class="btn btn-outline" id="btn-draft" onclick="saveDraft()">Guardar rascunho</button>
+      <button class="btn btn-primary" id="btn-prev" onclick="goStep(currentStep-1)" style="display:none">← Anterior</button>
+      <button class="btn btn-primary" id="btn-next" onclick="goStep(currentStep+1)">Próximo →</button>
+    </div>
+  </main>
+</div>
+
+<script>
+// ========== WIZARD STATE ==========
+const steps = [
+  { id:'dados', label:'Dados da formação' },
+  { id:'pessoas', label:'Criador, responsável e autor' },
+  { id:'modulos', label:'Módulos' },
+  { id:'conteudo', label:'Conteúdo dos módulos' }
+];
+let currentStep = 0;
+let modules = [{ id:1, name:'', hh:'', mm:'', ss:'', blocks:[] }];
+let moduleCounter = 1;
+let blockCounter = 0;
+let activeModuleId = 1;
+
+// ========== STEPPER RENDER ==========
+function renderStepper() {
+  const el = document.getElementById('stepper');
+  el.innerHTML = steps.map((s,i) => {
+    let cls = '';
+    if(i < currentStep) cls = 'done';
+    else if(i === currentStep) cls = 'active';
+    return `<div class="step-item ${cls}" onclick="goStep(${i})">
+      <div class="step-circle">${i < currentStep ? '✓' : i+1}</div>
+      <span class="step-label">${s.label}</span>
+    </div>`;
+  }).join('');
+}
+
+// ========== NAVIGATION ==========
+function goStep(n) {
+  if(n < 0 || n >= steps.length) return;
+  currentStep = n;
+  renderStepper();
+  renderStep();
+  document.getElementById('btn-prev').style.display = n > 0 ? '' : 'none';
+  document.getElementById('btn-next').textContent = n === steps.length-1 ? 'Publicar formação' : 'Próximo →';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function saveDraft() {
+  const el = document.getElementById('btn-draft');
+  el.textContent = '✓ Rascunho guardado';
+  el.style.borderColor = '#14663B'; el.style.color = '#14663B';
+  setTimeout(()=>{ el.textContent='Guardar rascunho'; el.style.borderColor=''; el.style.color=''; }, 2000);
+}
+
+// ========== STEP RENDERING ==========
+function renderStep() {
+  const panel = document.getElementById('step-panels');
+  switch(currentStep) {
+    case 0: renderStep1(panel); break;
+    case 1: renderStep2(panel); break;
+    case 2: renderStep3(panel); break;
+    case 3: renderStep4(panel); break;
+  }
+}
+
+// ----- STEP 1: Dados da formação -----
+function renderStep1(el) {
+  el.innerHTML = `<div class="card">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Imagem de capa</label>
+        <div class="upload-area">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          Clica ou arrasta para carregar
+          <div class="hint">PNG ou JPG, max. 2MB</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Nome da formação <span class="req">*</span></label>
+        <input type="text" placeholder="Ex: Culinária Avançada">
+        <div style="height:16px"></div>
+        <label>Modalidade <span class="req">*</span></label>
+        <select>
+          <option value="">Selecionar modalidade…</option>
+          <option>Formação Técnica e Profissional</option>
+          <option>Workshop</option>
+          <option>Curso Online</option>
+          <option>Formação Contínua</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Data de início <span class="req">*</span></label>
+        <input type="date">
+      </div>
+      <div class="form-group">
+        <label>Data de fim <span class="req">*</span></label>
+        <input type="date">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group span2">
+        <label>Descrição</label>
+        <textarea placeholder="Descreve os objectivos e o público-alvo da formação…"></textarea>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ----- STEP 2: Pessoas -----
+function renderStep2(el) {
+  const people = [
+    { role:'Criador', icon:'⚡', autofill:true, name:'Jair Oliveira', local:'CEFP Praia' },
+    { role:'Responsável', icon:'✓', autofill:false, name:'', local:'' },
+    { role:'Autor', icon:'✎', autofill:false, name:'', local:'' }
+  ];
+  el.innerHTML = `<div class="card">${people.map(p => `
+    <div class="person-card">
+      <div class="person-role">
+        <span>${p.icon}</span> ${p.role} ${p.autofill ? '<span class="autofill-badge">Auto-preenchido</span>' : ''}
+      </div>
+      <div class="person-photo" title="Carregar foto">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+      <div class="person-fields">
+        <div class="form-group">
+          <label>Nome <span class="req">*</span></label>
+          <input type="text" value="${p.name}" placeholder="Pesquisar colaborador…">
+        </div>
+        <div class="form-group">
+          <label>Local da formação <span class="req">*</span></label>
+          <select>
+            <option value="">Selecionar local…</option>
+            <option ${p.local==='CEFP Praia'?'selected':''}>CEFP Praia</option>
+            <option>CEFP Mindelo</option>
+            <option>Sede — Cidade da Praia</option>
+            <option>Online</option>
+          </select>
+        </div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+// ----- STEP 3: Módulos -----
+function renderStep3(el) {
+  el.innerHTML = `<div class="card">
+    <div id="modules-list">${modules.map((m,i) => moduleHTML(m,i)).join('')}</div>
+    <div class="add-module" onclick="addModule()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Adicionar novo módulo
+    </div>
+  </div>`;
+}
+
+function moduleHTML(m, idx) {
+  return `<div class="module-card" draggable="true" data-mid="${m.id}"
+    ondragstart="dragModStart(event,${m.id})" ondragover="dragModOver(event)" ondrop="dropMod(event,${m.id})" ondragend="dragModEnd(event)">
+    <div class="drag-handle" title="Arrastar para reordenar"><span></span><span></span><span></span></div>
+    <div class="module-num">${idx+1}</div>
+    <div class="module-info">
+      <input type="text" value="${m.name}" placeholder="Nome do módulo" onchange="modules[${idx}].name=this.value">
+      <div class="module-meta">
+        <span>Carga horária:</span>
+        <div class="time-group">
+          <input type="text" maxlength="2" placeholder="HH" value="${m.hh}" onchange="modules[${idx}].hh=this.value">
+          <span class="sep">:</span>
+          <input type="text" maxlength="2" placeholder="MM" value="${m.mm}" onchange="modules[${idx}].mm=this.value">
+          <span class="sep">:</span>
+          <input type="text" maxlength="2" placeholder="SS" value="${m.ss}" onchange="modules[${idx}].ss=this.value">
+        </div>
+      </div>
+    </div>
+    <div class="module-actions">
+      <button title="Duplicar" onclick="dupModule(${m.id})"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+      <button class="danger" title="Eliminar" onclick="delModule(${m.id})"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+  </div>`;
+}
+
+function addModule() {
+  moduleCounter++;
+  modules.push({ id:moduleCounter, name:'', hh:'', mm:'', ss:'', blocks:[] });
+  renderStep3(document.getElementById('step-panels'));
+}
+function dupModule(id) {
+  const src = modules.find(m=>m.id===id);
+  moduleCounter++;
+  const copy = { ...src, id:moduleCounter, name:src.name+' (cópia)', blocks:[...src.blocks.map(b=>({...b,id:++blockCounter}))] };
+  const idx = modules.findIndex(m=>m.id===id);
+  modules.splice(idx+1, 0, copy);
+  renderStep3(document.getElementById('step-panels'));
+}
+function delModule(id) {
+  if(modules.length <= 1) return;
+  modules = modules.filter(m=>m.id!==id);
+  if(activeModuleId===id) activeModuleId=modules[0].id;
+  renderStep3(document.getElementById('step-panels'));
+}
+
+let dragModId=null;
+function dragModStart(e,id){dragModId=id;e.currentTarget.classList.add('dragging')}
+function dragModOver(e){e.preventDefault()}
+function dropMod(e,targetId){
+  e.preventDefault();
+  if(dragModId===targetId)return;
+  const from=modules.findIndex(m=>m.id===dragModId);
+  const to=modules.findIndex(m=>m.id===targetId);
+  const [item]=modules.splice(from,1);
+  modules.splice(to,0,item);
+  renderStep3(document.getElementById('step-panels'));
+}
+function dragModEnd(e){e.currentTarget.classList.remove('dragging');dragModId=null}
+
+// ----- STEP 4: Conteúdo (split view) -----
+const blockTypes = [
+  { type:'video', label:'Upload de vídeo', icon:'▶', cls:'video', placeholder:'upload', hint:'MP4, max 500MB' },
+  { type:'video-link', label:'Link de vídeo', icon:'🔗', cls:'video-link', placeholder:'input', hint:'YouTube, Vimeo…' },
+  { type:'image', label:'Imagem', icon:'🖼', cls:'image', placeholder:'upload', hint:'PNG/JPG, max 5MB' },
+  { type:'link', label:'Link externo', icon:'↗', cls:'link', placeholder:'input', hint:'URL do recurso' },
+  { type:'audio', label:'Upload de áudio', icon:'♫', cls:'audio', placeholder:'upload', hint:'MP3, max 50MB' },
+  { type:'audio-link', label:'Link de áudio', icon:'🎧', cls:'audio-link', placeholder:'input', hint:'Spotify, SoundCloud…' },
+  { type:'text', label:'Texto', icon:'T', cls:'text', placeholder:'textarea', hint:'Editor de texto' }
+];
+
+function renderStep4(el) {
+  const mod = modules.find(m=>m.id===activeModuleId) || modules[0];
+  if(mod) activeModuleId = mod.id;
+
+  el.innerHTML = `<div class="card" style="padding:0;overflow:hidden">
+    <div class="split">
+      <div class="split-left">
+        <div class="split-left-head">Módulos</div>
+        ${modules.map(m => `<div class="mod-item ${m.id===activeModuleId?'active':''} ${m.blocks.length?'has-content':''}" onclick="selectModule(${m.id})">
+          <div class="mod-dot"></div>
+          <div>
+            <div style="font-size:13px">${m.name||'Sem nome'}</div>
+            <div style="font-size:11px;color:var(--ink-400);margin-top:2px">${m.blocks.length} bloco${m.blocks.length!==1?'s':''}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="split-right">
+        <div class="split-right-head">
+          <h3>${mod ? (mod.name||'Sem nome') : ''}</h3>
+          <button class="add-block-btn" onclick="togglePicker()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Adicionar bloco
+          </button>
+        </div>
+        <div class="block-picker" id="block-picker">
+          ${blockTypes.map(bt => `<div class="block-type" onclick="addBlock('${bt.type}')">
+            <span style="font-size:16px">${bt.icon}</span>${bt.label}
+          </div>`).join('')}
+        </div>
+        <div id="blocks-area">${mod && mod.blocks.length ? mod.blocks.map(b=>blockHTML(b)).join('') : emptyBlockState()}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function emptyBlockState() {
+  return `<div class="empty-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--ink-300)" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+    <p>Nenhum conteúdo neste módulo</p>
+    <small>Clica "Adicionar bloco" para começar</small>
+  </div>`;
+}
+
+function blockHTML(b) {
+  const bt = blockTypes.find(t=>t.type===b.type);
+  let body = '';
+  if(bt.placeholder === 'upload') {
+    body = `<div class="block-upload">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Arrasta ficheiro ou clica para carregar
+      <div style="font-size:11px;color:var(--ink-400);margin-top:4px">${bt.hint}</div>
+    </div>`;
+  } else if(bt.placeholder === 'textarea') {
+    body = `<textarea placeholder="Escreve o conteúdo aqui…">${b.value||''}</textarea>`;
+  } else {
+    body = `<input type="text" placeholder="${bt.hint}" value="${b.value||''}">`;
+  }
+
+  return `<div class="content-block" draggable="true" data-bid="${b.id}"
+    ondragstart="dragBlkStart(event,${b.id})" ondragover="dragBlkOver(event)" ondragleave="dragBlkLeave(event)" ondrop="dropBlk(event,${b.id})" ondragend="dragBlkEnd(event)">
+    <div class="block-header">
+      <div class="block-icon ${bt.cls}">${bt.icon}</div>
+      <span class="block-label">${bt.label}</span>
+      <div class="block-actions">
+        <button title="Mover para cima" onclick="moveBlock(${b.id},-1)">↑</button>
+        <button title="Mover para baixo" onclick="moveBlock(${b.id},1)">↓</button>
+        <button title="Duplicar" onclick="dupBlock(${b.id})">⧉</button>
+        <button class="danger" title="Eliminar" onclick="delBlock(${b.id})">✕</button>
+      </div>
+    </div>
+    <div class="block-body">${body}</div>
+  </div>`;
+}
+
+function selectModule(id) {
+  activeModuleId = id;
+  renderStep4(document.getElementById('step-panels'));
+}
+
+function togglePicker() {
+  document.getElementById('block-picker').classList.toggle('open');
+}
+
+function addBlock(type) {
+  blockCounter++;
+  const mod = modules.find(m=>m.id===activeModuleId);
+  if(!mod) return;
+  mod.blocks.push({ id:blockCounter, type, value:'' });
+  document.getElementById('block-picker').classList.remove('open');
+  renderStep4(document.getElementById('step-panels'));
+}
+
+function delBlock(bid) {
+  const mod = modules.find(m=>m.id===activeModuleId);
+  mod.blocks = mod.blocks.filter(b=>b.id!==bid);
+  renderStep4(document.getElementById('step-panels'));
+}
+
+function dupBlock(bid) {
+  const mod = modules.find(m=>m.id===activeModuleId);
+  const idx = mod.blocks.findIndex(b=>b.id===bid);
+  blockCounter++;
+  mod.blocks.splice(idx+1, 0, {...mod.blocks[idx], id:blockCounter});
+  renderStep4(document.getElementById('step-panels'));
+}
+
+function moveBlock(bid, dir) {
+  const mod = modules.find(m=>m.id===activeModuleId);
+  const idx = mod.blocks.findIndex(b=>b.id===bid);
+  const newIdx = idx + dir;
+  if(newIdx < 0 || newIdx >= mod.blocks.length) return;
+  [mod.blocks[idx], mod.blocks[newIdx]] = [mod.blocks[newIdx], mod.blocks[idx]];
+  renderStep4(document.getElementById('step-panels'));
+}
+
+let dragBlkId=null;
+function dragBlkStart(e,id){dragBlkId=id;e.currentTarget.classList.add('dragging')}
+function dragBlkOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over')}
+function dragBlkLeave(e){e.currentTarget.classList.remove('drag-over')}
+function dropBlk(e,targetId){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');
+  if(dragBlkId===targetId)return;
+  const mod=modules.find(m=>m.id===activeModuleId);
+  const from=mod.blocks.findIndex(b=>b.id===dragBlkId);
+  const to=mod.blocks.findIndex(b=>b.id===targetId);
+  const[item]=mod.blocks.splice(from,1);
+  mod.blocks.splice(to,0,item);
+  renderStep4(document.getElementById('step-panels'));
+}
+function dragBlkEnd(e){e.currentTarget.classList.remove('dragging');dragBlkId=null}
+
+// ========== INIT ==========
+renderStepper();
+renderStep();
+</script>
+</body>
+</html>

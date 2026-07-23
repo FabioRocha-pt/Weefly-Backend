@@ -62,6 +62,59 @@ export const companyDataSchema = z.object({
 
 export type CompanyDataFormData = z.infer<typeof companyDataSchema>
 
+// --- Concierge · Travel Request ---------------------------------------------
+
+/**
+ * Client-facing travel request (WeeFly Concierge, module M3).
+ *
+ * Mirrors the TripRequest entity from the technical spec: trip type, route,
+ * dates, passenger split and cabin class, plus the contact data needed to open
+ * a lead. Passenger counts are coerced because they arrive from number inputs
+ * as strings. The refinements below encode the cross-field rules the flat
+ * per-field checks can't express.
+ */
+export const travelRequestSchema = z
+  .object({
+    tripType: z.enum(["round_trip", "one_way", "multi_city"], {
+      required_error: "Selecione o tipo de viagem",
+    }),
+    origin: z.string().min(2, "Indique a origem"),
+    destination: z.string().min(2, "Indique o destino"),
+    departDate: z.string().min(1, "Indique a data de partida"),
+    // Kept optional at field level; the round-trip rule is enforced below.
+    returnDate: z.string().optional().or(z.literal("")),
+    // Driven by stepper counters that always set real numbers.
+    adults: z.number().int().min(1, "Pelo menos 1 adulto").max(9),
+    children: z.number().int().min(0).max(9),
+    infants: z.number().int().min(0).max(9),
+    cabinClass: z.enum(["economy", "business", "first"], {
+      required_error: "Selecione a classe",
+    }),
+    title: z.enum(["mr", "ms"], { required_error: "Selecione o título" }),
+    fullName: z.string().min(3, "Indique o nome completo (como no passaporte)"),
+    email: z.string().email("Email inválido"),
+    phonePrefix: z.string().min(1, "Selecione o indicativo"),
+    phone: z.string().min(6, "Número de telefone inválido"),
+    // GDPR / Lei nº 133/V/2001: explicit consent captured on the public form.
+    consent: z.boolean().refine((v) => v === true, {
+      message: "É necessário aceitar para continuar",
+    }),
+  })
+  .refine(
+    (d) => d.tripType !== "round_trip" || Boolean(d.returnDate),
+    { message: "Indique a data de regresso", path: ["returnDate"] }
+  )
+  .refine(
+    (d) => !d.returnDate || !d.departDate || d.returnDate >= d.departDate,
+    { message: "O regresso não pode ser antes da partida", path: ["returnDate"] }
+  )
+  .refine((d) => d.infants <= d.adults, {
+    message: "Cada bebé tem de viajar com um adulto",
+    path: ["infants"],
+  })
+
+export type TravelRequestFormData = z.infer<typeof travelRequestSchema>
+
 export function getPasswordStrength(password: string): {
   score: number
   label: string
