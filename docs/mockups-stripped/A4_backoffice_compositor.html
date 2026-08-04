@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WeeFly Admin · Caso WF-7K4M-92XB · Compositor de ofertas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#141A24;
+  --panel:#1E2532;
+  --panel-2:#252E3E;
+  --raise:#2A3344;
+  --line:#333E51;
+  --line-soft:#2A3243;
+  --txt:#E9EEF5;
+  --txt-2:#C3CDDB;
+  --muted:#8494AB;
+  --ember:#EE5128;
+  --ember-dark:#CE3F19;
+  --ok:#3EBE94;
+  --ok-bg:rgba(62,190,148,.14);
+  --warn:#E3A63F;
+  --warn-bg:rgba(227,166,63,.14);
+  --info-bg:rgba(132,148,171,.14);
+  --r:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:14px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:13px}
+:focus-visible{outline:2px solid var(--ember);outline-offset:2px;border-radius:4px}
+
+/* ── chrome ─────────────────────────────── */
+.topbar{background:var(--panel);border-bottom:1px solid var(--line);padding:0 20px}
+.topbar-in{display:flex;align-items:center;gap:14px;height:56px}
+.logo{height:22px;width:auto;display:block}
+.env{
+  font-size:10px;letter-spacing:.10em;text-transform:uppercase;font-weight:800;
+  background:var(--info-bg);color:var(--txt-2);border-radius:5px;padding:4px 7px;
+}
+.nav{display:flex;gap:2px;margin-left:12px}
+.nav a{
+  color:var(--muted);text-decoration:none;font-size:13px;font-weight:600;
+  padding:7px 11px;border-radius:8px;
+}
+.nav a:hover{background:var(--panel-2);color:var(--txt)}
+.nav a[aria-current]{background:var(--raise);color:var(--txt)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.who{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--txt-2)}
+.avatar{width:27px;height:27px;border-radius:50%;background:var(--raise);display:grid;place-items:center;font-size:11px;font-weight:700}
+
+/* ── case header ────────────────────────── */
+.casebar{background:var(--panel);border-bottom:1px solid var(--line);padding:16px 20px 0}
+.case-top{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap}
+.crumb{font-size:12px;color:var(--muted)}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--txt-2)}
+h1{font-size:21px;font-weight:800;letter-spacing:-.02em;margin:5px 0 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.token{
+  font-size:13px;font-weight:600;letter-spacing:.07em;background:var(--raise);
+  border:1px solid var(--line);border-radius:7px;padding:3px 9px;color:var(--txt);
+}
+.state{
+  font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;
+  border-radius:6px;padding:5px 9px;background:var(--warn-bg);color:var(--warn);
+}
+.case-meta{display:flex;gap:22px;margin:12px 0 0;flex-wrap:wrap}
+.cm{font-size:13px}
+.cm-k{display:block;font-size:10px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:2px}
+.case-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  border:1px solid var(--line);background:var(--panel-2);border-radius:9px;
+  padding:8px 13px;font-size:13px;font-weight:600;transition:background .15s,border-color .15s;
+}
+.btn:hover{background:var(--raise);border-color:#41506A}
+.btn-primary{background:var(--ember);border-color:var(--ember);color:#fff;font-weight:700}
+.btn-primary:hover{background:var(--ember-dark);border-color:var(--ember-dark)}
+.btn-sm{padding:6px 10px;font-size:12px}
+.btn-icon{padding:6px 9px}
+.tabs{display:flex;gap:2px;margin:16px 0 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  border:0;background:none;padding:11px 13px;font-size:13px;font-weight:600;color:var(--muted);
+  border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:7px;
+}
+.tab:hover{color:var(--txt-2)}
+.tab[aria-selected="true"]{color:var(--txt);border-bottom-color:var(--txt)}
+.tab .n{
+  font-size:10px;font-weight:800;background:var(--raise);border-radius:20px;padding:2px 6px;color:var(--txt-2);
+}
+.tab.locked{opacity:.45}
+
+/* ── layout ─────────────────────────────── */
+.cols{display:grid;grid-template-columns:262px minmax(0,1fr) 350px;gap:18px;padding:18px 20px 40px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.panel-h{padding:13px 15px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px}
+.panel-h h2{margin:0;font-size:12px;letter-spacing:.11em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+.panel-h .btn{margin-left:auto}
+.panel-b{padding:15px}
+.sticky{position:sticky;top:18px}
+
+/* ── left · pedido do cliente ───────────── */
+.kv{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
+.kv:last-child{border-bottom:0}
+.kv-k{color:var(--muted)}
+.kv-v{font-weight:600;text-align:right}
+.route{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;
+}
+.route .iata{font-size:19px;font-weight:600;letter-spacing:.04em}
+.route .city{font-size:11px;color:var(--muted)}
+.route .arrow{color:var(--muted)}
+.quote{
+  margin:13px 0 0;background:var(--panel-2);border-left:2px solid var(--muted);border-radius:0 8px 8px 0;
+  padding:10px 12px;font-size:12.5px;color:var(--txt-2);
+}
+.chanline{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:13px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+
+/* ── center · compositor ────────────────── */
+.stack{display:flex;flex-direction:column;gap:14px}
+.offer{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.offer.active{border-color:#46587A;box-shadow:0 0 0 1px rgba(70,88,122,.5)}
+.offer-h{display:flex;align-items:center;gap:11px;padding:13px 15px;border-bottom:1px solid var(--line-soft)}
+.grip{color:var(--muted);cursor:grab;line-height:0}
+.oname{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+  padding:7px 10px;font-weight:700;font-size:14px;color:var(--txt);min-width:210px;
+}
+.oname:focus{border-color:#46587A;outline:none}
+.oflags{display:flex;gap:6px;margin-left:auto;align-items:center;flex-wrap:wrap}
+.flag{
+  border:1px solid var(--line);background:var(--panel-2);border-radius:7px;padding:5px 9px;
+  font-size:11px;font-weight:700;color:var(--muted);
+}
+.flag[aria-pressed="true"]{background:var(--txt);border-color:var(--txt);color:var(--panel)}
+.flag.rec[aria-pressed="true"]{background:var(--ok-bg);border-color:rgba(62,190,148,.4);color:var(--ok)}
+.offer-b{padding:15px}
+
+.sec{margin-bottom:20px}
+.sec:last-child{margin-bottom:0}
+.sec-h{display:flex;align-items:center;gap:10px;margin:0 0 11px}
+.sec-h h3{margin:0;font-size:11px;letter-spacing:.11em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+.sec-h .rule{flex:1;height:1px;background:var(--line-soft)}
+.legtabs{display:flex;gap:6px;margin:0 0 12px}
+.legtab{
+  border:1px solid var(--line);background:var(--panel-2);border-radius:8px;padding:6px 12px;
+  font-size:12px;font-weight:700;color:var(--muted);
+}
+.legtab[aria-selected="true"]{background:var(--raise);color:var(--txt);border-color:#46587A}
+
+/* segment rows */
+.segrow{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;
+}
+.segrow-h{display:flex;align-items:center;gap:9px;margin:0 0 11px}
+.segnum{
+  width:20px;height:20px;border-radius:6px;background:var(--raise);display:grid;place-items:center;
+  font-size:10px;font-weight:800;color:var(--txt-2);
+}
+.segrow-h .t{font-size:12px;font-weight:700;color:var(--txt-2)}
+.segrow-h .btn{margin-left:auto}
+.fgrid{display:grid;grid-template-columns:repeat(12,1fr);gap:9px}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f label{font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.f input,.f select,.f textarea{
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+  color:var(--txt);width:100%;
+}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:#46587A;outline:none}
+.f input::placeholder{color:#5D6B82}
+.f .hint{font-size:10.5px;color:var(--muted)}
+.s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s7{grid-column:span 7}.s8{grid-column:span 8}.s12{grid-column:span 12}
+.computed{
+  background:var(--info-bg);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--txt-2);
+  display:flex;gap:16px;flex-wrap:wrap;margin-top:2px;
+}
+.computed b{color:var(--txt);font-weight:600}
+.addseg{
+  width:100%;border:1px dashed var(--line);background:none;border-radius:9px;padding:9px;
+  font-size:12px;font-weight:700;color:var(--muted);
+}
+.addseg:hover{border-color:#46587A;color:var(--txt-2)}
+
+/* price table */
+.ptable{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.prow{display:grid;grid-template-columns:1fr 96px 128px;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line-soft)}
+.prow:last-child{border-bottom:0}
+.prow-k{font-size:13px;font-weight:600}
+.prow-k small{display:block;font-size:11px;color:var(--muted);font-weight:500}
+.prow input{
+  background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 9px;
+  color:var(--txt);text-align:right;width:100%;
+}
+.prow .qty{color:var(--muted);text-align:center}
+.prow .line{text-align:right;font-size:13px;font-weight:600}
+.prow.fee{background:rgba(238,81,40,.06)}
+.prow.fee .prow-k{color:var(--txt)}
+.prow.tot{background:var(--raise);border-top:1px solid var(--line)}
+.prow.tot .prow-k{font-size:14px;font-weight:800}
+.prow.tot .line{font-size:19px;font-weight:600;letter-spacing:-.01em}
+.toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.toggle input{width:15px;height:15px;accent-color:var(--ember)}
+
+textarea{min-height:74px;resize:vertical;line-height:1.5}
+
+/* collapsed offers */
+.orow{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:12px 15px;display:flex;align-items:center;gap:13px;
+}
+.orow:hover{border-color:#41506A}
+.orow .grip{flex:0 0 auto}
+.orow .oi{min-width:0;flex:1}
+.orow .oi .nm{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.orow .oi .ms{font-size:12px;color:var(--muted);margin-top:2px}
+.orow .pv{font-size:16px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
+.addoffer{
+  border:1px dashed var(--line);background:none;border-radius:var(--r);padding:14px;
+  font-size:13px;font-weight:700;color:var(--muted);width:100%;
+}
+.addoffer:hover{border-color:#46587A;color:var(--txt-2)}
+
+/* ── right · preview + publicar ─────────── */
+.prev-frame{background:#F1F5F9;border-radius:10px;padding:12px;color:#12161F}
+.prev-note{font-size:11px;color:var(--muted);margin:0 0 10px}
+.pcard{background:#fff;border:1px solid #DFE5EC;border-radius:11px;overflow:hidden}
+.pcard-b{padding:12px 13px}
+.ptags{display:flex;gap:5px;margin:0 0 10px;flex-wrap:wrap}
+.ptag{font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;border-radius:5px;padding:3px 6px;background:#1E2532;color:#fff}
+.ptag.alt{background:#F1F5F9;color:#3A4557}
+.pleg{display:flex;align-items:center;gap:9px;padding:7px 0}
+.pleg + .pleg{border-top:1px dashed #DFE5EC}
+.pleg-tag{flex:0 0 34px;font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;color:#64748B}
+.pnode{flex:0 0 auto}
+.pnode .tm{font-size:14px;font-weight:600;display:block;line-height:1.1}
+.pnode .ia{font-size:10px;font-weight:600;color:#3A4557;letter-spacing:.06em}
+.pbar{flex:1;position:relative;height:22px;min-width:34px}
+.pbar .ln{position:absolute;left:0;right:0;top:11px;height:1px;background:#DFE5EC}
+.pbar .d{position:absolute;top:8.5px;width:6px;height:6px;border-radius:50%;background:#1E2532}
+.pbar .d.a{left:0}.pbar .d.b{right:0}
+.pbar .st{position:absolute;top:9.5px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#fff;border:1.5px solid #3A4557}
+.pbar .du{position:absolute;left:50%;top:-4px;transform:translateX(-50%);background:#fff;padding:0 5px;font-size:9.5px;font-weight:600;color:#3A4557}
+.pbar .sp{position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);background:#fff;padding:0 5px;font-size:9.5px;color:#64748B;white-space:nowrap}
+.pcar{font-size:10px;color:#64748B;margin-top:5px}
+.pnote{margin:10px 0 0;background:#F1F5F9;border-radius:8px;padding:8px 9px;font-size:11px;color:#3A4557;line-height:1.45}
+.prail{border-top:1px dashed #DFE5EC;padding:11px 13px;display:flex;align-items:center;gap:10px}
+.prail .k{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#64748B;font-weight:700;display:block}
+.prail .amt{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.prail .cta{margin-left:auto;background:#EE5128;color:#fff;border:0;border-radius:8px;padding:9px 12px;font-size:11.5px;font-weight:700}
+
+.pubrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.pubrow:last-of-type{border-bottom:0}
+.pubrow input[type=checkbox]{width:15px;height:15px;accent-color:var(--ember)}
+.pubrow .nm{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pubrow .pv{font-size:13px;font-weight:600;color:var(--txt-2)}
+.warnbox{
+  background:var(--warn-bg);border-radius:9px;padding:10px 11px;font-size:12px;color:#F0C983;margin:13px 0 0;line-height:1.45;
+}
+.chks{display:flex;flex-direction:column;gap:9px;margin:13px 0 0}
+.chk{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--txt-2)}
+.chk input{width:15px;height:15px;accent-color:var(--ember)}
+.pubactions{display:flex;flex-direction:column;gap:8px;margin:15px 0 0}
+.pubactions .btn{width:100%;padding:11px}
+
+@media (max-width:1200px){
+  .cols{grid-template-columns:minmax(0,1fr) 340px}
+  .col-left{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+}
+@media (max-width:900px){
+  .cols{grid-template-columns:minmax(0,1fr)}
+  .col-left{grid-template-columns:1fr}
+  .sticky{position:static}
+  .s2,.s3,.s4,.s5,.s6,.s7,.s8{grid-column:span 12}
+  .prow{grid-template-columns:1fr 70px 100px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <img class="logo" src="LOGO_BASE64" alt="WeeFly">
+    <span class="env">Admin</span>
+    <nav class="nav">
+      <a href="#">Painel</a>
+      <a href="#" aria-current="page">Emissões</a>
+      <a href="#">Pagamentos</a>
+      <a href="#">Vendedores</a>
+      <a href="#">Configuração</a>
+    </nav>
+    <div class="topbar-right">
+      <button class="btn btn-sm">Novo caso</button>
+      <span class="who"><span class="avatar">NF</span>Nélida Fortes</span>
+    </div>
+  </div>
+</header>
+
+<section class="casebar">
+  <div class="case-top">
+    <div>
+      <p class="crumb"><a href="#">Emissões</a> · <a href="#">Em cotação</a></p>
+      <h1>Isaura Barros <span class="token mono">WF-7K4M-92XB</span> <span class="state">E1 · Em cotação</span></h1>
+      <div class="case-meta">
+        <div class="cm"><span class="cm-k">Canal de entrada</span>WhatsApp · +238 991 44 07</div>
+        <div class="cm"><span class="cm-k">Vendedor</span>Nélida Fortes</div>
+        <div class="cm"><span class="cm-k">Moeda do caso</span><span class="mono">USD $</span></div>
+        <div class="cm"><span class="cm-k">Pedido recebido</span>4 ago, 09:12 · <span style="color:var(--warn)">há 3h 41m</span></div>
+        <div class="cm"><span class="cm-k">Revisão</span>R1</div>
+      </div>
+    </div>
+    <div class="case-actions">
+      <button class="btn btn-sm">Copiar link do cliente</button>
+      <button class="btn btn-sm">Ver como cliente</button>
+      <button class="btn btn-sm">Mensagem</button>
+      <button class="btn btn-sm">⋯</button>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="false">Pedido</button>
+    <button class="tab" role="tab" aria-selected="true">Ofertas <span class="n">3</span></button>
+    <button class="tab locked" role="tab" aria-selected="false">Passageiros</button>
+    <button class="tab locked" role="tab" aria-selected="false">Pagamento</button>
+    <button class="tab locked" role="tab" aria-selected="false">Emissão</button>
+    <button class="tab" role="tab" aria-selected="false">Documentos</button>
+    <button class="tab" role="tab" aria-selected="false">Comunicações <span class="n">4</span></button>
+    <button class="tab" role="tab" aria-selected="false">Registo</button>
+  </div>
+</section>
+
+<div class="cols">
+
+  <!-- ═══ ESQUERDA · o que o cliente pediu ═══ -->
+  <div class="col-left">
+    <aside class="panel sticky">
+      <div class="panel-h"><h2>Pedido do cliente</h2><button class="btn btn-sm btn-icon" title="Editar pedido">✎</button></div>
+      <div class="panel-b">
+        <div class="route">
+          <div><div class="iata mono">RAI</div><div class="city">Praia</div></div>
+          <div class="arrow">→</div>
+          <div style="text-align:right"><div class="iata mono">BOS</div><div class="city">Boston</div></div>
+        </div>
+        <div class="kv"><span class="kv-k">Tipo</span><span class="kv-v">Ida e volta</span></div>
+        <div class="kv"><span class="kv-k">Ida</span><span class="kv-v mono">14 set 2026</span></div>
+        <div class="kv"><span class="kv-k">Volta</span><span class="kv-v mono">28 set 2026</span></div>
+        <div class="kv"><span class="kv-k">Flexibilidade</span><span class="kv-v">±2 dias</span></div>
+        <div class="kv"><span class="kv-k">Adultos</span><span class="kv-v mono">2</span></div>
+        <div class="kv"><span class="kv-k">Crianças 2–11</span><span class="kv-v mono">1</span></div>
+        <div class="kv"><span class="kv-k">Bebés</span><span class="kv-v mono">0</span></div>
+        <div class="kv"><span class="kv-k">Classe</span><span class="kv-v">Económica</span></div>
+        <div class="kv"><span class="kv-k">Bagagem</span><span class="kv-v">Precisa de porão</span></div>
+        <p class="quote">“Viajamos com a nossa filha de 8 anos. O importante é não chegar de noite a Boston e levar as malas grandes. Orçamento até 2000 dólares se der.”</p>
+        <div class="chanline"><span class="dot"></span>Link aberto pela última vez há 12 min</div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ═══ CENTRO · compositor ═══ -->
+  <main class="stack">
+
+    <article class="offer active" id="offerA">
+      <header class="offer-h">
+        <span class="grip" aria-hidden="true">
+          <svg width="9" height="14" viewBox="0 0 9 14" fill="currentColor"><circle cx="1.5" cy="1.5" r="1.5"/><circle cx="7.5" cy="1.5" r="1.5"/><circle cx="1.5" cy="7" r="1.5"/><circle cx="7.5" cy="7" r="1.5"/><circle cx="1.5" cy="12.5" r="1.5"/><circle cx="7.5" cy="12.5" r="1.5"/></svg>
+        </span>
+        <input class="oname" id="fName" value="Cabo Verde Airlines · via Sal">
+        <div class="oflags">
+          <button class="flag rec" id="flagRec" aria-pressed="true">Recomendada</button>
+          <button class="flag" aria-pressed="false">Mais barata</button>
+          <button class="flag" aria-pressed="false">Mais rápida</button>
+          <button class="btn btn-sm btn-icon" title="Duplicar oferta">⧉</button>
+          <button class="btn btn-sm btn-icon" title="Remover oferta">🗑</button>
+        </div>
+      </header>
+
+      <div class="offer-b">
+
+        <!-- itinerário -->
+        <section class="sec">
+          <div class="sec-h"><h3>Itinerário</h3><span class="rule"></span>
+            <span style="font-size:11px;color:var(--muted)">2 trechos na ida · 2 na volta</span>
+          </div>
+          <div class="legtabs" role="tablist">
+            <button class="legtab" role="tab" aria-selected="true">Ida · 14 set</button>
+            <button class="legtab" role="tab" aria-selected="false">Volta · 28 set</button>
+            <button class="btn btn-sm" style="margin-left:auto">+ Trecho aberto</button>
+          </div>
+
+          <div class="segrow">
+            <div class="segrow-h"><span class="segnum">1</span><span class="t">Praia → Sal</span>
+              <button class="btn btn-sm btn-icon" title="Remover trecho">✕</button>
+            </div>
+            <div class="fgrid">
+              <div class="f s2"><label for="a1c">Cia</label><input id="a1c" class="mono" value="VR" maxlength="3" style="text-transform:uppercase"></div>
+              <div class="f s2"><label for="a1n">Voo nº</label><input id="a1n" class="mono" value="231"></div>
+              <div class="f s4"><label for="a1e">Equipamento</label><input id="a1e" value="Airbus A320neo"></div>
+              <div class="f s2"><label for="a1cl">Classe</label><input id="a1cl" class="mono" value="T" maxlength="2" style="text-transform:uppercase"></div>
+              <div class="f s2"><label for="a1cb">Cabina</label><select id="a1cb"><option selected>Económica</option><option>Económica Premium</option><option>Executiva</option><option>Primeira</option></select></div>
+
+              <div class="f s3"><label for="a1o">Origem</label><input id="a1o" class="mono" value="RAI" maxlength="3" style="text-transform:uppercase"><span class="hint">Praia · Nelson Mandela</span></div>
+              <div class="f s3"><label for="a1od">Partida</label><input id="a1od" type="datetime-local" value="2026-09-14T08:40"></div>
+              <div class="f s3"><label for="a1d">Destino</label><input id="a1d" class="mono" value="SID" maxlength="3" style="text-transform:uppercase"><span class="hint">Sal · Amílcar Cabral</span></div>
+              <div class="f s3"><label for="a1dd">Chegada</label><input id="a1dd" type="datetime-local" value="2026-09-14T09:35"></div>
+
+              <div class="f s6"><label for="a1t1">Terminal partida</label><input id="a1t1" value="1"></div>
+              <div class="f s6"><label for="a1t2">Terminal chegada</label><input id="a1t2" value="Internacional"></div>
+              <div class="s12"><div class="computed"><span>Duração <b class="mono">0h 55m</b></span><span>Calculado das horas introduzidas</span></div></div>
+            </div>
+          </div>
+
+          <div class="segrow">
+            <div class="segrow-h"><span class="segnum">2</span><span class="t">Sal → Boston</span>
+              <button class="btn btn-sm btn-icon" title="Remover trecho">✕</button>
+            </div>
+            <div class="fgrid">
+              <div class="f s2"><label for="a2c">Cia</label><input id="a2c" class="mono" value="VR" maxlength="3" style="text-transform:uppercase"></div>
+              <div class="f s2"><label for="a2n">Voo nº</label><input id="a2n" class="mono" value="3800"></div>
+              <div class="f s4"><label for="a2e">Equipamento</label><input id="a2e" value="Boeing 757-200"></div>
+              <div class="f s2"><label for="a2cl">Classe</label><input id="a2cl" class="mono" value="T" maxlength="2" style="text-transform:uppercase"></div>
+              <div class="f s2"><label for="a2cb">Cabina</label><select id="a2cb"><option selected>Económica</option><option>Económica Premium</option><option>Executiva</option></select></div>
+
+              <div class="f s3"><label for="a2o">Origem</label><input id="a2o" class="mono" value="SID" maxlength="3" style="text-transform:uppercase"><span class="hint">Sal · Amílcar Cabral</span></div>
+              <div class="f s3"><label for="a2od">Partida</label><input id="a2od" type="datetime-local" value="2026-09-14T10:55"></div>
+              <div class="f s3"><label for="a2d">Destino</label><input id="a2d" class="mono" value="BOS" maxlength="3" style="text-transform:uppercase"><span class="hint">Boston · Logan</span></div>
+              <div class="f s3"><label for="a2dd">Chegada</label><input id="a2dd" type="datetime-local" value="2026-09-14T14:15"></div>
+
+              <div class="f s6"><label for="a2t1">Terminal partida</label><input id="a2t1" value="Internacional"></div>
+              <div class="f s6"><label for="a2t2">Terminal chegada</label><input id="a2t2" value="E"></div>
+              <div class="s12"><div class="computed">
+                <span>Duração <b class="mono">7h 20m</b></span>
+                <span>Escala no Sal <b class="mono">1h 20m</b></span>
+                <span>Total da ida <b class="mono">10h 35m</b></span>
+                <span>Mesma cia, bagagem segue</span>
+              </div></div>
+            </div>
+          </div>
+
+          <button class="addseg">+ Adicionar trecho à ida</button>
+        </section>
+
+        <!-- condições -->
+        <section class="sec">
+          <div class="sec-h"><h3>Condições da tarifa</h3><span class="rule"></span>
+            <button class="btn btn-sm">Aplicar modelo</button>
+          </div>
+          <div class="fgrid">
+            <div class="f s4"><label for="fname">Nome da tarifa</label><input id="fname" value="Economy Smart"></div>
+            <div class="f s4"><label for="bagh">Bagagem de mão</label><input id="bagh" value="1 peça, 8 kg"></div>
+            <div class="f s4"><label for="bagc">Bagagem de porão</label><input id="bagc" value="2 peças, 23 kg"></div>
+            <div class="f s4"><label for="chg">Alteração de datas</label><input id="chg" value="Com taxa de $90 + diferença"></div>
+            <div class="f s4"><label for="ref">Reembolso</label><select id="ref"><option selected>Não reembolsável</option><option>Reembolsável com retenção</option><option>Totalmente reembolsável</option></select></div>
+            <div class="f s4"><label for="seat">Marcação de lugar</label><input id="seat" value="No check-in, sem custo"></div>
+            <div class="f s12"><label for="docs">Documentos exigidos</label><input id="docs" value="Passaporte válido 6 meses + ESTA ou visto dos EUA"></div>
+          </div>
+        </section>
+
+        <!-- preço -->
+        <section class="sec">
+          <div class="sec-h"><h3>Preço</h3><span class="rule"></span>
+            <span style="font-size:11px;color:var(--muted)">Valores unitários em <b class="mono">USD</b></span>
+          </div>
+          <div class="ptable">
+            <div class="prow">
+              <div class="prow-k">Adulto<small>Tarifa base por passageiro</small></div>
+              <div class="qty mono">× 2</div>
+              <div><input class="mono money" id="pAdult" value="545,00" inputmode="decimal"></div>
+            </div>
+            <div class="prow">
+              <div class="prow-k">Criança 2–11<small>Com assento próprio</small></div>
+              <div class="qty mono">× 1</div>
+              <div><input class="mono money" id="pChild" value="436,00" inputmode="decimal"></div>
+            </div>
+            <div class="prow">
+              <div class="prow-k">Taxas de aeroporto e encargos<small>Total para os 3 passageiros</small></div>
+              <div class="qty mono">total</div>
+              <div><input class="mono money" id="pTax" value="241,00" inputmode="decimal"></div>
+            </div>
+            <div class="prow fee">
+              <div class="prow-k">Serviço WeeFly<small>Linha visível ao cliente · preenchida à mão</small></div>
+              <div class="qty mono">total</div>
+              <div><input class="mono money" id="pFee" value="75,00" inputmode="decimal"></div>
+            </div>
+            <div class="prow">
+              <div class="prow-k">
+                <label class="toggle"><input type="checkbox" id="pLockOn"> Taxa de fixação de tarifa</label>
+                <small>Cobrada só se o cliente pedir para garantir o preço além da validade</small>
+              </div>
+              <div class="qty mono">total</div>
+              <div><input class="mono money" id="pLock" value="0,00" inputmode="decimal" disabled></div>
+            </div>
+            <div class="prow tot">
+              <div class="prow-k">Total a pagar</div>
+              <div class="qty mono">USD</div>
+              <div class="line mono" id="pTotal">$ 1 842,00</div>
+            </div>
+          </div>
+          <div class="fgrid" style="margin-top:10px">
+            <div class="f s4"><label for="cost">Custo no consolidador</label><input id="cost" class="mono money" value="1 731,00"><span class="hint">Interno, nunca visível ao cliente</span></div>
+            <div class="f s4"><label>Margem estimada</label><div class="computed" style="margin:0"><b class="mono" id="margin">$ 111,00 · 6,0%</b></div></div>
+            <div class="f s4"><label for="valid">Preço válido até</label><input id="valid" type="datetime-local" value="2026-09-06T18:00"></div>
+          </div>
+        </section>
+
+        <!-- nota -->
+        <section class="sec">
+          <div class="sec-h"><h3>Nota do agente para esta opção</h3><span class="rule"></span>
+            <span style="font-size:11px;color:var(--muted)">Aparece no cartão, abaixo do itinerário</span>
+          </div>
+          <div class="f"><textarea id="fNote">É a opção que recomendo. Escala curta no Sal sem mudar de terminal, e a criança já leva bagagem de porão incluída. Chegam a Boston ainda de dia.</textarea>
+          <span class="hint">Escreva como falaria no chat. Explique porquê, não só o quê.</span></div>
+        </section>
+
+      </div>
+    </article>
+
+    <!-- ofertas fechadas -->
+    <div class="orow">
+      <span class="grip" aria-hidden="true"><svg width="9" height="14" viewBox="0 0 9 14" fill="currentColor"><circle cx="1.5" cy="1.5" r="1.5"/><circle cx="7.5" cy="1.5" r="1.5"/><circle cx="1.5" cy="7" r="1.5"/><circle cx="7.5" cy="7" r="1.5"/><circle cx="1.5" cy="12.5" r="1.5"/><circle cx="7.5" cy="12.5" r="1.5"/></svg></span>
+      <div class="oi">
+        <div class="nm">TAP · via Lisboa, Economy Discount</div>
+        <div class="ms mono">RAI 23:30 → LIS 4h45 → BOS 13:50<sup>+1</sup> · 16h 20m · 1 bagagem</div>
+      </div>
+      <span class="flag" aria-pressed="true" style="background:var(--info-bg);color:var(--txt-2);border-color:var(--line)">Mais barata</span>
+      <div class="pv mono">$ 1 674,00</div>
+      <button class="btn btn-sm">Abrir</button>
+    </div>
+
+    <div class="orow">
+      <span class="grip" aria-hidden="true"><svg width="9" height="14" viewBox="0 0 9 14" fill="currentColor"><circle cx="1.5" cy="1.5" r="1.5"/><circle cx="7.5" cy="1.5" r="1.5"/><circle cx="1.5" cy="7" r="1.5"/><circle cx="7.5" cy="7" r="1.5"/><circle cx="1.5" cy="12.5" r="1.5"/><circle cx="7.5" cy="12.5" r="1.5"/></svg></span>
+      <div class="oi">
+        <div class="nm">TAP · via Lisboa, Economy Classic</div>
+        <div class="ms mono">Mesmo itinerário · alterações grátis · reembolsável</div>
+      </div>
+      <div class="pv mono">$ 2 190,00</div>
+      <button class="btn btn-sm">Abrir</button>
+    </div>
+
+    <button class="addoffer">+ Nova oferta &nbsp;·&nbsp; ou duplicar uma existente para variar a tarifa</button>
+  </main>
+
+  <!-- ═══ DIREITA · pré-visualização e publicação ═══ -->
+  <aside class="stack sticky">
+
+    <div class="panel">
+      <div class="panel-h"><h2>Como o cliente vê</h2><button class="btn btn-sm">Abrir link</button></div>
+      <div class="panel-b">
+        <p class="prev-note">Atualiza enquanto escreve. Reflete a oferta aberta.</p>
+        <div class="prev-frame">
+          <div class="pcard">
+            <div class="pcard-b">
+              <div class="ptags" id="prevTags"><span class="ptag">Recomendada pelo agente</span></div>
+              <div class="pleg">
+                <span class="pleg-tag">Ida</span>
+                <div class="pnode"><span class="tm mono">08:40</span><span class="ia mono">RAI</span></div>
+                <div class="pbar" aria-hidden="true"><span class="du mono">10h 35m</span><span class="ln"></span><span class="d a"></span><span class="st"></span><span class="d b"></span><span class="sp">1 escala · SID</span></div>
+                <div class="pnode" style="text-align:right"><span class="tm mono">14:15</span><span class="ia mono">BOS</span></div>
+              </div>
+              <div class="pleg">
+                <span class="pleg-tag">Volta</span>
+                <div class="pnode"><span class="tm mono">17:50</span><span class="ia mono">BOS</span></div>
+                <div class="pbar" aria-hidden="true"><span class="du mono">11h 05m</span><span class="ln"></span><span class="d a"></span><span class="st"></span><span class="d b"></span><span class="sp">1 escala · SID</span></div>
+                <div class="pnode" style="text-align:right"><span class="tm mono">09:55<sup>+1</sup></span><span class="ia mono">RAI</span></div>
+              </div>
+              <p class="pcar mono" id="prevCar">VR 231 · VR 3800 — Economy Smart</p>
+              <p class="pnote" id="prevNote">É a opção que recomendo. Escala curta no Sal sem mudar de terminal, e a criança já leva bagagem de porão incluída. Chegam a Boston ainda de dia.</p>
+            </div>
+            <div class="prail">
+              <div>
+                <span class="k">Total · 3 passageiros</span>
+                <span class="amt mono" id="prevTotal">$ 1 842,00</span>
+              </div>
+              <button class="cta">Escolher esta opção</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><h2>Publicar proposta</h2></div>
+      <div class="panel-b">
+        <div class="pubrow"><input type="checkbox" checked id="i1"><label class="nm" for="i1">Cabo Verde Airlines · via Sal</label><span class="pv mono">$ 1 842</span></div>
+        <div class="pubrow"><input type="checkbox" checked id="i2"><label class="nm" for="i2">TAP · Economy Discount</label><span class="pv mono">$ 1 674</span></div>
+        <div class="pubrow"><input type="checkbox" checked id="i3"><label class="nm" for="i3">TAP · Economy Classic</label><span class="pv mono">$ 2 190</span></div>
+
+        <div class="f" style="margin-top:14px">
+          <label for="msg">Mensagem de abertura</label>
+          <textarea id="msg" style="min-height:64px">Isaura, encontrei 3 opções. A primeira é a que recomendo pelo horário de chegada. Os preços ficam garantidos até domingo às 18:00.</textarea>
+        </div>
+
+        <div class="chks">
+          <label class="chk"><input type="checkbox" checked> Avisar por WhatsApp</label>
+          <label class="chk"><input type="checkbox" checked> Avisar por email</label>
+          <label class="chk"><input type="checkbox"> Avisar por SMS</label>
+        </div>
+
+        <div class="warnbox">Ao publicar, o caso passa a <b>E2 · Opções enviadas</b> e o cliente pode escolher e preencher passaportes. As ofertas ficam bloqueadas para edição: para mudar preços depois, cria-se a revisão <b class="mono">R2</b> e o cliente é notificado da alteração.</div>
+
+        <div class="pubactions">
+          <button class="btn btn-primary">Publicar e avisar cliente</button>
+          <button class="btn">Guardar rascunho</button>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<script>
+const PAX = { adults: 2, children: 1, infants: 0 };
+const num = s => parseFloat(String(s).replace(/\s/g,'').replace(/\./g,'').replace(',','.')) || 0;
+const fmt = n => n.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/\u00A0/g,' ');
+
+const el = id => document.getElementById(id);
+
+function recalc(){
+  const total = num(el('pAdult').value)*PAX.adults
+              + num(el('pChild').value)*PAX.children
+              + num(el('pTax').value)
+              + num(el('pFee').value)
+              + (el('pLockOn').checked ? num(el('pLock').value) : 0);
+  el('pTotal').textContent   = '$ ' + fmt(total);
+  el('prevTotal').textContent = '$ ' + fmt(total);
+
+  const cost = num(el('cost').value);
+  const m = total - cost;
+  el('margin').textContent = '$ ' + fmt(m) + ' · ' + (total ? (m/total*100).toFixed(1) : '0,0') + '%';
+  el('margin').style.color = m <= 0 ? 'var(--ember)' : 'var(--ok)';
+}
+
+['pAdult','pChild','pTax','pFee','pLock','cost'].forEach(id=>el(id).addEventListener('input',recalc));
+el('pLockOn').addEventListener('change',e=>{ el('pLock').disabled = !e.target.checked; recalc(); });
+
+// nota e nome da tarifa em direto na pré-visualização
+el('fNote').addEventListener('input',e=>{ el('prevNote').textContent = e.target.value; });
+function carrierLine(){
+  el('prevCar').textContent =
+    `${el('a1c').value} ${el('a1n').value} · ${el('a2c').value} ${el('a2n').value} — ${el('fname').value}`;
+}
+['a1c','a1n','a2c','a2n','fname'].forEach(id=>el(id).addEventListener('input',carrierLine));
+
+// etiqueta recomendada
+el('flagRec').addEventListener('click',e=>{
+  const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+  e.currentTarget.setAttribute('aria-pressed', on);
+  el('prevTags').innerHTML = on ? '<span class="ptag">Recomendada pelo agente</span>' : '';
+});
+document.querySelectorAll('.flag:not(.rec)').forEach(f=>{
+  f.addEventListener('click',()=>{
+    const on = f.getAttribute('aria-pressed') !== 'true';
+    f.setAttribute('aria-pressed', on);
+    const tags = [...document.querySelectorAll('#offerA .flag[aria-pressed="true"]')]
+      .map(x=> x.classList.contains('rec') ? 'Recomendada pelo agente' : x.textContent.trim());
+    el('prevTags').innerHTML = tags.map((t,i)=>`<span class="ptag${i?' alt':''}">${t}</span>`).join('');
+  });
+});
+
+// nome da oferta e trechos: manter os títulos das linhas coerentes
+el('fName').addEventListener('input',()=>{});
+['a1o','a1d','a2o','a2d'].forEach(id=>el(id).addEventListener('input',e=>{ e.target.value = e.target.value.toUpperCase(); }));
+
+// abas
+document.querySelectorAll('.tab, .legtab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const set = t.classList.contains('tab') ? '.tab' : '.legtab';
+    t.closest('div').querySelectorAll(set).forEach(x=>x.setAttribute('aria-selected','false'));
+    t.setAttribute('aria-selected','true');
+  });
+});
+
+recalc();
+</script>
+</body>
+</html>

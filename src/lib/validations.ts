@@ -132,3 +132,38 @@ export function getPasswordStrength(password: string): {
   if (score <= 3) return { score, label: "Boa", color: "text-yellow-500" }
   return { score, label: "Excelente", color: "text-green-500" }
 }
+
+// --- Passenger details (Link 2) ----------------------------------------------
+
+const today = () => new Date().toISOString().slice(0, 10)
+
+export const passengerSchema = z.object({
+  passengerType: z.enum(["adult", "child", "infant"]),
+  firstName: z.string().trim().min(2, "Indique o nome próprio"),
+  lastName: z.string().trim().min(2, "Indique o apelido"),
+  gender: z.enum(["m", "f", "x"], { required_error: "Selecione o género" }),
+  birthDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de nascimento inválida")
+    .refine((d) => d <= today(), "A data de nascimento não pode ser futura"),
+  nationality: z.string().trim().min(2, "Indique a nacionalidade"),
+  passportNumber: z
+    .string()
+    .trim()
+    .min(5, "Número de passaporte inválido")
+    .max(20, "Número de passaporte inválido"),
+  // Most carriers require the passport to outlive the trip; a passport that has
+  // already expired is always rejected, so block it at the form.
+  passportExpiry: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de validade inválida")
+    .refine((d) => d > today(), "O passaporte já expirou"),
+})
+
+export type PassengerFormData = z.infer<typeof passengerSchema>
+
+export const passengerDetailsSchema = z.object({
+  passengers: z.array(passengerSchema).min(1, "Indique pelo menos um passageiro"),
+})
+
+export type PassengerDetailsFormData = z.infer<typeof passengerDetailsSchema>

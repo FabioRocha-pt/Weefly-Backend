@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WeeFly Admin · Emissões · Links de atendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#141A24;
+  --panel:#1E2532;
+  --panel-2:#252E3E;
+  --raise:#2A3344;
+  --line:#333E51;
+  --line-soft:#2A3243;
+  --txt:#E9EEF5;
+  --txt-2:#C3CDDB;
+  --muted:#8494AB;
+  --ember:#EE5128;
+  --ember-dark:#CE3F19;
+  --ok:#3EBE94;
+  --ok-bg:rgba(62,190,148,.14);
+  --warn:#E3A63F;
+  --warn-bg:rgba(227,166,63,.14);
+  --blue:#6BA6E0;
+  --blue-bg:rgba(107,166,224,.14);
+  --grey-bg:rgba(132,148,171,.13);
+  --r:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:13px}
+:focus-visible{outline:2px solid var(--ember);outline-offset:2px;border-radius:4px}
+
+/* chrome */
+.topbar{background:var(--panel);border-bottom:1px solid var(--line);padding:0 20px}
+.topbar-in{display:flex;align-items:center;gap:14px;height:56px}
+.logo{height:22px;display:block}
+.env{font-size:10px;letter-spacing:.10em;text-transform:uppercase;font-weight:800;background:var(--grey-bg);color:var(--txt-2);border-radius:5px;padding:4px 7px}
+.nav{display:flex;gap:2px;margin-left:12px}
+.nav a{color:var(--muted);text-decoration:none;font-size:13px;font-weight:600;padding:7px 11px;border-radius:8px}
+.nav a:hover{background:var(--panel-2);color:var(--txt)}
+.nav a[aria-current]{background:var(--raise);color:var(--txt)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.who{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--txt-2)}
+.avatar{width:27px;height:27px;border-radius:50%;background:var(--raise);display:grid;place-items:center;font-size:11px;font-weight:700}
+
+.btn{border:1px solid var(--line);background:var(--panel-2);border-radius:9px;padding:8px 13px;font-size:13px;font-weight:600;transition:background .15s,border-color .15s}
+.btn:hover{background:var(--raise);border-color:#41506A}
+.btn-primary{background:var(--ember);border-color:var(--ember);color:#fff;font-weight:700}
+.btn-primary:hover{background:var(--ember-dark);border-color:var(--ember-dark)}
+.btn-sm{padding:6px 10px;font-size:12px}
+.btn-icon{padding:6px 9px;line-height:1}
+
+.page{padding:22px 20px 48px;max-width:1560px;margin:0 auto}
+.head{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+h1{font-size:23px;font-weight:800;letter-spacing:-.02em;margin:0}
+.head p{margin:5px 0 0;font-size:13px;color:var(--muted);max-width:64ch}
+.head-actions{margin-left:auto;display:flex;gap:8px}
+
+/* waiting-on strip: quem está a travar o processo */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;margin:20px 0 0}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px}
+.kpi.hot{border-color:rgba(227,166,63,.45)}
+.kpi.bad{border-color:rgba(238,81,40,.5)}
+.kpi-k{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700;display:flex;align-items:center;gap:7px}
+.kpi-v{font-size:26px;font-weight:600;letter-spacing:-.02em;margin:6px 0 0;line-height:1}
+.kpi-s{font-size:11.5px;color:var(--muted);margin:4px 0 0}
+.kpi.hot .kpi-v{color:var(--warn)}
+.kpi.bad .kpi-v{color:var(--ember)}
+.dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+.dot.us{background:var(--warn)}
+.dot.them{background:var(--blue)}
+.dot.done{background:var(--ok)}
+.dot.off{background:var(--muted)}
+
+/* toolbar */
+.toolbar{display:flex;gap:9px;align-items:center;margin:18px 0 0;flex-wrap:wrap}
+.search{position:relative;flex:1;min-width:250px;max-width:400px}
+.search input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 12px 9px 34px;color:var(--txt)}
+.search input:focus{border-color:#46587A;outline:none}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+select.filter{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 11px;color:var(--txt-2)}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:none;padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--txt)}
+.tcount{margin-left:auto;font-size:12.5px;color:var(--muted)}
+
+/* table */
+.tablewrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin:14px 0 0;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:1120px}
+th{
+  text-align:left;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+td{padding:12px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--panel-2)}
+.ref{font-size:13px;font-weight:600;letter-spacing:.06em;color:var(--txt)}
+.ref-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.cli{font-size:13.5px;font-weight:600}
+.cli-sub{font-size:11.5px;color:var(--muted);margin-top:1px}
+.chan{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--txt-2)}
+.chan i{
+  width:20px;height:20px;border-radius:6px;background:var(--raise);display:grid;place-items:center;
+  font-size:10px;font-weight:800;font-style:normal;color:var(--txt-2);
+}
+.state{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;border-radius:7px;padding:5px 9px;white-space:nowrap}
+.st-e0{background:var(--grey-bg);color:var(--txt-2)}
+.st-e1{background:var(--warn-bg);color:var(--warn)}
+.st-e2{background:var(--blue-bg);color:var(--blue)}
+.st-e3{background:var(--warn-bg);color:var(--warn)}
+.st-e4{background:var(--blue-bg);color:var(--blue)}
+.st-e5{background:var(--ok-bg);color:var(--ok)}
+.st-x{background:rgba(238,81,40,.13);color:var(--ember)}
+.route{font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.route-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.money{font-size:13px;font-weight:600;text-align:right;white-space:nowrap}
+.age{font-size:12.5px}
+.age.hot{color:var(--warn);font-weight:600}
+.age.late{color:var(--ember);font-weight:700}
+.age-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.rowacts{display:flex;gap:6px;justify-content:flex-end}
+.copied{color:var(--ok)!important;border-color:rgba(62,190,148,.4)!important}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(8,11,16,.62);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:var(--panel);
+  border-left:1px solid var(--line);transform:translateX(100%);transition:transform .22s ease;
+  z-index:50;display:flex;flex-direction:column;
+}
+.drawer.on{transform:none}
+.drawer-h{padding:17px 20px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:12px}
+.drawer-h h2{margin:0;font-size:17px;font-weight:800;letter-spacing:-.01em}
+.drawer-h p{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
+.drawer-h .btn{margin-left:auto}
+.drawer-b{padding:20px;overflow-y:auto;flex:1}
+.drawer-f{padding:15px 20px;border-top:1px solid var(--line);display:flex;gap:9px}
+.drawer-f .btn{flex:1;padding:11px}
+
+.sec{margin-bottom:22px}
+.sec:last-child{margin-bottom:0}
+.sec-h{display:flex;align-items:center;gap:10px;margin:0 0 11px}
+.sec-h h3{margin:0;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+.sec-h .rule{flex:1;height:1px;background:var(--line-soft)}
+.fgrid{display:grid;grid-template-columns:repeat(12,1fr);gap:11px}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f label{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.f input,.f select,.f textarea{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;color:var(--txt);width:100%}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:#46587A;outline:none}
+.f input::placeholder{color:#5D6B82}
+.f .hint{font-size:10.5px;color:var(--muted)}
+.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s7{grid-column:span 7}.s8{grid-column:span 8}.s12{grid-column:span 12}
+textarea{min-height:70px;resize:vertical;line-height:1.5}
+
+.chanpick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cp{
+  border:1px solid var(--line);background:var(--panel-2);border-radius:9px;padding:11px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);
+}
+.cp i{width:24px;height:24px;border-radius:7px;background:var(--raise);display:grid;place-items:center;font-size:10px;font-weight:800;font-style:normal}
+.cp[aria-pressed="true"]{background:var(--raise);border-color:#46587A;color:var(--txt)}
+.cp[aria-pressed="true"] i{background:var(--ember);color:#fff}
+
+.chk{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--txt-2);line-height:1.45}
+.chk input{width:15px;height:15px;margin-top:2px;accent-color:var(--ember);flex:0 0 auto}
+.chks{display:flex;flex-direction:column;gap:10px}
+
+.note{background:var(--grey-bg);border-radius:9px;padding:11px 12px;font-size:12.5px;color:var(--txt-2);line-height:1.5}
+.note b{color:var(--txt)}
+.note.warn{background:var(--warn-bg);color:#F0C983}
+.note.warn b{color:#FBDDA8}
+
+/* generated link */
+.linkbox{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:13px}
+.linkbox + .linkbox{margin-top:10px}
+.lb-k{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.lb-v{display:flex;align-items:center;gap:9px;margin-top:7px}
+.lb-v code{
+  flex:1;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--txt);
+  background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:8px 10px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.big-ref{font-size:22px;font-weight:600;letter-spacing:.10em;color:var(--txt)}
+.qr{display:flex;gap:14px;align-items:center;margin-top:12px}
+.qr img{width:96px;height:96px;border-radius:8px;display:block;background:#fff;padding:5px}
+.qr div{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* access log */
+.log{border-top:1px solid var(--line-soft)}
+.logrow{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px}
+.logrow .t{color:var(--muted);white-space:nowrap;font-size:12px}
+.logrow .b{flex:1}
+.logrow .b b{font-weight:600}
+.logrow .b span{display:block;color:var(--muted);font-size:11.5px;margin-top:1px}
+.tl{display:flex;flex-direction:column;gap:0}
+.tlrow{display:grid;grid-template-columns:78px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px}
+.tlrow:last-child{border-bottom:0}
+.tlrow .st-mini{font-size:11px;font-weight:700;letter-spacing:.04em}
+.done-c{color:var(--ok)}
+.now-c{color:var(--warn)}
+.next-c{color:var(--muted)}
+
+@media (max-width:760px){
+  .s3,.s4,.s5,.s6,.s7,.s8{grid-column:span 12}
+  .chanpick{grid-template-columns:repeat(2,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <img class="logo" src="LOGO_BASE64" alt="WeeFly">
+    <span class="env">Admin</span>
+    <nav class="nav">
+      <a href="#">Painel</a>
+      <a href="#" aria-current="page">Emissões</a>
+      <a href="#">Pagamentos</a>
+      <a href="#">Vendedores</a>
+      <a href="#">Configuração</a>
+    </nav>
+    <div class="topbar-right">
+      <button class="btn btn-primary btn-sm" id="openNew">+ Novo link de atendimento</button>
+      <span class="who"><span class="avatar">NF</span>Nélida Fortes</span>
+    </div>
+  </div>
+</header>
+
+<div class="page">
+
+  <div class="head">
+    <div>
+      <h1>Links de atendimento</h1>
+      <p>Cada cliente atendido por chat tem um link e uma referência únicos. Aqui cria-se o link, acompanha-se onde o cliente parou e reenvia-se quando é preciso.</p>
+    </div>
+    <div class="head-actions">
+      <button class="btn">Exportar</button>
+      <button class="btn btn-primary" id="openNew2">+ Novo link de atendimento</button>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi hot">
+      <div class="kpi-k"><span class="dot us"></span>Espera por nós</div>
+      <div class="kpi-v">7</div>
+      <div class="kpi-s">4 a cotar · 3 dados por validar</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-k"><span class="dot them"></span>Espera pelo cliente</div>
+      <div class="kpi-v">12</div>
+      <div class="kpi-s">5 a escolher · 7 a pagar</div>
+    </div>
+    <div class="kpi bad">
+      <div class="kpi-k"><span class="dot us"></span>Pago, ainda sem bilhete</div>
+      <div class="kpi-v">2</div>
+      <div class="kpi-s">o mais antigo há 5h 12m</div>
+    </div>
+    <div class="kpi hot">
+      <div class="kpi-k"><span class="dot off"></span>Tarifa a expirar hoje</div>
+      <div class="kpi-v">3</div>
+      <div class="kpi-s">precisam de reconfirmação</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-k"><span class="dot done"></span>Emitidos em agosto</div>
+      <div class="kpi-v">48</div>
+      <div class="kpi-s">$ 61 340 · margem $ 4 812</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-k"><span class="dot off"></span>Links nunca abertos</div>
+      <div class="kpi-v">5</div>
+      <div class="kpi-s">2 expiram amanhã</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="6.8" cy="6.8" r="4.8" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input placeholder="Referência, nome, telefone, PNR ou nº de bilhete">
+    </div>
+    <select class="filter"><option>Todos os estados</option><option>E0 · Link criado</option><option>E1 · Em cotação</option><option>E2 · Opções enviadas</option><option>E3 · Dados preenchidos</option><option>E4 · Aguarda pagamento</option><option>E5 · Emitido</option><option>Expirado ou cancelado</option></select>
+    <select class="filter"><option>Todos os canais</option><option>WhatsApp</option><option>Instagram</option><option>Messenger</option><option>Chat do site</option><option>Telefone</option><option>Presencial</option></select>
+    <select class="filter"><option>Todos os vendedores</option><option>Nélida Fortes</option><option>Jair Semedo</option><option>Carla Évora</option></select>
+    <div class="seg">
+      <button aria-pressed="true">A aguardar nós</button>
+      <button aria-pressed="false">A aguardar cliente</button>
+      <button aria-pressed="false">Tudo</button>
+    </div>
+    <span class="tcount">19 casos abertos</span>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Referência</th>
+          <th>Cliente</th>
+          <th>Canal</th>
+          <th>Estado</th>
+          <th>Rota</th>
+          <th style="text-align:right">Valor</th>
+          <th>Sem mexer há</th>
+          <th>Link</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr>
+          <td><div class="ref mono">WF-7K4M-92XB</div><div class="ref-sub">Nélida F.</div></td>
+          <td><div class="cli">Isaura Barros</div><div class="cli-sub mono">+238 991 44 07</div></td>
+          <td><span class="chan"><i>WA</i>WhatsApp</span></td>
+          <td><span class="state st-e1"><span class="dot us"></span>E1 · Em cotação</span></td>
+          <td><div class="route mono">RAI → BOS</div><div class="route-sub">14–28 set · 2A 1C</div></td>
+          <td class="money mono">—</td>
+          <td><div class="age hot">3h 41m</div><div class="age-sub">pedido às 09:12</div></td>
+          <td><div class="age">válido 3 dias</div><div class="age-sub">aberto há 12 min</div></td>
+          <td><div class="rowacts">
+            <button class="btn btn-sm btn-icon copy" title="Copiar link">⧉</button>
+            <button class="btn btn-sm gerir">Gerir</button>
+            <button class="btn btn-sm">Abrir</button>
+          </div></td>
+        </tr>
+
+        <tr>
+          <td><div class="ref mono">WF-3PQ8-51LD</div><div class="ref-sub">Jair S.</div></td>
+          <td><div class="cli">Manuel Tavares</div><div class="cli-sub mono">+1 617 555 0182</div></td>
+          <td><span class="chan"><i>WA</i>WhatsApp</span></td>
+          <td><span class="state st-e4"><span class="dot them"></span>E4 · Aguarda pagamento</span></td>
+          <td><div class="route mono">BOS → SID</div><div class="route-sub">2–19 out · 1A</div></td>
+          <td class="money mono">$ 986,00</td>
+          <td><div class="age hot">1d 02h</div><div class="age-sub">link de pagamento enviado</div></td>
+          <td><div class="age" style="color:var(--warn)">expira em 9h</div><div class="age-sub">aberto 4 vezes</div></td>
+          <td><div class="rowacts">
+            <button class="btn btn-sm btn-icon copy" title="Copiar link">⧉</button>
+            <button class="btn btn-sm gerir">Gerir</button>
+            <button class="btn btn-sm">Abrir</button>
+          </div></td>
+        </tr>
+
+        <tr>
+          <td><div class="ref mono">WF-9WT2-40KC</div><div class="ref-sub">Nélida F.</div></td>
+          <td><div class="cli">Djamila Rocha</div><div class="cli-sub mono">+351 926 118 340</div></td>
+          <td><span class="chan"><i>IG</i>Instagram</span></td>
+          <td><span class="state st-x"><span class="dot us"></span>Pago, sem bilhete</span></td>
+          <td><div class="route mono">LIS → RAI</div><div class="route-sub">22 ago · 2A</div></td>
+          <td class="money mono">$ 742,00</td>
+          <td><div class="age late">5h 12m</div><div class="age-sub">comprovativo validado</div></td>
+          <td><div class="age">—</div><div class="age-sub">a emitir</div></td>
+          <td><div class="rowacts">
+            <button class="btn btn-sm btn-icon copy" title="Copiar link">⧉</button>
+            <button class="btn btn-sm gerir">Gerir</button>
+            <button class="btn btn-sm btn-primary">Emitir</button>
+          </div></td>
+        </tr>
+
+        <tr>
+          <td><div class="ref mono">WF-6BN5-77HJ</div><div class="ref-sub">Carla É.</div></td>
+          <td><div class="cli">Nuno Delgado</div><div class="cli-sub mono">+238 585 21 96</div></td>
+          <td><span class="chan"><i>WEB</i>Chat do site</span></td>
+          <td><span class="state st-e2"><span class="dot them"></span>E2 · Opções enviadas</span></td>
+          <td><div class="route mono">RAI → CDG</div><div class="route-sub">9–23 nov · 1A 2C</div></td>
+          <td class="money mono">$ 1 418,00</td>
+          <td><div class="age">6h 30m</div><div class="age-sub">3 opções, sem escolha</div></td>
+          <td><div class="age" style="color:var(--warn)">tarifa expira hoje</div><div class="age-sub">aberto há 2h</div></td>
+          <td><div class="rowacts">
+            <button class="btn btn-sm btn-icon copy" title="Copiar link">⧉</button>
+            <button class="btn btn-sm gerir">Gerir</button>
+            <button class="btn btn-sm">Abrir</button>
+          </div></td>
+        </tr>
+
+        <tr>
+          <td><div class="ref mono">WF-2XR9-88VF</div><div class="ref-sub">Jair S.</div></td>
+          <td><div class="cli">Ana Paula Lima</div><div class="cli-sub mono">+238 977 03 12</div></td>
+          <td><span class="chan"><i>MSG</i>Messenger</span></td>
+          <td><span class="state st-e3"><span class="dot us"></span>E3 · Dados preenchidos</span></td>
+          <td><div class="route mono">SID → AMS</div><div class="route-sub">5–18 set · 2A</div></td>
+          <td class="money mono">$ 1 260,00</td>
+          <td><div class="age hot">4h 05m</div><div class="age-sub">passaportes por validar</div></td>
+          <td><div class="age">válido 2 dias</div><div class="age-sub">aberto há 4h</div></td>
+          <td><div class="rowacts">
+            <button class="btn btn-sm btn-icon copy" title="Copiar link">⧉</button>
+            <button class="btn btn-sm gerir">Gerir</button>
+            <button class="btn btn-sm">Abrir</button>
+          </div></td>
+        </tr>
+
+        <tr>
+          <td><div class="ref mono">WF-5LH1-63TR</div><div class="ref-sub">Nélida F.</div></td>
+          <td><div class="cli">Sérgio Monteiro</div><div class="cli-sub">contacto por preencher</div></td>
+          <td><span class="chan"><i>TEL</i>Telefone</span></td>
+          <td><span class="state st-e0"><span class="dot off"></span>E0 · Link criado</span></td>
+          <td><div class="route">por preencher</div><div class="route-sub">o cliente ainda não abriu</div></td>
+          <td class="money mono">—</td>
+          <td><div class="age">2d 04h</div><div class="age-sub">criado a 2 ago</div></td>
+          <td><div class="age" style="color:var(--ember)">expira amanhã</div><div class="age-sub">nunca aberto</div></td>
+          <td><div class="rowacts">
+            <button class="btn btn-sm btn-icon copy" title="Copiar link">⧉</button>
+            <button class="btn btn-sm gerir">Gerir</button>
+            <button class="btn btn-sm">Reenviar</button>
+          </div></td>
+        </tr>
+
+        <tr>
+          <td><div class="ref mono">WF-8CJ4-19QM</div><div class="ref-sub">Carla É.</div></td>
+          <td><div class="cli">Elísio Gomes</div><div class="cli-sub mono">+238 991 77 25</div></td>
+          <td><span class="chan"><i>WA</i>WhatsApp</span></td>
+          <td><span class="state st-e5"><span class="dot done"></span>E5 · Emitido</span></td>
+          <td><div class="route mono">RAI → FOR</div><div class="route-sub">30 ago–14 set · 1A</div></td>
+          <td class="money mono">$ 612,00</td>
+          <td><div class="age">emitido ontem</div><div class="age-sub mono">PNR VR8K2Q</div></td>
+          <td><div class="age">ativo até à viagem</div><div class="age-sub">bilhete descarregado</div></td>
+          <td><div class="rowacts">
+            <button class="btn btn-sm btn-icon copy" title="Copiar link">⧉</button>
+            <button class="btn btn-sm gerir">Gerir</button>
+            <button class="btn btn-sm">Abrir</button>
+          </div></td>
+        </tr>
+
+        <tr>
+          <td><div class="ref mono">WF-4DK7-05ZN</div><div class="ref-sub">Jair S.</div></td>
+          <td><div class="cli">Fátima Andrade</div><div class="cli-sub mono">+238 594 60 88</div></td>
+          <td><span class="chan"><i>WA</i>WhatsApp</span></td>
+          <td><span class="state st-x"><span class="dot off"></span>Expirado</span></td>
+          <td><div class="route mono">RAI → LIS</div><div class="route-sub">pedido de 21 jul</div></td>
+          <td class="money mono">—</td>
+          <td><div class="age">14d</div><div class="age-sub">sem resposta do cliente</div></td>
+          <td><div class="age" style="color:var(--muted)">expirado a 24 jul</div><div class="age-sub">aberto 1 vez</div></td>
+          <td><div class="rowacts">
+            <button class="btn btn-sm gerir">Gerir</button>
+            <button class="btn btn-sm">Reabrir</button>
+          </div></td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════ DRAWER · criar link ══════════ -->
+<div class="scrim" id="scrim"></div>
+
+<aside class="drawer" id="drawerNew" aria-label="Criar link de atendimento">
+  <header class="drawer-h">
+    <div>
+      <h2>Novo link de atendimento</h2>
+      <p>Gera a referência e o link pessoal do cliente. Nada é enviado automaticamente: o link é seu para colar no chat.</p>
+    </div>
+    <button class="btn btn-sm btn-icon closeD" aria-label="Fechar">✕</button>
+  </header>
+
+  <div class="drawer-b" id="formStep">
+    <section class="sec">
+      <div class="sec-h"><h3>Por onde chegou</h3><span class="rule"></span></div>
+      <div class="chanpick">
+        <button class="cp" aria-pressed="true"><i>WA</i>WhatsApp</button>
+        <button class="cp" aria-pressed="false"><i>IG</i>Instagram</button>
+        <button class="cp" aria-pressed="false"><i>MSG</i>Messenger</button>
+        <button class="cp" aria-pressed="false"><i>WEB</i>Chat do site</button>
+        <button class="cp" aria-pressed="false"><i>TEL</i>Telefone</button>
+        <button class="cp" aria-pressed="false"><i>PES</i>Presencial</button>
+      </div>
+      <p class="hint" style="font-size:11px;color:var(--muted);margin:9px 0 0">O canal fica registado no caso. Serve para saber de onde vêm as vendas, não muda o fluxo.</p>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h3>Quem é o cliente</h3><span class="rule"></span></div>
+      <div class="fgrid">
+        <div class="f s7"><label for="cname">Nome como se apresentou</label><input id="cname" placeholder="Ex.: Isaura Barros"><span class="hint">Nomes completos entram depois, com os passaportes</span></div>
+        <div class="f s5"><label for="cphone">Telefone</label><input id="cphone" class="mono" placeholder="+238 …"></div>
+        <div class="f s12"><label for="cmail">Email <span style="text-transform:none;letter-spacing:0">(opcional agora)</span></label><input id="cmail" type="email" placeholder="Para enviar o link também por email"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h3>Como o caso é tratado</h3><span class="rule"></span></div>
+      <div class="fgrid">
+        <div class="f s6"><label for="seller">Vendedor responsável</label><select id="seller"><option selected>Nélida Fortes</option><option>Jair Semedo</option><option>Carla Évora</option></select></div>
+        <div class="f s6"><label for="country">País de emissão</label><select id="country"><option selected>Cabo Verde</option><option>Estados Unidos</option><option>Portugal</option><option>França</option><option>Países Baixos</option></select></div>
+        <div class="f s6"><label for="cur">Moeda mostrada ao cliente</label><select id="cur"><option selected>USD · dólar americano</option><option>EUR · euro</option><option>CVE · escudo cabo-verdiano</option></select><span class="hint">Sugerida pelo país, pode ser trocada</span></div>
+        <div class="f s6"><label for="lang">Idioma do link</label><select id="lang"><option selected>Português</option><option>English</option><option>Français</option></select></div>
+        <div class="f s6"><label for="valid">Link válido durante</label><select id="valid"><option>24 horas</option><option selected>72 horas</option><option>7 dias</option><option>Sem expirar</option></select></div>
+        <div class="f s6"><label for="fee">Serviço WeeFly previsto</label><input id="fee" class="mono" value="75,00"><span class="hint">Editável em cada oferta</span></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h3>Adiantar o pedido</h3><span class="rule"></span>
+        <span style="font-size:11px;color:var(--muted)">opcional</span>
+      </div>
+      <p class="note" style="margin-bottom:11px">Se o cliente já lhe disse para onde vai, preencha aqui e ele abre o link com tudo pronto para confirmar. Deixe vazio e ele preenche do zero.</p>
+      <div class="fgrid">
+        <div class="f s6"><label for="from">Origem</label><input id="from" class="mono" placeholder="RAI" maxlength="3" style="text-transform:uppercase"></div>
+        <div class="f s6"><label for="to">Destino</label><input id="to" class="mono" placeholder="BOS" maxlength="3" style="text-transform:uppercase"></div>
+        <div class="f s6"><label for="d1">Ida</label><input id="d1" type="date"></div>
+        <div class="f s6"><label for="d2">Volta</label><input id="d2" type="date"></div>
+        <div class="f s4"><label for="pa">Adultos</label><input id="pa" class="mono" value="1"></div>
+        <div class="f s4"><label for="pc">Crianças</label><input id="pc" class="mono" value="0"></div>
+        <div class="f s4"><label for="pi">Bebés</label><input id="pi" class="mono" value="0"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h3>Nota interna</h3><span class="rule"></span></div>
+      <div class="f"><textarea placeholder="O que ficou combinado no chat. Só a equipa vê."></textarea></div>
+    </section>
+  </div>
+
+  <div class="drawer-b" id="doneStep" hidden>
+    <section class="sec">
+      <div class="sec-h"><h3>Referência do caso</h3><span class="rule"></span></div>
+      <div class="linkbox">
+        <span class="lb-k">Para o cliente citar em qualquer conversa</span>
+        <div class="lb-v"><span class="big-ref mono">WF-7K4M-92XB</span><button class="btn btn-sm copy">Copiar</button></div>
+        <p class="hint" style="margin:9px 0 0;font-size:11.5px;color:var(--muted)">Curta e legível ao telefone. Não dá acesso a nada: serve para identificar o caso e consultar o estado na página de acompanhamento.</p>
+      </div>
+
+      <div class="linkbox">
+        <span class="lb-k">Link pessoal do cliente</span>
+        <div class="lb-v"><code>https://weefly.duckdns.org/c/8f3a2c91d47b6e05</code><button class="btn btn-sm copy">Copiar</button></div>
+        <div class="qr">
+          <img src="LOGO_BASE64" alt="Código QR do link">
+          <div>Para atendimento presencial ou ao telefone.<br>Válido 72 horas · expira <b class="mono">7 ago, 12:53</b></div>
+        </div>
+      </div>
+
+      <div class="note warn" style="margin-top:11px">Este link dá acesso aos dados dos passageiros. Envie-o só ao cliente, na conversa onde o atendeu. <b>Nunca em grupos.</b></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h3>Mensagem pronta a enviar</h3><span class="rule"></span>
+        <button class="btn btn-sm">Trocar modelo</button>
+      </div>
+      <div class="f"><textarea style="min-height:130px">Isaura, aqui está o seu link pessoal WeeFly para eu procurar as melhores tarifas:
+
+https://weefly.duckdns.org/c/8f3a2c91d47b6e05
+
+Preencha para onde vai, as datas e quem viaja. Recebo logo o pedido e envio as opções neste mesmo link.
+
+A sua referência é WF-7K4M-92XB — guarde-a para qualquer conversa sobre esta viagem.</textarea></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-sm copy" style="flex:1">Copiar mensagem</button>
+        <button class="btn btn-sm" style="flex:1">Abrir no WhatsApp</button>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h3>Enviar também por</h3><span class="rule"></span></div>
+      <div class="chks">
+        <label class="chk"><input type="checkbox" checked> Email para <span class="mono">isaura.b@example.cv</span></label>
+        <label class="chk"><input type="checkbox"> SMS para <span class="mono">+238 991 44 07</span></label>
+      </div>
+    </section>
+  </div>
+
+  <footer class="drawer-f" id="formFoot">
+    <button class="btn closeD">Cancelar</button>
+    <button class="btn btn-primary" id="createBtn">Gerar link e referência</button>
+  </footer>
+  <footer class="drawer-f" id="doneFoot" hidden>
+    <button class="btn closeD">Fechar</button>
+    <button class="btn btn-primary">Abrir o caso</button>
+  </footer>
+</aside>
+
+<!-- ══════════ DRAWER · gerir link ══════════ -->
+<aside class="drawer" id="drawerManage" aria-label="Gerir link">
+  <header class="drawer-h">
+    <div>
+      <h2>Isaura Barros</h2>
+      <p><span class="mono">WF-7K4M-92XB</span> · WhatsApp · Nélida Fortes · <span class="mono">USD</span></p>
+    </div>
+    <button class="btn btn-sm btn-icon closeD" aria-label="Fechar">✕</button>
+  </header>
+
+  <div class="drawer-b">
+    <section class="sec">
+      <div class="sec-h"><h3>Onde está o cliente</h3><span class="rule"></span></div>
+      <div class="tl">
+        <div class="tlrow"><span class="st-mini done-c mono">E0 ✓</span><div>Link criado e enviado <span style="color:var(--muted)">· 4 ago, 08:41 por Nélida F.</span></div></div>
+        <div class="tlrow"><span class="st-mini done-c mono">E1 ✓</span><div>Pedido preenchido pelo cliente <span style="color:var(--muted)">· 4 ago, 09:12</span></div></div>
+        <div class="tlrow"><span class="st-mini now-c mono">E2 ⟳</span><div><b>A cotar agora</b> <span style="color:var(--muted)">· 3 ofertas em rascunho, nada publicado</span></div></div>
+        <div class="tlrow"><span class="st-mini next-c mono">E3</span><div style="color:var(--muted)">Dados dos passageiros</div></div>
+        <div class="tlrow"><span class="st-mini next-c mono">E4</span><div style="color:var(--muted)">Pagamento</div></div>
+        <div class="tlrow"><span class="st-mini next-c mono">E5</span><div style="color:var(--muted)">Bilhete emitido</div></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h3>O link</h3><span class="rule"></span></div>
+      <div class="linkbox">
+        <span class="lb-k">Endereço ativo</span>
+        <div class="lb-v"><code>https://weefly.duckdns.org/c/8f3a2c91d47b6e05</code><button class="btn btn-sm copy">Copiar</button></div>
+      </div>
+      <div class="fgrid" style="margin-top:11px">
+        <div class="f s6"><label>Validade</label><div class="note" style="padding:9px 11px">Expira <b class="mono">7 ago, 12:53</b><br><span style="color:var(--muted)">faltam 2d 20h</span></div></div>
+        <div class="f s6"><label for="ext">Prolongar</label><select id="ext"><option>+24 horas</option><option selected>+72 horas</option><option>+7 dias</option><option>Sem expirar</option></select></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">
+        <button class="btn btn-sm">Reenviar por WhatsApp</button>
+        <button class="btn btn-sm">Reenviar por email</button>
+        <button class="btn btn-sm">Descarregar QR</button>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h3>Acessos ao link</h3><span class="rule"></span>
+        <span style="font-size:11px;color:var(--muted)">6 aberturas</span>
+      </div>
+      <div class="log">
+        <div class="logrow"><span class="t mono">hoje 12:41</span><div class="b"><b>Abriu o passo do pedido</b><span>Android · Chrome · Praia, CV</span></div></div>
+        <div class="logrow"><span class="t mono">hoje 09:12</span><div class="b"><b>Submeteu o pedido</b><span>Android · Chrome · Praia, CV</span></div></div>
+        <div class="logrow"><span class="t mono">hoje 09:03</span><div class="b"><b>Abriu o link</b><span>Android · Chrome · Praia, CV</span></div></div>
+        <div class="logrow"><span class="t mono">hoje 08:47</span><div class="b"><b>Abriu o link</b><span>Windows · Edge · Praia, CV</span></div></div>
+        <div class="logrow"><span class="t mono">hoje 08:41</span><div class="b"><b>Link enviado por WhatsApp</b><span>por Nélida Fortes</span></div></div>
+      </div>
+      <p class="note" style="margin-top:11px">Se aparecerem acessos de sítios que não fazem sentido, revogue o link: gera-se um novo endereço e a referência mantém-se.</p>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h3>Ações de risco</h3><span class="rule"></span></div>
+      <div class="chks">
+        <label class="chk"><input type="checkbox"> Transferir o caso para outro vendedor</label>
+        <label class="chk"><input type="checkbox"> Revogar este endereço e gerar um novo</label>
+        <label class="chk"><input type="checkbox"> Expirar agora, o cliente deixa de conseguir abrir</label>
+        <label class="chk"><input type="checkbox"> Cancelar o caso, com motivo registado</label>
+      </div>
+      <p class="note warn" style="margin-top:11px">Nada disto apaga histórico. Todas as ações ficam no registo do caso com autor e hora.</p>
+    </section>
+  </div>
+
+  <footer class="drawer-f">
+    <button class="btn closeD">Fechar</button>
+    <button class="btn btn-primary">Ir para as ofertas</button>
+  </footer>
+</aside>
+
+<script>
+const scrim = document.getElementById('scrim');
+const dNew = document.getElementById('drawerNew');
+const dMan = document.getElementById('drawerManage');
+
+function open(d){ scrim.classList.add('on'); d.classList.add('on'); }
+function closeAll(){
+  scrim.classList.remove('on');
+  [dNew,dMan].forEach(d=>d.classList.remove('on'));
+  // repor o drawer de criação no primeiro passo
+  document.getElementById('formStep').hidden = false;
+  document.getElementById('formFoot').hidden = false;
+  document.getElementById('doneStep').hidden = true;
+  document.getElementById('doneFoot').hidden = true;
+}
+['openNew','openNew2'].forEach(id=>document.getElementById(id).addEventListener('click',()=>open(dNew)));
+document.querySelectorAll('.gerir').forEach(b=>b.addEventListener('click',()=>open(dMan)));
+document.querySelectorAll('.closeD').forEach(b=>b.addEventListener('click',closeAll));
+scrim.addEventListener('click',closeAll);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAll(); });
+
+// gerar link → estado com referência, URL, QR e mensagem
+document.getElementById('createBtn').addEventListener('click',()=>{
+  document.getElementById('formStep').hidden = true;
+  document.getElementById('formFoot').hidden = true;
+  document.getElementById('doneStep').hidden = false;
+  document.getElementById('doneFoot').hidden = false;
+  document.querySelector('#drawerNew .drawer-h h2').textContent = 'Link criado';
+  document.querySelector('#drawerNew .drawer-h p').textContent = 'Copie e cole na conversa. O caso já aparece na lista em E0.';
+});
+
+// canais
+document.querySelectorAll('.cp').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('.cp').forEach(x=>x.setAttribute('aria-pressed','false'));
+  c.setAttribute('aria-pressed','true');
+}));
+
+// moeda sugerida pelo país
+const curByCountry = {
+  'Cabo Verde':'USD · dólar americano',
+  'Estados Unidos':'USD · dólar americano',
+  'Portugal':'EUR · euro',
+  'França':'EUR · euro',
+  'Países Baixos':'EUR · euro'
+};
+document.getElementById('country').addEventListener('change',e=>{
+  const v = curByCountry[e.target.value];
+  if(v) document.getElementById('cur').value = v;
+});
+
+// segmentos da toolbar
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{
+  b.parentElement.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));
+  b.setAttribute('aria-pressed','true');
+}));
+
+// feedback de copiar
+document.querySelectorAll('.copy').forEach(b=>{
+  const label = b.textContent;
+  b.addEventListener('click',()=>{
+    b.classList.add('copied');
+    b.textContent = label.length > 3 ? 'Copiado' : '✓';
+    setTimeout(()=>{ b.classList.remove('copied'); b.textContent = label; }, 1400);
+  });
+});
+</script>
+</body>
+</html>

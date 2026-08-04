@@ -1,0 +1,1515 @@
+WEEPAY
+Gateway Developer Manual
+Board Edition  |  Layer A: Checkout Adapters
+Purpose of this edition
+A corporate, board-shareable rendering of the complete WeePay Gateway Developer Manual. All technical content, tables, controls, open questions, and appendices from the source are retained; workflows and data relationships have been redrawn for readability.
+Document Control
+Value
+Document ID
+WEE-DEV-001
+Version
+1.0
+Status
+Production Draft
+Date
+3 August 2026
+Audience
+Board of Directors; Engineering; DevOps; QA; Product; Security
+Scope
+Layer A — checkout adapters; Layer B treasury/settlement deferred
+Owner
+WeePay Engineering Lead
+Next Review
+10 August 2026
+Prepared for Board Review
+Confidential
+Board Briefing
+Executive Summary
+WeePay is WeeFly’s payment orchestration layer between the booking and instalment engines and external payment providers. It does not process payments directly; it selects providers, normalizes provider responses, records transaction state, and coordinates webhook-driven updates.
+The Layer A design is modular and provider-agnostic. It defines adapters, corridor-based routing, versioned coverage configuration, transaction state control, idempotency, monitoring, security controls, deployment, rollback, and operating procedures. Layer B—treasury, cross-border settlement, Ecobank orchestration, and FX—is explicitly deferred.
+Production-readiness position
+The source is marked “Production Draft.” Stripe is specified in detail, while Katamy Pay and InstaPay retain production-blocking open questions. SISP/Vinti4, Revolut, and Pix remain adapter stubs. Circuit breaker implementation, security testing, PCI scope validation, and performance work are also outstanding.
+Board Readiness Snapshot — derived directly from the source status and TBD registers
+Area
+Source Status
+Board Interpretation
+Architecture & core model
+Defined
+Provider-agnostic architecture, adapter interface, routing, ledger, and state model specified.
+Stripe adapter
+Specified
+Global card and selected local methods; native idempotency and webhook behavior documented.
+Katamy Pay
+P0 questions open
+Coverage, USDT networks, webhooks, refunds, idempotency, settlement, limits, and KYC require confirmation.
+InstaPay
+P0 questions open
+Methods, overlap, webhook/idempotency/refund alignment, and instalment scheduling require confirmation.
+SISP / Revolut / Pix
+TBD implementation
+Adapter stubs exist; full implementations are listed as P1 engineering work.
+Operations
+Defined; implementation dependent
+Metrics, alert thresholds, logging, deployment, rollback, and DLQ model are specified.
+Security & compliance
+Controls defined; validation open
+Security audit, penetration test, and PCI scope validation remain P1 items.
+Board Oversight Priorities
+Confirm that Layer A remains the approved near-term scope and that Layer B treasury and settlement capabilities remain deferred.
+Require closure and accountable ownership of the 13 P0 provider questions before production authorization.
+Track delivery of the three P1 provider adapters and the P1 circuit breaker implementation.
+Require independent security audit, penetration testing, and PCI scope validation before go-live.
+Review provider SLA, settlement currency, fee structure, compliance duties, and failover triggers as commercial and operational decisions.
+Note: The priorities above are governance recommendations inferred from the source’s open-question and engineering-TBD registers. They do not introduce new technical facts.
+Table of Contents
+Document structure
+Section
+Title
+Section
+Title
+1
+Architecture Overview
+10
+Database Schema
+2
+Getting Started
+11
+Error Handling & Retries
+3
+Project Structure
+12
+Testing
+4
+Core Concepts
+13
+Deployment
+5
+Adapter Development Guide
+14
+Operations & Monitoring
+6
+Provider Adapters Reference
+15
+Security
+7
+Routing Engine
+16
+Open Questions & TBD Items
+8
+Transaction State Machine
+17
+Appendices
+9
+Webhook Handling
+Navigation
+The document uses native Word heading levels for outline navigation and accessible section browsing.
+1. Architecture Overview
+1.1 What is WeePay?
+WeePay is WeeFly’s payment orchestration layer. It sits between WeeFly’s booking/instalment engines and external payment providers. It is not a payment processor itself—it routes, normalizes, and tracks payments across multiple providers.
+Figure 1. Redrawn high-level payment-orchestration architecture
+WeeFly Booking & Instalment Engine
+→
+WeePay Gateway
+→
+Stripe / SISP / Katamy Pay / InstaPay / Pix / Revolut
+Figure 2. Transaction-recording relationship
+WeePay Gateway
+→
+Transaction Ledger
+1.2 Design Principles
+Table 1. Design principles
+Principle
+Implementation
+Provider-agnostic
+Booking engine never knows which provider handled a payment.
+Adapter pattern
+One adapter per provider; swap without touching core logic.
+Versioned config
+Coverage and fees hot-reloadable without deploy.
+Idempotency
+Every operation is safe to retry.
+Coverage gap ≠ outage
+Permanent gaps route silently; transient failures alert.
+Webhook-first
+Webhooks take precedence over polling for state resolution.
+1.3 Provider Map
+Table 2. Provider map
+Provider
+Role
+Methods
+Primary Corridors
+SISP / Vinti4
+Primary
+Card
+Cabo Verde (CV-card)
+Stripe
+Primary / Fallback
+Card, iDEAL, Bancontact, Wallet
+Global (CV, PT, NL, BE, BR, NG…)
+Revolut
+Primary
+Card, Wallet
+EU / diaspora
+Katamy Pay
+Primary
+Mobile money, USDT
+Africa (NG, GH, KE, CI, SN…)
+Pix
+Primary
+Instant bank transfer
+Brazil (BR-pix)
+InstaPay
+Fallback / USDT primary
+Mobile wallet, Bank, Card, USDT, Wallet
+Africa + EU + Brazil
+1.4 Layer Boundaries
+Table 3. Scope boundary
+Layer
+Status
+Capabilities
+Layer A
+In scope
+Checkout adapters, routing, state machine, ledger, webhooks
+Layer B
+Out of scope / deferred
+Treasury, cross-border settlement, Ecobank orchestration, FX
+2. Getting Started
+2.1 Prerequisites
+# macOS
+brew install python@3.11 postgresql@15 redis docker
+# Ubuntu
+sudo apt update
+sudo apt install python3.11 python3.11-venv postgresql-15 redis-server docker.io
+2.2 Clone & Setup
+git clone https://github.com/weefly/weepay-gateway.git
+cd weepay-gateway
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+2.3 Environment Configuration
+cp .env.example .env
+# Edit .env with your credentials
+APP_ENV=development
+DATABASE_URL=postgresql://weepay:weepay@localhost:5432/weepay
+REDIS_URL=redis://localhost:6379/0
+STRIPE_API_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+KATAMY_PAY_API_KEY=kp_test_...
+KATAMY_PAY_WEBHOOK_SECRET=kpwhsec_...
+INSTAPAY_API_KEY=ip_test_...
+INSTAPAY_WEBHOOK_SECRET=ipwhsec_...
+2.4 Database Setup
+# Start PostgreSQL & Redis
+docker-compose up -d postgres redis
+# Run migrations
+alembic upgrade head
+# Seed test data
+python scripts/seed_test_data.py
+2.5 Run the Application
+# Development (auto-reload)
+uvicorn weepay.main:app --reload --port 8000
+# Production
+uvicorn weepay.main:app --host 0.0.0.0 --port 8000 --workers 4
+2.6 Verify Installation
+# Health check
+curl http://localhost:8000/health
+# → {"status": "ok", "service": "weepay-gateway", "version": "1.0.0"}
+# List providers
+curl http://localhost:8000/api/v1/admin/provider-health
+# → {"stripe": {"status": "UP", ...}, ...}
+3. Project Structure
+weepay-gateway/
+├── weepay/
+│   ├── __init__.py
+│   ├── main.py                     # FastAPI application entry point
+│   ├── config/
+│   │   ├── __init__.py
+│   │   ├── settings.py             # Pydantic settings (env vars)
+│   │   └── secrets.py              # AWS Secrets Manager integration
+│   ├── adapters/
+│   │   ├── __init__.py
+│   │   ├── base.py                 # PaymentProviderAdapter abstract class
+│   │   ├── stripe.py               # Stripe adapter
+│   │   ├── katamy_pay.py           # Katamy Pay adapter
+│   │   ├── instapay.py             # InstaPay fallback adapter
+│   │   ├── sisp.py                 # SISP/Vinti4 adapter [TBD]
+│   │   ├── revolut.py              # Revolut adapter [TBD]
+│   │   └── pix.py                  # Pix adapter [TBD]
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── routing.py              # RoutingEngine
+│   │   ├── state_machine.py        # StateMachine
+│   │   └── registry.py             # ProviderRegistry
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── transaction.py          # SQLAlchemy models
+│   │   └── events.py               # Event models
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── payments.py             # Payment endpoints
+│   │   ├── webhooks.py             # Webhook endpoints
+│   │   ├── refunds.py              # Refund endpoints
+│   │   └── admin.py                # Admin endpoints
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── ledger.py               # Transaction ledger operations
+│   │   └── notifications.py        # Booking engine notifications
+│   └── utils/
+│       ├── __init__.py
+│       ├── errors.py               # ProviderError classes
+│       ├── idempotency.py          # Idempotency key management
+│       └── encryption.py           # PII encryption
+├── migrations/
+│   ├── env.py
+│   ├── versions/
+│   │   └── 001_initial_schema.py
+│   └── alembic.ini
+├── tests/
+│   ├── unit/
+│   │   ├── test_routing.py
+│   │   ├── test_state_machine.py
+│   │   └── test_adapters/
+│   │       ├── test_stripe.py
+│   │       ├── test_katamy_pay.py
+│   │       └── test_instapay.py
+│   ├── integration/
+│   │   └── test_end_to_end.py
+│   └── fixtures/
+│       └── data.py
+├── scripts/
+│   ├── seed_test_data.py
+│   └── health_check.py
+├── monitoring/
+│   ├── prometheus.yml
+│   ├── alert_rules.yml
+│   └── grafana/
+├── docker/
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── nginx/
+├── docs/
+│   ├── architecture.md
+│   ├── api_reference.md
+│   └── deployment.md
+├── requirements.txt
+├── requirements-dev.txt
+├── pytest.ini
+├── .env.example
+├── .gitignore
+└── README.md
+4. Core Concepts
+4.1 Corridor
+A corridor is a country + payment_method combination. It is the fundamental routing unit.
+corridor = f"{country}-{method}"  # e.g., "CV-card", "NG-mobile_money", "BR-pix"
+4.2 Provider Slot
+Providers occupy slots, not fixed roles:
+Primary slot: First-choice provider for a corridor.
+Fallback slot: Used on coverage gaps or outages.
+The same provider can be primary in one corridor and fallback in another.
+4.3 Coverage Gap vs. Outage
+Table 4. Coverage gap and outage distinction
+Dimension
+Coverage Gap
+Outage
+Cause
+Provider does not support corridor
+Provider should work but errors
+Duration
+Permanent
+Transient
+Retry
+None
+Once
+Alert
+No
+Yes
+Metric
+weepay_routing_coverage_gap_total
+weepay_routing_outage_total
+4.4 Payment Instrument
+The result of initiate()—what the customer uses to complete payment:
+PaymentInstrument(
+    type="redirect",        # redirect | qr_code | deep_link | payment_link | token | none
+    url="https://...",      # For redirect/deep_link/payment_link
+    token="pi_xxx",         # For Stripe client_secret
+    data="qr_data",         # For QR code
+    message="Check phone",  # For async methods
+    expires_at=datetime,    # TTL for instrument
+)
+4.5 Normalized Event
+All provider webhooks are converted to a canonical shape:
+NormalizedEvent(
+    event_id="evt_xxx",
+    event_type="payment.completed",     # 15 event types
+    transaction_id="weepay_txn_xxx",
+    provider_transaction_id="pi_xxx",
+    provider="stripe",
+    corridor="CV-card",
+    status="COMPLETED",                 # 11 transaction statuses
+    amount=15000,
+    currency="CVE",
+    occurred_at=datetime,
+    is_terminal=True,
+    raw_payload={...},                  # Provider-specific original
+    signature_valid=True,
+)
+5. Adapter Development Guide
+5.1 Creating a New Adapter
+Every adapter must implement PaymentProviderAdapter:
+from weepay.adapters.base import PaymentProviderAdapter
+class MyProviderAdapter(PaymentProviderAdapter):
+    name = "my_provider"
+    async def initiate(self, params: InitiateParams) -> InitiateResult:
+        # 1. Call provider API
+        # 2. Map provider response to InitiateResult
+        # 3. Handle errors with ProviderError
+        pass
+    async def checkStatus(self, transaction_id: str) -> StatusResult:
+        # Query provider for current status
+        pass
+    async def handleWebhook(self, payload: dict) -> NormalizedEvent:
+        # 1. Verify signature (or return for endpoint to verify)
+        # 2. Parse provider-specific payload
+        # 3. Map to NormalizedEvent
+        pass
+    async def refund(self, params: RefundParams) -> RefundResult:
+        # Issue refund through provider
+        pass
+    async def capabilities(self) -> ProviderCapabilities:
+        # Declare supported countries, methods, limits, fees
+        pass
+5.2 Error Classification Rules
+Table 5. Adapter error-classification rules
+Classification
+Errors
+Action
+Always retryable
+Network timeout; connection error; rate limited; provider temporarily unavailable
+Retry according to policy
+Never retryable — route to fallback
+Corridor not supported; method not supported; currency not supported; amount out of range
+Fail over immediately
+Never retryable — fail transaction
+Insufficient funds; payment declined; fraud detected; KYC required
+Fail transaction; apply special handling where defined
+5.3 Registering the Adapter
+from weepay.core.registry import ProviderRegistry
+from weepay.adapters.my_provider import MyProviderAdapter
+registry = ProviderRegistry()
+registry.register(MyProviderAdapter(
+    api_key="...",
+    webhook_secret="...",
+))
+5.4 Adding Coverage Config
+# Via admin API
+POST /api/v1/admin/coverage-config
+{
+    "country": "ZA",
+    "method": "card",
+    "primary_provider": "stripe",
+    "fallback_provider": "instapay",
+    "min_amount": 50,
+    "max_amount": 10000000,
+    "fee_bps": 250,
+    "fee_fixed_amount": 0,
+    "fee_currency": "ZAR",
+    "settlement_currency": "ZAR",
+    "settlement_timing": "t_plus_1",
+    "enabled": true
+}
+6. Provider Adapters Reference
+6.1 Stripe
+Table 6. Stripe adapter profile
+Attribute
+Specification
+File
+weepay/adapters/stripe.py
+Coverage
+Global cards, iDEAL (NL), Bancontact (BE), Wallet
+Settlement
+T+1
+Idempotency
+Native (Stripe handles keys)
+Webhooks
+Well-documented, reliable retry (3 retries, exponential)
+Refunds
+Full + partial via API
+Partial capture
+Supported (manual capture flow)
+adapter = StripeAdapter(
+    api_key="sk_live_...",
+    webhook_secret="whsec_...",
+    api_version="2024-06-20",
+)
+Key methods:
+initiate() → Creates PaymentIntent, returns client_secret or redirect URL.
+capture() → Separate method for manual capture (bonus, not in base interface).
+Stripe-specific notes:
+Card errors include decline_code—map this before code.
+iDEAL and Bancontact use redirect flow via next_action.redirect_to_url.
+Use automatic_payment_methods for simplified method detection.
+6.2 Katamy Pay
+Table 7. Katamy Pay adapter profile
+Attribute
+Specification
+File
+weepay/adapters/katamy_pay.py
+Coverage
+Mobile money + USDT across Africa
+Settlement
+Instant (mobile money), blockchain-dependent (USDT)
+Idempotency
+[TBD: Open Question 6]
+Webhooks
+[TBD: Open Question 4]
+Refunds
+[TBD: Open Question 5]
+KYC
+[TBD: Open Question 9]
+adapter = KatamyPayAdapter(
+    api_key="kp_live_...",
+    base_url="https://api.katamypay.com/v1",
+    webhook_secret="kpwhsec_...",
+)
+Key methods:
+initiate() → Mobile money: USSD/SMS prompt; USDT: wallet address generation.
+_detect_network_from_phone() → Heuristic phone prefix → network mapping.
+Figure 3. Redrawn Katamy Pay mobile-money workflow
+1. WeePay calls Katamy Pay API with amount + customer phone
+↓
+2. Katamy Pay sends USSD/SMS prompt to the customer’s phone
+↓
+3. Customer confirms with PIN on device
+↓
+4. Katamy Pay processes via telco API
+↓
+5. Katamy Pay sends completion webhook to WeePay
+Figure 4. Redrawn Katamy Pay USDT workflow
+1. WeePay calls Katamy Pay API
+↓
+2. Katamy Pay generates a unique wallet address
+↓
+3. Customer sends USDT to the address
+↓
+4. Katamy Pay monitors the blockchain for deposit and confirmations
+↓
+5. Katamy Pay sends webhook when confirmed
+Open questions that must be resolved before production:
+Which specific countries and mobile money networks?
+Which USDT networks are live vs. planned?
+Live coverage API or static config?
+Webhook payload shape and retry behavior?
+Refund API availability?
+Idempotency model?
+Settlement timing per method?
+Min/max transaction limits per method?
+KYC requirements by country?
+6.3 InstaPay
+Table 8. InstaPay adapter profile
+Attribute
+Specification
+File
+weepay/adapters/instapay.py
+Role
+Generic fallback + USDT primary for Katamy Pay gaps
+Coverage
+Mobile wallet, bank payout, card, USDT, wallet (13 countries)
+Settlement
+T+1 (confirm with InstaPay)
+Idempotency
+[TBD: Open Question 12]
+Webhooks
+[TBD: Open Question 12]
+Refunds
+[TBD: Open Question 12]
+Schedule/instalments
+[TBD: Open Question 13]
+adapter = InstaPayAdapter(
+    api_key="ip_live_...",
+    base_url="https://api.instapay.com/v1",
+    webhook_secret="ipwhsec_...",
+)
+Key methods:
+initiate() → Multi-method support with method-specific instrument building.
+create_schedule() → Instalment plan scheduling [TBD].
+Coverage overlap with Katamy Pay:
+True redundancy: NG, GH, CI, SN (both cover MoMo + USDT).
+Partial redundancy: KE (Katamy: MoMo+USDT; InstaPay: MoMo+USDT+Wallet).
+No overlap: CV, BR, PT (only InstaPay covers).
+Open questions:
+Q10: Exact methods for WeeFly?
+Q11: Coverage overlap formalization?
+Q12: Webhook, idempotency, refund alignment with Katamy Pay?
+Q13: Schedule request for instalments?
+6.4 SISP / Vinti4 [TBD]
+Attribute
+Specification
+Status
+Adapter stub exists, needs full implementation
+Coverage
+Cabo Verde card acquiring only
+Note
+Limited webhook support—plan for polling fallback
+6.5 Revolut [TBD]
+Attribute
+Specification
+Status
+Adapter stub exists, needs full implementation
+Coverage
+EU / diaspora card and wallet
+Note
+Strong API, good webhook support
+6.6 Pix [TBD]
+Attribute
+Specification
+Status
+Adapter stub exists, needs full implementation
+Coverage
+Brazil instant bank transfer
+Note
+Real-time by design; webhooks immediate
+7. Routing Engine
+7.1 Algorithm
+def route(corridor, amount, currency):
+    config = load_coverage_config(corridor)
+    if not config.primary_provider:
+        return fallback_immediately("NO_PRIMARY_DEFINED")
+    primary = config.primary_provider
+    # 1. Coverage gap check (permanent)
+    if not primary.covers(corridor):
+        return fallback("COVERAGE_GAP", retry=False, alert=False)
+    # 2. Amount limits
+    if amount outside [min, max]:
+        return fallback("AMOUNT_OUT_OF_RANGE", retry=False)
+    # 3. Health check
+    health = check_health(primary)
+    if health == DEGRADED:
+        return primary_with_fallback("PRIMARY_DEGRADED", timeout=5s)
+    if health == DOWN:
+        return fallback("OUTAGE", retry=True, max_retries=1, alert=True)
+    # 4. Primary is healthy
+    return primary("PRIMARY_AVAILABLE", retry=True, max_retries=2)
+Figure 5. Redrawn routing decision workflow
+1. Load corridor coverage configuration
+↓
+2. If no primary is defined, fail over immediately
+↓
+3. Check permanent coverage gap
+↓
+4. Validate amount limits
+↓
+5. Check primary-provider health
+↓
+6. Route to primary, primary-with-fallback, or fallback according to health
+Table 9. Routing outcomes
+Condition
+Routing Decision
+Retry / Alert
+No primary defined
+Fallback immediately: NO_PRIMARY_DEFINED
+Immediate
+Primary does not cover corridor
+Fallback: COVERAGE_GAP
+No retry; no alert
+Amount outside limits
+Fallback: AMOUNT_OUT_OF_RANGE
+No retry
+Primary DEGRADED
+Primary with fallback: PRIMARY_DEGRADED
+5-second timeout
+Primary DOWN
+Fallback: OUTAGE
+Retry once; alert
+Primary UP
+Primary: PRIMARY_AVAILABLE
+Up to 2 retries
+7.2 Configuration Table
+provider_coverage_config
+├── id (UUID)
+├── version (INT)                 -- Incremented per change
+├── effective_from (TIMESTAMP)
+├── effective_to (TIMESTAMP)      -- NULL if active
+├── is_active (BOOLEAN)           -- Only one TRUE per corridor
+├── country (CHAR 2)
+├── method (VARCHAR)
+├── corridor (GENERATED)
+├── primary_provider (VARCHAR)
+├── fallback_provider (VARCHAR)
+├── min_amount (BIGINT)
+├── max_amount (BIGINT)
+├── fee_bps (INT)                 -- e.g., 250 = 2.50%
+├── fee_fixed_amount (BIGINT)
+├── fee_currency (CHAR 3)
+├── settlement_currency (CHAR 3)
+├── settlement_timing (VARCHAR)
+├── enabled (BOOLEAN)
+└── supports_instalments (BOOLEAN)
+Versioning rules:
+Only one is_active = TRUE per corridor.
+Updates create a new row; the old row gets effective_to set.
+Cache reloads every 60 seconds.
+Changes apply without code deploy.
+7.3 Health Check Table
+provider_health
+├── provider (VARCHAR PK)
+├── status (UP/DEGRADED/DOWN/UNKNOWN)
+├── last_check_at (TIMESTAMP)
+├── last_success_at (TIMESTAMP)
+├── last_failure_at (TIMESTAMP)
+├── consecutive_failures (INT)
+├── consecutive_successes (INT)
+└── failure_reason (VARCHAR)
+Table 10. Provider-health status determination
+Status
+Determination
+UP
+Last 3 checks succeeded
+DEGRADED
+1–2 failures or latency > p95
+DOWN
+3+ failures or explicit health endpoint failure
+UNKNOWN
+No checks yet
+8. Transaction State Machine
+8.1 States
+Figure 6. Redrawn transaction-state workflow as a controlled transition matrix
+Current State
+Allowed Next States
+STARTED
+PENDING | AUTHORIZED | FAILED | CANCELLED
+PENDING
+AUTHORIZED | CAPTURED | COMPLETED | FAILED | EXPIRED | CANCELLED
+AUTHORIZED
+CAPTURED | FAILED | CANCELLED
+CAPTURED
+COMPLETED | FAILED | REFUNDED | PARTIALLY_REFUNDED | DISPUTED
+COMPLETED
+REFUNDED | PARTIALLY_REFUNDED | DISPUTED
+DISPUTED
+COMPLETED | REFUNDED | PARTIALLY_REFUNDED
+Figure 7. Simplified primary transaction progression
+STARTED
+→
+PENDING / AUTHORIZED
+→
+CAPTURED / COMPLETED
+→
+REFUND / DISPUTE outcomes
+8.2 Terminal States
+Terminal states
+COMPLETED, FAILED, CANCELLED, EXPIRED, REFUNDED, PARTIALLY_REFUNDED. Terminal states are immutable except DISPUTED can be reached from COMPLETED.
+8.3 Transition Rules
+Idempotency: duplicate (transaction_id, event_id, provider) ignored.
+Webhook precedence: webhook wins over status check on conflict; log the discrepancy.
+Timeouts: PENDING → EXPIRED after instrument expires_at; PENDING → FAILED after 24h (configurable); AUTHORIZED → FAILED after 7 days (configurable).
+8.4 Transaction Table
+transactions
+├── id (UUID PK)
+├── weePay_transaction_id (VARCHAR UNIQUE)
+├── booking_reference (VARCHAR)
+├── instalment_plan_id (VARCHAR)
+├── instalment_sequence (INT)
+├── amount (BIGINT)
+├── currency (CHAR 3)
+├── captured_amount (BIGINT)
+├── refunded_amount (BIGINT)
+├── provider (VARCHAR)
+├── provider_transaction_id (VARCHAR)
+├── fallback_reason (VARCHAR)      -- NULL if primary
+├── country (CHAR 2)
+├── method (VARCHAR)
+├── corridor (GENERATED)
+├── status (VARCHAR)
+├── previous_status (VARCHAR)
+├── status_changed_at (TIMESTAMP)
+├── customer_id (VARCHAR)
+├── customer_email (VARCHAR)
+├── customer_phone (VARCHAR)
+├── initiated_at (TIMESTAMP)
+├── completed_at (TIMESTAMP)
+├── failed_at (TIMESTAMP)
+├── expires_at (TIMESTAMP)
+├── idempotency_key (VARCHAR UNIQUE)
+├── metadata (JSONB)
+└── provider_raw_response (JSONB)
+8.5 Event Audit Log
+transaction_events
+├── id (UUID PK)
+├── transaction_id (UUID FK)
+├── event_type (VARCHAR)
+├── from_status (VARCHAR)
+├── to_status (VARCHAR)
+├── provider (VARCHAR)
+├── amount (BIGINT)
+├── currency (CHAR 3)
+├── event_id (VARCHAR)             -- Provider event ID
+├── raw_payload (JSONB)
+└── processed_at (TIMESTAMP)
+UNIQUE (transaction_id, event_id, provider)
+9. Webhook Handling
+9.1 Inbound Flow
+Figure 8. Redrawn inbound webhook workflow
+1. Provider POSTs to /api/v1/webhooks/{provider}
+↓
+2. Verify signature
+↓
+3. Parse payload and convert to NormalizedEvent
+↓
+4. Check idempotency (transaction_id, event_id, provider)
+↓
+5. Apply state-machine transition
+↓
+6. Persist to transaction_events
+↓
+7. If terminal, notify booking engine asynchronously
+↓
+8. Return 200 OK within 5 seconds
+9.2 Signature Verification
+Table 11. Provider webhook signature verification
+Provider
+Method
+Header
+Stripe
+stripe.webhook.construct_event()
+Stripe-Signature
+Katamy Pay
+HMAC-SHA256
+X-Signature
+InstaPay
+HMAC-SHA256
+X-Signature
+HMAC format: t=<timestamp>,v1=<hex_signature>
+9.3 Response Codes
+Table 12. Webhook response codes
+Code
+Meaning
+200
+Accepted (or duplicate, idempotent)
+401
+Invalid signature
+404
+Provider not configured
+422
+Invalid event (unknown transaction)
+500
+Processing failure (provider should retry)
+9.4 Outbound to Booking Engine
+POST /api/v1/booking/payment-update
+{
+    "eventType": "weepay.payment.completed",
+    "transactionId": "weepay_txn_xxx",
+    "bookingReference": "WF-BK-2026-0001234",
+    "status": "COMPLETED",
+    "amount": 150000,
+    "currency": "CVE",
+    "provider": "stripe",
+    "corridor": "CV-card",
+    "settledAt": "2026-07-30T14:23:11Z",
+    "metadata": {
+        "instalmentPlanId": "inst_abc123",
+        "instalmentSequence": 2
+    }
+}
+Retry: exponential backoff—5s, 25s, 125s, 625s (max 4 retries).
+DLQ: after max retries, move to dead-letter queue for manual intervention.
+10. Database Schema
+10.1 Entity Relationship Diagram
+Figure 9. Redrawn entity relationship model
+Entity
+Key Fields
+Relationship
+transactions
+PK id; UK txn_id; provider; status; amount; corridor; idempotency_key; metadata
+1:N with transaction_events; N:1 with provider_coverage_config
+transaction_events
+PK id; FK transaction_id; event_type; from_status; to_status; provider; event_id; raw_payload
+Many events belong to one transaction
+provider_coverage_config
+PK id; version; corridor; primary_provider; fallback_provider; fee_bps; enabled
+One configuration row governs many transactions
+Figure 10. Relationship flow
+provider_coverage_config (1)
+→
+transactions (N)
+→
+transaction_events (N per transaction)
+10.2 Idempotency
+idempotency_keys
+├── key (VARCHAR PK)
+├── operation (VARCHAR)          -- 'initiate' | 'refund'
+├── transaction_id (UUID FK)
+├── response (JSONB)
+├── created_at (TIMESTAMP)
+└── expires_at (TIMESTAMP)       -- TTL: 24 hours
+11. Error Handling & Retries
+11.1 Retry Matrix
+Table 13. Complete retry matrix
+Error Code
+Retry?
+Max
+Backoff
+After Exhaustion
+NETWORK_TIMEOUT
+Yes
+2
+Exp (1s, 5s)
+Failover
+NETWORK_ERROR
+Yes
+2
+Exp (1s, 5s)
+Failover
+RATE_LIMITED
+Yes
+3
+Exp (5s, 25s, 125s)
+Failover
+PROVIDER_UNAVAILABLE
+Yes
+2
+Fixed (10s)
+Failover
+CORRIDOR_NOT_SUPPORTED
+No
+0
+—
+Failover immediately
+METHOD_NOT_SUPPORTED
+No
+0
+—
+Failover immediately
+CURRENCY_NOT_SUPPORTED
+No
+0
+—
+Failover immediately
+AMOUNT_OUT_OF_RANGE
+No
+0
+—
+Failover immediately
+INSUFFICIENT_FUNDS
+No
+0
+—
+Fail transaction
+PAYMENT_DECLINED
+No
+0
+—
+Fail transaction
+FRAUD_DETECTED
+No
+0
+—
+Fail transaction; flag
+KYC_REQUIRED
+No
+0
+—
+Fail transaction; redirect
+INVALID_CREDENTIALS
+No
+0
+—
+Alert operations; fail
+UNKNOWN_ERROR
+Yes
+1
+Fixed (5s)
+Failover
+11.2 Circuit Breaker
+stripe:
+  failure_threshold: 5
+  window_seconds: 60
+  cooldown_seconds: 30
+  half_open_max_calls: 1
+katamy_pay:
+  failure_threshold: 3
+  window_seconds: 60
+  cooldown_seconds: 60
+  half_open_max_calls: 1
+Figure 11. Redrawn circuit-breaker state workflow
+CLOSED
+→
+OPEN after threshold
+→
+HALF-OPEN after cooldown
+→
+CLOSED or OPEN
+11.3 Dead Letter Queue
+Failed events after maximum retries go to the DLQ with:
+Original payload
+Error history
+Retry count
+Timestamp
+Recovery:
+Manual review via admin dashboard.
+One-click retry.
+Bulk retry for provider-wide outages.
+12. Testing
+12.1 Test Structure
+tests/
+├── unit/
+│   ├── test_routing.py             # Routing engine decisions
+│   ├── test_state_machine.py       # State transitions
+│   └── test_adapters/
+│       ├── test_stripe.py          # 30+ tests
+│       ├── test_katamy_pay.py      # [TBD]
+│       └── test_instapay.py        # [TBD]
+├── integration/
+│   └── test_end_to_end.py          # Full flows, 30+ tests
+└── fixtures/
+    └── data.py                     # Shared test data
+12.2 Running Tests
+# All tests
+pytest -v
+# With coverage
+pytest --cov=weepay --cov-report=html
+# Specific adapter
+pytest tests/unit/test_adapters/test_stripe.py -v
+# Integration only
+pytest tests/integration/ -v
+# Parallel execution
+pytest -n auto
+12.3 Writing Adapter Tests
+@pytest.mark.asyncio
+async def test_initiate_success(adapter, sample_params):
+    with patch("stripe.PaymentIntent.create", return_value=mock_intent):
+        result = await adapter.initiate(sample_params)
+    assert result.provider_transaction_id == "pi_123"
+    assert result.status == TransactionStatus.PENDING
+@pytest.mark.asyncio
+async def test_initiate_card_declined(adapter, sample_params):
+    from stripe.error import CardError
+    error = CardError(
+        message="Declined",
+        param="",
+        code="card_declined",
+        decline_code="insufficient_funds",
+        http_status=402,
+    )
+    with patch("stripe.PaymentIntent.create", side_effect=error):
+        with pytest.raises(ProviderError) as exc:
+            await adapter.initiate(sample_params)
+    assert exc.value.code == ProviderErrorCode.INSUFFICIENT_FUNDS
+    assert exc.value.retryable is False
+12.4 Mocking Patterns
+# Mock provider API
+with patch("stripe.PaymentIntent.create") as mock_create:
+    mock_create.return_value = mock_intent
+    result = await adapter.initiate(params)
+# Mock HTTP client
+with patch("requests.Session.request") as mock_req:
+    mock_req.return_value.json.return_value = {"status": "completed"}
+    result = await adapter.checkStatus("txn_123")
+# Mock registry
+registry = ProviderRegistry()
+mock_adapter = MagicMock()
+mock_adapter.name = "test"
+mock_adapter.initiate = AsyncMock(return_value=mock_result)
+registry.register(mock_adapter)
+13. Deployment
+13.1 Local Development
+docker-compose up -d
+alembic upgrade head
+uvicorn weepay.main:app --reload
+13.2 Staging
+Figure 12. Redrawn staging deployment workflow
+Build
+→
+Push to ECR
+→
+Deploy to ECS
+# Build
+docker build -t weepay:staging .
+# Push
+aws ecr get-login-password | docker login --username AWS $ECR_URL
+docker tag weepay:staging $ECR_URL/weepay:staging
+docker push $ECR_URL/weepay:staging
+# Deploy
+aws ecs update-service --cluster weepay-staging   --service weepay-gateway --force-new-deployment
+13.3 Production
+Pre-deploy checklist:
+All tests passing.
+Migration reviewed.
+Security scan clean.
+RDS snapshot created.
+Rollback plan documented.
+Figure 13. Redrawn production deployment workflow
+Pre-deploy checks
+→
+Create RDS snapshot
+→
+Deploy ECS service
+→
+Monitor health
+# Create snapshot
+aws rds create-db-snapshot \
+  --db-instance-identifier weepay-prod \
+  --db-snapshot-identifier weepay-prod-pre-deploy-$(date +%Y%m%d-%H%M%S)
+# Deploy
+aws ecs update-service --cluster weepay-production \
+  --service weepay-gateway --force-new-deployment
+# Monitor
+watch -n 5 'curl -s https://weepay.weefly.cv/health'
+13.4 Rollback
+# Application rollback
+aws ecs update-service --cluster weepay-production \
+  --service weepay-gateway --task-definition weepay-gateway:PREVIOUS
+# Database rollback (from snapshot)
+aws rds restore-db-instance-from-db-snapshot \
+  --db-instance-identifier weepay-prod-rollback \
+  --db-snapshot-identifier weepay-prod-pre-deploy-20260803-100000
+# Config rollback
+UPDATE provider_coverage_config SET is_active = FALSE WHERE ...;
+UPDATE provider_coverage_config SET is_active = TRUE WHERE version = PREVIOUS;
+14. Operations & Monitoring
+14.1 Key Metrics
+Table 14. Monitoring metrics and alert thresholds
+Metric
+Type
+Threshold
+Alert
+weepay_initiate_latency_p99
+Histogram
+> 5s
+P2
+weepay_routing_outage_total
+Counter
+> 0 in 5min
+P1
+weepay_routing_coverage_gap_total
+Counter
+> 0 (new corridor)
+P3
+weepay_webhook_processing_latency
+Histogram
+> 2s
+P2
+weepay_provider_error_rate
+Gauge
+> 5%
+P1
+weepay_circuit_breaker_open
+Gauge
+= 1
+P1
+weepay_dlq_depth
+Gauge
+> 10
+P1
+weepay_booking_notification_failures
+Counter
+> 0 in 10min
+P0
+14.2 Log Levels
+Table 15. Log-level policy
+Level
+Usage
+DEBUG
+Request/response payloads (sanitize PII)
+INFO
+State transitions, routing decisions, webhooks
+WARNING
+Retries, degraded providers, coverage gaps
+ERROR
+Failed transactions, circuit breaker open, DLQ
+CRITICAL
+All providers down, database failure, security breach
+14.3 Structured Logging
+{
+    "timestamp": "2026-08-03T14:23:12.341Z",
+    "level": "INFO",
+    "service": "weepay-gateway",
+    "trace_id": "trace_abc123",
+    "event": "routing.decision",
+    "transaction_id": "weepay_txn_xxx",
+    "corridor": "CV-card",
+    "decision": {
+        "provider": "stripe",
+        "reason": "PRIMARY_AVAILABLE",
+        "fallback": null,
+        "latency_ms": 45
+    }
+}
+14.4 Alerting Channels
+Table 16. Incident-alert channels
+Severity
+Channel
+Response Time
+P0
+PagerDuty + Slack #alerts-critical
+5 minutes
+P1
+Slack #alerts-warning
+15 minutes
+P2
+Slack #alerts-info
+1 hour
+P3
+Email digest
+Next business day
+15. Security
+15.1 Authentication Matrix
+Table 17. Authentication matrix
+Layer
+Mechanism
+WeePay Booking Engine
+mTLS + API key
+WeePay Provider APIs
+Provider-specific (API key, OAuth2, mTLS)
+Provider → WeePay Webhooks
+HMAC-SHA256 signature
+WeePay → Booking Engine Webhooks
+HMAC-SHA256 + API key
+Admin endpoints
+IP whitelist + API key
+15.2 Data Protection
+Table 18. Data-protection controls
+Data Type
+At Rest
+In Transit
+Retention
+Transaction records
+AES-256 (RDS)
+TLS 1.2+
+7 years (AML)
+PII (email, phone)
+AES-256 (app-level)
+TLS 1.2+
+7 years
+Webhook payloads
+Encrypted S3
+TLS 1.2+
+90 days
+Card data
+NOT STORED
+TLS 1.2+
+N/A
+Secrets
+AWS Secrets Manager
+N/A
+Rotation every 90 days
+15.3 PCI-DSS Scope
+WeePay is NOT in PCI scope for card data.
+Card data is handled exclusively by PCI-compliant providers (Stripe: Level 1, SISP).
+WeePay stores only provider tokens and transaction references.
+No PAN, CVV, track data, or PIN touches WeePay infrastructure.
+15.4 Rate Limiting
+Table 19. Rate limits
+Endpoint Class
+Limit
+API endpoints
+50 requests/minute per IP
+Webhook endpoints
+100 requests/second per provider
+Admin endpoints
+10 requests/minute per IP
+Health checks
+No limit
+16. Open Questions & TBD Items
+Governance significance
+All entries below are retained from the source. P0 items are production blockers; P1 items require resolution for dependable commercial, operational, legal, or reliability planning.
+16.1 Katamy Pay (P0 — Blockers)
+Table 20. Katamy Pay open questions
+#
+Question
+Impact
+Status
+1
+Specific countries & mobile money networks
+Coverage config accuracy
+Open
+2
+USDT live vs. planned coverage
+USDT routing logic
+Open
+3
+Live coverage API vs. static config
+Adapter implementation
+Open
+4
+Webhook payload shape & retry behavior
+Webhook handler
+Open
+5
+Refund API availability
+Refund implementation
+Open
+6
+Idempotency model
+Retry safety
+Open
+7
+Settlement timing
+Ledger accuracy
+Open
+8
+Min/max transaction limits
+Amount validation
+Open
+9
+KYC requirements by country
+Customer flow
+Open
+16.2 InstaPay (P0 — Blockers)
+Table 21. InstaPay open questions
+#
+Question
+Impact
+Status
+10
+Exact methods for WeeFly
+Adapter scope
+Open
+11
+Coverage overlap with Katamy Pay
+Redundancy design
+Open
+12
+Webhook, idempotency, refund alignment
+Uniform ledger treatment
+Open
+13
+Schedule request for instalments
+Instalment feature
+Open
+16.3 Both Providers (P1)
+Table 22. Cross-provider open questions
+#
+Question
+Impact
+Status
+14
+Failover trigger mechanism
+Auto-failover capability
+Open
+15
+Fee structure per method/corridor
+Cost comparison
+Open
+16
+Settlement currency
+FX handling
+Open
+17
+Compliance obligations (AML, reporting)
+Legal requirements
+Open
+18
+Uptime/SLA commitments
+Reliability planning
+Open
+16.4 Engineering TBD
+Table 23. Engineering and assurance backlog
+Item
+Priority
+Owner
+SISP/Vinti4 adapter implementation
+P1
+Engineering
+Revolut adapter implementation
+P1
+Engineering
+Pix adapter implementation
+P1
+Engineering
+Circuit breaker implementation
+P1
+Engineering
+DLQ admin dashboard
+P2
+Engineering
+Load testing & performance tuning
+P2
+Engineering
+Security audit & penetration test
+P1
+Security
+PCI scope validation
+P1
+Compliance
+17. Appendices
+Appendix A: API Reference
+Initiate Payment
+POST /api/v1/payments/initiate
+Content-Type: application/json
+{
+    "amount": 15000,
+    "currency": "CVE",
+    "method": "card",
+    "customer": {
+        "id": "cust_123",
+        "email": "test@weefly.cv",
+        "phone": "+2389991234",
+        "country": "CV"
+    },
+    "metadata": {
+        "booking_reference": "WF-BK-2026-0001234",
+        "idempotency_key": "idem_abc123"
+    }
+}
+Check Status
+GET /api/v1/payments/weepay_txn_abc123/status
+Refund
+POST /api/v1/payments/weepay_txn_abc123/refund
+Content-Type: application/json
+{
+    "amount": 15000,
+    "reason": "Customer request",
+    "idempotency_key": "refund_abc123"
+}
+Receive Webhook
+POST /api/v1/webhooks/stripe
+Stripe-Signature: t=1234567890,v1=abc123...
+{ /* provider-specific payload */ }
+Admin: Create Coverage Config
+POST /api/v1/admin/coverage-config
+Content-Type: application/json
+{
+    "country": "ZA",
+    "method": "card",
+    "primary_provider": "stripe",
+    "fallback_provider": "instapay",
+    "min_amount": 50,
+    "max_amount": 10000000,
+    "fee_bps": 250,
+    "fee_fixed_amount": 0,
+    "fee_currency": "ZAR"
+}
+Appendix B: Environment Variable Reference
+Table 24. Environment variables
+Variable
+Required
+Default
+Description
+APP_ENV
+Yes
+—
+development / staging / production
+DATABASE_URL
+Yes
+—
+PostgreSQL connection string
+REDIS_URL
+Yes
+—
+Redis connection string
+STRIPE_API_KEY
+Yes
+—
+Stripe secret key
+STRIPE_WEBHOOK_SECRET
+Yes
+—
+Stripe webhook endpoint secret
+KATAMY_PAY_API_KEY
+Yes
+—
+Katamy Pay API key
+KATAMY_PAY_BASE_URL
+No
+https://api.katamypay.com/v1
+Katamy Pay API base URL
+KATAMY_PAY_WEBHOOK_SECRET
+Yes
+—
+Katamy Pay webhook secret
+INSTAPAY_API_KEY
+Yes
+—
+InstaPay API key
+INSTAPAY_BASE_URL
+No
+https://api.instapay.com/v1
+InstaPay API base URL
+INSTAPAY_WEBHOOK_SECRET
+Yes
+—
+InstaPay webhook secret
+ENCRYPTION_KEY
+Yes
+—
+AES-256 key for PII encryption
+COVERAGE_CONFIG_CACHE_TTL
+No
+60
+Config cache TTL in seconds
+CIRCUIT_BREAKER_FAILURE_THRESHOLD
+No
+5
+Failures before opening circuit
+IDEMPOTENCY_KEY_TTL
+No
+86400
+Idempotency key TTL in seconds
+Appendix C: Troubleshooting Guide
+Table 25. Troubleshooting guide
+Symptom
+Check
+Fix
+Provider not registered
+Registry initialization
+Verify registry.register() in main.py
+Coverage gap not routing
+provider_coverage_config
+Verify is_active = TRUE for corridor
+Webhook 401
+Signature verification
+Check webhook secret, timestamp tolerance
+High DLQ depth
+Booking engine health
+Check booking engine, retry DLQ manually
+Circuit breaker open
+Provider health
+Check provider status, reset after recovery
+DB pool exhausted
+Connection settings
+Increase DATABASE_POOL_SIZE
+Idempotency key expired
+TTL setting
+Increase IDEMPOTENCY_KEY_TTL
+Slow routing decisions
+Config cache
+Verify cache is enabled, check DB index usage
+Missing transactions
+Event processing
+Check transaction_events for errors
+Appendix D: Glossary
+Table 26. Glossary
+Term
+Definition
+Corridor
+Country + payment method combination (e.g., CV-card)
+Coverage Gap
+Permanent unavailability of a provider for a corridor
+Outage
+Transient failure of a provider that normally supports a corridor
+Normalized Event
+Provider-agnostic webhook payload shape
+Provider Slot
+Logical role (Primary, Fallback) filled by any adapter
+Payment Instrument
+Customer-facing mechanism to complete payment (URL, QR, token)
+Terminal State
+Immutable transaction state (COMPLETED, FAILED, etc.)
+DLQ
+Dead Letter Queue—failed events for manual review
+Circuit Breaker
+Pattern that stops calls to failing providers temporarily
+Document Stewardship
+Role
+Detail
+Document Owner
+WeePay Engineering Lead
+Contributors
+Engineering, DevOps, QA, Product, Security
+Last Updated
+3 August 2026
+Next Review
+10 August 2026
+Source fidelity statement
+This board edition is grounded exclusively in WeePay_Developer_Manual_v1.pdf. No external research was used. Editorial additions are limited to the board briefing, governance framing, layout, captions, and redrawn presentation of source workflows and tables.

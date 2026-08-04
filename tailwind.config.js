@@ -53,6 +53,27 @@ module.exports = {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
         },
+        /*
+         * Back-office palette, lifted verbatim from the A2/A3/A4 mockups.
+         * Deliberately its own scale rather than a dark variant of the app
+         * theme: the client-facing pages stay light, the admin is dark, and
+         * mixing the two vocabularies is how they drift apart.
+         */
+        adm: {
+          bg: "#141A24",
+          panel: "#1E2532",
+          "panel-2": "#252E3E",
+          raise: "#2A3344",
+          line: "#333E51",
+          "line-soft": "#2A3243",
+          txt: "#E9EEF5",
+          "txt-2": "#C3CDDB",
+          muted: "#8494AB",
+          ember: "#EE5128",
+          "ember-dark": "#CE3F19",
+          ok: "#3EBE94",
+          warn: "#E3A63F",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

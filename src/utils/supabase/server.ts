@@ -14,6 +14,16 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      /*
+       * Never let the Next.js Data Cache hold a PostgREST response. See the
+       * long note in utils/supabase/admin.ts — supabase-js goes through the
+       * patched global `fetch`, so without this the back-office happily shows
+       * a stale copy of the case list after every write.
+       */
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+          fetch(input, { ...init, cache: "no-store" }),
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll()

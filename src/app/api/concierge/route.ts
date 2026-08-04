@@ -3,6 +3,9 @@ import { Resend } from "resend"
 
 import { travelRequestSchema } from "@/lib/validations"
 import { buildTravelRequestConfirmationEmail } from "@/lib/emails/travel-request-confirmation"
+import { buildTravelRequestNotificationEmail } from "@/lib/emails/travel-request-notification"
+import { markEmailOutcome, saveTravelRequest } from "@/lib/concierge-intake"
+import { bindTripRequestToCase } from "@/lib/booking-cases"
 
 // Resend uses the Node runtime; keep this off the edge so nodemailer-style
 // SDKs and env secrets behave predictably.
@@ -11,12 +14,24 @@ export const runtime = "nodejs"
 const FROM_EMAIL =
   process.env.CONCIERGE_FROM_EMAIL ?? "WeeFly Concierge <onboarding@resend.dev>"
 
+/** Concierge inbox(es) that receive every online request. */
+const DEFAULT_TEAM_EMAILS = ["info@weefly.africa", "info@weefly.cv"]
+
+/** Comma-separated override, e.g. CONCIERGE_TEAM_EMAIL="a@x.cv, b@x.cv". */
+const TEAM_EMAILS = (process.env.CONCIERGE_TEAM_EMAIL ?? "")
+  .split(",")
+  .map((address) => address.trim())
+  .filter(Boolean)
+
+const teamRecipients = TEAM_EMAILS.length > 0 ? TEAM_EMAILS : DEFAULT_TEAM_EMAILS
+
 /**
  * WeeFly Concierge — Central Intake (browser channel).
  *
  * Receives a travel request from the public form, validates it server-side
- * (never trust the client), fires the client confirmation email, and — once
- * you wire it up — hands the data to your backend to open a Lead + TripRequest.
+ * (never trust the client), notifies the concierge team, confirms receipt to
+ * the client, and — once you wire it up — hands the data to your backend to
+ * open a Lead + TripRequest.
  */
 export async function POST(request: Request) {
   let payload: unknown
@@ -40,32 +55,42 @@ export async function POST(request: Request) {
 
   const data = parsed.data
 
-  // ---------------------------------------------------------------------------
-  // TODO (ligar ao teu backend): persist the lead + trip request here.
-  //
-  // This is the channel-agnostic Intake point from the technical spec. Create
-  // the Lead (name, email, phone, source_channel: "browser") and its first
-  // TripRequest, then transition the lead to "Filled". Example:
-  //
-  //   const supabase = createClient() // "@/utils/supabase/server"
-  //   const { data: lead } = await supabase.from("leads").insert({ ... })
-  //   await supabase.from("trip_requests").insert({ lead_id: lead.id, ... })
-  //
-  // Keep the response shape below so the form's onSubmit keeps working.
-  // ---------------------------------------------------------------------------
+  // Persist FIRST. The database is the system of record: if Resend is down or
+  // the address bounces, the lead must still be sitting in the back-office.
+  // Delivery outcome is backfilled below once the sends have been attempted.
+  const saved = await saveTravelRequest(data, { sourceChannel: "browser" })
 
-  // Fire the transactional confirmation email.
+  // When the form was reached through an admin-generated link, attach the
+  // request to that case and close Link 1. A bad or already-used token is not
+  // an error for the client — their request is saved regardless.
+  const token = typeof (payload as { token?: unknown })?.token === "string"
+    ? ((payload as { token: string }).token)
+    : null
+
+  if (token && saved) {
+    await bindTripRequestToCase(token, saved.tripRequestId, saved.leadId)
+  }
+
   if (!process.env.RESEND_API_KEY) {
     // Don't hard-fail the request in local dev without a key — log and continue
     // so the flow is still testable. In production, set RESEND_API_KEY.
     console.warn(
-      "[concierge] RESEND_API_KEY not set — skipping confirmation email."
+      "[concierge] RESEND_API_KEY not set — skipping emails. Pedido de %s (%s): %s → %s",
+      data.fullName,
+      data.email,
+      data.origin,
+      data.destination
     )
-    return NextResponse.json({ ok: true, emailSent: false })
+    return NextResponse.json({
+      ok: true,
+      emailSent: false,
+      teamNotified: false,
+      reference: saved?.reference ?? null,
+    })
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY)
-  const email = buildTravelRequestConfirmationEmail({
+  const trip = {
     title: data.title,
     fullName: data.fullName,
     tripType: data.tripType,
@@ -77,39 +102,83 @@ export async function POST(request: Request) {
     children: data.children,
     infants: data.infants,
     cabinClass: data.cabinClass,
-  })
-
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: data.email,
-      subject: email.subject,
-      html: email.html,
-      text: email.text,
-      replyTo: process.env.CONCIERGE_TEAM_EMAIL,
-    })
-
-    if (error) {
-      console.error("[concierge] Resend error:", error)
-      // The request itself was accepted; surface a soft failure on the email.
-      return NextResponse.json({ ok: true, emailSent: false }, { status: 202 })
-    }
-
-    // Optional: notify the concierge team a new lead arrived.
-    if (process.env.CONCIERGE_TEAM_EMAIL) {
-      await resend.emails
-        .send({
-          from: FROM_EMAIL,
-          to: process.env.CONCIERGE_TEAM_EMAIL,
-          subject: `Novo pedido de viagem · ${data.origin} → ${data.destination}`,
-          text: `${data.fullName} (${data.email}, ${data.phonePrefix} ${data.phone}) submeteu um pedido: ${data.origin} → ${data.destination}.`,
-        })
-        .catch((err) => console.error("[concierge] team notify failed:", err))
-    }
-  } catch (err) {
-    console.error("[concierge] Unexpected email failure:", err)
-    return NextResponse.json({ ok: true, emailSent: false }, { status: 202 })
   }
 
-  return NextResponse.json({ ok: true, emailSent: true })
+  const notification = buildTravelRequestNotificationEmail({
+    ...trip,
+    email: data.email,
+    phonePrefix: data.phonePrefix,
+    phone: data.phone,
+    sourceChannel: "Formulário online (weefly.africa)",
+  })
+  const confirmation = buildTravelRequestConfirmationEmail(trip)
+
+  // The two sends are independent: a bounced client confirmation must never
+  // cost the team its lead, and vice-versa.
+  const [teamResult, clientResult] = await Promise.allSettled([
+    resend.emails.send({
+      from: FROM_EMAIL,
+      to: teamRecipients,
+      subject: notification.subject,
+      html: notification.html,
+      text: notification.text,
+      // Replying to the internal alert answers the customer directly.
+      replyTo: data.email,
+    }),
+    resend.emails.send({
+      from: FROM_EMAIL,
+      to: data.email,
+      subject: confirmation.subject,
+      html: confirmation.html,
+      text: confirmation.text,
+      replyTo: teamRecipients[0],
+    }),
+  ])
+
+  const teamNotified = succeeded(teamResult, "team notification")
+  const emailSent = succeeded(clientResult, "client confirmation")
+
+  if (!teamNotified) {
+    // The lead is the business-critical half — make it loud and greppable.
+    console.error(
+      "[concierge] LEAD NOT DELIVERED — %s (%s, %s %s): %s → %s | %s | %s pax | %s",
+      data.fullName,
+      data.email,
+      data.phonePrefix,
+      data.phone,
+      data.origin,
+      data.destination,
+      data.departDate,
+      data.adults + data.children + data.infants,
+      data.cabinClass
+    )
+  }
+
+  if (saved) {
+    await markEmailOutcome(saved.tripRequestId, { emailSent, teamNotified })
+  }
+
+  // The request itself was accepted either way; 202 signals a partial send so
+  // the failure is visible in logs/monitoring without breaking the client UX.
+  const status = teamNotified && emailSent ? 200 : 202
+  return NextResponse.json(
+    { ok: true, emailSent, teamNotified, reference: saved?.reference ?? null },
+    { status }
+  )
+}
+
+/** Unwrap a settled Resend send, logging whichever way it failed. */
+function succeeded(
+  result: PromiseSettledResult<{ error: unknown }>,
+  label: string
+): boolean {
+  if (result.status === "rejected") {
+    console.error(`[concierge] ${label} threw:`, result.reason)
+    return false
+  }
+  if (result.value.error) {
+    console.error(`[concierge] ${label} failed:`, result.value.error)
+    return false
+  }
+  return true
 }

@@ -1,0 +1,23 @@
+
+> weefly-pro@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.2
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ○ Compiling /src/middleware ...
+ ✓ Compiled /src/middleware in 830ms (128 modules)
+ ○ Compiling /p/[token] ...
+ ✓ Compiled /p/[token] in 5.9s (1422 modules)
+ ✓ Compiled in 457ms (674 modules)
+ GET /p/yXDxCdr_ACx9yI4XIrhnKb030Q_ZGyAP 200 in 7118ms
+ ○ Compiling /p/[token]/passageiros ...
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (106kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (253kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ✓ Compiled /p/[token]/passageiros in 4.1s (1421 modules)
+ GET /p/yXDxCdr_ACx9yI4XIrhnKb030Q_ZGyAP/passageiros 200 in 4850ms
+ ✓ Compiled /p/[token]/pagamento in 214ms (1427 modules)
+ GET /p/yXDxCdr_ACx9yI4XIrhnKb030Q_ZGyAP/pagamento 200 in 829ms

@@ -13,12 +13,18 @@ const DASHBOARD_HOME = "/inicio"
 /** Auth pages an already-signed-in user should be bounced away from. */
 const AUTH_ROUTES: readonly string[] = ["/login", "/registro"]
 
-/** Prefixes that require a session (dashboard + onboarding areas). */
+/**
+ * Prefixes that require a session (dashboard + onboarding + back-office).
+ *
+ * /admin additionally requires platform_staff membership — enforced by the
+ * admin layout and, authoritatively, by RLS.
+ */
 const PROTECTED_PREFIXES: readonly string[] = [
   "/inicio",
   "/empresa",
   "/agente",
   "/criar-empresa",
+  "/admin",
 ]
 
 function matchesPrefix(pathname: string, prefixes: readonly string[]): boolean {

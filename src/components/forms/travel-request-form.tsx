@@ -52,10 +52,16 @@ const STEP_FIELDS: (keyof TravelRequestFormData)[][] = [
 
 const today = new Date().toISOString().split("T")[0]
 
-export function TravelRequestForm() {
+/**
+ * @param token When the form is reached through an admin-generated link, this
+ * binds the submission to that booking case. Absent on the public /concierge page.
+ */
+export function TravelRequestForm({ token }: { token?: string } = {}) {
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [confirmationSent, setConfirmationSent] = useState(false)
+  const [reference, setReference] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
 
   const form = useForm<TravelRequestFormData>({
@@ -101,12 +107,15 @@ export function TravelRequestForm() {
       const res = await fetch("/api/concierge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(token ? { ...data, token } : data),
       })
+      const body = await res.json().catch(() => null)
       if (!res.ok) {
-        const body = await res.json().catch(() => null)
         throw new Error(body?.error ?? "Não foi possível enviar o pedido.")
       }
+      // Only promise a confirmation email if one actually went out.
+      setConfirmationSent(body?.emailSent === true)
+      setReference(typeof body?.reference === "string" ? body.reference : null)
       setSuccess(true)
     } catch (err) {
       setServerError(
@@ -118,7 +127,13 @@ export function TravelRequestForm() {
   }
 
   if (success) {
-    return <SuccessScreen name={watch("fullName")} email={watch("email")} />
+    return (
+      <SuccessScreen
+        name={watch("fullName")}
+        email={confirmationSent ? watch("email") : ""}
+        reference={reference}
+      />
+    )
   }
 
   return (
@@ -552,7 +567,15 @@ function Counter({
   )
 }
 
-function SuccessScreen({ name, email }: { name: string; email: string }) {
+function SuccessScreen({
+  name,
+  email,
+  reference,
+}: {
+  name: string
+  email: string
+  reference: string | null
+}) {
   const firstName = name.trim().split(" ")[0] || ""
   return (
     <div className="w-full max-w-lg mx-auto text-center animate-fade-in">
@@ -567,6 +590,12 @@ function SuccessScreen({ name, email }: { name: string; email: string }) {
           A nossa equipa de Concierge está a preparar as melhores opções e
           tarifas de voos para si e irá retornar o contacto brevemente.
         </p>
+        {reference && (
+          <p className="mt-5 inline-block rounded-lg bg-slate-50 px-4 py-2 text-sm text-slate-500">
+            Referência:{" "}
+            <strong className="font-mono text-slate-900">{reference}</strong>
+          </p>
+        )}
         {email && (
           <p className="mt-4 text-sm text-slate-400">
             Enviámos uma confirmação para <strong>{email}</strong>.

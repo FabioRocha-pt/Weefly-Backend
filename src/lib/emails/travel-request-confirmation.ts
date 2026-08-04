@@ -11,75 +11,22 @@
  * client just submitted.
  */
 
-export interface TravelRequestEmailData {
-  title: "mr" | "ms"
-  fullName: string
-  tripType: "round_trip" | "one_way" | "multi_city"
-  origin: string
-  destination: string
-  departDate: string
-  returnDate?: string
-  adults: number
-  children: number
-  infants: number
-  cabinClass: "economy" | "business" | "first"
-}
+import {
+  BORDER,
+  CABIN_LABELS,
+  EMBER_RED,
+  INK,
+  MUTED,
+  SURFACE_ALT,
+  TRIP_TYPE_LABELS,
+  type TravelRequestSummary,
+  datesSummary,
+  escapeHtml,
+  passengersSummary,
+  summaryRow,
+} from "./shared"
 
-const EMBER_RED = "#EF5129"
-const INK = "#1A222E"
-const MUTED = "#5A6270"
-const BORDER = "#E4E8ED"
-const SURFACE_ALT = "#F5F7F9"
-
-const TRIP_TYPE_LABELS: Record<TravelRequestEmailData["tripType"], string> = {
-  round_trip: "Ida e volta",
-  one_way: "Só ida",
-  multi_city: "Multi-destino",
-}
-
-const CABIN_LABELS: Record<TravelRequestEmailData["cabinClass"], string> = {
-  economy: "Económica",
-  business: "Executiva",
-  first: "Primeira",
-}
-
-/** Format a "YYYY-MM-DD" input value as "DD/MM/YYYY" without timezone drift. */
-function formatDate(value?: string): string {
-  if (!value) return "—"
-  const [y, m, d] = value.split("-")
-  if (!y || !m || !d) return value
-  return `${d}/${m}/${y}`
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-}
-
-function passengersSummary(data: TravelRequestEmailData): string {
-  const parts: string[] = [
-    `${data.adults} ${data.adults === 1 ? "adulto" : "adultos"}`,
-  ]
-  if (data.children > 0) {
-    parts.push(`${data.children} ${data.children === 1 ? "criança" : "crianças"}`)
-  }
-  if (data.infants > 0) {
-    parts.push(`${data.infants} ${data.infants === 1 ? "bebé" : "bebés"}`)
-  }
-  return parts.join(" · ")
-}
-
-/** A single label/value row inside the trip summary card. */
-function summaryRow(label: string, value: string): string {
-  return `
-    <tr>
-      <td style="padding:10px 0;border-bottom:1px solid ${BORDER};color:${MUTED};font-size:13px;">${label}</td>
-      <td style="padding:10px 0;border-bottom:1px solid ${BORDER};color:${INK};font-size:14px;font-weight:600;text-align:right;">${value}</td>
-    </tr>`
-}
+export type TravelRequestEmailData = TravelRequestSummary
 
 export function buildTravelRequestConfirmationEmail(data: TravelRequestEmailData): {
   subject: string
@@ -89,11 +36,7 @@ export function buildTravelRequestConfirmationEmail(data: TravelRequestEmailData
   const greeting = data.title === "ms" ? "Cara Sra." : "Caro Sr."
   const name = escapeHtml(data.fullName)
   const route = `${escapeHtml(data.origin)} → ${escapeHtml(data.destination)}`
-
-  const datesValue =
-    data.tripType === "round_trip"
-      ? `${formatDate(data.departDate)} — ${formatDate(data.returnDate)}`
-      : formatDate(data.departDate)
+  const datesValue = datesSummary(data)
 
   const subject = "Recebemos o seu pedido de viagem · WeeFly Concierge"
 
