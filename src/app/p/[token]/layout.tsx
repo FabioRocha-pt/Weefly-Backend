@@ -29,7 +29,12 @@ export default function ClientLinkLayout({
           </span>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">{children}</main>
+      {/*
+        Largo o bastante para os cartões de oferta do comparador respirarem.
+        As páginas que não precisam de tanto (o formulário do link 1, o
+        pagamento) estreitam-se por dentro.
+      */}
+      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">{children}</main>
     </div>
   )
 }

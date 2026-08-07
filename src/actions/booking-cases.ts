@@ -40,20 +40,22 @@ export async function createCase(): Promise<
   }
 
   /*
-   * Belt and braces: migration 0004 makes the seed trigger open all three
-   * stages, but a database that hasn't had it applied yet would still hand back
-   * a case with stages 2 and 3 blocked — and a blocked stage is a dead end
-   * while there is no email to announce an unlock. Once 0004 is in, this update
-   * matches what the trigger already wrote and changes nothing.
+   * Belt and braces para a etapa 3, e só para ela.
+   *
+   * A 0004 abria as três etapas à nascença. A 0005 voltou a fechar a 2, porque
+   * agora há um gesto que a abre — publicar a proposta — e um email que o
+   * anuncia. A 3 mantém-se aberta desde o início: quem lá chega antes de haver
+   * valor vê "ainda a preparar o valor", que é verdade e não um beco sem saída.
    */
   const { error: unlockError } = await supabase
     .from("case_links")
     .update({ status: "ativo", unlocked_at: new Date().toISOString() })
     .eq("case_id", data.id)
+    .eq("stage", 3)
     .eq("status", "bloqueado")
 
   if (unlockError) {
-    console.error("[cases] opening stages failed:", unlockError)
+    console.error("[cases] opening stage 3 failed:", unlockError)
   }
 
   revalidatePath("/admin")
@@ -61,11 +63,12 @@ export async function createCase(): Promise<
 }
 
 /**
- * Unlock Link 2 or Link 3 for the client.
+ * Abre a etapa 3 (pagamento) ao cliente.
  *
- * This is the manual gate the whole flow hinges on: the admin only opens the
- * next stage once the off-platform step (fare search, client agreement) is
- * done. Stage 1 is never unlocked here — it is active from creation.
+ * A etapa 2 deixou de passar por aqui de propósito: desde a migração 0005 é
+ * publicar a proposta que a abre, e nada mais. Se um caminho qualquer a pudesse
+ * destrancar sozinho, o cliente receberia um comparador vazio — que é
+ * exatamente a situação que a publicação existe para impedir.
  */
 export async function unlockStage(
   formData: FormData
@@ -74,7 +77,12 @@ export async function unlockStage(
   const stage = Number(field(formData, "stage"))
 
   if (!caseId) return { error: "Caso inválido." }
-  if (stage !== 2 && stage !== 3) return { error: "Etapa inválida." }
+  if (stage === 2) {
+    return {
+      error: "O link 2 abre ao publicar a proposta, no separador Ofertas.",
+    }
+  }
+  if (stage !== 3) return { error: "Etapa inválida." }
 
   const supabase = createClient()
 
@@ -95,16 +103,18 @@ export async function unlockStage(
   }
 
   // Advance the case only when it is genuinely behind; never move it backwards.
-  const nextStage: CaseStage =
-    stage === 2 ? "detalhes_pendentes" : "pagamento_pendente"
-  const behind: CaseStage[] =
-    stage === 2
-      ? ["novo", "pedido_recebido"]
-      : ["novo", "pedido_recebido", "detalhes_pendentes", "detalhes_recebidos"]
+  const behind: CaseStage[] = [
+    "novo",
+    "pedido_recebido",
+    "proposta_enviada",
+    "opcao_escolhida",
+    "detalhes_pendentes",
+    "detalhes_recebidos",
+  ]
 
   await supabase
     .from("booking_cases")
-    .update({ stage: nextStage })
+    .update({ stage: "pagamento_pendente" })
     .eq("id", caseId)
     .in("stage", behind)
 

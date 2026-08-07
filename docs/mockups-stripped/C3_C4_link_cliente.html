@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WeeFly · A sua proposta de viagem · WF-7K4M-92XB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ember:#EE5128;
+  --ember-dark:#CE3F19;
+  --ember-tint:#FEF1EC;
+  --navy:#1E2532;
+  --navy-soft:#3A4557;
+  --ink:#12161F;
+  --chalk:#F1F5F9;
+  --line:#DFE5EC;
+  --line-soft:#EDF1F6;
+  --muted:#64748B;
+  --ok:#0E7A5B;
+  --ok-tint:#E9F6F1;
+  --warn:#9A5B06;
+  --warn-tint:#FDF5E7;
+  --r:14px;
+  --shadow:0 1px 2px rgba(18,22,31,.04), 0 8px 24px -12px rgba(18,22,31,.12);
+  --shadow-lift:0 2px 4px rgba(18,22,31,.05), 0 18px 40px -18px rgba(18,22,31,.22);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--chalk);
+  color:var(--ink);
+  font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+a{color:inherit}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--ember);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1000px;margin:0 auto;padding:0 20px}
+
+/* ── Topbar ───────────────────────────────── */
+.topbar{background:#fff;border-bottom:1px solid var(--line)}
+.topbar-in{display:flex;align-items:center;gap:16px;min-height:64px}
+.logo{height:26px;width:auto;display:block}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ref{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--chalk);border:1px solid var(--line);border-radius:999px;
+  padding:5px 6px 5px 12px;
+}
+.ref-label{font-size:10px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.ref-code{
+  font-size:13px;font-weight:600;letter-spacing:.06em;color:var(--navy);
+  background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 10px;
+}
+.pill-quiet{
+  border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:6px 12px;font-size:13px;font-weight:600;color:var(--navy-soft);
+}
+.help{font-size:13px;font-weight:600;color:var(--navy);text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:1px}
+.help:hover{border-bottom-color:var(--navy)}
+
+/* ── Stepper ──────────────────────────────── */
+.stepper{background:#fff;border-bottom:1px solid var(--line)}
+.steps{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.steps::-webkit-scrollbar{display:none}
+.step{
+  display:flex;align-items:center;gap:9px;padding:14px 18px 12px 0;
+  font-size:13px;color:var(--muted);white-space:nowrap;flex:0 0 auto;
+}
+.step-n{
+  width:20px;height:20px;border-radius:50%;flex:0 0 auto;
+  display:grid;place-items:center;
+  font-size:11px;font-weight:700;
+  background:var(--chalk);color:var(--muted);border:1px solid var(--line);
+}
+.step.done .step-n{background:var(--navy);color:#fff;border-color:var(--navy)}
+.step.done{color:var(--navy-soft)}
+.step.now .step-n{background:#fff;color:var(--navy);border:2px solid var(--navy)}
+.step.now{color:var(--navy);font-weight:700}
+.step-rule{width:22px;height:1px;background:var(--line);align-self:center;flex:0 0 auto}
+
+/* ── Trip summary ─────────────────────────── */
+.brief{padding:26px 0 4px}
+.brief-top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:29px;line-height:1.15;letter-spacing:-.02em;font-weight:800;margin:6px 0 0}
+.brief-sub{color:var(--muted);margin:8px 0 0;max-width:62ch}
+.facts{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 0}
+.fact{
+  background:#fff;border:1px solid var(--line);border-radius:10px;
+  padding:8px 12px;font-size:13px;display:flex;align-items:center;gap:8px;
+}
+.fact b{font-weight:700}
+.fact-k{font-size:10px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.linkish{background:none;border:0;padding:0;font-size:13px;font-weight:700;color:var(--navy);text-decoration:underline;text-underline-offset:3px}
+
+/* ── Validity banner ─────────────────────── */
+.validity{
+  margin:22px 0 0;background:#fff;border:1px solid var(--line);border-left:3px solid var(--warn);
+  border-radius:var(--r);padding:14px 16px;display:flex;gap:14px;align-items:flex-start;
+}
+.validity-body{flex:1;min-width:0}
+.validity h3{margin:0;font-size:14px;font-weight:700}
+.validity p{margin:4px 0 0;font-size:13px;color:var(--muted)}
+.clock{
+  font-size:15px;font-weight:600;color:var(--warn);background:var(--warn-tint);
+  border-radius:8px;padding:6px 10px;white-space:nowrap;letter-spacing:.02em;
+}
+
+/* ── Sort ─────────────────────────────────── */
+.sortbar{display:flex;align-items:center;gap:8px;margin:26px 0 12px;flex-wrap:wrap}
+.sortbar-label{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-right:4px}
+.chip{
+  border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:7px 14px;font-size:13px;font-weight:600;color:var(--navy-soft);
+}
+.chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.count{margin-left:auto;font-size:13px;color:var(--muted)}
+
+/* ── Offer coupon ─────────────────────────── */
+.offers{display:flex;flex-direction:column;gap:14px}
+.offer{
+  background:#fff;border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);display:flex;position:relative;transition:box-shadow .18s, border-color .18s;
+}
+.offer:hover{box-shadow:var(--shadow-lift);border-color:#CFD8E3}
+.offer-main{flex:1;min-width:0;padding:18px 20px 16px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.tag{
+  font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;
+  border-radius:6px;padding:4px 8px;background:var(--chalk);color:var(--navy-soft);
+}
+.tag-best{background:var(--navy);color:#fff}
+.tag-ok{background:var(--ok-tint);color:var(--ok)}
+
+/* itinerary strip: the signature element */
+.leg{display:flex;align-items:flex-start;gap:16px;padding:12px 0}
+.leg + .leg{border-top:1px dashed var(--line)}
+.leg-tag{
+  flex:0 0 62px;font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  font-weight:800;color:var(--muted);padding-top:5px;
+}
+.leg-body{flex:1;min-width:0}
+.strip{display:flex;align-items:center;gap:14px}
+.node{flex:0 0 auto;min-width:64px}
+.node-time{font-size:19px;font-weight:600;letter-spacing:-.01em;line-height:1.1;display:block}
+.node-iata{font-size:12px;font-weight:600;color:var(--navy-soft);letter-spacing:.08em;display:block;margin-top:3px}
+.node-city{font-size:11px;color:var(--muted);display:block}
+.node-right{text-align:right}
+.bar{flex:1;min-width:60px;position:relative;padding:0 2px;height:34px}
+.bar-line{position:absolute;left:0;right:0;top:17px;height:1px;background:var(--line)}
+.bar-dot{position:absolute;top:14px;width:7px;height:7px;border-radius:50%;background:var(--navy);}
+.bar-dot.s{left:0}
+.bar-dot.e{right:0}
+.bar-stop{position:absolute;top:15px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:#fff;border:1.5px solid var(--navy-soft)}
+.bar-dur{
+  position:absolute;left:50%;top:-3px;transform:translateX(-50%);
+  background:#fff;padding:0 8px;font-size:11px;font-weight:600;color:var(--navy-soft);
+}
+.bar-stops{
+  position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);
+  background:#fff;padding:0 8px;font-size:11px;color:var(--muted);white-space:nowrap;
+}
+.carrier{display:flex;align-items:center;gap:8px;margin:8px 0 0;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.carrier-code{
+  font-size:11px;font-weight:600;color:var(--navy);background:var(--chalk);
+  border-radius:5px;padding:2px 6px;letter-spacing:.04em;
+}
+.fare-name{font-size:12px;color:var(--muted)}
+.vendor-note{
+  margin:14px 0 0;background:var(--chalk);border-radius:10px;padding:11px 13px;
+  font-size:13px;color:var(--navy-soft);
+}
+.vendor-note b{color:var(--navy);font-weight:700}
+.disclose{
+  margin:14px 0 0;background:none;border:0;padding:0;
+  font-size:13px;font-weight:700;color:var(--navy);display:inline-flex;align-items:center;gap:7px;
+}
+.disclose span{text-decoration:underline;text-underline-offset:3px}
+.caret{transition:transform .2s}
+.offer.open .caret{transform:rotate(180deg)}
+
+/* perforated price rail */
+.offer-rail{
+  flex:0 0 214px;border-left:1px dashed var(--line);
+  padding:18px 20px;display:flex;flex-direction:column;justify-content:center;position:relative;
+}
+.notch{
+  position:absolute;left:-7px;width:13px;height:13px;border-radius:50%;
+  background:var(--chalk);border:1px solid var(--line);
+}
+.notch-t{top:-7px;border-bottom-color:transparent;border-right-color:transparent;transform:rotate(-45deg)}
+.notch-b{bottom:-7px;border-top-color:transparent;border-left-color:transparent;transform:rotate(-45deg)}
+.rail-k{font-size:10px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.price{font-size:31px;font-weight:600;letter-spacing:-.02em;line-height:1.05;margin:4px 0 0}
+.price sup{font-size:14px;font-weight:500;vertical-align:12px;margin-right:2px;color:var(--navy-soft)}
+.price-sub{font-size:12px;color:var(--muted);margin:5px 0 0}
+.btn{
+  border:0;border-radius:10px;padding:12px 16px;font-weight:700;font-size:14px;
+  width:100%;margin-top:16px;transition:background .16s, transform .06s;
+}
+.btn-primary{background:var(--ember);color:#fff}
+.btn-primary:hover{background:var(--ember-dark)}
+.btn-primary:active{transform:translateY(1px)}
+.btn-ghost{background:#fff;border:1px solid var(--line);color:var(--navy)}
+.btn-ghost:hover{border-color:var(--navy-soft)}
+
+/* ── C3b detail drawer ────────────────────── */
+.detail{display:none;border-top:1px solid var(--line);background:#FCFDFE;border-radius:0 0 var(--r) var(--r)}
+.offer.open .detail{display:block}
+.detail-in{padding:20px 20px 22px}
+.detail-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:26px}
+.dt{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 12px}
+/* segment timeline */
+.seg{display:grid;grid-template-columns:14px 1fr;gap:14px}
+.seg-rail{position:relative}
+.seg-rail::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.seg-pt{position:relative;padding:0 0 18px 0}
+.seg-pt::before{
+  content:"";position:absolute;left:-22px;top:5px;width:9px;height:9px;border-radius:50%;
+  background:#fff;border:2px solid var(--navy);
+}
+.seg-pt.mid::before{border-color:var(--muted);width:7px;height:7px;left:-21px;top:6px}
+.seg-time{font-size:13px;font-weight:600;letter-spacing:.02em}
+.seg-place{font-size:13px;font-weight:700;margin-top:1px}
+.seg-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.layover{
+  margin:0 0 18px;background:var(--chalk);border-radius:8px;padding:8px 11px;
+  font-size:12px;color:var(--navy-soft);font-weight:600;
+}
+.flight-of{font-size:12px;color:var(--muted);margin:0 0 14px}
+/* conditions + price table */
+.rows{border-top:1px solid var(--line-soft)}
+.row{display:flex;gap:12px;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
+.row-k{color:var(--muted)}
+.row-v{font-weight:600;text-align:right}
+.row-v.yes{color:var(--ok)}
+.row-v.no{color:var(--navy-soft)}
+.row.total{border-bottom:0;padding-top:13px;font-size:16px}
+.row.total .row-k{color:var(--ink);font-weight:800}
+.row.total .row-v{font-weight:700;font-size:19px;letter-spacing:-.01em}
+.row-note{font-size:11px;color:var(--muted);font-weight:500;display:block}
+.fee-line .row-k{color:var(--navy)}
+.tblblock{margin-top:26px}
+
+/* ── Step 3 · passengers ──────────────────── */
+.view[hidden]{display:none}
+.picked{
+  background:var(--navy);color:#fff;border-radius:var(--r);padding:18px 20px;
+  display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin:22px 0 0;
+}
+.picked-k{font-size:10px;letter-spacing:.10em;text-transform:uppercase;color:#9FB0C6;font-weight:700}
+.picked-route{font-size:17px;font-weight:700;margin-top:3px;letter-spacing:-.01em}
+.picked-meta{font-size:13px;color:#B9C6D8;margin-top:3px}
+.picked-price{margin-left:auto;text-align:right}
+.picked-price .amt{font-size:25px;font-weight:600;letter-spacing:-.02em}
+.picked-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.btn-inline{
+  background:none;border:1px solid rgba(255,255,255,.28);color:#fff;
+  border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;
+}
+.btn-inline:hover{border-color:#fff}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin:14px 0 0}
+.card-h{padding:16px 20px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:12px}
+.pax-n{
+  width:26px;height:26px;border-radius:8px;background:var(--navy);color:#fff;
+  display:grid;place-items:center;font-size:12px;font-weight:700;flex:0 0 auto;
+}
+.card-h h3{margin:0;font-size:15px;font-weight:700}
+.card-h .sub{font-size:12px;color:var(--muted);margin-top:1px}
+.badge{
+  margin-left:auto;font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;
+  background:var(--ember-tint);color:var(--ember-dark);border-radius:6px;padding:4px 8px;
+}
+.card-b{padding:18px 20px 20px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.f{display:flex;flex-direction:column;gap:6px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}
+label{font-size:12px;font-weight:700;color:var(--navy-soft)}
+label .req{color:var(--ember);margin-left:2px}
+input,select{
+  font-family:inherit;font-size:14px;padding:10px 12px;border:1px solid var(--line);
+  border-radius:9px;background:#fff;color:var(--ink);width:100%;
+}
+input::placeholder{color:#A9B4C4}
+input:focus,select:focus{outline:2px solid var(--navy);outline-offset:-1px;border-color:var(--navy)}
+.hint{font-size:11px;color:var(--muted)}
+.notice{
+  background:var(--warn-tint);border-radius:10px;padding:11px 13px;font-size:13px;
+  color:#6B4405;margin:0 0 18px;
+}
+.confirm{display:flex;gap:11px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:16px 20px;margin:14px 0 0}
+.confirm input{width:17px;height:17px;margin:2px 0 0;flex:0 0 auto;accent-color:var(--ember)}
+.confirm p{margin:0;font-size:13px;color:var(--navy-soft)}
+.foot-actions{display:flex;gap:12px;align-items:center;margin:18px 0 0;flex-wrap:wrap}
+.foot-actions .btn{width:auto;margin:0;min-width:250px}
+.cancel{background:none;border:0;font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;margin-left:auto}
+
+footer{margin:44px 0 0;border-top:1px solid var(--line);background:#fff}
+.foot-in{display:flex;gap:16px;justify-content:space-between;padding:20px 0;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.spacer{height:38px}
+
+@media (max-width:840px){
+  .offer{flex-direction:column}
+  .offer-rail{flex:1 1 auto;border-left:0;border-top:1px dashed var(--line);flex-direction:row;align-items:center;gap:16px;justify-content:space-between}
+  .notch{left:auto;top:auto}
+  .notch-t{left:-7px;top:-7px}
+  .notch-b{right:-7px;bottom:auto;top:-7px;left:auto}
+  .offer-rail .btn{width:auto;margin:0;min-width:150px}
+  .detail-grid{grid-template-columns:1fr;gap:24px}
+  h1{font-size:24px}
+  .c3,.c4,.c5,.c6,.c8{grid-column:span 12}
+  .picked-price{margin-left:0;text-align:left;width:100%}
+  .foot-actions .btn{width:100%;min-width:0}
+  .cancel{margin:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+  <!-- LOGO_BASE64 line stripped -->
+    <div class="topbar-right">
+      <span class="ref"><span class="ref-label">Referência</span><span class="ref-code mono">WF-7K4M-92XB</span></span>
+      <span class="pill-quiet">USD $</span>
+      <a class="help" href="#">Falar com o meu agente</a>
+    </div>
+  </div>
+</header>
+
+<nav class="stepper" aria-label="Progresso do pedido">
+  <div class="wrap">
+    <div class="steps">
+      <div class="step done"><span class="step-n" aria-hidden="true">✓</span>Pedido enviado</div>
+      <div class="step-rule"></div>
+      <div class="step done"><span class="step-n" aria-hidden="true">✓</span>Pesquisa concluída</div>
+      <div class="step-rule"></div>
+      <div class="step now" id="stepOffers" aria-current="step"><span class="step-n">3</span>Escolher voo</div>
+      <div class="step-rule"></div>
+      <div class="step" id="stepPax"><span class="step-n">4</span>Dados dos passageiros</div>
+      <div class="step-rule"></div>
+      <div class="step"><span class="step-n">5</span>Pagamento</div>
+      <div class="step-rule"></div>
+      <div class="step"><span class="step-n">6</span>Bilhete emitido</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ════════ E2 · C3 comparador de ofertas ════════ -->
+<main class="wrap view" id="viewOffers">
+  <section class="brief">
+    <div class="brief-top"><span class="eyebrow">Proposta preparada por Nélida Fortes</span></div>
+    <h1>Encontrámos 3 opções para a sua viagem</h1>
+    <p class="brief-sub">Comparámos tarifas nas companhias que voam esta rota e no mercado direto. Abra cada opção para ver o itinerário completo, as bagagens incluídas e o preço detalhado.</p>
+
+    <div class="facts">
+      <div class="fact"><span class="fact-k">Rota</span><b class="mono">RAI → BOS</b></div>
+      <div class="fact"><span class="fact-k">Ida</span><b>14 set 2026</b></div>
+      <div class="fact"><span class="fact-k">Volta</span><b>28 set 2026</b></div>
+      <div class="fact"><span class="fact-k">Passageiros</span><b>2 adultos · 1 criança</b></div>
+      <div class="fact"><span class="fact-k">Classe</span><b>Económica</b></div>
+      <div class="fact"><button class="linkish">Alterar pedido</button></div>
+    </div>
+
+    <div class="validity">
+      <div class="validity-body">
+        <h3>Os preços abaixo são garantidos até 6 de setembro, 18:00 (WAT)</h3>
+        <p>Depois dessa hora a companhia pode alterar a tarifa e temos de reconfirmar o valor. Se precisar de mais tempo para pagar, fale com o seu agente: podemos fixar o preço mediante uma taxa.</p>
+      </div>
+      <div class="clock mono" id="clock" aria-live="polite">1d 04:12:38</div>
+    </div>
+  </section>
+
+  <div class="sortbar">
+    <span class="sortbar-label">Ordenar por</span>
+    <button class="chip" aria-pressed="true">Recomendada</button>
+    <button class="chip" aria-pressed="false">Preço</button>
+    <button class="chip" aria-pressed="false">Duração</button>
+    <button class="chip" aria-pressed="false">Menos escalas</button>
+    <span class="count">3 opções</span>
+  </div>
+
+  <section class="offers" id="offers">
+
+    <!-- ─── Oferta A ─── -->
+    <article class="offer" data-offer="A" data-price="1 842,00" data-route="Praia → Boston, via Sal" data-meta="Cabo Verde Airlines · 1 escala · 14–28 set 2026 · Económica">
+      <div class="offer-main">
+        <div class="tags">
+          <span class="tag tag-best">Recomendada pelo agente</span>
+          <span class="tag">Menos tempo de viagem</span>
+        </div>
+
+        <div class="leg">
+          <div class="leg-tag">Ida<br>14 set</div>
+          <div class="leg-body">
+            <div class="strip">
+              <div class="node"><span class="node-time mono">08:40</span><span class="node-iata mono">RAI</span><span class="node-city">Praia</span></div>
+              <div class="bar" aria-hidden="true">
+                <span class="bar-dur">10h 35m</span>
+                <span class="bar-line"></span><span class="bar-dot s"></span><span class="bar-stop"></span><span class="bar-dot e"></span>
+                <span class="bar-stops">1 escala · SID 1h 20m</span>
+              </div>
+              <div class="node node-right"><span class="node-time mono">14:15</span><span class="node-iata mono">BOS</span><span class="node-city">Boston Logan</span></div>
+            </div>
+            <div class="carrier"><span class="carrier-code mono">VR 231 · VR 3800</span> Cabo Verde Airlines <span class="fare-name">· Tarifa Economy Smart</span></div>
+          </div>
+        </div>
+
+        <div class="leg">
+          <div class="leg-tag">Volta<br>28 set</div>
+          <div class="leg-body">
+            <div class="strip">
+              <div class="node"><span class="node-time mono">17:50</span><span class="node-iata mono">BOS</span><span class="node-city">Boston Logan</span></div>
+              <div class="bar" aria-hidden="true">
+                <span class="bar-dur">11h 05m</span>
+                <span class="bar-line"></span><span class="bar-dot s"></span><span class="bar-stop"></span><span class="bar-dot e"></span>
+                <span class="bar-stops">1 escala · SID 2h 00m</span>
+              </div>
+              <div class="node node-right"><span class="node-time mono">09:55<sup style="font-size:11px">+1</sup></span><span class="node-iata mono">RAI</span><span class="node-city">Praia</span></div>
+            </div>
+            <div class="carrier"><span class="carrier-code mono">VR 3801 · VR 230</span> Cabo Verde Airlines <span class="fare-name">· Tarifa Economy Smart</span></div>
+          </div>
+        </div>
+
+        <p class="vendor-note"><b>Nota do agente:</b> é a opção que recomendo. Escala curta no Sal sem mudar de terminal, e a criança já leva bagagem de porão incluída. Chegam a Boston ainda de dia.</p>
+
+        <button class="disclose" data-toggle="A" aria-expanded="false"><span>Ver itinerário completo, condições e preço detalhado</span><svg class="caret" width="11" height="7" viewBox="0 0 11 7" fill="none" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+
+      <aside class="offer-rail">
+        <span class="notch notch-t" aria-hidden="true"></span><span class="notch notch-b" aria-hidden="true"></span>
+        <span class="rail-k">Total para 3 passageiros</span>
+        <p class="price mono"><sup>$</sup>1 842,00</p>
+        <p class="price-sub">Inclui taxas e serviço WeeFly</p>
+        <button class="btn btn-primary" data-select="A">Escolher esta opção</button>
+      </aside>
+
+      <!-- C3b -->
+      <div class="detail" id="detailA">
+        <div class="detail-in">
+          <div class="detail-grid">
+            <div>
+              <p class="dt">Itinerário · Ida, segunda 14 de setembro</p>
+              <p class="flight-of mono">VR 231 · Airbus A320neo · Económica (classe T)</p>
+              <div class="seg">
+                <div class="seg-rail" aria-hidden="true"></div>
+                <div>
+                  <div class="seg-pt">
+                    <div class="seg-time mono">08:40</div>
+                    <div class="seg-place">Praia · Nelson Mandela (RAI)</div>
+                    <div class="seg-meta">Terminal 1 · check-in fecha 60 min antes</div>
+                  </div>
+                  <div class="seg-pt mid">
+                    <div class="seg-time mono">09:35</div>
+                    <div class="seg-place">Sal · Amílcar Cabral (SID)</div>
+                    <div class="seg-meta">Terminal internacional</div>
+                  </div>
+                </div>
+              </div>
+              <p class="layover">Escala no Sal · 1h 20m · não muda de terminal, bagagem segue automaticamente</p>
+              <p class="flight-of mono">VR 3800 · Boeing 757-200 · Económica (classe T)</p>
+              <div class="seg">
+                <div class="seg-rail" aria-hidden="true"></div>
+                <div>
+                  <div class="seg-pt">
+                    <div class="seg-time mono">10:55</div>
+                    <div class="seg-place">Sal · Amílcar Cabral (SID)</div>
+                    <div class="seg-meta">Terminal internacional</div>
+                  </div>
+                  <div class="seg-pt">
+                    <div class="seg-time mono">14:15</div>
+                    <div class="seg-place">Boston · Logan (BOS)</div>
+                    <div class="seg-meta">Terminal E · controlo de fronteira dos EUA</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tblblock">
+                <p class="dt">Condições da tarifa</p>
+                <div class="rows">
+                  <div class="row"><span class="row-k">Bagagem de mão</span><span class="row-v">1 peça, 8 kg por passageiro</span></div>
+                  <div class="row"><span class="row-k">Bagagem de porão</span><span class="row-v yes">2 peças, 23 kg por passageiro</span></div>
+                  <div class="row"><span class="row-k">Alteração de datas</span><span class="row-v no">Permitida com taxa de $90 + diferença de tarifa</span></div>
+                  <div class="row"><span class="row-k">Reembolso</span><span class="row-v no">Não reembolsável</span></div>
+                  <div class="row"><span class="row-k">Marcação de lugar</span><span class="row-v">No check-in, sem custo</span></div>
+                  <div class="row"><span class="row-k">Documentos exigidos</span><span class="row-v">Passaporte válido 6 meses + ESTA/visto EUA</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p class="dt">Preço detalhado</p>
+              <div class="rows">
+                <div class="row"><span class="row-k">Adultos <span class="mono">2 × 545,00</span></span><span class="row-v mono">1 090,00</span></div>
+                <div class="row"><span class="row-k">Criança <span class="mono">1 × 436,00</span><span class="row-note">2–11 anos, com assento</span></span><span class="row-v mono">436,00</span></div>
+                <div class="row"><span class="row-k">Taxas de aeroporto e encargos</span><span class="row-v mono">241,00</span></div>
+                <div class="row fee-line"><span class="row-k">Serviço WeeFly<span class="row-note">Pesquisa, emissão e acompanhamento</span></span><span class="row-v mono">75,00</span></div>
+                <div class="row total"><span class="row-k">Total a pagar</span><span class="row-v mono">$ 1 842,00</span></div>
+              </div>
+              <p class="hint" style="margin-top:12px">Valores em dólares americanos (USD). O pagamento é feito por link ou transferência, com instruções no passo seguinte.</p>
+
+              <div class="tblblock">
+                <p class="dt">Volta · segunda 28 de setembro</p>
+                <div class="rows">
+                  <div class="row"><span class="row-k mono">VR 3801</span><span class="row-v">BOS 17:50 → SID 05:55<sup>+1</sup></span></div>
+                  <div class="row"><span class="row-k">Escala</span><span class="row-v">Sal · 2h 00m</span></div>
+                  <div class="row"><span class="row-k mono">VR 230</span><span class="row-v">SID 07:55 → RAI 09:55</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ─── Oferta B ─── -->
+    <article class="offer" data-offer="B" data-price="1 674,00" data-route="Praia → Boston, via Lisboa" data-meta="TAP Air Portugal · 1 escala · 14–28 set 2026 · Económica">
+      <div class="offer-main">
+        <div class="tags"><span class="tag tag-ok">Mais barata</span></div>
+
+        <div class="leg">
+          <div class="leg-tag">Ida<br>14 set</div>
+          <div class="leg-body">
+            <div class="strip">
+              <div class="node"><span class="node-time mono">23:30</span><span class="node-iata mono">RAI</span><span class="node-city">Praia</span></div>
+              <div class="bar" aria-hidden="true">
+                <span class="bar-dur">16h 20m</span>
+                <span class="bar-line"></span><span class="bar-dot s"></span><span class="bar-stop"></span><span class="bar-dot e"></span>
+                <span class="bar-stops">1 escala · LIS 4h 45m</span>
+              </div>
+              <div class="node node-right"><span class="node-time mono">13:50<sup style="font-size:11px">+1</sup></span><span class="node-iata mono">BOS</span><span class="node-city">Boston Logan</span></div>
+            </div>
+            <div class="carrier"><span class="carrier-code mono">TP 1568 · TP 217</span> TAP Air Portugal <span class="fare-name">· Tarifa Economy Discount</span></div>
+          </div>
+        </div>
+
+        <div class="leg">
+          <div class="leg-tag">Volta<br>28 set</div>
+          <div class="leg-body">
+            <div class="strip">
+              <div class="node"><span class="node-time mono">21:15</span><span class="node-iata mono">BOS</span><span class="node-city">Boston Logan</span></div>
+              <div class="bar" aria-hidden="true">
+                <span class="bar-dur">18h 05m</span>
+                <span class="bar-line"></span><span class="bar-dot s"></span><span class="bar-stop"></span><span class="bar-dot e"></span>
+                <span class="bar-stops">1 escala · LIS 6h 30m</span>
+              </div>
+              <div class="node node-right"><span class="node-time mono">16:20<sup style="font-size:11px">+1</sup></span><span class="node-iata mono">RAI</span><span class="node-city">Praia</span></div>
+            </div>
+            <div class="carrier"><span class="carrier-code mono">TP 216 · TP 1567</span> TAP Air Portugal <span class="fare-name">· Tarifa Economy Discount</span></div>
+          </div>
+        </div>
+
+        <p class="vendor-note"><b>Nota do agente:</b> poupa $168 no total, mas a viagem é mais longa e a escala em Lisboa é de madrugada. Só recomendo se o preço for o fator decisivo — com uma criança pode ser cansativo.</p>
+
+        <button class="disclose" data-toggle="B" aria-expanded="false"><span>Ver itinerário completo, condições e preço detalhado</span><svg class="caret" width="11" height="7" viewBox="0 0 11 7" fill="none" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+
+      <aside class="offer-rail">
+        <span class="notch notch-t" aria-hidden="true"></span><span class="notch notch-b" aria-hidden="true"></span>
+        <span class="rail-k">Total para 3 passageiros</span>
+        <p class="price mono"><sup>$</sup>1 674,00</p>
+        <p class="price-sub">Inclui taxas e serviço WeeFly</p>
+        <button class="btn btn-primary" data-select="B">Escolher esta opção</button>
+      </aside>
+
+      <div class="detail" id="detailB">
+        <div class="detail-in">
+          <div class="detail-grid">
+            <div>
+              <p class="dt">Itinerário · Ida, segunda 14 de setembro</p>
+              <p class="flight-of mono">TP 1568 · Airbus A320 · Económica (classe O)</p>
+              <div class="seg">
+                <div class="seg-rail" aria-hidden="true"></div>
+                <div>
+                  <div class="seg-pt"><div class="seg-time mono">23:30</div><div class="seg-place">Praia · Nelson Mandela (RAI)</div><div class="seg-meta">Terminal 1</div></div>
+                  <div class="seg-pt mid"><div class="seg-time mono">05:25<sup>+1</sup></div><div class="seg-place">Lisboa · Humberto Delgado (LIS)</div><div class="seg-meta">Terminal 1</div></div>
+                </div>
+              </div>
+              <p class="layover">Escala em Lisboa · 4h 45m · madrugada, mesmo terminal</p>
+              <p class="flight-of mono">TP 217 · Airbus A321neo LR · Económica (classe O)</p>
+              <div class="seg">
+                <div class="seg-rail" aria-hidden="true"></div>
+                <div>
+                  <div class="seg-pt"><div class="seg-time mono">10:10</div><div class="seg-place">Lisboa · Humberto Delgado (LIS)</div><div class="seg-meta">Terminal 1</div></div>
+                  <div class="seg-pt"><div class="seg-time mono">13:50</div><div class="seg-place">Boston · Logan (BOS)</div><div class="seg-meta">Terminal E</div></div>
+                </div>
+              </div>
+
+              <div class="tblblock">
+                <p class="dt">Condições da tarifa</p>
+                <div class="rows">
+                  <div class="row"><span class="row-k">Bagagem de mão</span><span class="row-v">1 peça, 8 kg por passageiro</span></div>
+                  <div class="row"><span class="row-k">Bagagem de porão</span><span class="row-v">1 peça, 23 kg por passageiro</span></div>
+                  <div class="row"><span class="row-k">Alteração de datas</span><span class="row-v no">Permitida com taxa de $150 + diferença</span></div>
+                  <div class="row"><span class="row-k">Reembolso</span><span class="row-v no">Não reembolsável</span></div>
+                  <div class="row"><span class="row-k">Marcação de lugar</span><span class="row-v no">Paga, desde $12 por trecho</span></div>
+                  <div class="row"><span class="row-k">Documentos exigidos</span><span class="row-v">Passaporte válido 6 meses + ESTA/visto EUA</span></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p class="dt">Preço detalhado</p>
+              <div class="rows">
+                <div class="row"><span class="row-k">Adultos <span class="mono">2 × 490,00</span></span><span class="row-v mono">980,00</span></div>
+                <div class="row"><span class="row-k">Criança <span class="mono">1 × 392,00</span><span class="row-note">2–11 anos, com assento</span></span><span class="row-v mono">392,00</span></div>
+                <div class="row"><span class="row-k">Taxas de aeroporto e encargos</span><span class="row-v mono">227,00</span></div>
+                <div class="row fee-line"><span class="row-k">Serviço WeeFly<span class="row-note">Pesquisa, emissão e acompanhamento</span></span><span class="row-v mono">75,00</span></div>
+                <div class="row total"><span class="row-k">Total a pagar</span><span class="row-v mono">$ 1 674,00</span></div>
+              </div>
+              <p class="hint" style="margin-top:12px">Bagagem de porão extra: $75 por peça e por trecho, se comprada antes do check-in.</p>
+              <div class="tblblock">
+                <p class="dt">Volta · segunda 28 de setembro</p>
+                <div class="rows">
+                  <div class="row"><span class="row-k mono">TP 216</span><span class="row-v">BOS 21:15 → LIS 08:35<sup>+1</sup></span></div>
+                  <div class="row"><span class="row-k">Escala</span><span class="row-v">Lisboa · 6h 30m</span></div>
+                  <div class="row"><span class="row-k mono">TP 1567</span><span class="row-v">LIS 15:05 → RAI 16:20</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ─── Oferta C ─── -->
+    <article class="offer" data-offer="C" data-price="2 190,00" data-route="Praia → Boston, via Lisboa" data-meta="TAP Air Portugal · 1 escala · 14–28 set 2026 · Económica flexível">
+      <div class="offer-main">
+        <div class="tags"><span class="tag">Alterações e reembolso incluídos</span></div>
+
+        <div class="leg">
+          <div class="leg-tag">Ida<br>14 set</div>
+          <div class="leg-body">
+            <div class="strip">
+              <div class="node"><span class="node-time mono">23:30</span><span class="node-iata mono">RAI</span><span class="node-city">Praia</span></div>
+              <div class="bar" aria-hidden="true">
+                <span class="bar-dur">16h 20m</span>
+                <span class="bar-line"></span><span class="bar-dot s"></span><span class="bar-stop"></span><span class="bar-dot e"></span>
+                <span class="bar-stops">1 escala · LIS 4h 45m</span>
+              </div>
+              <div class="node node-right"><span class="node-time mono">13:50<sup style="font-size:11px">+1</sup></span><span class="node-iata mono">BOS</span><span class="node-city">Boston Logan</span></div>
+            </div>
+            <div class="carrier"><span class="carrier-code mono">TP 1568 · TP 217</span> TAP Air Portugal <span class="fare-name">· Tarifa Economy Classic</span></div>
+          </div>
+        </div>
+
+        <div class="leg">
+          <div class="leg-tag">Volta<br>28 set</div>
+          <div class="leg-body">
+            <div class="strip">
+              <div class="node"><span class="node-time mono">21:15</span><span class="node-iata mono">BOS</span><span class="node-city">Boston Logan</span></div>
+              <div class="bar" aria-hidden="true">
+                <span class="bar-dur">18h 05m</span>
+                <span class="bar-line"></span><span class="bar-dot s"></span><span class="bar-stop"></span><span class="bar-dot e"></span>
+                <span class="bar-stops">1 escala · LIS 6h 30m</span>
+              </div>
+              <div class="node node-right"><span class="node-time mono">16:20<sup style="font-size:11px">+1</sup></span><span class="node-iata mono">RAI</span><span class="node-city">Praia</span></div>
+            </div>
+            <div class="carrier"><span class="carrier-code mono">TP 216 · TP 1567</span> TAP Air Portugal <span class="fare-name">· Tarifa Economy Classic</span></div>
+          </div>
+        </div>
+
+        <p class="vendor-note"><b>Nota do agente:</b> mesmo voo da opção mais barata, mas com tarifa flexível: pode mudar datas sem taxa e pedir reembolso até 24h antes. Faz sentido se as datas ainda não estiverem fechadas.</p>
+
+        <button class="disclose" data-toggle="C" aria-expanded="false"><span>Ver itinerário completo, condições e preço detalhado</span><svg class="caret" width="11" height="7" viewBox="0 0 11 7" fill="none" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+
+      <aside class="offer-rail">
+        <span class="notch notch-t" aria-hidden="true"></span><span class="notch notch-b" aria-hidden="true"></span>
+        <span class="rail-k">Total para 3 passageiros</span>
+        <p class="price mono"><sup>$</sup>2 190,00</p>
+        <p class="price-sub">Inclui taxas e serviço WeeFly</p>
+        <button class="btn btn-primary" data-select="C">Escolher esta opção</button>
+      </aside>
+
+      <div class="detail" id="detailC">
+        <div class="detail-in">
+          <div class="detail-grid">
+            <div>
+              <p class="dt">Condições da tarifa</p>
+              <div class="rows">
+                <div class="row"><span class="row-k">Bagagem de mão</span><span class="row-v">1 peça, 8 kg + acessório</span></div>
+                <div class="row"><span class="row-k">Bagagem de porão</span><span class="row-v yes">2 peças, 23 kg por passageiro</span></div>
+                <div class="row"><span class="row-k">Alteração de datas</span><span class="row-v yes">Sem taxa, paga apenas a diferença de tarifa</span></div>
+                <div class="row"><span class="row-k">Reembolso</span><span class="row-v yes">Até 24h antes da partida, com retenção de $60</span></div>
+                <div class="row"><span class="row-k">Marcação de lugar</span><span class="row-v yes">Incluída na reserva</span></div>
+                <div class="row"><span class="row-k">Documentos exigidos</span><span class="row-v">Passaporte válido 6 meses + ESTA/visto EUA</span></div>
+              </div>
+              <p class="hint" style="margin-top:12px">O itinerário é igual ao da opção mais barata. Só mudam as condições e o preço.</p>
+            </div>
+            <div>
+              <p class="dt">Preço detalhado</p>
+              <div class="rows">
+                <div class="row"><span class="row-k">Adultos <span class="mono">2 × 645,00</span></span><span class="row-v mono">1 290,00</span></div>
+                <div class="row"><span class="row-k">Criança <span class="mono">1 × 516,00</span><span class="row-note">2–11 anos, com assento</span></span><span class="row-v mono">516,00</span></div>
+                <div class="row"><span class="row-k">Taxas de aeroporto e encargos</span><span class="row-v mono">259,00</span></div>
+                <div class="row fee-line"><span class="row-k">Serviço WeeFly<span class="row-note">Pesquisa, emissão e acompanhamento</span></span><span class="row-v mono">125,00</span></div>
+                <div class="row total"><span class="row-k">Total a pagar</span><span class="row-v mono">$ 2 190,00</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+  </section>
+
+  <div class="spacer"></div>
+</main>
+
+<!-- ════════ E3 · C4 dados dos passageiros ════════ -->
+<main class="wrap view" id="viewPax" hidden>
+  <section class="brief">
+    <div class="brief-top"><span class="eyebrow">Passo 4 de 6</span></div>
+    <h1>Dados dos passageiros</h1>
+    <p class="brief-sub">Escreva os nomes exatamente como aparecem no passaporte. Depois de o bilhete ser emitido, corrigir um nome obriga a reemissão e tem custo da companhia.</p>
+  </section>
+
+  <div class="picked">
+    <div>
+      <span class="picked-k">Opção escolhida</span>
+      <div class="picked-route" id="pickedRoute">Praia → Boston, via Sal</div>
+      <div class="picked-meta" id="pickedMeta">Cabo Verde Airlines · 1 escala · 14–28 set 2026 · Económica</div>
+      <div class="picked-actions">
+        <button class="btn-inline" id="backToOffers">Trocar de opção</button>
+        <button class="btn-inline">Alterar datas ou destino</button>
+      </div>
+    </div>
+    <div class="picked-price">
+      <span class="picked-k">Total a pagar</span>
+      <div class="amt mono">$ <span id="pickedPrice">1 842,00</span></div>
+      <div class="picked-meta">3 passageiros · USD</div>
+    </div>
+  </div>
+
+  <div id="paxForms"></div>
+
+  <div class="confirm">
+    <input type="checkbox" id="ack">
+    <p><label for="ack" style="font-size:13px;font-weight:600;color:var(--ink)">Confirmo que os dados acima coincidem com os passaportes.</label><br>
+    Sei que os passaportes têm de ser válidos até pelo menos 28 de março de 2027 e que a entrada nos EUA exige ESTA ou visto válido.</p>
+  </div>
+
+  <div class="foot-actions">
+    <button class="btn btn-primary">Confirmar dados e receber instruções de pagamento</button>
+    <button class="cancel">Cancelar este pedido</button>
+  </div>
+
+  <div class="spacer"></div>
+</main>
+
+<footer>
+  <div class="wrap foot-in">
+    <span>WeeFly Africa · Praia, Cabo Verde · Pedido <span class="mono">WF-7K4M-92XB</span></span>
+    <span>Este link é pessoal. Não o partilhe: dá acesso aos dados dos seus passageiros.</span>
+  </div>
+</footer>
+
+<script>
+// ─── configuração vinda do Passo 1 (o cliente já declarou quem viaja) ───
+const PAX = { adults: 2, children: 1, infants: 0 };
+const NATIONALITIES = ['Cabo Verde','Portugal','Estados Unidos','Brasil','França','Países Baixos','Senegal','Angola','Outro'];
+
+function opts(list, ph){
+  return '<option value="" disabled selected>'+ph+'</option>' + list.map(v=>'<option>'+v+'</option>').join('');
+}
+
+function paxCard(kind, index, isLead){
+  const isChild = kind === 'child';
+  const isInfant = kind === 'infant';
+  const label = isChild ? 'Criança' : isInfant ? 'Bebé' : 'Adulto';
+  const sub = isChild ? 'Entre 2 e 11 anos na data da viagem, com assento próprio'
+            : isInfant ? 'Menos de 2 anos, viaja ao colo de um adulto'
+            : isLead ? 'Titular do pedido, recebe todas as comunicações' : 'Passageiro adulto';
+  return `
+  <section class="card">
+    <header class="card-h">
+      <span class="pax-n">${index}</span>
+      <div><h3>${label} ${index}</h3><div class="sub">${sub}</div></div>
+      ${isLead ? '<span class="badge">Titular</span>' : ''}
+    </header>
+    <div class="card-b">
+      ${isChild || isInfant ? '<p class="notice">Menores têm de viajar acompanhados por um dos adultos deste pedido.</p>' : ''}
+      <div class="grid">
+        ${!isChild && !isInfant ? `
+        <div class="f c3">
+          <label for="tit${index}">Tratamento<span class="req">*</span></label>
+          <select id="tit${index}">${opts(['Sr.','Sra.'],'Escolher')}</select>
+        </div>` : ''}
+        <div class="f ${(!isChild && !isInfant) ? 'c5' : 'c6'}">
+          <label for="fn${index}">Nomes próprios<span class="req">*</span></label>
+          <input id="fn${index}" placeholder="Como no passaporte">
+          <span class="hint">Todos os nomes próprios, na mesma ordem do passaporte</span>
+        </div>
+        <div class="f ${(!isChild && !isInfant) ? 'c4' : 'c6'}">
+          <label for="ln${index}">Sobrenomes<span class="req">*</span></label>
+          <input id="ln${index}" placeholder="Como no passaporte">
+        </div>
+        <div class="f c4">
+          <label for="dob${index}">Data de nascimento<span class="req">*</span></label>
+          <input id="dob${index}" type="date">
+        </div>
+        <div class="f c4">
+          <label for="sex${index}">Sexo<span class="req">*</span></label>
+          <select id="sex${index}">${opts(['Feminino','Masculino'],'Escolher')}</select>
+        </div>
+        <div class="f c4">
+          <label for="nat${index}">Nacionalidade<span class="req">*</span></label>
+          <select id="nat${index}">${opts(NATIONALITIES,'Escolher')}</select>
+        </div>
+        <div class="f c4">
+          <label for="pp${index}">Número do passaporte<span class="req">*</span></label>
+          <input id="pp${index}" class="mono" placeholder="Ex.: CV1234567" style="letter-spacing:.05em">
+        </div>
+        <div class="f c4">
+          <label for="ppe${index}">Válido até<span class="req">*</span></label>
+          <input id="ppe${index}" type="date">
+          <span class="hint">Tem de cobrir 6 meses após o regresso</span>
+        </div>
+        <div class="f c4">
+          <label for="ppc${index}">País emissor<span class="req">*</span></label>
+          <select id="ppc${index}">${opts(NATIONALITIES,'Escolher')}</select>
+        </div>
+        ${isLead ? `
+        <div class="f c6">
+          <label for="mail">Email para o bilhete<span class="req">*</span></label>
+          <input id="mail" type="email" value="isaura.b@example.cv">
+        </div>
+        <div class="f c6">
+          <label for="tel">Telefone com indicativo<span class="req">*</span></label>
+          <input id="tel" class="mono" value="+238 991 44 07">
+        </div>` : ''}
+      </div>
+    </div>
+  </section>`;
+}
+
+function renderPax(){
+  let html = '', n = 0;
+  for (let i=0;i<PAX.adults;i++)  html += paxCard('adult', ++n, i===0);
+  for (let i=0;i<PAX.children;i++) html += paxCard('child', ++n, false);
+  for (let i=0;i<PAX.infants;i++)  html += paxCard('infant', ++n, false);
+  document.getElementById('paxForms').innerHTML = html;
+}
+renderPax();
+
+// ─── C3b: abrir e fechar detalhe ───
+document.querySelectorAll('.disclose').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const card = btn.closest('.offer');
+    const open = card.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open);
+    btn.querySelector('span').textContent = open
+      ? 'Fechar detalhe'
+      : 'Ver itinerário completo, condições e preço detalhado';
+  });
+});
+
+// ─── ordenação (demonstrativa) ───
+document.querySelectorAll('.chip').forEach(c=>{
+  c.addEventListener('click', ()=>{
+    document.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed','false'));
+    c.setAttribute('aria-pressed','true');
+  });
+});
+
+// ─── E2 → E3 ───
+function goPax(card){
+  document.getElementById('pickedRoute').textContent = card.dataset.route;
+  document.getElementById('pickedMeta').textContent  = card.dataset.meta;
+  document.getElementById('pickedPrice').textContent = card.dataset.price;
+  document.getElementById('viewOffers').hidden = true;
+  document.getElementById('viewPax').hidden = false;
+  document.getElementById('stepOffers').className = 'step done';
+  document.getElementById('stepOffers').querySelector('.step-n').textContent = '✓';
+  document.getElementById('stepPax').className = 'step now';
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('[data-select]').forEach(b=>{
+  b.addEventListener('click', ()=> goPax(b.closest('.offer')));
+});
+document.getElementById('backToOffers').addEventListener('click', ()=>{
+  document.getElementById('viewPax').hidden = true;
+  document.getElementById('viewOffers').hidden = false;
+  document.getElementById('stepPax').className = 'step';
+  const s = document.getElementById('stepOffers');
+  s.className = 'step now'; s.querySelector('.step-n').textContent = '3';
+  window.scrollTo(0,0);
+});
+
+// ─── contador de validade da tarifa ───
+let left = 101558; // segundos
+const clock = document.getElementById('clock');
+const pad = n => String(n).padStart(2,'0');
+setInterval(()=>{
+  if (left <= 0){ clock.textContent = 'Preço a reconfirmar'; return; }
+  left--;
+  const d = Math.floor(left/86400), h = Math.floor(left%86400/3600),
+        m = Math.floor(left%3600/60), s = left%60;
+  clock.textContent = (d ? d+'d ' : '') + pad(h)+':'+pad(m)+':'+pad(s);
+}, 1000);
+</script>
+</body>
+</html>

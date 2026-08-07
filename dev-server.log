@@ -21,3 +21,38 @@
  GET /p/yXDxCdr_ACx9yI4XIrhnKb030Q_ZGyAP/passageiros 200 in 4850ms
  ✓ Compiled /p/[token]/pagamento in 214ms (1427 modules)
  GET /p/yXDxCdr_ACx9yI4XIrhnKb030Q_ZGyAP/pagamento 200 in 829ms
+ ○ Compiling / ...
+ ✓ Compiled / in 546ms (1298 modules)
+ GET / 307 in 851ms
+ ✓ Compiled in 353ms (679 modules)
+ ○ Compiling /inicio ...
+ ✓ Compiled /inicio in 1299ms (1552 modules)
+ GET /inicio 200 in 2002ms
+ ✓ Compiled /admin in 451ms (1576 modules)
+ GET /admin 200 in 842ms
+ ○ Compiling /admin/casos/[id] ...
+ ✓ Compiled /admin/casos/[id] in 567ms (1560 modules)
+ ✓ Compiled /p/[token]/passageiros in 456ms (898 modules)
+ GET /p/yXDxCdr_ACx9yI4XIrhnKb030Q_ZGyAP/passageiros 200 in 774ms
+ ✓ Compiled /p/[token]/pagamento in 160ms (903 modules)
+ GET /p/yXDxCdr_ACx9yI4XIrhnKb030Q_ZGyAP/pagamento 200 in 498ms
+ POST /admin/casos/a6d5b2cc-b70e-43d6-adf1-63406be18331 200 in 756ms
+ GET /admin 200 in 290ms
+ POST /admin?f=us 200 in 533ms
+ ✓ Compiled /p/[token] in 424ms (929 modules)
+ GET /p/dpyePN7LoW6_ojUaZnkpEnPV1qTvEjkv 200 in 819ms
+ ○ Compiling /api/concierge ...
+ ✓ Compiled /api/concierge in 1039ms (1019 modules)
+[concierge] team notification failed: {
+  statusCode: 403,
+  name: 'validation_error',
+  message: 'You can only send testing emails to your own email address (fapirocha@gmail.com). To send emails to other recipients, please verify a domain at resend.com/domains, and change the `from` address to an email using this domain.'
+}
+[concierge] client confirmation failed: {
+  statusCode: 403,
+  name: 'validation_error',
+  message: 'You can only send testing emails to your own email address (fapirocha@gmail.com). To send emails to other recipients, please verify a domain at resend.com/domains, and change the `from` address to an email using this domain.'
+}
+[concierge] LEAD NOT DELIVERED — Fábio Rocha (fapiyou@gmail.com, +351 962423263): Lisbon → Dubai | 2026-08-08 | 4 pax | business
+ POST /api/concierge 202 in 2177ms
+ GET /admin?f=us 200 in 327ms

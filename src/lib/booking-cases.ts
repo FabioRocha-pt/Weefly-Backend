@@ -14,6 +14,7 @@
  */
 
 import { randomBytes } from "crypto"
+import { cache } from "react"
 
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
@@ -138,7 +139,14 @@ export async function listCases(search?: string): Promise<BookingCaseRow[]> {
   })
 }
 
-export async function getCase(id: string): Promise<BookingCaseRow | null> {
+/**
+ * Cached per request: o layout do caso e as duas páginas que vivem debaixo dele
+ * (Pedido e Ofertas) pedem todos o mesmo caso para desenhar a barra de topo.
+ * Sem isto seriam três viagens à base de dados para render um ecrã.
+ */
+export const getCase = cache(async function getCase(
+  id: string
+): Promise<BookingCaseRow | null> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from("booking_cases")
@@ -151,7 +159,7 @@ export async function getCase(id: string): Promise<BookingCaseRow | null> {
     return null
   }
   return data ? normaliseCase(data as Record<string, unknown>) : null
-}
+})
 
 export async function getCasePassengers(caseId: string): Promise<CasePassenger[]> {
   const supabase = createClient()

@@ -8,9 +8,15 @@ import { cn } from "@/lib/utils"
 import { createCase } from "@/actions/booking-cases"
 import { LINK_STAGE_PATHS } from "@/lib/case-status"
 
+/*
+ * O link 2 não está aqui de propósito.
+ *
+ * Desde a migração 0005 ele só existe depois de a proposta ser publicada, e
+ * mostrar agora um endereço que responde "ainda não disponível" ensinaria o
+ * vendedor a enviar links partidos.
+ */
 const STAGES: { stage: number; title: string; hint: string }[] = [
   { stage: 1, title: "1 · Pedido de viagem", hint: "para onde vai, datas, quem viaja" },
-  { stage: 2, title: "2 · Dados dos passageiros", hint: "nomes e passaportes" },
   { stage: 3, title: "3 · Pagamento", hint: "só mostra valor depois de o definir" },
 ]
 
@@ -115,7 +121,7 @@ Preencha para onde vai, as datas e quem viaja. Recebo logo o pedido e envio-lhe 
                 <>
                   <section>
                     <h3 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-adm-muted">
-                      Os três endereços
+                      Endereços já disponíveis
                     </h3>
                     <div className="space-y-2">
                       {STAGES.map(({ stage, title, hint }) => (
@@ -127,6 +133,15 @@ Preencha para onde vai, as datas e quem viaja. Recebo logo o pedido e envio-lhe 
                         />
                       ))}
                     </div>
+                    <p className="mt-2.5 rounded-lg border border-dashed border-adm-line p-2.5 text-[11.5px] leading-relaxed text-adm-muted">
+                      <b className="text-adm-txt-2">
+                        2 · Proposta e passageiros
+                      </b>{" "}
+                      — ainda não existe. Nasce quando compuser as opções no
+                      separador Ofertas e carregar em{" "}
+                      <b className="text-adm-txt-2">Publicar e avisar cliente</b>
+                      , que envia o endereço ao cliente por email.
+                    </p>
                     <p className="mt-3 rounded-lg bg-adm-warn/10 p-2.5 text-[11.5px] leading-relaxed text-adm-warn">
                       Estes links dão acesso aos dados dos passageiros. Envie-os
                       só ao cliente, na conversa onde o atendeu.{" "}

@@ -1,7 +1,11 @@
+import Link from "next/link"
 import { CheckCircle2 } from "lucide-react"
 
 import { getCaseByToken, markLinkOpened } from "@/lib/booking-cases"
+import { getPublishedProposal, paxOf } from "@/lib/proposals"
+import { formatMoney, legsOf, offerTotal, stopsLabel } from "@/lib/proposal-math"
 import { LinkUnavailable } from "@/components/concierge/link-unavailable"
+import { CaseStepper } from "@/components/concierge/case-stepper"
 import {
   PassengerDetailsForm,
   type PassengerSlot,
@@ -26,7 +30,13 @@ function buildSlots(trip: {
   return slots
 }
 
-/** Link 2 — passenger and passport details. */
+/**
+ * Link 2, segundo passo — dados e passaportes (C4).
+ *
+ * Chega-se aqui da escolha da opção em /proposta. O endereço continua a
+ * funcionar sozinho para os casos antigos, anteriores à migração 0005, que
+ * nunca tiveram proposta nenhuma.
+ */
 export default async function CasePassengersPage({
   params,
 }: {
@@ -53,45 +63,112 @@ export default async function CasePassengersPage({
   }
 
   const trip = bookingCase.trip_request
+  const proposal = await getPublishedProposal(bookingCase.id)
+  const chosen =
+    proposal?.offers.find((o) => o.id === proposal.proposal.selected_offer_id) ??
+    null
+
+  /*
+   * Há proposta publicada e o cliente ainda não escolheu: não faz sentido
+   * pedir-lhe passaportes para um voo que ainda não decidiu. Volta ao
+   * comparador em vez de ver um formulário sem contexto.
+   */
+  if (proposal && proposal.offers.length > 0 && !chosen) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-10">
+        <h1 className="text-2xl font-bold text-slate-900">
+          Falta escolher o voo
+        </h1>
+        <p className="mt-3 leading-relaxed text-slate-500">
+          Antes de preencher os passaportes, escolha uma das opções que o seu
+          agente preparou.
+        </p>
+        <Link
+          href={`/p/${params.token}/proposta`}
+          className="mt-6 inline-flex items-center justify-center rounded-full bg-orange-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-orange-700"
+        >
+          Ver as opções
+        </Link>
+      </div>
+    )
+  }
 
   await markLinkOpened(link.id)
 
   /*
-   * Without a Link 1 submission there are no passenger counts, but the link is
-   * still open (see migration 0004) — the agent may have agreed the trip over
-   * WhatsApp and only needs the passports. One adult is the floor: the client
-   * adds the rest, and the counts reconcile when Link 1 arrives.
+   * Sem link 1 submetido não há contagens de passageiros. Um adulto é o mínimo:
+   * o cliente acrescenta os restantes e as contas reconciliam-se quando o
+   * pedido chegar.
    */
   const slots = trip
     ? buildSlots(trip)
     : [{ position: 0, passengerType: "adult" as const }]
 
+  const pax = paxOf(trip)
+
   return (
-    <div>
-      <div className="mb-8 text-center">
+    <div className="mx-auto max-w-3xl">
+      <CaseStepper current={4} />
+
+      <div className="mb-8">
         {trip && (
-          <p className="text-xs font-semibold uppercase tracking-wider text-orange-600">
+          <p className="text-[12.5px] font-semibold uppercase tracking-wider text-orange-600">
             {trip.origin} → {trip.destination}
           </p>
         )}
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
           Dados dos passageiros
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-slate-500">
-          {trip ? (
-            <>
-              Precisamos dos dados de {slots.length}{" "}
-              {slots.length === 1 ? "passageiro" : "passageiros"}, exatamente
-              como constam no passaporte, para emitir os bilhetes.
-            </>
-          ) : (
-            <>
-              Precisamos dos dados de quem viaja, exatamente como constam no
-              passaporte, para emitir os bilhetes.
-            </>
-          )}
+        <p className="mt-3 leading-relaxed text-slate-500">
+          Escreva os nomes exatamente como aparecem no passaporte. Depois de o
+          bilhete ser emitido, corrigir um nome obriga a reemissão e tem custo da
+          companhia.
         </p>
       </div>
+
+      {chosen && proposal && (
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Opção escolhida
+            </span>
+            <p className="mt-1 text-[15px] font-bold text-slate-900">
+              {chosen.name || "Opção sem nome"}
+            </p>
+            <p className="mt-0.5 text-[13px] text-slate-500">
+              {[
+                stopsLabel(legsOf(chosen).ida),
+                chosen.fare_name && `Tarifa ${chosen.fare_name}`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            <Link
+              href={`/p/${params.token}/proposta`}
+              className="mt-2 inline-block text-[13px] font-semibold text-orange-600 hover:text-orange-700"
+            >
+              Trocar de opção
+            </Link>
+          </div>
+          <div className="shrink-0 text-left sm:text-right">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Total a pagar
+            </span>
+            <p className="mt-1 font-mono text-2xl font-semibold tracking-tight text-slate-900">
+              {formatMoney(
+                offerTotal(chosen, pax),
+                proposal.proposal.currency
+              )}
+            </p>
+            <p className="text-[12px] text-slate-500">
+              {slots.length}{" "}
+              {slots.length === 1 ? "passageiro" : "passageiros"} ·{" "}
+              {proposal.proposal.currency}
+            </p>
+          </div>
+        </div>
+      )}
+
       <PassengerDetailsForm token={params.token} slots={slots} />
     </div>
   )

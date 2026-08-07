@@ -8,6 +8,11 @@
 export const CASE_STAGES = [
   "novo",
   "pedido_recebido",
+  "proposta_enviada",
+  "opcao_escolhida",
+  /* Legado. Antes da migração 0005 a etapa 2 nascia aberta e este era o estado
+     de "o link está lá, falta o cliente preencher". Fica no vocabulário para os
+     casos antigos que ainda o têm. */
   "detalhes_pendentes",
   "detalhes_recebidos",
   "pagamento_pendente",
@@ -21,6 +26,8 @@ export type CaseStage = (typeof CASE_STAGES)[number]
 export const CASE_STAGE_LABELS: Record<CaseStage, string> = {
   novo: "Link enviado",
   pedido_recebido: "Pedido recebido",
+  proposta_enviada: "Opções enviadas",
+  opcao_escolhida: "Opção escolhida",
   detalhes_pendentes: "À espera de dados",
   detalhes_recebidos: "Dados recebidos",
   pagamento_pendente: "À espera de pagamento",
@@ -32,6 +39,8 @@ export const CASE_STAGE_LABELS: Record<CaseStage, string> = {
 export const CASE_STAGE_STYLES: Record<CaseStage, string> = {
   novo: "bg-slate-100 text-slate-600 border-slate-200",
   pedido_recebido: "bg-orange-50 text-orange-700 border-orange-200",
+  proposta_enviada: "bg-amber-50 text-amber-700 border-amber-200",
+  opcao_escolhida: "bg-sky-50 text-sky-700 border-sky-200",
   detalhes_pendentes: "bg-amber-50 text-amber-700 border-amber-200",
   detalhes_recebidos: "bg-sky-50 text-sky-700 border-sky-200",
   pagamento_pendente: "bg-violet-50 text-violet-700 border-violet-200",
@@ -61,7 +70,9 @@ export interface StageDisplay {
 
 export const CASE_STAGE_DISPLAY: Record<CaseStage, StageDisplay> = {
   novo: { code: "E0", label: "Link criado", waiting: "off" },
-  pedido_recebido: { code: "E1", label: "Pedido recebido", waiting: "us" },
+  pedido_recebido: { code: "E1", label: "Em cotação", waiting: "us" },
+  proposta_enviada: { code: "E2", label: "Opções enviadas", waiting: "them" },
+  opcao_escolhida: { code: "E3", label: "Escolheu, falta preencher", waiting: "them" },
   detalhes_pendentes: { code: "E2", label: "À espera de dados", waiting: "them" },
   detalhes_recebidos: { code: "E3", label: "Dados preenchidos", waiting: "us" },
   pagamento_pendente: { code: "E4", label: "Aguarda pagamento", waiting: "them" },
@@ -81,6 +92,8 @@ export const WAITING_DOT: Record<Waiting, string> = {
 export const CASE_STAGE_CHIP: Record<CaseStage, string> = {
   novo: "bg-adm-raise text-adm-txt-2",
   pedido_recebido: "bg-adm-ember/15 text-adm-ember",
+  proposta_enviada: "bg-adm-warn/15 text-adm-warn",
+  opcao_escolhida: "bg-adm-warn/15 text-adm-warn",
   detalhes_pendentes: "bg-adm-warn/15 text-adm-warn",
   detalhes_recebidos: "bg-adm-ember/15 text-adm-ember",
   pagamento_pendente: "bg-adm-warn/15 text-adm-warn",
@@ -100,14 +113,21 @@ export const LINK_STATUS_LABELS: Record<LinkStatus, string> = {
 
 export const LINK_STAGE_NAMES: Record<number, string> = {
   1: "Pedido de viagem",
-  2: "Dados dos passageiros",
+  2: "Proposta e passageiros",
   3: "Pagamento",
 }
 
-/** Path segment appended to /p/{token} for each stage. */
+/**
+ * Path segment appended to /p/{token} for each stage.
+ *
+ * A etapa 2 aponta para a proposta e não para os passaportes: desde a migração
+ * 0005 o cliente escolhe a opção primeiro, e é a escolha que o leva ao
+ * formulário. /passageiros continua a existir e a funcionar sozinho, mas não é
+ * o endereço que se partilha.
+ */
 export const LINK_STAGE_PATHS: Record<number, string> = {
   1: "",
-  2: "/passageiros",
+  2: "/proposta",
   3: "/pagamento",
 }
 

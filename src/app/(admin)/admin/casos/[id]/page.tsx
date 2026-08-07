@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Users, Ticket, ExternalLink } from "lucide-react"
+import { Users, Ticket, ExternalLink } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import {
@@ -9,17 +9,11 @@ import {
   getCasePayment,
 } from "@/lib/booking-cases"
 import {
-  CASE_STAGE_CHIP,
-  CASE_STAGE_DISPLAY,
   LINK_STAGE_NAMES,
   LINK_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
-  WAITING_DOT,
-  elapsedSince,
   formatAmount,
-  type CaseStage,
 } from "@/lib/case-status"
-import { CaseLinkButtons } from "@/components/admin/case-link-buttons"
 import { PayLinkForm, MarkPaidButton } from "@/components/admin/pay-link-form"
 
 export const dynamic = "force-dynamic"
@@ -59,76 +53,9 @@ export default async function CaseDetailPage({
   ])
 
   const trip = bookingCase.trip_request
-  const display = CASE_STAGE_DISPLAY[bookingCase.stage as CaseStage]
 
   return (
-    <div className="space-y-5">
-      <Link
-        href="/admin"
-        className="inline-flex items-center gap-1.5 text-[13px] font-medium text-adm-muted transition-colors hover:text-adm-txt"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Links de atendimento
-      </Link>
-
-      {/* case bar */}
-      <div className="rounded-xl border border-adm-line bg-adm-panel p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-xl font-bold text-adm-txt">
-                {trip?.lead?.full_name ?? "Aguarda preenchimento"}
-              </h1>
-              {trip?.reference && (
-                <span className="rounded-md bg-adm-raise px-2 py-1 font-mono text-[12px] text-adm-txt-2">
-                  {trip.reference}
-                </span>
-              )}
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold",
-                  CASE_STAGE_CHIP[bookingCase.stage as CaseStage]
-                )}
-              >
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    WAITING_DOT[display.waiting]
-                  )}
-                />
-                {display.code} · {display.label}
-              </span>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
-              <Meta label="Contacto">
-                {trip?.lead?.email ?? "—"}
-                {trip?.lead?.phone
-                  ? ` · ${trip.lead.phone_prefix ?? ""} ${trip.lead.phone}`.trimEnd()
-                  : ""}
-              </Meta>
-              <Meta label="Criado">
-                {formatDateTime(bookingCase.created_at)}
-              </Meta>
-              <Meta label="Sem mexer há">
-                {elapsedSince(bookingCase.updated_at)}
-              </Meta>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-end gap-2">
-            <CaseLinkButtons
-              token={bookingCase.token}
-              links={bookingCase.links}
-            />
-            <span className="text-[11px] text-adm-muted">
-              clique para copiar o endereço
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           {/* onde está o cliente */}
           <Panel title="Onde está o cliente">
@@ -198,9 +125,15 @@ export default async function CaseDetailPage({
             {passengers.length === 0 ? (
               <p className="flex items-center gap-2 text-[13px] text-adm-muted">
                 <Users className="h-4 w-4" />
-                Ainda sem dados. Partilhe o{" "}
-                <b className="text-adm-txt-2">2 link</b> para o cliente
-                preencher.
+                Ainda sem dados. O cliente preenche-os depois de escolher uma
+                opção no{" "}
+                <Link
+                  href={`/admin/casos/${bookingCase.id}/ofertas`}
+                  className="font-semibold text-adm-ember hover:text-adm-ember-dark"
+                >
+                  link 2
+                </Link>
+                .
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -245,8 +178,16 @@ export default async function CaseDetailPage({
             {!payment ? (
               <>
                 <p className="mb-4 text-[13px] leading-relaxed text-adm-muted">
-                  Indique o valor acordado com o cliente. Até o fazer, o{" "}
-                  <b className="text-adm-txt-2">Pay link</b> mostra ao cliente
+                  O valor entra aqui sozinho quando o cliente escolher uma opção
+                  no{" "}
+                  <Link
+                    href={`/admin/casos/${bookingCase.id}/ofertas`}
+                    className="font-semibold text-adm-ember hover:text-adm-ember-dark"
+                  >
+                    separador Ofertas
+                  </Link>
+                  . Se o caso foi fechado por fora, registe-o à mão abaixo — até
+                  lá o <b className="text-adm-txt-2">Pay link</b> diz ao cliente
                   que a tarifa ainda está a ser preparada.
                 </p>
                 <PayLinkForm caseId={bookingCase.id} />
@@ -301,7 +242,6 @@ export default async function CaseDetailPage({
               </Panel>
             )}
         </div>
-      </div>
     </div>
   )
 }
@@ -325,23 +265,6 @@ function IssueTicketsForm({ caseId }: { caseId: string }) {
         Marcar bilhetes como emitidos
       </button>
     </form>
-  )
-}
-
-function Meta({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-adm-muted">
-        {label}
-      </span>
-      <span className="text-[12.5px] text-adm-txt-2">{children}</span>
-    </div>
   )
 }
 
