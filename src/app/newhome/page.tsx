@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Plane, ShieldCheck, Clock } from "lucide-react"
+import { Plane, UserRound, Clock } from "lucide-react"
 
 import { WeeFlyLogo } from "@/components/weefly-logo"
 import { ChatWidget } from "@/components/concierge/chat-widget"
@@ -59,15 +59,17 @@ export default function NewHomePage() {
           </h1>
 
           <p className="mx-auto mt-5 max-w-xl text-base text-slate-500 sm:text-lg">
-            Escreva para onde quer ir, como falaria com um amigo. O WeeFly
-            Concierge encontra as melhores tarifas e opções — sem formulários,
-            sem complicações.
+            Escreva para onde quer ir, como falaria com um amigo. Um dos nossos
+            agentes prepara-lhe as opções e responde-lhe aqui mesmo — sem
+            formulários, sem complicações.
           </p>
         </section>
 
         {/* Chat */}
         <section className="mx-auto mt-10 max-w-3xl">
-          <ChatWidget />
+          <div className="flex h-[560px] flex-col rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <ChatWidget />
+          </div>
         </section>
 
         {/* Trust bullets */}
@@ -81,14 +83,14 @@ export default function NewHomePage() {
             description="Diga a origem, o destino e as datas à sua maneira. Nós tratamos do resto."
           />
           <Feature
-            icon={Clock}
-            title="Resultados em segundos"
-            description="Comparamos tarifas em tempo real e mostramos a mais barata e a melhor opção."
+            icon={UserRound}
+            title="Um agente a sério"
+            description="As opções são preparadas à mão por quem conhece as rotas e fala com as companhias."
           />
           <Feature
-            icon={ShieldCheck}
-            title="Acompanhamento humano"
-            description="A nossa equipa de Concierge confirma e finaliza cada reserva por si."
+            icon={Clock}
+            title="Sem ficar à espera"
+            description="Feche a página quando quiser. Avisamos por email e a conversa continua onde ficou."
           />
         </section>
       </main>

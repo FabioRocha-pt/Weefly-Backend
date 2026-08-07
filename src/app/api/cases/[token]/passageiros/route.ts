@@ -106,5 +106,29 @@ export async function POST(
     .update({ stage: "detalhes_recebidos" })
     .eq("id", bookingCase.id)
 
+  /*
+   * É aqui que o pagamento nasce, e não antes: o botão que o cliente acabou de
+   * carregar diz "confirmar dados e receber instruções de pagamento", e o valor
+   * só está fechado depois de ele ter escolhido a opção.
+   *
+   * Best-effort de propósito. Sem WeePay configurada isto devolve
+   * `not_configured` e não faz nada — o link 3 mostra o valor e o percurso
+   * manual segue. Um gateway em baixo também não pode custar-nos os passaportes
+   * que o cliente acabou de escrever.
+   */
+  const { startWeePayPayment } = await import("@/lib/payments")
+  try {
+    const outcome = await startWeePayPayment(bookingCase.id)
+    if (!outcome.ok && outcome.reason === "failed") {
+      console.error(
+        "[cases] WeePay não abriu o pagamento do caso %s: %s",
+        bookingCase.id,
+        outcome.message
+      )
+    }
+  } catch (err) {
+    console.error("[cases] startWeePayPayment rebentou:", err)
+  }
+
   return NextResponse.json({ ok: true })
 }

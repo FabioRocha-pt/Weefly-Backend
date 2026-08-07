@@ -98,10 +98,19 @@ function buildSearchParams(input: FlightSearchInput): URLSearchParams {
 /**
  * Search flights. Returns formatted offers plus whether they came from the
  * live API or the local mock (credentials missing).
+ *
+ * `raw` carries the untrimmed Amadeus offers, which the formatted shape throws
+ * away. The chat UI never needs them, but the compositor prefill does: it
+ * writes one row per *segment*, and `FormattedItinerary` only keeps the first
+ * departure and the last arrival. Empty on the mock path.
  */
 export async function getFlightOffers(
   input: FlightSearchInput
-): Promise<{ offers: FormattedFlightOffer[]; source: "amadeus" | "mock" }> {
+): Promise<{
+  offers: FormattedFlightOffer[]
+  raw: AmadeusFlightOffer[]
+  source: "amadeus" | "mock"
+}> {
   const clientId = process.env.AMADEUS_CLIENT_ID
   const clientSecret = process.env.AMADEUS_CLIENT_SECRET
 
@@ -109,7 +118,7 @@ export async function getFlightOffers(
     console.warn(
       "[amadeus] AMADEUS_CLIENT_ID/SECRET not set — returning mock offers."
     )
-    return { offers: buildMockOffers(input), source: "mock" }
+    return { offers: buildMockOffers(input), raw: [], source: "mock" }
   }
 
   const token = await getAccessToken(clientId, clientSecret)
@@ -130,7 +139,7 @@ export async function getFlightOffers(
 
   const payload = (await res.json()) as AmadeusFlightOffersResponse
   const offers = formatOffers(payload.data, payload.dictionaries)
-  return { offers, source: "amadeus" }
+  return { offers, raw: payload.data, source: "amadeus" }
 }
 
 // --- Formatting: Amadeus offer → presentation shape -------------------------

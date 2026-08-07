@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Loader2, CreditCard, Check } from "lucide-react"
+import { Loader2, CreditCard } from "lucide-react"
 
-import { createPayLink, markPaymentReceived } from "@/actions/booking-cases"
+import { createPayLink } from "@/actions/booking-cases"
 
 const CURRENCIES = ["CVE", "EUR", "USD"]
 
@@ -69,46 +69,6 @@ export function PayLinkForm({ caseId }: { caseId: string }) {
         )}
         Gerar link de pagamento
       </button>
-    </form>
-  )
-}
-
-/** Fallback for payments settled outside the gateway (transfer, cash). */
-export function MarkPaidButton({
-  caseId,
-  paymentId,
-}: {
-  caseId: string
-  paymentId: string
-}) {
-  const [error, setError] = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
-
-  function onSubmit(formData: FormData) {
-    setError(null)
-    startTransition(async () => {
-      const result = await markPaymentReceived(formData)
-      if (result.error) setError(result.error)
-    })
-  }
-
-  return (
-    <form action={onSubmit}>
-      <input type="hidden" name="caseId" value={caseId} />
-      <input type="hidden" name="paymentId" value={paymentId} />
-      <button
-        type="submit"
-        disabled={pending}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-adm-line bg-adm-raise px-4 py-2.5 text-[13px] font-semibold text-adm-txt-2 transition-colors hover:text-adm-txt disabled:opacity-60"
-      >
-        {pending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Check className="h-4 w-4" />
-        )}
-        Marcar como pago
-      </button>
-      {error && <p className="mt-2 text-[12.5px] text-adm-ember">{error}</p>}
     </form>
   )
 }

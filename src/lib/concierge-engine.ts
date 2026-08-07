@@ -34,6 +34,16 @@ export type ChatTurn = { role: "user" | "assistant"; content: string }
 /** Which surface the user is on — only affects reply formatting. */
 export type Channel = "web" | "whatsapp"
 
+/**
+ * O que o bot está a fazer.
+ *
+ * `search` é o comportamento original da Fase 2: perceber o pedido e responder
+ * com voos do Amadeus. `intake` é o que a conversa faz desde que passou a ser a
+ * porta de entrada do concierge — recolhe o pedido e o contacto, e cala-se
+ * sobre preços, porque a resposta vem de um agente.
+ */
+export type Mode = "search" | "intake"
+
 /** Fallback used whenever Claude gives us nothing usable to say. */
 export const FALLBACK_REPLY =
   "Desculpe, não percebi bem. Pode dizer-me a origem, o destino e a data da viagem?"
@@ -49,7 +59,7 @@ export type ParseOutcome =
   /** Transport/API failure. */
   | { ok: false; kind: "failed" }
 
-function systemPrompt(channel: Channel): string {
+function systemPrompt(channel: Channel, mode: Mode): string {
   const today = new Date().toISOString().slice(0, 10)
   const lines = [
     "És o motor de compreensão do WeeFly Concierge, um assistente de reservas de voos.",
@@ -61,6 +71,25 @@ function systemPrompt(channel: Channel): string {
     "Preenche 'ready' apenas quando origem, destino e data de partida forem todos conhecidos.",
     "Escreve 'reply' no mesmo idioma do utilizador, de forma breve e calorosa.",
   ]
+
+  if (mode === "intake") {
+    /*
+     * A diferença que define este modo: o bot não vende, recolhe.
+     *
+     * Quem responde com voos e preços é um agente humano, mais tarde, no
+     * compositor do back-office. Um bot que se antecipe a dizer "encontrei
+     * voos a partir de X" cria uma expectativa que o agente depois tem de
+     * desmentir — e é o agente que fica a parecer caro.
+     */
+    lines.push(
+      "Estás a recolher um pedido, não a vender. NUNCA menciones preços, disponibilidade, companhias ou horários concretos: quem prepara as opções é um agente humano, depois de tu recolheres o pedido.",
+      "Assim que tiveres a rota e as datas, confirma o que percebeste e pede o nome e o email para onde enviar a proposta.",
+      "Pede o nome e o email numa só mensagem, não um de cada vez. O telefone é opcional — aceita-o se o derem, mas não insistas.",
+      "Preenche 'contactReady' apenas quando tiveres nome E email.",
+      "Quando tiveres tudo, agradece e diz que um agente vai preparar as opções e avisar por email. Não prometas prazos concretos."
+    )
+  }
+
   if (channel === "whatsapp") {
     // WhatsApp bubbles are narrow and there is no rich layout to lean on.
     lines.push(
@@ -74,11 +103,12 @@ export async function parseMessage(input: {
   message: string
   history?: ChatTurn[]
   channel?: Channel
+  mode?: Mode
 }): Promise<ParseOutcome> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return { ok: false, kind: "unconfigured" }
 
-  const { message, history = [], channel = "web" } = input
+  const { message, history = [], channel = "web", mode = "search" } = input
   const client = new Anthropic({ apiKey })
 
   const messages: Anthropic.MessageParam[] = [
@@ -90,7 +120,7 @@ export async function parseMessage(input: {
     const response = await client.messages.parse({
       model: MODEL,
       max_tokens: 1024,
-      system: systemPrompt(channel),
+      system: systemPrompt(channel, mode),
       messages,
       output_config: { format: zodOutputFormat(parsedFlightQuerySchema) },
     })
@@ -129,6 +159,35 @@ export function isSearchable(
     !!query.origin &&
     !!query.destination &&
     !!query.departDate
+  )
+}
+
+/** Um email suficientemente parecido com um email para valer a pena tentar. */
+export function looksLikeEmail(value: string | null | undefined): boolean {
+  return !!value && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim())
+}
+
+/**
+ * Tem tudo o que é preciso para abrir um caso: rota, datas e contacto.
+ *
+ * Não confia no `contactReady` do modelo pela mesma razão que `isSearchable`
+ * não confia no `ready`: o sinal já se adiantou aos dados antes. O email é
+ * verificado à parte porque é a chave única do lead — um email malformado não
+ * falha aqui, falha na base de dados, muito mais tarde e com pior mensagem.
+ */
+export function isComplete(
+  query: ParsedFlightQuery | null | undefined
+): query is ParsedFlightQuery & {
+  origin: string
+  destination: string
+  departDate: string
+  fullName: string
+  email: string
+} {
+  return (
+    isSearchable(query) &&
+    !!query.fullName?.trim() &&
+    looksLikeEmail(query.email)
   )
 }
 

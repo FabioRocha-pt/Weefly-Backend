@@ -181,45 +181,13 @@ export async function createPayLink(
   return { error: null }
 }
 
-/** Mark an out-of-band payment (transfer, cash) as received. */
-export async function markPaymentReceived(
-  formData: FormData
-): Promise<CaseActionState> {
-  const paymentId = field(formData, "paymentId")
-  const caseId = field(formData, "caseId")
-  if (!paymentId || !caseId) return { error: "Pagamento inválido." }
-
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: "Sessão expirada. Volte a entrar." }
-
-  const { error } = await supabase
-    .from("case_payments")
-    .update({
-      status: "COMPLETED",
-      paid_at: new Date().toISOString(),
-      marked_manually_by: user.id,
-    })
-    .eq("id", paymentId)
-
-  if (error) {
-    console.error("[cases] markPaymentReceived failed:", error)
-    return { error: "Não foi possível registar o pagamento." }
-  }
-
-  await supabase.from("booking_cases").update({ stage: "pago" }).eq("id", caseId)
-  await supabase
-    .from("case_links")
-    .update({ status: "submetido", submitted_at: new Date().toISOString() })
-    .eq("case_id", caseId)
-    .eq("stage", 3)
-
-  revalidatePath("/admin")
-  revalidatePath(`/admin/casos/${caseId}`)
-  return { error: null }
-}
+/*
+ * `markPaymentReceived` vivia aqui e foi removida na altura em que a máquina de
+ * estados nasceu. Escrevia COMPLETED diretamente na tabela: não conhecia a
+ * matriz de transições do manual (§8.1), não avisava o cliente, e permitia
+ * marcar como pago um pagamento que a WeePay já tinha dado como FAILED. Quem a
+ * substitui é `confirmPaymentReceived` em actions/payments.ts.
+ */
 
 /** Final step: tickets sent to the client (done by hand, outside the app). */
 export async function markTicketsIssued(

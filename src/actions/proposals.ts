@@ -535,6 +535,26 @@ export async function publishProposal(
     .eq("id", caseId)
     .in("stage", behind)
 
+  /*
+   * Se o caso nasceu de uma conversa, a proposta é entregue lá dentro. É este
+   * o gesto que fecha o círculo do chatbot: o cliente pediu a conversar e a
+   * resposta do agente chega ao mesmo sítio, sem o obrigar a saltar para um
+   * link que ele não sabe de onde veio.
+   */
+  const { postProposalToConversation } = await import("@/lib/conversations")
+  const deliveredInChat = await postProposalToConversation({
+    caseId,
+    caseToken: bookingCase.token,
+    revision: view.proposal.revision,
+    currency: view.proposal.currency,
+    pax,
+    offers: going.map(({ cost_total: _cost, ...offer }) => offer),
+    openingMessage:
+      input.openingMessage !== undefined
+        ? text(input.openingMessage, 2000)
+        : view.proposal.opening_message,
+  })
+
   const warning = await notifyPublication({
     bookingCase,
     offers: going,
@@ -548,6 +568,7 @@ export async function publishProposal(
     notifyClient: input.notifyClient !== false,
     notifyTeam: input.notifyTeam !== false,
     agentName: user.email ?? null,
+    deliveredInChat,
   })
 
   touch(caseId)
@@ -571,10 +592,26 @@ async function notifyPublication(input: {
   notifyClient: boolean
   notifyTeam: boolean
   agentName: string | null
+  /** A proposta já foi escrita na conversa do cliente. */
+  deliveredInChat: boolean
 }): Promise<string | undefined> {
   const { bookingCase } = input
   const trip = bookingCase.trip_request
-  const link = `${baseUrl()}/p/${bookingCase.token}/proposta`
+
+  /*
+   * Para onde o email aponta depende de como o cliente chegou. Quem pediu a
+   * conversar volta à conversa, onde reconhece o que escreveu; quem recebeu um
+   * link do vendedor vai para o comparador. Mandar toda a gente para o mesmo
+   * sítio faria metade das pessoas aterrar num ecrã que nunca viram.
+   */
+  const { conversationForCase } = await import("@/lib/conversations")
+  const conversation = input.deliveredInChat
+    ? await conversationForCase(bookingCase.id)
+    : null
+
+  const link = conversation
+    ? `${baseUrl()}/c/${conversation.token}`
+    : `${baseUrl()}/p/${bookingCase.token}/proposta`
 
   if (!process.env.RESEND_API_KEY) {
     console.warn(
@@ -731,6 +768,15 @@ export async function selectOffer(token: string, offerId: string) {
       .eq("id", bookingCase.id)
       .in("stage", behind)
   }
+
+  /* Deixa o rasto na conversa. Sem isto, um cliente que volte ao chat dias
+     depois vê os cartões das ofertas e não faz ideia de que já escolheu uma. */
+  const { postSystemMessage } = await import("@/lib/conversations")
+  await postSystemMessage(
+    bookingCase.id,
+    `Escolheu: ${chosen.offer.name || "a opção"}. Falta preencher os dados dos passaportes.`,
+    { url: `/p/${token}/passageiros`, label: "Preencher passaportes" }
+  )
 
   revalidatePath(`/p/${token}/proposta`)
   revalidatePath(`/p/${token}/passageiros`)

@@ -178,7 +178,7 @@ export async function getCasePayment(caseId: string): Promise<CasePayment | null
   const { data } = await supabase
     .from("case_payments")
     .select(
-      "id, amount, currency, description, status, payment_url, weepay_transaction_id, paid_at, created_at"
+      "id, amount, currency, description, status, payment_url, weepay_transaction_id, paid_at, created_at, client_declared_paid_at, last_checked_at, failure_reason"
     )
     .eq("case_id", caseId)
     .order("created_at", { ascending: false })

@@ -200,6 +200,11 @@ export interface CasePayment {
   weepay_transaction_id: string | null
   paid_at: string | null
   created_at: string
+  /* Migração 0006. O cliente carregou em "Já paguei" — uma declaração, não uma
+     confirmação; ver o comentário em declarePaid(). */
+  client_declared_paid_at: string | null
+  last_checked_at: string | null
+  failure_reason: string | null
 }
 
 /**

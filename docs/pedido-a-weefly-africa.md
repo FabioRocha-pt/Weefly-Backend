@@ -126,6 +126,31 @@ Para os avisos automáticos passarem a chegar por WhatsApp em vez de email
 - **WeePay**: URL da API e chave (`WEEPAY_API_URL`, `WEEPAY_API_KEY`). Sem isto o
   sistema funciona à mesma, mas o pagamento é registado à mão pelo back-office
   em vez de gerar link automático.
+
+- **Três perguntas sobre o webhook da WeePay.** O manual
+  (`WeePay_Board_Developer_Manual_v1`) documenta o webhook que a WeePay *recebe*
+  dos fornecedores (`POST /api/v1/webhooks/stripe`), mas nunca diz o que ela
+  *envia* a quem a consome. O nosso lado está escrito a assumir que reenvia o
+  `NormalizedEvent` do §4.5 tal e qual, assinado com HMAC-SHA256 à maneira da
+  Stripe. Precisamos de confirmação de quem gere a WeePay:
+
+  1. A WeePay chama um webhook nosso quando uma transação muda de estado? Com
+     que corpo?
+  2. Como assina o pedido — que cabeçalho, e sobre que bytes?
+  3. Reenvia em caso de falha? Quantas vezes, e com que intervalo?
+
+  O endereço a registar do nosso lado é `{site}/api/weepay/webhook`, e o segredo
+  entra em `WEEPAY_WEBHOOK_SECRET`. Enquanto não houver resposta, o back-office
+  pergunta o estado à WeePay por sondagem (`GET /api/v1/payments/{txn}/status`),
+  que é o que o manual garante — funciona, mas obriga alguém a carregar num
+  botão em vez de o estado chegar sozinho.
+
+- **Como é que os clientes pagam hoje, sem WeePay?** Transferência bancária,
+  Vinti4, numerário ao balcão, combinado no WhatsApp? A página do link 3 mostra
+  neste momento só o valor e diz que o vendedor entra em contacto, porque
+  inventar um método seria pior. Assim que soubermos, entra ali o bloco com as
+  instruções — e se for transferência, precisamos dos dados da conta (banco,
+  IBAN, titular).
 - **Confirmar quem recebe os avisos internos.** Neste momento está configurado
   para `info@weefly.africa` e `info@weefly.cv`. Se forem outros endereços, ou se
   cada vendedor dever receber os seus, é preciso dizer.
@@ -145,8 +170,12 @@ Para os avisos automáticos passarem a chegar por WhatsApp em vez de email
 | Domínio `weefly.africa` verificado | ❌ **bloqueado na Parte A** |
 | Base de dados e back-office | ✅ a funcionar |
 | Fluxo dos 3 links | ✅ a funcionar |
+| Compositor de ofertas e link 2 do cliente | ✅ a funcionar |
+| Pagamento manual (cliente declara, admin confirma) | ✅ a funcionar |
 | Avisos por WhatsApp | ❌ bloqueado na Parte C |
-| Pagamento automático | ❌ bloqueado na Parte D |
+| Pagamento automático WeePay | ⚠️ escrito, à espera das credenciais |
+| Webhook da WeePay | ⚠️ escrito às cegas, à espera do contrato |
+| Instruções de pagamento na página do cliente | ❌ à espera de sabermos como cobram |
 
 `info@weefly.cv` **recebe** os avisos internos sem qualquer configuração —
 receber nunca exige verificação. A Parte A só é necessária para *enviar*.

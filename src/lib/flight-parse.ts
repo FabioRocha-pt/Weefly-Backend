@@ -79,10 +79,37 @@ export const parsedFlightQuerySchema = z4.object({
     .describe(
       "true only when origin, destination AND departDate are all known — i.e. a flight search can run."
     ),
+
+  /*
+   * Contacto. Sem isto o pedido não pode virar caso: `upsertLead` usa o email
+   * como chave única, e o email é o único canal que temos a funcionar para
+   * avisar o cliente de que a proposta saiu. O bot pede-os depois de ter a
+   * rota, para não começar a conversa a interrogar quem só quer um preço.
+   */
+  fullName: z4
+    .string()
+    .nullable()
+    .describe("The traveller's full name as they gave it. null if not yet said."),
+  email: z4
+    .string()
+    .nullable()
+    .describe(
+      "The traveller's email address, for sending the proposal. null if not yet given."
+    ),
+  phone: z4
+    .string()
+    .nullable()
+    .describe(
+      "Phone number including country code if given, e.g. '+238 991 44 07'. Optional — null if not given."
+    ),
+  contactReady: z4
+    .boolean()
+    .describe("true only when BOTH fullName and email are known."),
+
   reply: z4
     .string()
     .describe(
-      "A short, warm reply in the same language the user wrote in. If not ready, ask for the single most important missing detail. If ready, confirm the route and dates you understood before searching."
+      "A short, warm reply in the same language the user wrote in. If the route is incomplete, ask for the single most important missing detail. Once the route is known but contact details are not, confirm the trip you understood and ask for the name and email to send the proposal to. Never promise prices or availability — a human agent prepares those."
     ),
 })
 

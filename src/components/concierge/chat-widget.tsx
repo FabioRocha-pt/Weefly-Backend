@@ -1,333 +1,379 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { Send, Loader2, Sparkles } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { ExternalLink, Loader2, Send, Sparkles, UserRound } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import type { ParsedFlightQuery } from "@/lib/flight-parse"
-import type { FlightSearchResponse, FormattedFlightOffer } from "@/types/flights"
-import { FlightOfferCard } from "@/components/concierge/flight-offer-card"
+import {
+  ChatProposal,
+  type ProposalPayload,
+} from "@/components/concierge/chat-proposal"
 
-const EMBER = "#FF4747"
+const STORAGE_KEY = "weefly.conversation"
 
-// --- Message model ----------------------------------------------------------
+/** Enquanto o agente prepara a proposta, é a sondagem que a traz. */
+const POLL_MS = 10_000
 
-type ChatRole = "user" | "assistant"
-
-type TextMessage = { id: string; role: ChatRole; type: "text"; text: string }
-type LoadingMessage = { id: string; role: "assistant"; type: "loading"; text: string }
-type OffersMessage = {
+interface Message {
   id: string
-  role: "assistant"
-  type: "offers"
-  result: FlightSearchResponse
+  author: "client" | "bot" | "agent"
+  kind: "text" | "proposal" | "link" | "system"
+  body: string | null
+  payload: Record<string, unknown> | null
+  created_at: string
 }
-type ChatMessage = TextMessage | LoadingMessage | OffersMessage
 
 const SUGGESTIONS = [
-  "Voos de Lisboa para Paris dia 15",
-  "Praia para Lisboa, ida e volta próxima semana, 2 adultos",
-  "Quero voar para Londres em classe executiva",
+  "Praia para Lisboa dia 15",
+  "Quero ir a Boston em setembro, 2 adultos e uma criança",
+  "Lisboa → Paris, ida e volta na próxima semana",
 ]
 
-let idCounter = 0
-const uid = () => `m${Date.now()}-${idCounter++}`
+const GREETING =
+  "Olá! Diga-me para onde quer viajar, quando, e quantas pessoas vão. Depois passo o pedido a um dos nossos agentes, que lhe prepara as opções."
 
-export function ChatWidget() {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+/**
+ * A conversa do WeeFly Concierge.
+ *
+ * Deixou de orquestrar: antes era este componente que chamava o parse, olhava
+ * para `ready` e decidia se pesquisava voos. Agora envia a mensagem e mostra o
+ * que vier — o histórico, o caso e a decisão de quando o pedido está completo
+ * vivem no servidor, porque é lá que um agente também consegue escrever.
+ *
+ * O `token` guardado no browser é o que permite fechar o separador e voltar
+ * dias depois à mesma conversa.
+ */
+export function ChatWidget({ token: initialToken }: { token?: string }) {
+  const [token, setToken] = useState<string | null>(initialToken ?? null)
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [awaitingAgent, setAwaitingAgent] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
-  }, [messages])
+  }, [messages, busy])
 
-  function addMessage(message: ChatMessage) {
-    setMessages((prev) => [...prev, message])
-  }
+  /** Carrega o histórico: o token vem do endereço ou do armazenamento local. */
+  useEffect(() => {
+    const stored =
+      initialToken ??
+      (typeof window !== "undefined"
+        ? window.localStorage.getItem(STORAGE_KEY)
+        : null)
 
-  async function handleSend(raw: string) {
+    if (!stored) {
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/chat/${stored}`, { cache: "no-store" })
+        if (!res.ok) {
+          // Conversa apagada ou token inválido — recomeça-se limpo em vez de
+          // deixar o cliente preso num estado que já não existe.
+          window.localStorage.removeItem(STORAGE_KEY)
+          return
+        }
+        const data = (await res.json()) as {
+          token: string
+          caseId: string | null
+          messages: Message[]
+        }
+        if (cancelled) return
+        setToken(data.token)
+        setMessages(data.messages)
+        setAwaitingAgent(Boolean(data.caseId))
+        window.localStorage.setItem(STORAGE_KEY, data.token)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [initialToken])
+
+  /**
+   * Sondagem, mas só quando há motivo.
+   *
+   * Enquanto o bot está a fazer perguntas, tudo o que aparece é resposta do
+   * próprio turno e não há nada a sondar. Depois de o pedido ser entregue, o
+   * que falta chega de fora — do agente — e só aí vale a pena perguntar.
+   */
+  const poll = useCallback(async () => {
+    if (!token) return
+    const since = messages[messages.length - 1]?.created_at
+    const url = `/api/chat/${token}${since ? `?since=${encodeURIComponent(since)}` : ""}`
+    try {
+      const res = await fetch(url, { cache: "no-store" })
+      if (!res.ok) return
+      const data = (await res.json()) as { messages: Message[] }
+      if (data.messages.length > 0) {
+        setMessages((prev) => merge(prev, data.messages))
+      }
+    } catch {
+      // Rede a falhar durante a sondagem não é digno de interromper ninguém.
+    }
+  }, [token, messages])
+
+  useEffect(() => {
+    if (!awaitingAgent || !token) return
+    const id = setInterval(poll, POLL_MS)
+    return () => clearInterval(id)
+  }, [awaitingAgent, token, poll])
+
+  async function send(raw: string) {
     const text = raw.trim()
     if (!text || busy) return
 
-    // Snapshot prior text turns as history for multi-turn slot-filling.
-    const history = messages
-      .filter((m): m is TextMessage => m.type === "text")
-      .map((m) => ({ role: m.role, content: m.text }))
-
-    addMessage({ id: uid(), role: "user", type: "text", text })
     setInput("")
     setBusy(true)
 
+    // Eco imediato: o cliente vê o que escreveu antes de a rede responder.
+    const pendingId = `pending-${Date.now()}`
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: pendingId,
+        author: "client",
+        kind: "text",
+        body: text,
+        payload: null,
+        created_at: new Date().toISOString(),
+      },
+    ])
+
     try {
-      // 1) NLP: turn free text into a structured query.
-      const parseRes = await fetch("/api/chat/parse", {
+      const res = await fetch("/api/chat/turn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history }),
-      })
-      const parseData = (await parseRes.json().catch(() => null)) as
-        | (ParsedFlightQuery & { error?: string })
-        | { error?: string; reply?: string }
-        | null
-
-      const reply =
-        parseData && typeof parseData.reply === "string"
-          ? parseData.reply
-          : "Desculpe, não consegui interpretar o pedido. Pode indicar a origem, o destino e a data?"
-
-      addMessage({ id: uid(), role: "assistant", type: "text", text: reply })
-
-      const query = parseData as ParsedFlightQuery | null
-      const canSearch =
-        !!query &&
-        query.ready === true &&
-        !!query.origin &&
-        !!query.destination &&
-        !!query.departDate
-
-      if (!canSearch) return
-
-      // 2) Search flights and render the offer cards.
-      const loadingId = uid()
-      addMessage({
-        id: loadingId,
-        role: "assistant",
-        type: "loading",
-        text: "A procurar as melhores tarifas…",
+        body: JSON.stringify({ token, message: text }),
       })
 
-      const searchRes = await fetch("/api/flights/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          origin: query.origin,
-          destination: query.destination,
-          departDate: query.departDate,
-          returnDate: query.returnDate,
-          adults: query.adults,
-          children: query.children,
-          infants: query.infants,
-          cabinClass: query.cabinClass,
-        }),
-      })
-
-      setMessages((prev) => prev.filter((m) => m.id !== loadingId))
-
-      if (!searchRes.ok) {
-        addMessage({
-          id: uid(),
-          role: "assistant",
-          type: "text",
-          text: "Não consegui pesquisar voos neste momento. Tente novamente daqui a pouco.",
-        })
+      if (!res.ok) {
+        setMessages((prev) => [
+          ...prev.filter((m) => m.id !== pendingId),
+          {
+            id: pendingId,
+            author: "client",
+            kind: "text",
+            body: text,
+            payload: null,
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: `err-${Date.now()}`,
+            author: "bot",
+            kind: "text",
+            body: "Não consegui enviar essa mensagem. Pode tentar outra vez?",
+            payload: null,
+            created_at: new Date().toISOString(),
+          },
+        ])
         return
       }
 
-      const result = (await searchRes.json()) as FlightSearchResponse
-      if (result.offers.length === 0) {
-        addMessage({
-          id: uid(),
-          role: "assistant",
-          type: "text",
-          text: "Não encontrei voos para esta pesquisa. Quer tentar outras datas?",
-        })
-        return
+      const data = (await res.json()) as {
+        token: string
+        messages: Message[]
+        caseCreated: { caseId: string } | null
       }
 
-      addMessage({ id: uid(), role: "assistant", type: "offers", result })
-    } catch {
-      addMessage({
-        id: uid(),
-        role: "assistant",
-        type: "text",
-        text: "Ocorreu um erro inesperado. Pode tentar novamente?",
-      })
+      setToken(data.token)
+      window.localStorage.setItem(STORAGE_KEY, data.token)
+      setMessages((prev) =>
+        merge(
+          prev.filter((m) => m.id !== pendingId),
+          data.messages
+        )
+      )
+      if (data.caseCreated) setAwaitingAgent(true)
     } finally {
       setBusy(false)
     }
   }
 
-  function handleBook(offer: FormattedFlightOffer) {
-    addMessage({
-      id: uid(),
-      role: "assistant",
-      type: "text",
-      text: `Perfeito! Reservei a opção de ${offer.price.label}. Um consultor WeeFly vai confirmar os detalhes consigo. (demonstração)`,
-    })
-  }
-
-  const isEmpty = messages.length === 0
+  const showGreeting = !loading && messages.length === 0
 
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
-      {/* Conversation */}
-      <div
-        className={cn(
-          "flex-1 overflow-y-auto px-4 py-5 sm:px-6",
-          isEmpty ? "min-h-[220px]" : "min-h-[360px] max-h-[520px]"
-        )}
-      >
-        {isEmpty ? (
-          <EmptyState onPick={handleSend} disabled={busy} />
-        ) : (
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                onBook={handleBook}
-              />
-            ))}
-            <div ref={bottomRef} />
+    <div className="flex h-full flex-col">
+      <div className="flex-1 space-y-4 overflow-y-auto px-1 pb-4">
+        {loading && (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
           </div>
         )}
-      </div>
 
-      {/* Composer */}
-      <div className="border-t border-slate-100 bg-white p-3 sm:p-4">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            handleSend(input)
-          }}
-          className="flex items-center gap-2"
-        >
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ex.: Voos de Lisboa para Paris dia 15…"
-            disabled={busy}
-            className="h-12 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-[#FF4747] focus:bg-white focus:ring-2 focus:ring-[#FF4747]/20 disabled:opacity-60"
-          />
-          <button
-            type="submit"
-            disabled={busy || !input.trim()}
-            style={{ backgroundColor: EMBER }}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm transition-all hover:brightness-95 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Enviar"
-          >
-            {busy ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </button>
-        </form>
-      </div>
-    </div>
-  )
-}
+        {showGreeting && (
+          <>
+            <Bubble author="bot">{GREETING}</Bubble>
+            <div className="flex flex-wrap gap-2 pl-9">
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => send(s)}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12.5px] text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
-// --- Sub-components ----------------------------------------------------------
-
-function EmptyState({
-  onPick,
-  disabled,
-}: {
-  onPick: (text: string) => void
-  disabled: boolean
-}) {
-  return (
-    <div className="flex h-full flex-col items-center justify-center text-center">
-      <div
-        className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl"
-        style={{ backgroundColor: "#FFECEC" }}
-      >
-        <Sparkles className="h-6 w-6" style={{ color: EMBER }} />
-      </div>
-      <p className="max-w-sm text-sm text-slate-500">
-        Diga-me para onde quer voar. Trato da pesquisa e mostro-lhe as melhores
-        opções.
-      </p>
-      <div className="mt-5 flex flex-wrap justify-center gap-2">
-        {SUGGESTIONS.map((s) => (
-          <button
-            key={s}
-            type="button"
-            disabled={disabled}
-            onClick={() => onPick(s)}
-            className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-[#FF4747] hover:text-[#FF4747] disabled:opacity-50"
-          >
-            {s}
-          </button>
+        {messages.map((m) => (
+          <MessageRow key={m.id} message={m} />
         ))}
+
+        {busy && (
+          <Bubble author="bot">
+            <span className="inline-flex items-center gap-2 text-slate-400">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />A escrever…
+            </span>
+          </Bubble>
+        )}
+
+        {awaitingAgent && !busy && (
+          <p className="px-1 py-2 text-center text-[12px] leading-relaxed text-slate-400">
+            O seu pedido está com um agente. Assim que as opções estiverem
+            prontas aparecem aqui — e avisamos por email, pode fechar a página.
+          </p>
+        )}
+
+        <div ref={bottomRef} />
       </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          send(input)
+        }}
+        className="flex items-end gap-2 border-t border-slate-200 bg-white pt-3"
+      >
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Escreva a sua mensagem…"
+          disabled={busy}
+          className="min-w-0 flex-1 rounded-full border border-slate-200 px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-slate-400 focus:border-orange-400 disabled:opacity-60"
+        />
+        <button
+          type="submit"
+          disabled={busy || !input.trim()}
+          aria-label="Enviar"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-600 text-white transition-colors hover:bg-orange-700 disabled:opacity-40"
+        >
+          <Send className="h-4 w-4" />
+        </button>
+      </form>
     </div>
   )
 }
 
-function MessageBubble({
-  message,
-  onBook,
-}: {
-  message: ChatMessage
-  onBook: (offer: FormattedFlightOffer) => void
-}) {
-  if (message.type === "offers") {
-    return <OffersBlock result={message.result} onBook={onBook} />
+/** Junta mensagens novas sem duplicar as que já estavam. */
+function merge(previous: Message[], incoming: Message[]): Message[] {
+  const seen = new Set(previous.map((m) => m.id))
+  return [...previous, ...incoming.filter((m) => !seen.has(m.id))]
+}
+
+function MessageRow({ message }: { message: Message }) {
+  if (message.kind === "system") {
+    return (
+      <p className="py-1 text-center text-[12px] text-slate-400">
+        {message.body}
+      </p>
+    )
   }
 
-  if (message.type === "loading") {
+  if (message.kind === "proposal") {
     return (
-      <div className="flex justify-start">
-        <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-3 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" style={{ color: EMBER }} />
-          {message.text}
+      <div className="space-y-2">
+        {message.body && <Bubble author="agent">{message.body}</Bubble>}
+        <div className="pl-9">
+          <ChatProposal payload={message.payload as unknown as ProposalPayload} />
         </div>
       </div>
     )
   }
 
-  const isUser = message.role === "user"
-  return (
-    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
-      <div
-        className={cn(
-          "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-          isUser
-            ? "rounded-tr-sm text-white"
-            : "rounded-tl-sm bg-slate-100 text-slate-700"
+  if (message.kind === "link") {
+    const payload = (message.payload ?? {}) as { url?: string; label?: string }
+    return (
+      <Bubble author={message.author}>
+        {message.body}
+        {payload.url && (
+          <a
+            href={payload.url}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-orange-600 px-4 py-2 text-[12.5px] font-bold text-white transition-colors hover:bg-orange-700"
+          >
+            {payload.label ?? "Abrir"}
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
         )}
-        style={isUser ? { backgroundColor: EMBER } : undefined}
-      >
-        {message.text}
-      </div>
-    </div>
-  )
+      </Bubble>
+    )
+  }
+
+  return <Bubble author={message.author}>{message.body}</Bubble>
 }
 
-function OffersBlock({
-  result,
-  onBook,
+/**
+ * O cliente tem direito a saber com quem fala.
+ *
+ * O assistente e o agente humano têm avatares e rótulos diferentes de
+ * propósito: a diferença entre "o robô percebeu-me mal" e "a Nélida disse-me
+ * isto" muda completamente o que a pessoa faz a seguir.
+ */
+function Bubble({
+  author,
+  children,
 }: {
-  result: FlightSearchResponse
-  onBook: (offer: FormattedFlightOffer) => void
+  author: "client" | "bot" | "agent"
+  children: React.ReactNode
 }) {
-  const { cheapest, best, query, offers, source } = result
-
-  // Cheapest first, then best — skip the duplicate when they're the same offer.
-  const cards: { offer: FormattedFlightOffer; variant: "cheapest" | "best" }[] = []
-  if (cheapest) cards.push({ offer: cheapest, variant: "cheapest" })
-  if (best && best.id !== cheapest?.id) cards.push({ offer: best, variant: "best" })
+  if (author === "client") {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-orange-600 px-4 py-2.5 text-[14px] leading-relaxed text-white">
+          {children}
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-slate-400">
-        {offers.length} opções encontradas · {query.origin} → {query.destination}
-        {source === "mock" && " · demonstração"}
-      </p>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {cards.map(({ offer, variant }) => (
-          <FlightOfferCard
-            key={`${variant}-${offer.id}`}
-            offer={offer}
-            variant={variant}
-            tripType={query.tripType}
-            onBook={onBook}
-          />
-        ))}
+    <div className="flex gap-2">
+      <div
+        className={cn(
+          "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+          author === "agent"
+            ? "bg-slate-900 text-white"
+            : "bg-orange-100 text-orange-600"
+        )}
+        aria-hidden
+      >
+        {author === "agent" ? (
+          <UserRound className="h-3.5 w-3.5" />
+        ) : (
+          <Sparkles className="h-3.5 w-3.5" />
+        )}
+      </div>
+      <div className="max-w-[85%]">
+        {author === "agent" && (
+          <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
+            Agente WeeFly
+          </span>
+        )}
+        <div className="rounded-2xl rounded-tl-md bg-slate-100 px-4 py-2.5 text-[14px] leading-relaxed text-slate-800">
+          {children}
+        </div>
       </div>
     </div>
   )

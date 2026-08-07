@@ -8,13 +8,12 @@ import {
   getCasePassengers,
   getCasePayment,
 } from "@/lib/booking-cases"
-import {
-  LINK_STAGE_NAMES,
-  LINK_STATUS_LABELS,
-  PAYMENT_STATUS_LABELS,
-  formatAmount,
-} from "@/lib/case-status"
-import { PayLinkForm, MarkPaidButton } from "@/components/admin/pay-link-form"
+import { LINK_STAGE_NAMES, LINK_STATUS_LABELS } from "@/lib/case-status"
+import { conversationForCase, getMessages } from "@/lib/conversations"
+import { isWeePayConfigured } from "@/lib/weepay"
+import { CaseConversation } from "@/components/admin/case-conversation"
+import { PayLinkForm } from "@/components/admin/pay-link-form"
+import { PaymentPanel } from "@/components/admin/payment-panel"
 
 export const dynamic = "force-dynamic"
 
@@ -47,16 +46,31 @@ export default async function CaseDetailPage({
   const bookingCase = await getCase(params.id)
   if (!bookingCase) notFound()
 
-  const [passengers, payment] = await Promise.all([
+  const [passengers, payment, conversation] = await Promise.all([
     getCasePassengers(bookingCase.id),
     getCasePayment(bookingCase.id),
+    conversationForCase(bookingCase.id),
   ])
+
+  const chatMessages = conversation
+    ? await getMessages(conversation.id)
+    : []
 
   const trip = bookingCase.trip_request
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
+          {conversation && (
+            <Panel title="Conversa com o cliente">
+              <CaseConversation
+                caseId={bookingCase.id}
+                messages={chatMessages}
+                conversationToken={conversation.token}
+              />
+            </Panel>
+          )}
+
           {/* onde está o cliente */}
           <Panel title="Onde está o cliente">
             <ul className="divide-y divide-adm-line-soft">
@@ -194,39 +208,14 @@ export default async function CaseDetailPage({
               </>
             ) : (
               <div className="space-y-4">
-                <div>
-                  <p className="font-mono text-2xl font-bold text-adm-txt">
-                    {formatAmount(payment.amount, payment.currency)}
-                  </p>
-                  {payment.description && (
-                    <p className="mt-1 text-[13px] text-adm-muted">
-                      {payment.description}
-                    </p>
-                  )}
-                  <p className="mt-2 text-[11.5px] font-semibold text-adm-txt-2">
-                    Estado: {PAYMENT_STATUS_LABELS[payment.status]}
-                  </p>
-                  {payment.paid_at && (
-                    <p className="text-[11.5px] text-adm-ok">
-                      Pago a {formatDateTime(payment.paid_at)}
-                    </p>
-                  )}
-                </div>
-
-                {!payment.payment_url && payment.status !== "COMPLETED" && (
-                  <p className="rounded-lg bg-adm-warn/10 p-3 text-[11.5px] leading-relaxed text-adm-warn">
-                    A integração WeePay ainda não está ligada, por isso não há
-                    link de pagamento automático. Combine o pagamento com o
-                    cliente e registe-o abaixo.
-                  </p>
-                )}
-
-                {payment.status !== "COMPLETED" && (
-                  <MarkPaidButton
-                    caseId={bookingCase.id}
-                    paymentId={payment.id}
-                  />
-                )}
+                <PaymentPanel
+                  caseId={bookingCase.id}
+                  payment={payment}
+                  weepayConfigured={isWeePayConfigured()}
+                  declaredAt={payment.client_declared_paid_at}
+                  lastCheckedAt={payment.last_checked_at}
+                  failureReason={payment.failure_reason}
+                />
               </div>
             )}
           </Panel>
