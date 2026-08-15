@@ -1,9 +1,37 @@
 import { type NextRequest } from "next/server"
 import { updateSession } from "@/utils/supabase/middleware"
+import {
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE,
+  isLocale,
+} from "@/i18n/config"
 
 export async function middleware(request: NextRequest) {
   // Refreshes the Supabase session and enforces route protection.
-  return await updateSession(request)
+  const response = await updateSession(request)
+
+  /*
+   * `?lang=fr` fixa o idioma no cookie.
+   *
+   * Isto vive aqui e não numa página porque um layout não recebe os parâmetros
+   * do endereço — só as páginas os recebem — e o provider de tradução tem de
+   * estar no layout para envolver tudo. O middleware é o único sítio que vê o
+   * URL inteiro antes de qualquer render.
+   *
+   * É deliberadamente só isto: ler um parâmetro e gravar um cookie. Não há
+   * reescrita de rotas nem prefixos de idioma no caminho — a autenticação do
+   * Supabase acima fica exatamente como estava.
+   */
+  const requested = request.nextUrl.searchParams.get("lang")
+  if (isLocale(requested) && request.cookies.get(LOCALE_COOKIE)?.value !== requested) {
+    response.cookies.set(LOCALE_COOKIE, requested, {
+      path: "/",
+      maxAge: LOCALE_COOKIE_MAX_AGE,
+      sameSite: "lax",
+    })
+  }
+
+  return response
 }
 
 export const config = {

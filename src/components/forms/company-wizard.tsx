@@ -14,52 +14,43 @@ import { Stepper } from "@/components/onboarding/stepper"
 import { companyDataSchema, type CompanyDataFormData } from "@/lib/validations"
 import { COUNTRIES } from "@/types"
 import { createCompany } from "@/actions/company"
+import { useT } from "@/i18n/provider"
+import { translateMessage } from "@/i18n/translate"
+import type { Translator } from "@/i18n/translate"
 
 type CompanyTypeId = "rental" | "housing" | "tourism"
 
 interface CompanyTypeOption {
   id: CompanyTypeId
-  title: string
-  description: string
-  tag: string
   icon: React.ReactNode
   iconWrapper: string
 }
 
+/*
+ * Só o que não muda de língua: o ícone e a cor. O título, a descrição e a
+ * etiqueta saem do dicionário a partir do `id` — `onboarding.rentalTitle` e
+ * companhia.
+ */
 const COMPANY_TYPES: CompanyTypeOption[] = [
   {
     id: "rental",
-    title: "Aluguer de carros",
-    description: "Frota própria com preços por dia, locais de entrega e devolução.",
-    tag: "Rent-a-car · condutor opcional",
     icon: <Car className="w-6 h-6 text-orange-600" />,
     iconWrapper: "bg-orange-100",
   },
   {
     id: "housing",
-    title: "Aluguer de casas",
-    description: "Casas e quartos com preço por noite, calendário e regras.",
-    tag: "Moradias · apartamentos · quartos",
     icon: <Home className="w-6 h-6 text-sky-600" />,
     iconWrapper: "bg-sky-100",
   },
   {
     id: "tourism",
-    title: "Excursões & experiências",
-    description: "Passeios, atividades e experiências com horários e lotação.",
-    tag: "Tours · passeios · experiências",
     icon: <Flag className="w-6 h-6 text-amber-600" />,
     iconWrapper: "bg-amber-100",
   },
 ]
 
-const TYPE_LABELS: Record<CompanyTypeId, string> = {
-  rental: "Aluguer de carros",
-  housing: "Aluguer de casas",
-  tourism: "Excursões & experiências",
-}
-
 export function CompanyWizard() {
+  const t = useT()
   const router = useRouter()
   const [step, setStep] = useState<2 | 3>(2)
   const [selectedType, setSelectedType] = useState<CompanyTypeId>("rental")
@@ -113,6 +104,7 @@ export function CompanyWizard() {
 
       {step === 2 && (
         <TypeStep
+          t={t}
           selectedType={selectedType}
           onSelect={setSelectedType}
           onBack={() => router.push("/inicio")}
@@ -122,8 +114,9 @@ export function CompanyWizard() {
 
       {step === 3 && (
         <DataStep
+          t={t}
           form={form}
-          selectedTypeLabel={TYPE_LABELS[selectedType]}
+          selectedTypeLabel={t(`onboarding.${selectedType}Title`)}
           serverError={serverError}
           onBack={() => setStep(2)}
           onSubmit={onSubmit}
@@ -134,11 +127,13 @@ export function CompanyWizard() {
 }
 
 function TypeStep({
+  t,
   selectedType,
   onSelect,
   onBack,
   onContinue,
 }: {
+  t: Translator
   selectedType: CompanyTypeId
   onSelect: (id: CompanyTypeId) => void
   onBack: () => void
@@ -146,10 +141,11 @@ function TypeStep({
 }) {
   return (
     <div className="text-center animate-fade-in">
-      <h1 className="text-3xl font-bold text-slate-900 mb-3">O que faz esta empresa?</h1>
+      <h1 className="text-3xl font-bold text-slate-900 mb-3">
+        {t("onboarding.typeTitle")}
+      </h1>
       <p className="text-slate-500 max-w-2xl mx-auto mb-10">
-        Cada empresa tem um único tipo. Se faz mais do que um, criará uma empresa para cada — com
-        dados e reputação próprios.
+        {t("onboarding.typeSubtitle")}
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -177,8 +173,12 @@ function TypeStep({
                 {type.icon}
               </div>
 
-              <h3 className="text-lg font-bold text-slate-900 mb-2">{type.title}</h3>
-              <p className="text-sm text-slate-500 mb-4">{type.description}</p>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">
+                {t(`onboarding.${type.id}Title`)}
+              </h3>
+              <p className="text-sm text-slate-500 mb-4">
+                {t(`onboarding.${type.id}Body`)}
+              </p>
               <div className="pt-4 border-t border-slate-100">
                 <span
                   className={cn(
@@ -186,7 +186,7 @@ function TypeStep({
                     isSelected ? "text-orange-600" : "text-slate-400"
                   )}
                 >
-                  {type.tag}
+                  {t(`onboarding.${type.id}Tag`)}
                 </span>
               </div>
             </button>
@@ -195,16 +195,15 @@ function TypeStep({
       </div>
 
       <p className="text-sm text-slate-500 max-w-2xl mx-auto mb-8">
-        Quer atuar como agente (reservar para terceiros)? Não precisa de escolher aqui — todos os
-        utilizadores têm a área de agente incluída.
+        {t("onboarding.typeAgentNote")}
       </p>
 
       <div className="flex items-center justify-center gap-4">
         <Button type="button" variant="outline" size="lg" onClick={onBack}>
-          Voltar
+          {t("common.back")}
         </Button>
         <Button type="button" size="lg" onClick={onContinue}>
-          Continuar
+          {t("common.continue")}
         </Button>
       </div>
     </div>
@@ -212,12 +211,14 @@ function TypeStep({
 }
 
 function DataStep({
+  t,
   form,
   selectedTypeLabel,
   serverError,
   onBack,
   onSubmit,
 }: {
+  t: Translator
   form: UseFormReturn<CompanyDataFormData>
   selectedTypeLabel: string
   serverError: string | null
@@ -229,10 +230,10 @@ function DataStep({
   return (
     <div className="animate-fade-in">
       <div className="text-center mb-10">
-        <h1 className="text-3xl font-bold text-slate-900 mb-3">Dados da empresa</h1>
-        <p className="text-slate-500">
-          Preencha os dados fiscais e de contacto. A empresa fica ativa de imediato.
-        </p>
+        <h1 className="text-3xl font-bold text-slate-900 mb-3">
+          {t("onboarding.dataTitle")}
+        </h1>
+        <p className="text-slate-500">{t("onboarding.dataSubtitle")}</p>
       </div>
 
       <form
@@ -241,7 +242,7 @@ function DataStep({
       >
         {/* Company type (locked from step 2) */}
         <div className="space-y-2">
-          <Label>Tipo de empresa</Label>
+          <Label>{t("onboarding.companyType")}</Label>
           <div className="flex items-center gap-2 h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700">
             <Building2 className="w-4 h-4 text-orange-600" />
             {selectedTypeLabel}
@@ -250,27 +251,42 @@ function DataStep({
 
         {/* Legal + commercial name */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Nome legal" error={formState.errors.legalName?.message}>
-            <Input placeholder="Ex.: Ivandro Comércio, Lda." {...register("legalName")} />
+          <Field
+            label={t("onboarding.legalName")}
+            error={translateMessage(t, formState.errors.legalName?.message)}
+          >
+            <Input
+              placeholder={t("onboarding.legalNamePlaceholder")}
+              {...register("legalName")}
+            />
           </Field>
-          <Field label="Nome comercial" error={formState.errors.commercialName?.message}>
-            <Input placeholder="Ex.: Rent-a-Car Praia" {...register("commercialName")} />
+          <Field
+            label={t("onboarding.commercialName")}
+            error={translateMessage(t, formState.errors.commercialName?.message)}
+          >
+            <Input
+              placeholder={t("onboarding.commercialNamePlaceholder")}
+              {...register("commercialName")}
+            />
           </Field>
         </div>
 
         {/* NIF + country */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="NIF" error={formState.errors.nif?.message}>
-            <Input placeholder="Número de identificação fiscal" {...register("nif")} />
+          <Field label={t("onboarding.nif")} error={translateMessage(t, formState.errors.nif?.message)}>
+            <Input placeholder={t("onboarding.nifPlaceholder")} {...register("nif")} />
           </Field>
-          <Field label="País" error={formState.errors.country?.message}>
+          <Field
+            label={t("onboarding.country")}
+            error={translateMessage(t, formState.errors.country?.message)}
+          >
             <select
               className="flex h-11 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 transition-all duration-200"
               {...register("country")}
             >
               {COUNTRIES.map((c) => (
                 <option key={c.value} value={c.value}>
-                  {c.label}
+                  {t(c.labelKey)}
                 </option>
               ))}
             </select>
@@ -279,33 +295,52 @@ function DataStep({
 
         {/* City + address */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Cidade" error={formState.errors.city?.message}>
-            <Input placeholder="Ex.: Praia" {...register("city")} />
+          <Field label={t("onboarding.city")} error={translateMessage(t, formState.errors.city?.message)}>
+            <Input placeholder={t("onboarding.cityPlaceholder")} {...register("city")} />
           </Field>
-          <Field label="Morada" error={formState.errors.address?.message}>
-            <Input placeholder="Rua, número, zona" {...register("address")} />
+          <Field
+            label={t("onboarding.address")}
+            error={translateMessage(t, formState.errors.address?.message)}
+          >
+            <Input placeholder={t("onboarding.addressPlaceholder")} {...register("address")} />
           </Field>
         </div>
 
         {/* Email + phone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Email da empresa" error={formState.errors.email?.message}>
-            <Input type="email" placeholder="geral@empresa.cv" {...register("email")} />
+          <Field label={t("onboarding.email")} error={translateMessage(t, formState.errors.email?.message)}>
+            <Input
+              type="email"
+              placeholder={t("onboarding.emailPlaceholder")}
+              {...register("email")}
+            />
           </Field>
-          <Field label="Telefone" error={formState.errors.phone?.message}>
-            <Input type="tel" placeholder="+238 999 99 99" {...register("phone")} />
+          <Field label={t("onboarding.phone")} error={translateMessage(t, formState.errors.phone?.message)}>
+            <Input
+              type="tel"
+              placeholder={t("onboarding.phonePlaceholder")}
+              {...register("phone")}
+            />
           </Field>
         </div>
 
         <div className="pt-2 border-t border-slate-100">
-          <p className="text-sm font-semibold text-slate-900 mb-4">Dados bancários</p>
+          <p className="text-sm font-semibold text-slate-900 mb-4">
+            {t("onboarding.bankSection")}
+          </p>
           {/* Bank + IBAN */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Banco" error={formState.errors.bankName?.message}>
-              <Input placeholder="Ex.: Banco Comercial do Atlântico" {...register("bankName")} />
+            <Field
+              label={t("onboarding.bank")}
+              error={translateMessage(t, formState.errors.bankName?.message)}
+            >
+              <Input
+                placeholder={t("onboarding.bankPlaceholder")}
+                {...register("bankName")}
+              />
             </Field>
-            <Field label="IBAN" error={formState.errors.iban?.message}>
-              <Input placeholder="CV00 0000 0000 0000 0000 0000 0" {...register("iban")} />
+            <Field label={t("onboarding.iban")} error={translateMessage(t, formState.errors.iban?.message)}>
+              <Input placeholder={t("onboarding.ibanPlaceholder")} {...register("iban")} />
             </Field>
           </div>
         </div>
@@ -313,16 +348,18 @@ function DataStep({
         {serverError && (
           <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>{serverError}</span>
+            <span>{translateMessage(t, serverError)}</span>
           </div>
         )}
 
         <div className="flex items-center justify-between pt-4">
           <Button type="button" variant="outline" size="lg" onClick={onBack}>
-            Voltar
+            {t("common.back")}
           </Button>
           <Button type="submit" size="lg" disabled={formState.isSubmitting}>
-            {formState.isSubmitting ? "A criar empresa..." : "Criar empresa"}
+            {formState.isSubmitting
+              ? t("onboarding.submitting")
+              : t("onboarding.submit")}
           </Button>
         </div>
       </form>

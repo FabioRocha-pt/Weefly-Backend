@@ -22,6 +22,8 @@ import {
   type ParsedFlightQuery,
 } from "@/lib/flight-parse"
 import { getFlightOffers, pickBest, pickCheapest } from "@/lib/amadeus"
+import { getI18n } from "@/i18n/server"
+import { LOCALE_LABELS, type Locale } from "@/i18n/config"
 import type { FlightSearchQuery, FlightSearchResponse } from "@/types/flights"
 
 // Free-text → structured JSON is a short, well-scoped extraction task, so a
@@ -44,9 +46,15 @@ export type Channel = "web" | "whatsapp"
  */
 export type Mode = "search" | "intake"
 
-/** Fallback used whenever Claude gives us nothing usable to say. */
-export const FALLBACK_REPLY =
-  "Desculpe, não percebi bem. Pode dizer-me a origem, o destino e a data da viagem?"
+/**
+ * Fallback used whenever Claude gives us nothing usable to say.
+ *
+ * Sai do dicionário e não de uma constante: é uma frase que o cliente lê, e o
+ * resto da conversa está na língua dele.
+ */
+export function fallbackReply(): string {
+  return getI18n().t("chat.fallbackReply")
+}
 
 // --- NLP ---------------------------------------------------------------------
 
@@ -59,7 +67,7 @@ export type ParseOutcome =
   /** Transport/API failure. */
   | { ok: false; kind: "failed" }
 
-function systemPrompt(channel: Channel, mode: Mode): string {
+function systemPrompt(channel: Channel, mode: Mode, locale: Locale): string {
   const today = new Date().toISOString().slice(0, 10)
   const lines = [
     "És o motor de compreensão do WeeFly Concierge, um assistente de reservas de voos.",
@@ -70,6 +78,10 @@ function systemPrompt(channel: Channel, mode: Mode): string {
     "Se o utilizador só disser o dia, assume a próxima ocorrência futura desse dia.",
     "Preenche 'ready' apenas quando origem, destino e data de partida forem todos conhecidos.",
     "Escreve 'reply' no mesmo idioma do utilizador, de forma breve e calorosa.",
+    /* Quando a mensagem é curta demais para revelar a língua — "LIS?", "sim" —
+       o modelo tem de ter para onde cair, e o sítio onde a pessoa está é o
+       melhor palpite que temos. */
+    `Se a língua do utilizador não for clara, responde em ${LOCALE_LABELS[locale]}.`,
   ]
 
   if (mode === "intake") {
@@ -109,6 +121,7 @@ export async function parseMessage(input: {
   if (!apiKey) return { ok: false, kind: "unconfigured" }
 
   const { message, history = [], channel = "web", mode = "search" } = input
+  const { locale } = getI18n()
   const client = new Anthropic({ apiKey })
 
   const messages: Anthropic.MessageParam[] = [
@@ -120,7 +133,7 @@ export async function parseMessage(input: {
     const response = await client.messages.parse({
       model: MODEL,
       max_tokens: 1024,
-      system: systemPrompt(channel, mode),
+      system: systemPrompt(channel, mode, locale),
       messages,
       output_config: { format: zodOutputFormat(parsedFlightQuerySchema) },
     })
@@ -128,7 +141,7 @@ export async function parseMessage(input: {
     const data = response.parsed_output
     if (!data) {
       // Refusal or schema mismatch — degrade gracefully into a chat reply.
-      return { ok: false, kind: "unparsed", reply: FALLBACK_REPLY }
+      return { ok: false, kind: "unparsed", reply: fallbackReply() }
     }
     return { ok: true, query: data }
   } catch (err) {
@@ -287,6 +300,7 @@ export async function handleTurn(input: {
   history?: ChatTurn[]
   channel?: Channel
 }): Promise<ConciergeTurn> {
+  const { t } = getI18n()
   const parsed = await parseMessage(input)
 
   if (!parsed.ok) {
@@ -301,7 +315,7 @@ export async function handleTurn(input: {
     return {
       reply:
         parsed.kind === "unconfigured"
-          ? "O serviço de conversação não está disponível de momento."
+          ? t("chat.engineUnavailable")
           : "Ocorreu um erro inesperado. Pode tentar novamente?",
       query: null,
       result: null,
@@ -310,7 +324,7 @@ export async function handleTurn(input: {
   }
 
   const query = parsed.query
-  const reply = query.reply?.trim() || FALLBACK_REPLY
+  const reply = query.reply?.trim() || fallbackReply()
 
   // Still slot-filling: reply carries the follow-up question.
   if (!isSearchable(query)) {
@@ -322,7 +336,7 @@ export async function handleTurn(input: {
   if (!search.ok) {
     return {
       reply:
-        "Não consegui pesquisar voos neste momento. Tente novamente daqui a pouco.",
+        t("chat.searchFailed"),
       query,
       result: null,
       status: "search_failed",
@@ -331,7 +345,7 @@ export async function handleTurn(input: {
 
   if (search.result.offers.length === 0) {
     return {
-      reply: "Não encontrei voos para esta pesquisa. Quer tentar outras datas?",
+      reply: t("chat.noFlights"),
       query,
       result: null,
       status: "no_offers",

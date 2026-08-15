@@ -54,14 +54,22 @@ export type DashboardStats = {
   monthlyCommission: number
 }
 
-export const COUNTRIES = [
-  { value: "CV", label: "Cabo Verde" },
-  { value: "PT", label: "Portugal" },
-  { value: "BR", label: "Brasil" },
-  { value: "AO", label: "Angola" },
-  { value: "MZ", label: "Moçambique" },
-  { value: "ST", label: "São Tomé e Príncipe" },
-  { value: "GW", label: "Guiné-Bissau" },
+/*
+ * As listas de opções guardam a chave de tradução, não a etiqueta.
+ *
+ * São constantes de módulo, avaliadas uma vez quando o ficheiro é carregado —
+ * muito antes de sabermos em que idioma a página vai ser desenhada. Quem
+ * desenha a lista chama `t(option.labelKey)` no momento certo.
+ */
+
+export const COUNTRIES: { value: string; labelKey: string }[] = [
+  { value: "CV", labelKey: "countries.CV" },
+  { value: "PT", labelKey: "countries.PT" },
+  { value: "BR", labelKey: "countries.BR" },
+  { value: "AO", labelKey: "countries.AO" },
+  { value: "MZ", labelKey: "countries.MZ" },
+  { value: "ST", labelKey: "countries.ST" },
+  { value: "GW", labelKey: "countries.GW" },
 ]
 
 // --- Concierge · Travel Request options -------------------------------------
@@ -70,29 +78,33 @@ export type TripType = "round_trip" | "one_way" | "multi_city"
 export type CabinClass = "economy" | "business" | "first"
 export type PassengerTitle = "mr" | "ms"
 
-export const TRIP_TYPES: { value: TripType; label: string }[] = [
-  { value: "round_trip", label: "Ida e volta" },
-  { value: "one_way", label: "Só ida" },
-  { value: "multi_city", label: "Multi-destino" },
+export const TRIP_TYPES: { value: TripType; labelKey: string }[] = [
+  { value: "round_trip", labelKey: "tripTypes.round_trip" },
+  { value: "one_way", labelKey: "tripTypes.one_way" },
+  { value: "multi_city", labelKey: "tripTypes.multi_city" },
 ]
 
-export const CABIN_CLASSES: { value: CabinClass; label: string }[] = [
-  { value: "economy", label: "Económica" },
-  { value: "business", label: "Executiva" },
-  { value: "first", label: "Primeira" },
+export const CABIN_CLASSES: { value: CabinClass; labelKey: string }[] = [
+  { value: "economy", labelKey: "cabins.economy" },
+  { value: "business", labelKey: "cabins.business" },
+  { value: "first", labelKey: "cabins.first" },
 ]
 
-export const PASSENGER_TITLES: { value: PassengerTitle; label: string }[] = [
-  { value: "mr", label: "Sr." },
-  { value: "ms", label: "Sra." },
+export const PASSENGER_TITLES: { value: PassengerTitle; labelKey: string }[] = [
+  { value: "mr", labelKey: "titles.mr" },
+  { value: "ms", labelKey: "titles.ms" },
 ]
 
-export const PHONE_PREFIXES = [
-  { value: "+238", label: "+238 (Cabo Verde)" },
-  { value: "+351", label: "+351 (Portugal)" },
-  { value: "+55", label: "+55 (Brasil)" },
-  { value: "+244", label: "+244 (Angola)" },
-  { value: "+258", label: "+258 (Moçambique)" },
-  { value: "+239", label: "+239 (São Tomé)" },
-  { value: "+245", label: "+245 (Guiné-Bissau)" },
+/*
+ * O indicativo traz o país para que a etiqueta possa ser montada na língua da
+ * pessoa — "+239 (São Tomé)" em português, "+239 (Sao Tome)" em inglês.
+ */
+export const PHONE_PREFIXES: { value: string; country: string }[] = [
+  { value: "+238", country: "CV" },
+  { value: "+351", country: "PT" },
+  { value: "+55", country: "BR" },
+  { value: "+244", country: "AO" },
+  { value: "+258", country: "MZ" },
+  { value: "+239", country: "ST" },
+  { value: "+245", country: "GW" },
 ]

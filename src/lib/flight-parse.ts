@@ -122,15 +122,15 @@ export const flightSearchInputSchema = z.object({
     .string()
     .trim()
     .toUpperCase()
-    .regex(/^[A-Z]{3}$/, "Código IATA de origem inválido"),
+    .regex(/^[A-Z]{3}$/, "validation.iataOrigin"),
   destination: z
     .string()
     .trim()
     .toUpperCase()
-    .regex(/^[A-Z]{3}$/, "Código IATA de destino inválido"),
+    .regex(/^[A-Z]{3}$/, "validation.iataDestination"),
   departDate: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de partida inválida"),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "validation.departDateInvalid"),
   returnDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)

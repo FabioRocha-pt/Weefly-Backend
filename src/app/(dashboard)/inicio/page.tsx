@@ -2,7 +2,8 @@ import Link from "next/link"
 import { Plus, Building2, Package, Send, Compass, Car, Home, Flag, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/current-user"
-import { getCompanies, COMPANY_TYPE_LABELS, type Company } from "@/lib/companies"
+import { getCompanies, type Company } from "@/lib/companies"
+import { getI18n } from "@/i18n/server"
 
 const TYPE_ICON: Record<Company["type"], React.ReactNode> = {
   rental: <Car className="w-6 h-6 text-orange-600" />,
@@ -17,8 +18,10 @@ const TYPE_WRAPPER: Record<Company["type"], string> = {
 }
 
 export default async function ProviderHomePage() {
+  const { t } = getI18n()
   const [user, companies] = await Promise.all([getCurrentUser(), getCompanies()])
-  const firstName = user?.firstName || user?.fullName || "bem-vindo"
+  const firstName =
+    user?.firstName || user?.fullName || t("dashboard.fallbackName")
 
   if (companies.length > 0) {
     return (
@@ -26,15 +29,17 @@ export default async function ProviderHomePage() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-orange-600 mb-1">
-              Bem-vindo ao WeeFlyPro
+              {t("dashboard.welcomeEyebrow")}
             </p>
-            <h1 className="text-2xl font-bold text-slate-900">Olá, {firstName}</h1>
-            <p className="text-slate-500 mt-1">As suas empresas nesta conta.</p>
+            <h1 className="text-2xl font-bold text-slate-900">
+              {t("dashboard.greeting", { name: firstName })}
+            </h1>
+            <p className="text-slate-500 mt-1">{t("dashboard.companiesSubtitle")}</p>
           </div>
           <Link href="/criar-empresa">
             <Button>
               <Plus className="w-4 h-4 mr-2" />
-              Criar empresa
+              {t("dashboard.createCompany")}
             </Button>
           </Link>
         </div>
@@ -50,14 +55,16 @@ export default async function ProviderHomePage() {
                 {TYPE_ICON[company.type]}
               </div>
               <h3 className="font-bold text-slate-900 truncate">{company.commercialName}</h3>
-              <p className="text-sm text-slate-500 mt-1">{COMPANY_TYPE_LABELS[company.type]}</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {t(`companyTypes.${company.type}`)}
+              </p>
               {(company.city || company.country) && (
                 <p className="text-sm text-slate-400 mt-0.5">
                   {[company.city, company.country].filter(Boolean).join(", ")}
                 </p>
               )}
               <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-orange-600">
-                Abrir dashboard
+                {t("dashboard.openDashboard")}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </span>
             </Link>
@@ -74,23 +81,21 @@ export default async function ProviderHomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
           <div className="lg:col-span-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-orange-600 mb-2">
-              Bem-vindo ao WeeFlyPro
+              {t("dashboard.welcomeEyebrow")}
             </p>
-            <h1 className="text-3xl font-bold text-slate-900 mb-4">Olá, {firstName}</h1>
-            <p className="text-slate-600 mb-6 max-w-2xl">
-              A sua conta está pronta. Para colocar serviços na plataforma, o primeiro passo é criar
-              uma empresa — de fornecedor (carros, casas ou excursões) ou de agente. Pode ter várias,
-              todas acessíveis com este único login.
-            </p>
+            <h1 className="text-3xl font-bold text-slate-900 mb-4">
+              {t("dashboard.greeting", { name: firstName })}
+            </h1>
+            <p className="text-slate-600 mb-6 max-w-2xl">{t("dashboard.emptyBody")}</p>
             <div className="flex flex-wrap gap-3">
               <Link href="/criar-empresa">
                 <Button size="lg">
                   <Plus className="w-5 h-5 mr-2" />
-                  Criar a primeira empresa
+                  {t("dashboard.createFirst")}
                 </Button>
               </Link>
               <Button size="lg" variant="outline">
-                Ver como funciona
+                {t("dashboard.seeHow")}
               </Button>
             </div>
           </div>
@@ -109,20 +114,20 @@ export default async function ProviderHomePage() {
         <StepCard
           icon={<Building2 className="w-6 h-6 text-orange-600" />}
           wrapper="bg-orange-100"
-          title="1 · Crie a empresa"
-          description="Dados fiscais, contactos e tipo de serviço. Fica ativa de imediato."
+          title={t("dashboard.step1Title")}
+          description={t("dashboard.step1Body")}
         />
         <StepCard
           icon={<Package className="w-6 h-6 text-slate-500" />}
           wrapper="bg-slate-100"
-          title="2 · Adicione produtos"
-          description="Carros, casas ou excursões — um de cada vez, com fotos e regras."
+          title={t("dashboard.step2Title")}
+          description={t("dashboard.step2Body")}
         />
         <StepCard
           icon={<Send className="w-6 h-6 text-slate-500" />}
           wrapper="bg-slate-100"
-          title="3 · Venda em todo o lado"
-          description="Pesquisável no WeeFly e em todos os canais ligados por API."
+          title={t("dashboard.step3Title")}
+          description={t("dashboard.step3Body")}
         />
       </div>
 
@@ -132,11 +137,8 @@ export default async function ProviderHomePage() {
           <Compass className="w-5 h-5 text-slate-500" />
         </div>
         <div>
-          <p className="font-semibold text-slate-900">Também vai atuar como agente?</p>
-          <p className="text-sm text-slate-500 mt-1">
-            A área de agente já está incluída na sua conta — troque de modo no menu lateral quando
-            quiser.
-          </p>
+          <p className="font-semibold text-slate-900">{t("dashboard.agentNoteTitle")}</p>
+          <p className="text-sm text-slate-500 mt-1">{t("dashboard.agentNoteBody")}</p>
         </div>
       </div>
     </div>

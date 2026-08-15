@@ -3,6 +3,7 @@ import { StatsCard } from "@/components/dashboard/stats-card"
 import { RequestList } from "@/components/dashboard/request-list"
 import { formatCurrency } from "@/lib/utils"
 import { getCurrentUser } from "@/lib/current-user"
+import { getI18n } from "@/i18n/server"
 import type { DashboardStats, Request } from "@/types"
 
 const MOCK_STATS: DashboardStats = {
@@ -54,46 +55,48 @@ const MOCK_REQUESTS: Request[] = [
 ]
 
 export default async function AgentDashboardPage() {
+  const { t } = getI18n()
   const user = await getCurrentUser()
-  const firstName = user?.firstName || user?.fullName || "bem-vindo"
+  const firstName =
+    user?.firstName || user?.fullName || t("dashboard.fallbackName")
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-orange-600 mb-1">
-          Área de agente
+          {t("nav.agentArea")}
         </p>
-        <h1 className="text-2xl font-bold text-slate-900">Olá, {firstName}</h1>
-        <p className="text-slate-500 mt-1">
-          Faça reservas para terceiros e acompanhe as suas comissões.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {t("dashboard.greeting", { name: firstName })}
+        </h1>
+        <p className="text-slate-500 mt-1">{t("dashboard.agentSubtitle")}</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
-          title="Novos pedidos"
+          title={t("dashboard.statNewRequests")}
           value={MOCK_STATS.newRequests}
           icon={<MessageSquare className="w-6 h-6" />}
-          trend={{ value: "+3 esta semana", isPositive: true }}
+          trend={{ value: t("dashboard.statNewRequestsTrend"), isPositive: true }}
         />
         <StatsCard
-          title="Clientes"
+          title={t("dashboard.statClients")}
           value={MOCK_STATS.clients}
           icon={<Users className="w-6 h-6" />}
-          trend={{ value: "+5 este mês", isPositive: true }}
+          trend={{ value: t("dashboard.statClientsTrend"), isPositive: true }}
         />
         <StatsCard
-          title="Carteira"
+          title={t("dashboard.statWallet")}
           value={formatCurrency(MOCK_STATS.wallet)}
           icon={<Wallet className="w-6 h-6" />}
         />
         <StatsCard
-          title="Comissões do mês"
+          title={t("dashboard.statCommission")}
           value={formatCurrency(MOCK_STATS.monthlyCommission)}
           icon={<TrendingUp className="w-6 h-6" />}
-          trend={{ value: "+12% vs. mês anterior", isPositive: true }}
+          trend={{ value: t("dashboard.statCommissionTrend"), isPositive: true }}
         />
       </div>
 

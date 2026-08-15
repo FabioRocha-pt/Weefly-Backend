@@ -1,12 +1,15 @@
 import { BookOpen } from "lucide-react"
 import { SectionPlaceholder } from "@/components/dashboard/section-placeholder"
+import { getI18n } from "@/i18n/server"
 
 export default function ReservasPage() {
+  const { t } = getI18n()
+
   return (
     <SectionPlaceholder
       icon={<BookOpen className="w-8 h-8 text-orange-600" />}
-      title="Sem reservas por agora"
-      description="Quando os clientes reservarem os seus produtos, as reservas aparecem aqui para gerir."
+      title={t("dashboard.bookingsTitle")}
+      description={t("dashboard.bookingsBody")}
     />
   )
 }

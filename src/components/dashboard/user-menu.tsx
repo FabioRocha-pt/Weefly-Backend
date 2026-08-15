@@ -5,6 +5,7 @@ import { LogOut, ChevronDown } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { signOut } from "@/actions/auth"
+import { useT } from "@/i18n/provider"
 
 export type UserMenuData = {
   fullName: string
@@ -13,6 +14,7 @@ export type UserMenuData = {
 }
 
 export function UserMenu({ user }: { user: UserMenuData | null }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
 
   if (!user) return null
@@ -53,7 +55,7 @@ export function UserMenu({ user }: { user: UserMenuData | null }) {
                 className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
-                Terminar sessão
+                {t("nav.signOut")}
               </button>
             </form>
           </div>

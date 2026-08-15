@@ -30,7 +30,6 @@ import {
   type SegmentDraft,
 } from "@/actions/proposals"
 import {
-  CABIN_LABELS,
   type AdminOffer,
   type Cabin,
   type Offer,
@@ -45,6 +44,7 @@ import {
   layoverMinutes,
   legMinutes,
   legsOf,
+  blockerText,
   offerBlockers,
   offerTotal,
   parseMoney,
@@ -52,8 +52,13 @@ import {
   stopsLabel,
   timeOf,
 } from "@/lib/proposal-math"
+import { useT } from "@/i18n/provider"
+import type { Translator } from "@/i18n/translate"
 
 const CURRENCIES = ["CVE", "EUR", "USD"]
+
+/** A ordem em que as cabinas aparecem no seletor de cada trecho. */
+const CABINS: Cabin[] = ["economy", "premium_economy", "business", "first"]
 
 // --- Estado local ------------------------------------------------------------
 // Os montantes vivem como texto enquanto se escreve: "1 84" não é um número mas
@@ -268,6 +273,7 @@ export function OfferComposer({
   /** A coluna do pedido do cliente, renderizada no servidor. */
   brief: React.ReactNode
 }) {
+  const t = useT()
   const router = useRouter()
   const published = proposal.status === "publicada"
 
@@ -397,9 +403,7 @@ export function OfferComposer({
       <main className="flex min-w-0 flex-col gap-3.5">
         {published && (
           <div className="rounded-xl border border-adm-ok/30 bg-adm-ok/10 p-4 text-[12.5px] leading-relaxed text-adm-ok">
-            A revisão <b>R{proposal.revision}</b> está publicada e por isso
-            trancada. Para mexer em itinerários ou preços, abra uma revisão no
-            painel à direita — o cliente é avisado da alteração.
+            {t("admin.composerLocked", { revision: proposal.revision })}
           </div>
         )}
 
@@ -413,8 +417,7 @@ export function OfferComposer({
         {offers.length === 0 && (
           <div className="rounded-xl border border-adm-line bg-adm-panel p-8 text-center">
             <p className="text-[13px] text-adm-muted">
-              Ainda não há nenhuma opção composta. Crie a primeira e escreva o
-              itinerário que a companhia lhe deu.
+              {t("admin.composerEmpty")}
             </p>
           </div>
         )}
@@ -436,6 +439,7 @@ export function OfferComposer({
               onDuplicate={() => run(() => duplicateOffer(caseId, offer.id))}
               onRemove={() => run(() => removeOffer(caseId, offer.id))}
               onCollapse={() => setOpenId(null)}
+              t={t}
             />
           ) : (
             <CollapsedOffer
@@ -448,6 +452,7 @@ export function OfferComposer({
               disabled={published || pending}
               onOpen={() => setOpenId(offer.id)}
               onMove={(delta) => move(offer.id, delta)}
+              t={t}
             />
           )
         )}
@@ -460,9 +465,9 @@ export function OfferComposer({
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-adm-line p-3.5 text-[13px] font-bold text-adm-muted transition-colors hover:border-[#46587A] hover:text-adm-txt-2 disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
-            Nova opção
+            {t("admin.composerNewOffer")}
             <span className="font-normal text-adm-muted">
-              · ou duplique uma existente para variar a tarifa
+              {t("admin.composerNewOfferHint")}
             </span>
           </button>
         )}
@@ -476,6 +481,7 @@ export function OfferComposer({
           currency={proposal.currency}
           token={token}
           published={published}
+          t={t}
         />
         <PublishPanel
           caseId={caseId}
@@ -489,6 +495,7 @@ export function OfferComposer({
           onError={setError}
           onDone={() => router.refresh()}
           onRevision={() => run(() => startRevision(caseId))}
+          t={t}
         />
       </aside>
     </div>
@@ -509,6 +516,7 @@ function OpenOffer({
   onDuplicate,
   onRemove,
   onCollapse,
+  t,
 }: {
   offer: OfferState
   index: number
@@ -521,6 +529,7 @@ function OpenOffer({
   onDuplicate: () => void
   onRemove: () => void
   onCollapse: () => void
+  t: Translator
 }) {
   const [leg, setLeg] = useState<OfferDirection>("ida")
   const preview = asOffer(offer, index)
@@ -547,36 +556,44 @@ function OpenOffer({
           value={offer.name}
           disabled={disabled}
           onChange={(e) => onPatch({ name: e.target.value })}
-          placeholder="Nome da opção · ex.: Cabo Verde Airlines · via Sal"
+          placeholder={t("admin.composerOfferName")}
           className="min-w-[210px] flex-1 rounded-lg border border-adm-line bg-adm-panel-2 px-2.5 py-1.5 text-sm font-bold text-adm-txt outline-none transition-colors placeholder:font-normal placeholder:text-adm-muted focus:border-[#46587A] disabled:opacity-60"
         />
         <div className="flex flex-wrap items-center gap-1.5">
           <Flag
-            label="Recomendada"
+            label={t("admin.composerFlagRecommended")}
             on={offer.is_recommended}
             tone="ok"
             disabled={disabled}
             onClick={() => onPatch({ is_recommended: !offer.is_recommended })}
           />
           <Flag
-            label="Mais barata"
+            label={t("admin.composerFlagCheapest")}
             on={offer.is_cheapest}
             disabled={disabled}
             onClick={() => onPatch({ is_cheapest: !offer.is_cheapest })}
           />
           <Flag
-            label="Mais rápida"
+            label={t("admin.composerFlagFastest")}
             on={offer.is_fastest}
             disabled={disabled}
             onClick={() => onPatch({ is_fastest: !offer.is_fastest })}
           />
-          <IconButton title="Duplicar opção" onClick={onDuplicate} disabled={disabled}>
+          <IconButton
+            title={t("admin.composerDuplicate")}
+            onClick={onDuplicate}
+            disabled={disabled}
+          >
             <Copy className="h-3.5 w-3.5" />
           </IconButton>
-          <IconButton title="Remover opção" onClick={onRemove} disabled={disabled}>
+          <IconButton
+            title={t("admin.composerRemove")}
+            onClick={onRemove}
+            disabled={disabled}
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </IconButton>
-          <IconButton title="Fechar" onClick={onCollapse}>
+          <IconButton title={t("admin.composerCollapse")} onClick={onCollapse}>
             <ChevronUp className="h-3.5 w-3.5" />
           </IconButton>
         </div>
@@ -585,8 +602,11 @@ function OpenOffer({
       <fieldset disabled={disabled} className="space-y-5 p-3.5 disabled:opacity-70">
         {/* itinerário */}
         <Section
-          title="Itinerário"
-          aside={`${legs.ida.length} ${legs.ida.length === 1 ? "trecho" : "trechos"} na ida · ${legs.volta.length} na volta`}
+          title={t("admin.composerItinerary")}
+          aside={t("admin.composerLegsSummary", {
+            out: t("admin.composerSegments", { count: legs.ida.length }),
+            back: t("admin.composerSegments", { count: legs.volta.length }),
+          })}
         >
           <div className="mb-3 flex gap-1.5">
             {(["ida", "volta"] as const).map((d) => (
@@ -602,16 +622,18 @@ function OpenOffer({
                     : "border-adm-line bg-adm-panel-2 text-adm-muted hover:text-adm-txt-2"
                 )}
               >
-                {d === "ida" ? "Ida" : "Volta"}
+                {t(d === "ida" ? "legs.outbound" : "legs.inbound")}
               </button>
             ))}
           </div>
 
           {segments.length === 0 && (
             <p className="mb-2.5 rounded-lg bg-adm-panel-2 p-3 text-[12.5px] text-adm-muted">
-              {leg === "ida"
-                ? "A ida não tem trechos. Sem eles a opção não pode ser publicada."
-                : "Sem trechos de volta — fica uma viagem só de ida."}
+              {t(
+                leg === "ida"
+                  ? "admin.composerNoOutbound"
+                  : "admin.composerNoInbound"
+              )}
             </p>
           )}
 
@@ -638,7 +660,7 @@ function OpenOffer({
                     {segment.origin || "—"} → {segment.destination || "—"}
                   </span>
                   <IconButton
-                    title="Remover trecho"
+                    title={t("admin.composerRemoveSegment")}
                     onClick={() => removeSegment(segment.key)}
                     className="ml-auto"
                   >
@@ -647,7 +669,7 @@ function OpenOffer({
                 </div>
 
                 <div className="grid grid-cols-12 gap-2.5">
-                  <Field label="Cia" span={2}>
+                  <Field label={t("admin.composerCarrier")} span={2}>
                     <Input
                       mono
                       maxLength={3}
@@ -660,7 +682,7 @@ function OpenOffer({
                       placeholder="VR"
                     />
                   </Field>
-                  <Field label="Voo nº" span={2}>
+                  <Field label={t("admin.composerFlightNo")} span={2}>
                     <Input
                       mono
                       maxLength={6}
@@ -671,7 +693,7 @@ function OpenOffer({
                       placeholder="231"
                     />
                   </Field>
-                  <Field label="Equipamento" span={4}>
+                  <Field label={t("admin.composerEquipment")} span={4}>
                     <Input
                       value={segment.equipment}
                       onChange={(v) =>
@@ -680,7 +702,7 @@ function OpenOffer({
                       placeholder="Airbus A320neo"
                     />
                   </Field>
-                  <Field label="Classe" span={2}>
+                  <Field label={t("admin.composerBookingClass")} span={2}>
                     <Input
                       mono
                       maxLength={2}
@@ -693,7 +715,7 @@ function OpenOffer({
                       placeholder="T"
                     />
                   </Field>
-                  <Field label="Cabina" span={2}>
+                  <Field label={t("admin.composerCabin")} span={2}>
                     <select
                       value={segment.cabin}
                       onChange={(e) =>
@@ -703,15 +725,15 @@ function OpenOffer({
                       }
                       className={inputClass}
                     >
-                      {(Object.keys(CABIN_LABELS) as Cabin[]).map((c) => (
+                      {CABINS.map((c) => (
                         <option key={c} value={c}>
-                          {CABIN_LABELS[c]}
+                          {t("cabins." + c)}
                         </option>
                       ))}
                     </select>
                   </Field>
 
-                  <Field label="Origem" span={3}>
+                  <Field label={t("admin.composerOrigin")} span={3}>
                     <Input
                       mono
                       maxLength={3}
@@ -724,7 +746,7 @@ function OpenOffer({
                       placeholder="RAI"
                     />
                   </Field>
-                  <Field label="Partida" span={3}>
+                  <Field label={t("admin.composerDeparture")} span={3}>
                     <Input
                       type="datetime-local"
                       value={segment.depart_at}
@@ -733,7 +755,7 @@ function OpenOffer({
                       }
                     />
                   </Field>
-                  <Field label="Destino" span={3}>
+                  <Field label={t("admin.composerDestination")} span={3}>
                     <Input
                       mono
                       maxLength={3}
@@ -746,7 +768,7 @@ function OpenOffer({
                       placeholder="SID"
                     />
                   </Field>
-                  <Field label="Chegada" span={3}>
+                  <Field label={t("admin.composerArrival")} span={3}>
                     <Input
                       type="datetime-local"
                       value={segment.arrive_at}
@@ -756,7 +778,7 @@ function OpenOffer({
                     />
                   </Field>
 
-                  <Field label="Terminal partida" span={6}>
+                  <Field label={t("admin.composerTerminalFrom")} span={6}>
                     <Input
                       value={segment.terminal_from}
                       onChange={(v) =>
@@ -765,27 +787,29 @@ function OpenOffer({
                       placeholder="1"
                     />
                   </Field>
-                  <Field label="Terminal chegada" span={6}>
+                  <Field label={t("admin.composerTerminalTo")} span={6}>
                     <Input
                       value={segment.terminal_to}
                       onChange={(v) =>
                         onPatchSegment(segment.key, { terminal_to: v })
                       }
-                      placeholder="Internacional"
+                      placeholder={t("admin.phTerminal")}
                     />
                   </Field>
 
                   <div className="col-span-12">
                     <div className="flex flex-wrap gap-4 rounded-lg bg-adm-muted/[.14] px-2.5 py-2 text-xs text-adm-txt-2">
                       <span>
-                        Duração{" "}
+                        {t("admin.composerDuration")}{" "}
                         <b className="font-mono font-semibold text-adm-txt">
                           {formatDuration(duration)}
                         </b>
                       </span>
                       {wait !== null && (
                         <span>
-                          Escala em {segment.origin || "—"}{" "}
+                          {t("admin.composerLayoverAt", {
+                            place: segment.origin || "—",
+                          })}{" "}
                           <b className="font-mono font-semibold text-adm-txt">
                             {formatDuration(wait)}
                           </b>
@@ -793,14 +817,18 @@ function OpenOffer({
                       )}
                       {i === previewSegments.length - 1 && (
                         <span>
-                          Total {leg === "ida" ? "da ida" : "da volta"}{" "}
+                          {t(
+                            leg === "ida"
+                              ? "admin.composerLegTotalOut"
+                              : "admin.composerLegTotalBack"
+                          )}{" "}
                           <b className="font-mono font-semibold text-adm-txt">
                             {formatDuration(legMinutes(previewSegments))}
                           </b>
                         </span>
                       )}
                       <span className="text-adm-muted">
-                        Calculado das horas introduzidas
+                        {t("admin.composerComputed")}
                       </span>
                     </div>
                   </div>
@@ -814,60 +842,64 @@ function OpenOffer({
             onClick={addSegment}
             className="w-full rounded-[9px] border border-dashed border-adm-line py-2.5 text-xs font-bold text-adm-muted transition-colors hover:border-[#46587A] hover:text-adm-txt-2"
           >
-            + Adicionar trecho {leg === "ida" ? "à ida" : "à volta"}
+            {t(
+              leg === "ida"
+                ? "admin.composerAddSegmentOut"
+                : "admin.composerAddSegmentBack"
+            )}
           </button>
         </Section>
 
         {/* condições */}
-        <Section title="Condições da tarifa">
+        <Section title={t("admin.composerConditions")}>
           <div className="grid grid-cols-12 gap-2.5">
-            <Field label="Nome da tarifa" span={4}>
+            <Field label={t("admin.composerFareName")} span={4}>
               <Input
                 value={offer.fare_name}
                 onChange={(v) => onPatch({ fare_name: v })}
                 placeholder="Economy Smart"
               />
             </Field>
-            <Field label="Bagagem de mão" span={4}>
+            <Field label={t("admin.composerBaggageCabin")} span={4}>
               <Input
                 value={offer.baggage_cabin}
                 onChange={(v) => onPatch({ baggage_cabin: v })}
-                placeholder="1 peça, 8 kg"
+                placeholder={t("admin.phBaggageCabin")}
               />
             </Field>
-            <Field label="Bagagem de porão" span={4}>
+            <Field label={t("admin.composerBaggageHold")} span={4}>
               <Input
                 value={offer.baggage_hold}
                 onChange={(v) => onPatch({ baggage_hold: v })}
-                placeholder="2 peças, 23 kg"
+                placeholder={t("admin.phBaggageHold")}
               />
             </Field>
-            <Field label="Alteração de datas" span={4}>
+            <Field label={t("admin.composerChange")} span={4}>
               <Input
                 value={offer.change_policy}
                 onChange={(v) => onPatch({ change_policy: v })}
-                placeholder="Com taxa de $90 + diferença"
+                placeholder={t("admin.phChange")}
               />
             </Field>
-            <Field label="Reembolso" span={4}>
+            <Field label={t("admin.composerRefund")} span={4}>
               <Input
                 value={offer.refund_policy}
                 onChange={(v) => onPatch({ refund_policy: v })}
-                placeholder="Não reembolsável"
+                placeholder={t("admin.phRefund")}
               />
             </Field>
-            <Field label="Marcação de lugar" span={4}>
+            <Field label={t("admin.composerSeat")} span={4}>
               <Input
                 value={offer.seat_policy}
                 onChange={(v) => onPatch({ seat_policy: v })}
-                placeholder="No check-in, sem custo"
+                placeholder={t("admin.phSeat")}
               />
             </Field>
-            <Field label="Documentos exigidos" span={12}>
+            <Field label={t("admin.composerDocuments")} span={12}>
               <Input
                 value={offer.documents}
                 onChange={(v) => onPatch({ documents: v })}
-                placeholder="Passaporte válido 6 meses + ESTA ou visto dos EUA"
+                placeholder={t("admin.phDocuments")}
               />
             </Field>
           </div>
@@ -875,10 +907,10 @@ function OpenOffer({
 
         {/* preço */}
         <Section
-          title="Preço"
+          title={t("admin.composerPrice")}
           aside={
             <>
-              Valores unitários em{" "}
+              {t("admin.composerUnitValues")}{" "}
               <b className="font-mono font-semibold text-adm-txt-2">
                 {currency}
               </b>
@@ -887,16 +919,16 @@ function OpenOffer({
         >
           <div className="overflow-hidden rounded-[10px] border border-adm-line bg-adm-panel-2">
             <PriceRow
-              label="Adulto"
-              hint="Tarifa base por passageiro"
+              label={t("admin.composerRowAdult")}
+              hint={t("admin.composerRowAdultNote")}
               qty={`× ${pax.adults}`}
               value={offer.price_adult}
               onChange={(v) => onPatch({ price_adult: v })}
             />
             {pax.children > 0 && (
               <PriceRow
-                label="Criança 2–11"
-                hint="Com assento próprio"
+                label={t("admin.composerRowChild")}
+                hint={t("admin.composerRowChildNote")}
                 qty={`× ${pax.children}`}
                 value={offer.price_child}
                 onChange={(v) => onPatch({ price_child: v })}
@@ -904,23 +936,25 @@ function OpenOffer({
             )}
             {pax.infants > 0 && (
               <PriceRow
-                label="Bebé"
-                hint="Menos de 2 anos, ao colo"
+                label={t("admin.composerRowInfant")}
+                hint={t("admin.composerRowInfantNote")}
                 qty={`× ${pax.infants}`}
                 value={offer.price_infant}
                 onChange={(v) => onPatch({ price_infant: v })}
               />
             )}
             <PriceRow
-              label="Taxas de aeroporto e encargos"
-              hint={`Total para ${pax.adults + pax.children + pax.infants} passageiros`}
+              label={t("admin.composerRowTaxes")}
+              hint={t("admin.composerRowTaxesNote", {
+                count: pax.adults + pax.children + pax.infants,
+              })}
               qty="total"
               value={offer.taxes_total}
               onChange={(v) => onPatch({ taxes_total: v })}
             />
             <PriceRow
-              label="Serviço WeeFly"
-              hint="Linha visível ao cliente · preenchida à mão"
+              label={t("admin.composerRowService")}
+              hint={t("admin.composerRowServiceNote")}
               qty="total"
               value={offer.service_fee}
               onChange={(v) => onPatch({ service_fee: v })}
@@ -937,15 +971,14 @@ function OpenOffer({
                     }
                     className="h-[15px] w-[15px] accent-adm-ember"
                   />
-                  Taxa de fixação de tarifa
+                  {t("admin.composerRowLock")}
                 </label>
                 <small className="mt-0.5 block text-[11px] text-adm-muted">
-                  Cobrada só se o cliente pedir para garantir o preço além da
-                  validade
+                  {t("admin.composerRowLockNote")}
                 </small>
               </div>
               <div className="text-center font-mono text-xs text-adm-muted">
-                total
+                {t("admin.composerTotalUnit")}
               </div>
               <MoneyInput
                 value={offer.lock_fee}
@@ -955,7 +988,7 @@ function OpenOffer({
             </div>
             <div className="grid grid-cols-[1fr_96px_128px] items-center gap-2.5 border-t border-adm-line bg-adm-raise px-3 py-2.5">
               <div className="text-sm font-extrabold text-adm-txt">
-                Total a pagar
+                {t("admin.composerTotal")}
               </div>
               <div className="text-center font-mono text-xs text-adm-muted">
                 {currency}
@@ -968,16 +1001,16 @@ function OpenOffer({
 
           <div className="mt-2.5 grid grid-cols-12 gap-2.5">
             <Field
-              label="Custo no consolidador"
+              label={t("admin.composerCost")}
               span={4}
-              hint="Interno, nunca visível ao cliente"
+              hint={t("admin.composerCostNote")}
             >
               <MoneyInput
                 value={offer.cost_total}
                 onChange={(v) => onPatch({ cost_total: v })}
               />
             </Field>
-            <Field label="Margem estimada" span={4}>
+            <Field label={t("admin.composerMargin")} span={4}>
               <div className="rounded-lg bg-adm-muted/[.14] px-2.5 py-2 text-xs">
                 <b
                   className={cn(
@@ -989,7 +1022,11 @@ function OpenOffer({
                 </b>
               </div>
             </Field>
-            <Field label="Preço válido até" span={4} hint="Hora de Cabo Verde">
+            <Field
+              label={t("admin.composerValidUntil")}
+              span={4}
+              hint={t("admin.composerValidUntilNote")}
+            >
               <Input
                 type="datetime-local"
                 value={offer.valid_until}
@@ -1001,20 +1038,20 @@ function OpenOffer({
 
         {/* nota */}
         <Section
-          title="Nota do agente para esta opção"
-          aside="Aparece no cartão, abaixo do itinerário"
+          title={t("admin.composerNote")}
+          aside={t("admin.composerNoteHint")}
         >
           <textarea
             value={offer.agent_note}
             onChange={(e) => onPatch({ agent_note: e.target.value })}
-            placeholder="Escreva como falaria no chat. Explique porquê, não só o quê."
+            placeholder={t("admin.composerNotePlaceholder")}
             className={cn(inputClass, "min-h-[74px] resize-y leading-relaxed")}
           />
         </Section>
 
         {locked && (
           <p className="text-[11.5px] text-adm-muted">
-            Campos trancados enquanto a revisão R está publicada.
+            {t("admin.composerLockedFields")}
           </p>
         )}
       </fieldset>
@@ -1033,6 +1070,7 @@ function CollapsedOffer({
   disabled,
   onOpen,
   onMove,
+  t,
 }: {
   offer: OfferState
   index: number
@@ -1042,25 +1080,26 @@ function CollapsedOffer({
   disabled: boolean
   onOpen: () => void
   onMove: (delta: number) => void
+  t: Translator
 }) {
   const preview = asOffer(offer, index)
   const { ida } = legsOf(preview)
   const badges = [
-    offer.is_recommended && "Recomendada",
-    offer.is_cheapest && "Mais barata",
-    offer.is_fastest && "Mais rápida",
+    offer.is_recommended && t("admin.composerFlagRecommended"),
+    offer.is_cheapest && t("admin.composerFlagCheapest"),
+    offer.is_fastest && t("admin.composerFlagFastest"),
   ].filter(Boolean) as string[]
 
   const summary =
     ida.length > 0
       ? `${ida[0].origin ?? "—"} ${timeOf(ida[0].depart_at)} → ${ida[ida.length - 1].destination ?? "—"} ${timeOf(ida[ida.length - 1].arrive_at)} · ${formatDuration(legMinutes(ida))} · ${stopsLabel(ida)}`
-      : "Sem itinerário"
+      : t("admin.composerNoItinerary")
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-adm-line bg-adm-panel px-3.5 py-3 transition-colors hover:border-[#41506A]">
       <div className="flex shrink-0 flex-col">
         <IconButton
-          title="Subir"
+          title={t("admin.composerUp")}
           onClick={() => onMove(-1)}
           disabled={disabled || index === 0}
           className="!p-1"
@@ -1068,7 +1107,7 @@ function CollapsedOffer({
           <ChevronUp className="h-3 w-3" />
         </IconButton>
         <IconButton
-          title="Descer"
+          title={t("admin.composerDown")}
           onClick={() => onMove(1)}
           disabled={disabled || index === total - 1}
           className="!p-1"
@@ -1082,7 +1121,7 @@ function CollapsedOffer({
         className="min-w-0 flex-1 text-left"
       >
         <div className="truncate text-sm font-bold text-adm-txt">
-          {offer.name || "Opção sem nome"}
+          {offer.name || t("admin.composerUnnamed")}
         </div>
         <div className="mt-0.5 truncate font-mono text-xs text-adm-muted">
           {summary}
@@ -1104,7 +1143,7 @@ function CollapsedOffer({
         onClick={onOpen}
         className="shrink-0 rounded-[9px] border border-adm-line bg-adm-panel-2 px-2.5 py-1.5 text-xs font-semibold text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt"
       >
-        Abrir
+        {t("admin.composerOpen")}
       </button>
     </div>
   )
@@ -1123,19 +1162,21 @@ function ClientPreview({
   currency,
   token,
   published,
+  t,
 }: {
   offer: Offer | null
   pax: PaxCounts
   currency: string
   token: string
   published: boolean
+  t: Translator
 }) {
   const legs = offer ? legsOf(offer) : { ida: [], volta: [] }
   const badges = offer
     ? ([
-        offer.is_recommended && "Recomendada pelo agente",
-        offer.is_cheapest && "Mais barata",
-        offer.is_fastest && "Mais rápida",
+        offer.is_recommended && t("proposal.badgeRecommended"),
+        offer.is_cheapest && t("proposal.badgeCheapest"),
+        offer.is_fastest && t("proposal.badgeFastest"),
       ].filter(Boolean) as string[])
     : []
 
@@ -1143,7 +1184,7 @@ function ClientPreview({
     <section className="rounded-xl border border-adm-line bg-adm-panel">
       <header className="flex items-center gap-2.5 border-b border-adm-line-soft p-3.5">
         <h2 className="text-xs font-extrabold uppercase tracking-[.11em] text-adm-muted">
-          Como o cliente vê
+          {t("admin.previewTitle")}
         </h2>
         {published && (
           <a
@@ -1152,19 +1193,19 @@ function ClientPreview({
             rel="noreferrer"
             className="ml-auto inline-flex items-center gap-1.5 rounded-[9px] border border-adm-line bg-adm-panel-2 px-2.5 py-1.5 text-xs font-semibold text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt"
           >
-            Abrir link
+            {t("admin.previewOpenLink")}
             <ExternalLink className="h-3 w-3" />
           </a>
         )}
       </header>
       <div className="p-3.5">
         <p className="mb-2.5 text-[11px] text-adm-muted">
-          Atualiza enquanto escreve. Reflete a opção aberta.
+          {t("admin.previewLive")}
         </p>
         <div className="rounded-[10px] bg-slate-100 p-3 text-[#12161F]">
           {!offer ? (
             <p className="py-6 text-center text-xs text-slate-500">
-              Abra uma opção para a pré-visualizar.
+              {t("admin.previewEmpty")}
             </p>
           ) : (
             <div className="overflow-hidden rounded-[11px] border border-[#DFE5EC] bg-white">
@@ -1190,7 +1231,7 @@ function ClientPreview({
                   legs[d].length === 0 ? null : (
                     <PreviewLeg
                       key={d}
-                      label={d === "ida" ? "Ida" : "Volta"}
+                      label={t(d === "ida" ? "legs.outbound" : "legs.inbound")}
                       segments={legs[d]}
                     />
                   )
@@ -1208,17 +1249,16 @@ function ClientPreview({
               <div className="flex items-center gap-2.5 border-t border-dashed border-[#DFE5EC] px-3.5 py-3">
                 <div>
                   <span className="block text-[9px] font-bold uppercase tracking-[.08em] text-[#64748B]">
-                    Total · {pax.adults + pax.children + pax.infants}{" "}
-                    {pax.adults + pax.children + pax.infants === 1
-                      ? "passageiro"
-                      : "passageiros"}
+                    {t("proposal.totalFor", {
+                      count: pax.adults + pax.children + pax.infants,
+                    })}
                   </span>
                   <span className="font-mono text-xl font-semibold leading-tight tracking-tight">
                     {formatMoney(offerTotal(offer, pax), currency)}
                   </span>
                 </div>
                 <span className="ml-auto rounded-lg bg-[#EE5128] px-3 py-2.5 text-[11.5px] font-bold text-white">
-                  Escolher esta opção
+                  {t("admin.previewChoose")}
                 </span>
               </div>
             </div>
@@ -1286,6 +1326,7 @@ function PublishPanel({
   onError,
   onDone,
   onRevision,
+  t,
 }: {
   caseId: string
   token: string
@@ -1298,6 +1339,7 @@ function PublishPanel({
   onError: (message: string | null) => void
   onDone: () => void
   onRevision: () => void
+  t: Translator
 }) {
   const published = proposal.status === "publicada"
   const [included, setIncluded] = useState<Record<string, boolean>>(() =>
@@ -1327,7 +1369,12 @@ function PublishPanel({
     const problems = offerBlockers(asOffer(offer, i), pax)
     return problems.length === 0
       ? []
-      : [`${offer.name || "Opção sem nome"}: ${problems.join(", ")}`]
+      : [
+          t("blockers.line", {
+            offer: offer.name || t("admin.composerUnnamed"),
+            problems: problems.map((b) => blockerText(b, t)).join(", "),
+          }),
+        ]
   })
 
   function publish() {
@@ -1356,39 +1403,40 @@ function PublishPanel({
       <section className="rounded-xl border border-adm-line bg-adm-panel">
         <header className="border-b border-adm-line-soft p-3.5">
           <h2 className="text-xs font-extrabold uppercase tracking-[.11em] text-adm-muted">
-            Proposta publicada
+            {t("admin.publishedTitle")}
           </h2>
         </header>
         <div className="space-y-3.5 p-3.5">
           <p className="text-[12.5px] leading-relaxed text-adm-txt-2">
-            A revisão <b className="text-adm-txt">R{proposal.revision}</b> saiu
-            {proposal.published_at
-              ? ` a ${new Intl.DateTimeFormat("pt-PT", {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                  timeZone: "Atlantic/Cape_Verde",
-                }).format(new Date(proposal.published_at))}`
-              : ""}
-            . O cliente já consegue abrir o link 2 e escolher.
+            {t("admin.publishedBody", {
+              revision: proposal.revision,
+              when: proposal.published_at
+                ? t("admin.publishedAt", {
+                    when: new Intl.DateTimeFormat("pt-PT", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                      timeZone: "Atlantic/Cape_Verde",
+                    }).format(new Date(proposal.published_at)),
+                  })
+                : "",
+            })}
           </p>
           {proposal.selected_offer_id && (
             <p className="rounded-lg bg-adm-ok/10 p-3 text-[12px] leading-relaxed text-adm-ok">
-              O cliente já escolheu uma opção. Mudar preços agora obriga-o a
-              rever a escolha.
+              {t("admin.publishedChosen")}
             </p>
           )}
-          <CopyLink token={token} />
+          <CopyLink token={token} t={t} />
           <button
             type="button"
             onClick={onRevision}
             disabled={pending}
             className="w-full rounded-lg border border-adm-line bg-adm-panel-2 px-4 py-2.5 text-[13px] font-semibold text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt disabled:opacity-60"
           >
-            Nova revisão (R{proposal.revision + 1})
+            {t("admin.publishedNewRevision", { next: proposal.revision + 1 })}
           </button>
           <p className="text-[11px] leading-relaxed text-adm-muted">
-            Abrir uma revisão destranca a edição. Enquanto ela estiver aberta o
-            cliente vê uma mensagem de espera em vez dos preços antigos.
+            {t("admin.publishedRevisionHint")}
           </p>
         </div>
       </section>
@@ -1399,17 +1447,17 @@ function PublishPanel({
     <section className="rounded-xl border border-adm-line bg-adm-panel">
       <header className="flex items-center gap-2.5 border-b border-adm-line-soft p-3.5">
         <h2 className="text-xs font-extrabold uppercase tracking-[.11em] text-adm-muted">
-          Publicar proposta
+          {t("admin.publishTitle")}
         </h2>
         <span className="ml-auto text-[11px] text-adm-muted">
           {saveState === "saving" && (
             <span className="inline-flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> a guardar
+              <Loader2 className="h-3 w-3 animate-spin" /> {t("admin.publishSaving")}
             </span>
           )}
           {saveState === "saved" && (
             <span className="inline-flex items-center gap-1 text-adm-ok">
-              <Check className="h-3 w-3" /> guardado
+              <Check className="h-3 w-3" /> {t("admin.publishSaved")}
             </span>
           )}
         </span>
@@ -1418,7 +1466,7 @@ function PublishPanel({
       <div className="p-3.5">
         {offers.length === 0 ? (
           <p className="text-[12.5px] text-adm-muted">
-            Componha pelo menos uma opção antes de publicar.
+            {t("admin.publishNoOffers")}
           </p>
         ) : (
           offers.map((offer, i) => (
@@ -1438,7 +1486,7 @@ function PublishPanel({
                 className="h-[15px] w-[15px] accent-adm-ember"
               />
               <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-adm-txt">
-                {offer.name || "Opção sem nome"}
+                {offer.name || t("admin.composerUnnamed")}
               </span>
               <span className="font-mono text-[13px] font-semibold text-adm-txt-2">
                 {formatMoney(
@@ -1452,24 +1500,24 @@ function PublishPanel({
 
         <div className="mt-3.5">
           <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[.07em] text-adm-muted">
-            Mensagem de abertura
+            {t("admin.publishMessage")}
           </label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Isaura, encontrei 3 opções. A primeira é a que recomendo pelo horário de chegada."
+            placeholder={t("admin.publishMessagePlaceholder")}
             className={cn(inputClass, "min-h-[64px] resize-y leading-relaxed")}
           />
         </div>
 
         <div className="mt-3.5 flex flex-col gap-2.5">
           <Check2
-            label="Avisar por email"
+            label={t("admin.publishNotifyEmail")}
             checked={notifyClient}
             onChange={setNotifyClient}
           />
           <Check2
-            label="Avisar a equipa"
+            label={t("admin.publishNotifyTeam")}
             checked={notifyTeam}
             onChange={setNotifyTeam}
           />
@@ -1479,16 +1527,16 @@ function PublishPanel({
               disabled
               className="h-[15px] w-[15px] accent-adm-ember"
             />
-            Avisar por WhatsApp
+            {t("admin.publishNotifyWhatsapp")}
             <span className="text-[11px]">
-              — à espera das credenciais da Meta
+              {t("admin.publishNotifyWhatsappHint")}
             </span>
           </label>
         </div>
 
         {blockers.length > 0 && (
           <div className="mt-3.5 rounded-[9px] bg-adm-warn/[.14] p-2.5 text-xs leading-relaxed text-[#F0C983]">
-            <b className="mb-1 block">Falta completar antes de publicar</b>
+            <b className="mb-1 block">{t("admin.publishBlockers")}</b>
             <ul className="list-inside list-disc space-y-0.5">
               {blockers.map((b) => (
                 <li key={b}>{b}</li>
@@ -1498,11 +1546,7 @@ function PublishPanel({
         )}
 
         <div className="mt-3.5 rounded-[9px] bg-adm-warn/[.14] p-2.5 text-xs leading-relaxed text-[#F0C983]">
-          Ao publicar, o caso passa a <b>E2 · Opções enviadas</b>, o{" "}
-          <b>link 2</b> é gerado e o cliente pode escolher e preencher
-          passaportes. As ofertas ficam trancadas: para mudar preços depois,
-          cria-se a revisão <b className="font-mono">R{proposal.revision + 1}</b>{" "}
-          e o cliente é notificado da alteração.
+          {t("admin.publishWarning", { next: proposal.revision + 1 })}
         </div>
 
         {warning && (
@@ -1525,10 +1569,10 @@ function PublishPanel({
             ) : (
               <Send className="h-4 w-4" />
             )}
-            Publicar e avisar cliente
+            {t("admin.publishCta")}
           </button>
           <p className="text-center text-[11px] text-adm-muted">
-            O rascunho grava-se sozinho enquanto escreve.
+            {t("admin.publishAutoSave")}
           </p>
         </div>
       </div>
@@ -1536,7 +1580,7 @@ function PublishPanel({
   )
 }
 
-function CopyLink({ token }: { token: string }) {
+function CopyLink({ token, t }: { token: string; t: Translator }) {
   const [copied, setCopied] = useState(false)
   return (
     <button
@@ -1551,7 +1595,7 @@ function CopyLink({ token }: { token: string }) {
       className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-adm-line bg-adm-panel-2 px-4 py-2.5 text-[13px] font-semibold text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt"
     >
       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-      {copied ? "Copiado" : "Copiar link 2"}
+      {copied ? t("common.copied") : t("admin.publishedCopyLink")}
     </button>
   )
 }

@@ -14,16 +14,17 @@ import {
 } from "@/lib/case-status"
 import { CreateCaseButton } from "@/components/admin/create-case-button"
 import { CaseLinkButtons } from "@/components/admin/case-link-buttons"
+import { getI18n } from "@/i18n/server"
 
 export const dynamic = "force-dynamic"
 
 /** Channel badges from the mockup. The DB vocabulary is narrower than the
  *  design's — anything unmapped falls back to a neutral chip. */
-const CHANNEL: Record<string, { short: string; label: string }> = {
-  whatsapp: { short: "WA", label: "WhatsApp" },
-  chat: { short: "WEB", label: "Chat do site" },
-  browser: { short: "WEB", label: "Formulário" },
-  manual: { short: "MAN", label: "Manual" },
+const CHANNEL_SHORT: Record<string, string> = {
+  whatsapp: "WA",
+  chat: "WEB",
+  browser: "WEB",
+  manual: "MAN",
 }
 
 interface PaymentSummary {
@@ -66,6 +67,7 @@ export default async function AdminCasesPage({
 }: {
   searchParams: { q?: string; f?: string }
 }) {
+  const { t } = getI18n()
   const search = searchParams.q ?? ""
   const filter: Filter =
     searchParams.f === "them" || searchParams.f === "all"
@@ -97,12 +99,10 @@ export default async function AdminCasesPage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-[22px] font-bold tracking-tight text-adm-txt">
-            Links de atendimento
+            {t("admin.listTitle")}
           </h1>
           <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-adm-muted">
-            Cada cliente atendido por chat tem um link e uma referência únicos.
-            Aqui cria-se o link, acompanha-se onde o cliente parou e reenvia-se
-            quando é preciso.
+            {t("admin.listSubtitle")}
           </p>
         </div>
         <CreateCaseButton />
@@ -112,31 +112,40 @@ export default async function AdminCasesPage({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <Kpi
           dot="us"
-          label="Espera por nós"
+          label={t("admin.kpiUs")}
           value={kpis.us}
-          sub="a cotar ou a validar"
+          sub={t("admin.kpiUsSub")}
           hot
         />
         <Kpi
           dot="them"
-          label="Espera pelo cliente"
+          label={t("admin.kpiThem")}
           value={kpis.them}
-          sub="a preencher ou a pagar"
+          sub={t("admin.kpiThemSub")}
         />
         <Kpi
           dot="us"
-          label="Pago, ainda sem bilhete"
+          label={t("admin.kpiPaidNoTicket")}
           value={kpis.paidNoTicket}
-          sub={kpis.paidNoTicket > 0 ? "precisa de emissão" : "nada pendente"}
+          sub={t(
+            kpis.paidNoTicket > 0
+              ? "admin.kpiPaidNoTicketSub"
+              : "admin.kpiNothingPending"
+          )}
           bad={kpis.paidNoTicket > 0}
         />
         <Kpi
           dot="off"
-          label="Links nunca abertos"
+          label={t("admin.kpiNeverOpened")}
           value={kpis.neverOpened}
-          sub="o cliente ainda não entrou"
+          sub={t("admin.kpiNeverOpenedSub")}
         />
-        <Kpi dot="done" label="Emitidos" value={kpis.issued} sub="no total" />
+        <Kpi
+          dot="done"
+          label={t("admin.kpiIssued")}
+          value={kpis.issued}
+          sub={t("admin.kpiIssuedSub")}
+        />
       </div>
 
       {/* toolbar */}
@@ -148,7 +157,7 @@ export default async function AdminCasesPage({
             type="search"
             name="q"
             defaultValue={search}
-            placeholder="Referência, nome, email, rota ou token"
+            placeholder={t("admin.searchPlaceholder")}
             className="h-9 w-full rounded-lg border border-adm-line bg-adm-bg pl-8 pr-3 text-[13px] text-adm-txt outline-none transition-colors placeholder:text-adm-muted focus:border-adm-ember"
           />
         </form>
@@ -156,9 +165,9 @@ export default async function AdminCasesPage({
         <div className="flex items-center gap-1 rounded-lg border border-adm-line bg-adm-bg p-0.5">
           {(
             [
-              ["us", "A aguardar nós"],
-              ["them", "A aguardar cliente"],
-              ["all", "Tudo"],
+              ["us", t("admin.filterUs")],
+              ["them", t("admin.filterThem")],
+              ["all", t("admin.filterAll")],
             ] as const
           ).map(([key, label]) => (
             <Link
@@ -177,7 +186,7 @@ export default async function AdminCasesPage({
         </div>
 
         <span className="ml-auto pr-1 text-[12px] text-adm-muted">
-          {openCases.length} casos abertos
+          {t("admin.openCases", { count: openCases.length })}
         </span>
       </div>
 
@@ -185,28 +194,30 @@ export default async function AdminCasesPage({
       {cases.length === 0 ? (
         <div className="rounded-xl border border-dashed border-adm-line bg-adm-panel py-16 text-center">
           <p className="font-semibold text-adm-txt">
-            {search
-              ? "Nenhum caso encontrado"
-              : filter === "all"
-                ? "Ainda sem links criados"
-                : "Nada nesta vista"}
+            {t(
+              search
+                ? "admin.emptySearch"
+                : filter === "all"
+                  ? "admin.emptyAll"
+                  : "admin.emptyFilter"
+            )}
           </p>
           <p className="mx-auto mt-2 max-w-sm text-[13px] text-adm-muted">
             {search ? (
               <>
-                Experimente outra pesquisa ou{" "}
+                {t("admin.emptySearchHint")}{" "}
                 <Link href="/admin?f=all" className="font-semibold text-adm-ember">
-                  ver todos
+                  {t("admin.emptySeeAll")}
                 </Link>
                 .
               </>
             ) : filter === "all" ? (
-              "Clique em “Novo link de atendimento” para criar o primeiro."
+              t("admin.emptyAllHint")
             ) : (
               <>
-                Nenhum caso à espera. Veja{" "}
+                {t("admin.emptyFilterHint")}{" "}
                 <Link href="/admin?f=all" className="font-semibold text-adm-ember">
-                  todos os casos
+                  {t("admin.emptyAllCases")}
                 </Link>
                 .
               </>
@@ -218,14 +229,14 @@ export default async function AdminCasesPage({
           <table className="w-full text-left text-[13px]">
             <thead>
               <tr className="border-b border-adm-line text-[11px] uppercase tracking-wider text-adm-muted">
-                <Th>Referência</Th>
-                <Th>Cliente</Th>
-                <Th>Canal</Th>
-                <Th>Estado</Th>
-                <Th>Rota</Th>
-                <Th right>Valor</Th>
-                <Th>Sem mexer há</Th>
-                <Th>Links do cliente</Th>
+                <Th>{t("admin.colReference")}</Th>
+                <Th>{t("admin.colClient")}</Th>
+                <Th>{t("admin.colChannel")}</Th>
+                <Th>{t("admin.colStatus")}</Th>
+                <Th>{t("admin.colRoute")}</Th>
+                <Th right>{t("admin.colValue")}</Th>
+                <Th>{t("admin.colUntouched")}</Th>
+                <Th>{t("admin.colLinks")}</Th>
                 <Th />
               </tr>
             </thead>
@@ -235,7 +246,7 @@ export default async function AdminCasesPage({
                 const display = CASE_STAGE_DISPLAY[c.stage as CaseStage]
                 const payment = payments.get(c.id)
                 const channelKey = trip?.lead?.source_channel ?? ""
-                const channel = CHANNEL[channelKey]
+                const channelShort = CHANNEL_SHORT[channelKey]
                 const opened = c.links.some((l) => l.first_opened_at)
 
                 return (
@@ -248,7 +259,7 @@ export default async function AdminCasesPage({
                         href={`/admin/casos/${c.id}`}
                         className="font-mono text-[12.5px] font-semibold text-adm-txt hover:text-adm-ember"
                       >
-                        {trip?.reference ?? "sem referência"}
+                        {trip?.reference ?? t("admin.noReference")}
                       </Link>
                       <div className="mt-0.5 font-mono text-[11px] text-adm-muted">
                         {c.token.slice(0, 10)}…
@@ -257,22 +268,22 @@ export default async function AdminCasesPage({
 
                     <Td>
                       <div className="font-medium text-adm-txt">
-                        {trip?.lead?.full_name ?? "Por preencher"}
+                        {trip?.lead?.full_name ?? t("admin.toFill")}
                       </div>
                       <div className="mt-0.5 font-mono text-[11px] text-adm-muted">
                         {trip?.lead?.phone
                           ? `${trip.lead.phone_prefix ?? ""} ${trip.lead.phone}`.trim()
-                          : (trip?.lead?.email ?? "contacto por preencher")}
+                          : (trip?.lead?.email ?? t("admin.contactToFill"))}
                       </div>
                     </Td>
 
                     <Td>
-                      {channel ? (
+                      {channelShort ? (
                         <span className="inline-flex items-center gap-1.5 text-adm-txt-2">
                           <span className="rounded bg-adm-raise px-1.5 py-0.5 font-mono text-[10px] font-bold text-adm-muted">
-                            {channel.short}
+                            {channelShort}
                           </span>
-                          {channel.label}
+                          {t("channels." + channelKey)}
                         </span>
                       ) : (
                         <span className="text-adm-muted">—</span>
@@ -292,7 +303,8 @@ export default async function AdminCasesPage({
                             WAITING_DOT[display.waiting]
                           )}
                         />
-                        {display.code} · {display.label}
+                        {display.code} ·{" "}
+                        {t("caseStageShort." + c.stage)}
                       </span>
                     </Td>
 
@@ -309,7 +321,7 @@ export default async function AdminCasesPage({
                           </div>
                         </>
                       ) : (
-                        <span className="text-adm-muted">por preencher</span>
+                        <span className="text-adm-muted">{t("admin.routeToFill")}</span>
                       )}
                     </Td>
 
@@ -328,7 +340,7 @@ export default async function AdminCasesPage({
                         {elapsedSince(c.updated_at)}
                       </div>
                       <div className="mt-0.5 text-[11px] text-adm-muted">
-                        {opened ? "link já aberto" : "nunca aberto"}
+                        {t(opened ? "admin.linkOpened" : "admin.linkNeverOpened")}
                       </div>
                     </Td>
 
@@ -341,7 +353,7 @@ export default async function AdminCasesPage({
                         href={`/admin/casos/${c.id}`}
                         className="inline-flex items-center rounded-md border border-adm-line bg-adm-raise px-2.5 py-1.5 text-[12px] font-semibold text-adm-txt-2 transition-colors hover:border-adm-muted hover:text-adm-txt"
                       >
-                        Gerir
+                        {t("admin.manage")}
                       </Link>
                     </Td>
                   </tr>

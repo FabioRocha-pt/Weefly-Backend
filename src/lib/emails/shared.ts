@@ -6,6 +6,8 @@
  * customer's inbox and in the concierge team's inbox.
  */
 
+import type { Translator } from "@/i18n/translate"
+
 export interface TravelRequestSummary {
   title: "mr" | "ms"
   fullName: string
@@ -27,22 +29,11 @@ export const MUTED = "#5A6270"
 export const BORDER = "#E4E8ED"
 export const SURFACE_ALT = "#F5F7F9"
 
-export const TRIP_TYPE_LABELS: Record<TravelRequestSummary["tripType"], string> = {
-  round_trip: "Ida e volta",
-  one_way: "Só ida",
-  multi_city: "Multi-destino",
-}
-
-export const CABIN_LABELS: Record<TravelRequestSummary["cabinClass"], string> = {
-  economy: "Económica",
-  business: "Executiva",
-  first: "Primeira",
-}
-
-export const TITLE_LABELS: Record<TravelRequestSummary["title"], string> = {
-  mr: "Sr.",
-  ms: "Sra.",
-}
+/*
+ * As etiquetas do tipo de viagem, da classe e do tratamento estão nos
+ * dicionários — `tripTypes.*`, `cabins.*` e `titles.*`. Um email ao cliente sai
+ * na língua dele, e uma tabela fixa aqui só sabia escrever numa.
+ */
 
 /** Format a "YYYY-MM-DD" input value as "DD/MM/YYYY" without timezone drift. */
 export function formatDate(value?: string): string {
@@ -60,15 +51,16 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;")
 }
 
-export function passengersSummary(data: TravelRequestSummary): string {
-  const parts: string[] = [
-    `${data.adults} ${data.adults === 1 ? "adulto" : "adultos"}`,
-  ]
+export function passengersSummary(
+  data: TravelRequestSummary,
+  t: Translator
+): string {
+  const parts = [t("common.adults", { count: data.adults })]
   if (data.children > 0) {
-    parts.push(`${data.children} ${data.children === 1 ? "criança" : "crianças"}`)
+    parts.push(t("common.children", { count: data.children }))
   }
   if (data.infants > 0) {
-    parts.push(`${data.infants} ${data.infants === 1 ? "bebé" : "bebés"}`)
+    parts.push(t("common.infants", { count: data.infants }))
   }
   return parts.join(" · ")
 }

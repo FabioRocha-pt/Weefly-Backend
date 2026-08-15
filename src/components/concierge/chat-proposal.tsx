@@ -17,6 +17,7 @@ import {
   stopsLabel,
   timeOf,
 } from "@/lib/proposal-math"
+import { useT } from "@/i18n/provider"
 
 export interface ProposalPayload {
   caseToken: string
@@ -35,6 +36,7 @@ export interface ProposalPayload {
  * antiga fica como esteve, que é como qualquer conversa funciona.
  */
 export function ChatProposal({ payload }: { payload: ProposalPayload }) {
+  const t = useT()
   const [pending, startTransition] = useTransition()
 
   if (!payload?.offers?.length) return null
@@ -43,7 +45,7 @@ export function ChatProposal({ payload }: { payload: ProposalPayload }) {
     <div className="space-y-2.5">
       {payload.revision > 1 && (
         <p className="text-[12px] font-semibold text-orange-600">
-          Proposta atualizada (revisão {payload.revision})
+          {t("chatProposal.revised", { revision: payload.revision })}
         </p>
       )}
 
@@ -62,8 +64,7 @@ export function ChatProposal({ payload }: { payload: ProposalPayload }) {
       ))}
 
       <p className="px-1 text-[11.5px] leading-relaxed text-slate-400">
-        Ao escolher, segue para os dados dos passaportes. Pode voltar atrás e
-        trocar de opção até ao pagamento.
+        {t("chatProposal.footnote")}
       </p>
     </div>
   )
@@ -80,11 +81,12 @@ function OfferBubble({
   pending: boolean
   onChoose: () => void
 }) {
+  const t = useT()
   const legs = legsOf(offer)
   const badges = [
-    offer.is_recommended && "Recomendada",
-    offer.is_cheapest && "Mais barata",
-    offer.is_fastest && "Mais rápida",
+    offer.is_recommended && t("proposal.badgeRecommended"),
+    offer.is_cheapest && t("proposal.badgeCheapest"),
+    offer.is_fastest && t("proposal.badgeFastest"),
   ].filter(Boolean) as string[]
 
   return (
@@ -114,7 +116,7 @@ function OfferBubble({
         )}
 
         <p className="text-[13.5px] font-bold leading-snug text-slate-900">
-          {offer.name || "Opção"}
+          {offer.name || t("chatProposal.unnamedOffer")}
         </p>
 
         {(["ida", "volta"] as const).map((d) =>
@@ -124,7 +126,7 @@ function OfferBubble({
               className="mt-2 flex items-baseline gap-2 text-[12px] text-slate-600"
             >
               <span className="w-8 shrink-0 text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400">
-                {d === "ida" ? "Ida" : "Volta"}
+                {t(d === "ida" ? "legs.outbound" : "legs.inbound")}
               </span>
               <span className="font-mono text-slate-900">
                 {timeOf(legs[d][0].depart_at)} {legs[d][0].origin ?? "—"} →{" "}
@@ -153,8 +155,10 @@ function OfferBubble({
       <div className="flex items-center gap-3 border-t border-dashed border-slate-200 px-3.5 py-3">
         <div>
           <span className="block text-[9.5px] font-bold uppercase tracking-wider text-slate-400">
-            Total ·{" "}
-            {payload.pax.adults + payload.pax.children + payload.pax.infants} pax
+            {t("chatProposal.totalFor", {
+              count:
+                payload.pax.adults + payload.pax.children + payload.pax.infants,
+            })}
           </span>
           <span className="font-mono text-[17px] font-semibold tracking-tight text-slate-900">
             {formatMoney(offerTotal(offer, payload.pax), payload.currency)}
@@ -167,7 +171,7 @@ function OfferBubble({
           className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-orange-600 px-4 py-2 text-[12.5px] font-bold text-white transition-colors hover:bg-orange-700 disabled:opacity-60"
         >
           {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          Escolher
+          {t("chatProposal.choose")}
         </button>
       </div>
     </article>

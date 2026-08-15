@@ -17,11 +17,8 @@ import {
   confirmPaymentReceived,
   generatePaymentLink,
 } from "@/actions/payments"
-import {
-  PAYMENT_STATUS_LABELS,
-  formatAmount,
-  type CasePayment,
-} from "@/lib/case-status"
+import { formatAmount, type CasePayment } from "@/lib/case-status"
+import { useT } from "@/i18n/provider"
 
 /**
  * O painel de pagamento da ficha do caso.
@@ -46,6 +43,7 @@ export function PaymentPanel({
   lastCheckedAt: string | null
   failureReason: string | null
 }) {
+  const t = useT()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -76,16 +74,17 @@ export function PaymentPanel({
           <p className="mt-1 text-[13px] text-adm-muted">{payment.description}</p>
         )}
         <p className="mt-2 text-[11.5px] font-semibold text-adm-txt-2">
-          Estado: {PAYMENT_STATUS_LABELS[payment.status]}
+          {t("admin.payStatus", { status: t("paymentStatus." + payment.status) })}
           {lastCheckedAt && (
             <span className="font-normal text-adm-muted">
-              {" "}
-              · verificado {when(lastCheckedAt)}
+              {t("admin.payCheckedAt", { when: when(lastCheckedAt) })}
             </span>
           )}
         </p>
         {payment.paid_at && (
-          <p className="text-[11.5px] text-adm-ok">Pago a {when(payment.paid_at)}</p>
+          <p className="text-[11.5px] text-adm-ok">
+            {t("admin.payPaidAt", { when: when(payment.paid_at) })}
+          </p>
         )}
         {payment.weepay_transaction_id && (
           <p className="mt-1 truncate font-mono text-[11px] text-adm-muted">
@@ -96,9 +95,7 @@ export function PaymentPanel({
 
       {declaredAt && !settled && (
         <div className="rounded-lg bg-adm-warn/10 p-3 text-[12px] leading-relaxed text-adm-warn">
-          <b>O cliente diz que já pagou</b>, a {when(declaredAt)}. Confirme a
-          entrada do dinheiro antes de marcar como recebido — a declaração é
-          dele, a confirmação é sua.
+          {t("admin.payClientDeclared", { when: when(declaredAt) })}
         </div>
       )}
 
@@ -116,16 +113,14 @@ export function PaymentPanel({
           rel="noreferrer"
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-adm-line bg-adm-panel-2 px-4 py-2.5 text-[13px] font-semibold text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt"
         >
-          Abrir a página de pagamento
+          {t("admin.payOpenGateway")}
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
       )}
 
       {!weepayConfigured && !settled && (
         <p className="rounded-lg bg-adm-warn/10 p-3 text-[11.5px] leading-relaxed text-adm-warn">
-          A WeePay ainda não está ligada (falta <code>WEEPAY_API_URL</code>), por
-          isso não há link automático. Combine o pagamento com o cliente e
-          registe-o aqui quando o dinheiro entrar.
+          {t("admin.payNotConfigured")}
         </p>
       )}
 
@@ -149,7 +144,7 @@ export function PaymentPanel({
               icon={<CreditCard className="h-4 w-4" />}
               primary
             >
-              Gerar link de pagamento
+              {t("admin.payGenerateLink")}
             </Button>
           )}
 
@@ -159,7 +154,7 @@ export function PaymentPanel({
               pending={pending}
               icon={<RefreshCw className="h-4 w-4" />}
             >
-              Verificar estado na WeePay
+              {t("admin.payCheckStatus")}
             </Button>
           )}
 
@@ -169,7 +164,7 @@ export function PaymentPanel({
             icon={<Check className="h-4 w-4" />}
             primary={!weepayConfigured}
           >
-            Marcar como pago
+            {t("admin.payMarkPaid")}
           </Button>
         </div>
       )}

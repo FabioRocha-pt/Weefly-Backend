@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { AlertCircle, Eye, EyeOff } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,8 +13,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { loginSchema, type LoginFormData } from "@/lib/validations"
 import { AuthCard } from "@/components/auth/auth-card"
 import { signIn } from "@/actions/auth"
+import { useT } from "@/i18n/provider"
+import { translateMessage } from "@/i18n/translate"
 
 export function LoginForm() {
+  const t = useT()
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -45,30 +48,32 @@ export function LoginForm() {
   }
 
   return (
-    <AuthCard title="Entrar" description="Bem-vindo de volta ao WeeFlyPro.">
+    <AuthCard title={t("auth.loginTitle")} description={t("auth.loginSubtitle")}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Email */}
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("auth.email")}</Label>
           <Input
             id="email"
             type="email"
-            placeholder="nome@empresa.cv"
+            placeholder={t("auth.emailPlaceholder")}
             {...form.register("email")}
           />
           {form.formState.errors.email && (
-            <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
+            <p className="text-sm text-red-500">
+              {t(form.formState.errors.email.message ?? "")}
+            </p>
           )}
         </div>
 
         {/* Password */}
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("auth.password")}</Label>
           <div className="relative">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
-              placeholder="••••••••••"
+              placeholder={t("auth.passwordDots")}
               {...form.register("password")}
             />
             <button
@@ -76,11 +81,13 @@ export function LoginForm() {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-3 flex items-center text-sm font-medium text-slate-500 hover:text-slate-700"
             >
-              {showPassword ? "Ocultar" : "Mostrar"}
+              {showPassword ? t("auth.hide") : t("auth.show")}
             </button>
           </div>
           {form.formState.errors.password && (
-            <p className="text-sm text-red-500">{form.formState.errors.password.message}</p>
+            <p className="text-sm text-red-500">
+              {t(form.formState.errors.password.message ?? "")}
+            </p>
           )}
         </div>
 
@@ -93,14 +100,14 @@ export function LoginForm() {
               onCheckedChange={(checked) => form.setValue("rememberMe", checked === true)}
             />
             <Label htmlFor="rememberMe" className="text-sm font-normal cursor-pointer">
-              Manter sessão iniciada
+              {t("auth.remember")}
             </Label>
           </div>
           <Link
             href="/recuperar-password"
             className="text-sm text-orange-600 hover:text-orange-700 font-medium"
           >
-            Esqueci-me da password
+            {t("auth.forgot")}
           </Link>
         </div>
 
@@ -108,22 +115,22 @@ export function LoginForm() {
         {serverError && (
           <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>{serverError}</span>
+            <span>{translateMessage(t, serverError)}</span>
           </div>
         )}
 
         {/* Submit */}
         <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "A entrar..." : "Entrar"}
+          {form.formState.isSubmitting ? t("auth.loginSubmitting") : t("auth.signIn")}
         </Button>
       </form>
 
       {/* Footer */}
       <div className="mt-6 text-center">
         <p className="text-sm text-slate-600">
-          Ainda não tem conta?{" "}
+          {t("auth.noAccount")}{" "}
           <Link href="/registro" className="text-orange-600 hover:text-orange-700 font-medium">
-            Criar conta
+            {t("auth.createAccount")}
           </Link>
         </p>
       </div>

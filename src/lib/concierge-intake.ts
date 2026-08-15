@@ -10,6 +10,7 @@
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import type { TravelRequestFormData } from "@/lib/validations"
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config"
 
 export type SourceChannel = "browser" | "whatsapp" | "chat" | "manual"
 
@@ -28,12 +29,15 @@ const UNIQUE_VIOLATION = "23505"
  *
  * One lead per person: a repeat customer accumulates trip requests rather than
  * fragmenting into duplicate contacts. Contact details are refreshed on each
- * submission, since the newest spelling of a name or phone is the best one.
+ * submission, since the newest spelling of a name or phone is the best one —
+ * e o mesmo vale para o idioma: quem hoje escreve em francês é em francês que
+ * quer ser respondido, mesmo que da primeira vez tenha usado outra língua.
  */
 async function upsertLead(
   admin: NonNullable<ReturnType<typeof createAdminClient>>,
   data: TravelRequestFormData,
-  sourceChannel: SourceChannel
+  sourceChannel: SourceChannel,
+  locale: Locale
 ): Promise<string> {
   const email = data.email.trim().toLowerCase()
 
@@ -44,6 +48,7 @@ async function upsertLead(
     phone_prefix: data.phonePrefix,
     phone: data.phone.trim(),
     source_channel: sourceChannel,
+    locale,
     consent: data.consent,
     consent_at: data.consent ? new Date().toISOString() : null,
   }
@@ -93,6 +98,8 @@ export async function saveTravelRequest(
   data: TravelRequestFormData,
   options: {
     sourceChannel?: SourceChannel
+    /** A língua em que o cliente está a falar connosco agora. */
+    locale?: Locale
     emailSent?: boolean
     teamNotified?: boolean
   } = {}
@@ -107,12 +114,13 @@ export async function saveTravelRequest(
 
   const {
     sourceChannel = "browser",
+    locale = DEFAULT_LOCALE,
     emailSent = false,
     teamNotified = false,
   } = options
 
   try {
-    const leadId = await upsertLead(admin, data, sourceChannel)
+    const leadId = await upsertLead(admin, data, sourceChannel, locale)
 
     const { data: trip, error } = await admin
       .from("trip_requests")

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/utils/supabase/server"
 import { mintToken } from "@/lib/booking-cases"
 import type { CaseStage } from "@/lib/case-status"
+import { getI18n } from "@/i18n/server"
 
 export type CaseActionState = { error: string | null }
 
@@ -21,12 +22,13 @@ function field(formData: FormData, key: string): string {
 export async function createCase(): Promise<
   CaseActionState & { token?: string }
 > {
+  const { t } = getI18n()
   const supabase = createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) return { error: "Sessão expirada. Volte a entrar." }
+  if (!user) return { error: t("errors.sessionExpired") }
 
   const { data, error } = await supabase
     .from("booking_cases")
@@ -36,7 +38,7 @@ export async function createCase(): Promise<
 
   if (error) {
     console.error("[cases] createCase failed:", error)
-    return { error: "Não foi possível criar o link." }
+    return { error: t("errors.caseCreateFailed") }
   }
 
   /*
@@ -73,16 +75,17 @@ export async function createCase(): Promise<
 export async function unlockStage(
   formData: FormData
 ): Promise<CaseActionState> {
+  const { t } = getI18n()
   const caseId = field(formData, "caseId")
   const stage = Number(field(formData, "stage"))
 
-  if (!caseId) return { error: "Caso inválido." }
+  if (!caseId) return { error: t("errors.invalidCase") }
   if (stage === 2) {
     return {
-      error: "O link 2 abre ao publicar a proposta, no separador Ofertas.",
+      error: t("errors.stage2ViaPublish"),
     }
   }
-  if (stage !== 3) return { error: "Etapa inválida." }
+  if (stage !== 3) return { error: t("errors.invalidStage") }
 
   const supabase = createClient()
 
@@ -96,10 +99,10 @@ export async function unlockStage(
 
   if (error) {
     console.error("[cases] unlockStage failed:", error)
-    return { error: "Não foi possível gerar o link." }
+    return { error: t("errors.linkGenerateFailed") }
   }
   if (!data || data.length === 0) {
-    return { error: "Este link já tinha sido gerado." }
+    return { error: t("errors.linkAlreadyGenerated") }
   }
 
   // Advance the case only when it is genuinely behind; never move it backwards.
@@ -133,18 +136,19 @@ export async function unlockStage(
 export async function createPayLink(
   formData: FormData
 ): Promise<CaseActionState> {
+  const { t } = getI18n()
   const caseId = field(formData, "caseId")
   const rawAmount = field(formData, "amount").replace(",", ".")
   const currency = (field(formData, "currency") || "CVE").toUpperCase()
   const description = field(formData, "description")
 
-  if (!caseId) return { error: "Caso inválido." }
+  if (!caseId) return { error: t("errors.invalidCase") }
 
   const major = Number(rawAmount)
   if (!Number.isFinite(major) || major <= 0) {
-    return { error: "Indique um valor válido." }
+    return { error: t("errors.invalidAmount") }
   }
-  if (currency.length !== 3) return { error: "Moeda inválida." }
+  if (currency.length !== 3) return { error: t("errors.invalidCurrency") }
 
   const amount = Math.round(major * 100)
 
@@ -163,7 +167,7 @@ export async function createPayLink(
 
   if (error) {
     console.error("[cases] createPayLink failed:", error)
-    return { error: "Não foi possível criar o pedido de pagamento." }
+    return { error: t("errors.payRequestFailed") }
   }
 
   const unlock = new FormData()
@@ -193,8 +197,9 @@ export async function createPayLink(
 export async function markTicketsIssued(
   formData: FormData
 ): Promise<CaseActionState> {
+  const { t } = getI18n()
   const caseId = field(formData, "caseId")
-  if (!caseId) return { error: "Caso inválido." }
+  if (!caseId) return { error: t("errors.invalidCase") }
 
   const supabase = createClient()
   const { error } = await supabase
@@ -202,7 +207,7 @@ export async function markTicketsIssued(
     .update({ stage: "emitido" })
     .eq("id", caseId)
 
-  if (error) return { error: "Não foi possível atualizar o caso." }
+  if (error) return { error: t("errors.caseUpdateFailed") }
 
   revalidatePath("/admin")
   revalidatePath(`/admin/casos/${caseId}`)
@@ -210,8 +215,9 @@ export async function markTicketsIssued(
 }
 
 export async function cancelCase(formData: FormData): Promise<CaseActionState> {
+  const { t } = getI18n()
   const caseId = field(formData, "caseId")
-  if (!caseId) return { error: "Caso inválido." }
+  if (!caseId) return { error: t("errors.invalidCase") }
 
   const supabase = createClient()
   const { error } = await supabase
@@ -219,7 +225,7 @@ export async function cancelCase(formData: FormData): Promise<CaseActionState> {
     .update({ stage: "cancelado" })
     .eq("id", caseId)
 
-  if (error) return { error: "Não foi possível cancelar o caso." }
+  if (error) return { error: t("errors.caseCancelFailed") }
 
   // Kill every outstanding link so the URLs stop working immediately.
   await supabase

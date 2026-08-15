@@ -20,6 +20,7 @@ import {
   type AdminOffer,
   type Cabin,
   type OfferDirection,
+  blockerText,
   offerBlockers,
   offerTotal,
 } from "@/lib/proposal-math"
@@ -28,6 +29,7 @@ import {
   buildProposalTeamEmail,
 } from "@/lib/emails/proposal-published"
 import type { CaseStage } from "@/lib/case-status"
+import { getI18n, getTranslator, localeForClient } from "@/i18n/server"
 
 export type ProposalActionState = { error: string | null }
 
@@ -122,11 +124,12 @@ export interface OfferDraft {
 async function editableProposal(
   caseId: string
 ): Promise<{ id: string; currency: string } | { error: string }> {
+  const { t } = getI18n()
   const view = await getProposal(caseId)
-  if (!view) return { error: "Este caso ainda não tem proposta." }
+  if (!view) return { error: t("errors.caseHasNoProposal") }
   if (view.proposal.status === "publicada") {
     return {
-      error: `A proposta R${view.proposal.revision} está publicada. Crie uma revisão para a poder editar.`,
+      error: t("notices.proposalLocked", { revision: view.proposal.revision }),
     }
   }
   return { id: view.proposal.id, currency: view.proposal.currency }
@@ -144,9 +147,10 @@ export async function initProposal(
   caseId: string,
   currency = "CVE"
 ): Promise<ProposalActionState> {
-  if (!caseId) return { error: "Caso inválido." }
+  const { t } = getI18n()
+  if (!caseId) return { error: t("errors.invalidCase") }
   const view = await ensureProposal(caseId, currency)
-  if (!view) return { error: "Não foi possível abrir a proposta." }
+  if (!view) return { error: t("errors.proposalOpenFailed") }
   touch(caseId)
   return OK
 }
@@ -155,12 +159,13 @@ export async function saveProposalMeta(
   caseId: string,
   input: { currency?: string; openingMessage?: string }
 ): Promise<ProposalActionState> {
+  const { t } = getI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
   const currency = code(input.currency, 3)
   if (input.currency !== undefined && (!currency || currency.length !== 3)) {
-    return { error: "Moeda inválida." }
+    return { error: t("errors.invalidCurrency") }
   }
 
   const supabase = createClient()
@@ -176,7 +181,7 @@ export async function saveProposalMeta(
 
   if (error) {
     console.error("[proposals] saveProposalMeta failed:", error)
-    return { error: "Não foi possível guardar." }
+    return { error: t("errors.saveFailed") }
   }
   touch(caseId)
   return OK
@@ -185,6 +190,7 @@ export async function saveProposalMeta(
 // --- Ofertas ----------------------------------------------------------------
 
 export async function addOffer(caseId: string): Promise<ProposalActionState> {
+  const { t } = getI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -207,7 +213,7 @@ export async function addOffer(caseId: string): Promise<ProposalActionState> {
 
   if (error) {
     console.error("[proposals] addOffer failed:", error)
-    return { error: "Não foi possível criar a opção." }
+    return { error: t("errors.offerCreateFailed") }
   }
 
   // Um trecho de ida em branco, porque uma oferta sem nenhum é um ecrã vazio
@@ -224,6 +230,7 @@ export async function duplicateOffer(
   caseId: string,
   offerId: string
 ): Promise<ProposalActionState> {
+  const { t } = getI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -235,7 +242,7 @@ export async function duplicateOffer(
     .eq("proposal_id", editable.id)
     .maybeSingle()
 
-  if (!source) return { error: "Opção não encontrada." }
+  if (!source) return { error: t("errors.offerNotFound") }
 
   const row = source as Record<string, unknown>
   const segments = (row.segments ?? []) as Record<string, unknown>[]
@@ -261,7 +268,7 @@ export async function duplicateOffer(
     .insert({
       ...fields,
       position: ((last as { position: number } | null)?.position ?? -1) + 1,
-      name: `${(row.name as string) || "Opção"} (cópia)`,
+      name: `${(row.name as string) || t("chatProposal.unnamedOffer")} (${t("common.copy").toLowerCase()})`,
       // Duas ofertas recomendadas ao mesmo tempo não querem dizer nada ao
       // cliente. A cópia nasce sem etiquetas e o vendedor decide.
       is_recommended: false,
@@ -273,7 +280,7 @@ export async function duplicateOffer(
 
   if (error) {
     console.error("[proposals] duplicateOffer failed:", error)
-    return { error: "Não foi possível duplicar a opção." }
+    return { error: t("errors.offerDuplicateFailed") }
   }
 
   if (segments.length > 0) {
@@ -299,6 +306,7 @@ export async function removeOffer(
   caseId: string,
   offerId: string
 ): Promise<ProposalActionState> {
+  const { t } = getI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -311,7 +319,7 @@ export async function removeOffer(
 
   if (error) {
     console.error("[proposals] removeOffer failed:", error)
-    return { error: "Não foi possível remover a opção." }
+    return { error: t("errors.offerRemoveFailed") }
   }
   touch(caseId)
   return OK
@@ -351,6 +359,7 @@ export async function saveOffer(
   offerId: string,
   draft: OfferDraft
 ): Promise<ProposalActionState> {
+  const { t } = getI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -387,7 +396,7 @@ export async function saveOffer(
 
   if (error || !updated || updated.length === 0) {
     console.error("[proposals] saveOffer failed:", error)
-    return { error: "Não foi possível guardar a opção." }
+    return { error: t("errors.offerSaveFailed") }
   }
 
   const segments = (draft.segments ?? []).slice(0, 24)
@@ -419,7 +428,7 @@ export async function saveOffer(
       .insert(rows)
     if (segError) {
       console.error("[proposals] segment insert failed:", segError)
-      return { error: "A opção foi guardada, mas os trechos não." }
+      return { error: t("errors.offerSavedSegmentsNot") }
     }
   }
 
@@ -460,6 +469,7 @@ export async function publishProposal(
     notifyTeam?: boolean
   }
 ): Promise<ProposalActionState & { warning?: string }> {
+  const { t } = getI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -467,17 +477,17 @@ export async function publishProposal(
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: "Sessão expirada. Volte a entrar." }
+  if (!user) return { error: t("errors.sessionExpired") }
 
   const view = await getProposal(caseId)
   const bookingCase = await getCase(caseId)
-  if (!view || !bookingCase) return { error: "Caso não encontrado." }
+  if (!view || !bookingCase) return { error: t("errors.caseNotFound") }
 
   const included = new Set(input.includedOfferIds)
   const going = view.offers.filter((o) => included.has(o.id))
 
   if (going.length === 0) {
-    return { error: "Escolha pelo menos uma opção para enviar." }
+    return { error: t("errors.pickAtLeastOneOffer") }
   }
 
   const pax = paxOf(bookingCase.trip_request)
@@ -488,10 +498,15 @@ export async function publishProposal(
     const problems = offerBlockers(offer, pax)
     return problems.length === 0
       ? []
-      : [`${offer.name || "Opção sem nome"}: ${problems.join(", ")}`]
+      : [
+          t("blockers.line", {
+            offer: offer.name || t("email.proposalUnnamed"),
+            problems: problems.map((b) => blockerText(b, t)).join(", "),
+          }),
+        ]
   })
   if (faults.length > 0) {
-    return { error: `Falta completar — ${faults.join(" · ")}` }
+    return { error: t("blockers.missing", { faults: faults.join(" · ") }) }
   }
 
   await Promise.all(
@@ -517,7 +532,7 @@ export async function publishProposal(
 
   if (error) {
     console.error("[proposals] publish failed:", error)
-    return { error: "Não foi possível publicar." }
+    return { error: t("errors.publishFailed") }
   }
 
   // O link 2 nasce aqui.
@@ -543,6 +558,7 @@ export async function publishProposal(
    */
   const { postProposalToConversation } = await import("@/lib/conversations")
   const deliveredInChat = await postProposalToConversation({
+    t: getTranslator(localeForClient(bookingCase.trip_request?.lead?.locale)),
     caseId,
     caseToken: bookingCase.token,
     revision: view.proposal.revision,
@@ -595,8 +611,11 @@ async function notifyPublication(input: {
   /** A proposta já foi escrita na conversa do cliente. */
   deliveredInChat: boolean
 }): Promise<string | undefined> {
+  const { t } = getI18n()
   const { bookingCase } = input
   const trip = bookingCase.trip_request
+  const clientLocale = localeForClient(trip?.lead?.locale)
+  const clientT = getTranslator(clientLocale)
 
   /*
    * Para onde o email aponta depende de como o cliente chegou. Quem pediu a
@@ -618,7 +637,7 @@ async function notifyPublication(input: {
       "[proposals] RESEND_API_KEY não definida — proposta publicada sem avisos. Link: %s",
       link
     )
-    return "Proposta publicada, mas o envio de email não está configurado. Copie o link 2 e envie-o à mão."
+    return t("notices.publishedNoEmailConfig")
   }
 
   const payload = {
@@ -644,7 +663,14 @@ async function notifyPublication(input: {
   const sends: Promise<unknown>[] = []
 
   if (input.notifyClient && clientEmail) {
-    const mail = buildProposalPublishedEmail(payload)
+    /*
+     * Na língua do cliente, não na do agente.
+     *
+     * Este email é composto horas depois de o cliente ter falado connosco, e o
+     * `t` desta action fala a língua de quem carregou no botão. A do cliente
+     * ficou guardada no lead quando ele nos escreveu — ver a migração 0008.
+     */
+    const mail = buildProposalPublishedEmail(payload, clientT, clientLocale)
     sends.push(
       resend.emails.send({
         from,
@@ -685,11 +711,11 @@ async function notifyPublication(input: {
 
   if (failed.length > 0) {
     console.error("[proposals] envio da proposta falhou:", failed)
-    return "Proposta publicada, mas pelo menos um email não saiu. Copie o link 2 e confirme com o cliente."
+    return t("notices.publishedEmailFailed")
   }
 
   if (input.notifyClient && !clientEmail) {
-    return "Proposta publicada. O cliente não tem email no caso, portanto só a equipa foi avisada — envie-lhe o link 2 à mão."
+    return t("notices.publishedNoClientEmail")
   }
 
   return undefined
@@ -706,10 +732,11 @@ async function notifyPublication(input: {
 export async function startRevision(
   caseId: string
 ): Promise<ProposalActionState> {
+  const { t } = getI18n()
   const view = await getProposal(caseId)
-  if (!view) return { error: "Este caso ainda não tem proposta." }
+  if (!view) return { error: t("errors.caseHasNoProposal") }
   if (view.proposal.status !== "publicada") {
-    return { error: "Esta proposta já está em edição." }
+    return { error: t("errors.proposalAlreadyEditing") }
   }
 
   const supabase = createClient()
@@ -721,7 +748,7 @@ export async function startRevision(
 
   if (error) {
     console.error("[proposals] startRevision failed:", error)
-    return { error: "Não foi possível abrir a revisão." }
+    return { error: t("errors.revisionOpenFailed") }
   }
 
   touch(caseId)
@@ -737,6 +764,7 @@ export async function startRevision(
  * oferta pertence mesmo a este caso está em `recordOfferSelection`.
  */
 export async function selectOffer(token: string, offerId: string) {
+  const { t } = getI18n()
   const lookup = await getCaseByToken(token, 2)
   if (!lookup.ok) return
 
@@ -774,8 +802,10 @@ export async function selectOffer(token: string, offerId: string) {
   const { postSystemMessage } = await import("@/lib/conversations")
   await postSystemMessage(
     bookingCase.id,
-    `Escolheu: ${chosen.offer.name || "a opção"}. Falta preencher os dados dos passaportes.`,
-    { url: `/p/${token}/passageiros`, label: "Preencher passaportes" }
+    t("chat.chosenOption", {
+      name: chosen.offer.name || t("chatProposal.unnamedOffer"),
+    }),
+    { url: `/p/${token}/passageiros`, label: t("chat.fillPassports") }
   )
 
   revalidatePath(`/p/${token}/proposta`)

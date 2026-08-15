@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import { createClient } from "@/utils/supabase/server"
+import { getI18n } from "@/i18n/server"
 
 export type CompanyActionState = { error: string | null }
 
@@ -21,15 +22,16 @@ function field(formData: FormData, key: string): string {
 export async function createCompany(
   formData: FormData
 ): Promise<CompanyActionState> {
+  const { t } = getI18n()
   const type = field(formData, "type")
   const legalName = field(formData, "legalName")
   const commercialName = field(formData, "commercialName")
 
   if (!VALID_TYPES.includes(type as (typeof VALID_TYPES)[number])) {
-    return { error: "Selecione um tipo de empresa válido." }
+    return { error: t("errors.invalidCompanyType") }
   }
   if (!legalName || !commercialName) {
-    return { error: "O nome legal e o nome comercial são obrigatórios." }
+    return { error: t("errors.companyNamesRequired") }
   }
 
   try {
@@ -39,7 +41,7 @@ export async function createCompany(
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return { error: "Sessão expirada. Inicie sessão novamente." }
+      return { error: t("errors.sessionExpiredSignIn") }
     }
 
     const { error } = await supabase.from("companies").insert({

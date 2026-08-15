@@ -3,8 +3,11 @@ import { Check } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { getI18n } from "@/i18n/server"
 
 export default function EmailConfirmadoPage() {
+  const { t } = getI18n()
+
   return (
     <div className="w-full max-w-md">
       <Card className="border-0 shadow-lg">
@@ -20,18 +23,16 @@ export default function EmailConfirmadoPage() {
 
           {/* Title */}
           <h1 className="text-2xl font-bold text-slate-900 mb-3">
-            Email confirmado
+            {t("auth.confirmedTitle")}
           </h1>
 
           {/* Description */}
-          <p className="text-slate-600 mb-8 max-w-sm">
-            A sua conta está ativa. O próximo passo é entrar e criar a sua primeira empresa — de fornecedor, de agente, ou ambas.
-          </p>
+          <p className="text-slate-600 mb-8 max-w-sm">{t("auth.confirmedBody")}</p>
 
           {/* Continue button */}
           <Link href="/login">
             <Button className="bg-orange-600 hover:bg-orange-700">
-              Continuar para o WeeFlyPro
+              {t("auth.confirmedCta")}
             </Button>
           </Link>
         </CardContent>

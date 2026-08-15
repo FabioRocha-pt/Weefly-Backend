@@ -5,18 +5,7 @@ import { Check, Copy, Lock } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { LINK_STAGE_PATHS, type CaseLinkRow } from "@/lib/case-status"
-
-const STAGE_LABELS: Record<number, string> = {
-  1: "1 link",
-  2: "2 link",
-  3: "Pay link",
-}
-
-const STAGE_TITLES: Record<number, string> = {
-  1: "Pedido de viagem",
-  2: "Proposta e passageiros",
-  3: "Pagamento",
-}
+import { useT } from "@/i18n/provider"
 
 /**
  * Os três chips de link do caso.
@@ -63,7 +52,10 @@ function StageChip({
   submitted: boolean
   locked: boolean
 }) {
+  const t = useT()
   const [copied, setCopied] = useState(false)
+  const chip = t("admin.linkChip" + stage)
+  const name = t("linkStages." + stage)
 
   async function copy() {
     const url = `${window.location.origin}/p/${token}${LINK_STAGE_PATHS[stage]}`
@@ -75,11 +67,11 @@ function StageChip({
   if (locked) {
     return (
       <span
-        title={`${STAGE_TITLES[stage]} — ainda não gerado. Publique a proposta no separador Ofertas.`}
+        title={t("admin.linkLockedTitle", { name })}
         className="inline-flex cursor-default items-center gap-1 rounded-md border border-dashed border-adm-line px-2 py-1.5 text-[11.5px] font-semibold text-adm-muted"
       >
         <Lock className="h-3 w-3" />
-        {STAGE_LABELS[stage]}
+        {chip}
       </span>
     )
   }
@@ -88,7 +80,7 @@ function StageChip({
     <button
       type="button"
       onClick={copy}
-      title={`Copiar link — ${STAGE_TITLES[stage]}${submitted ? " (já preenchido)" : ""}`}
+      title={`${t("admin.linkCopyTitle", { name })}${submitted ? t("admin.linkCopyFilled") : ""}`}
       className={cn(
         "inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11.5px] font-semibold transition-colors",
         submitted
@@ -101,7 +93,7 @@ function StageChip({
       ) : (
         <Copy className="h-3 w-3" />
       )}
-      {copied ? "Copiado" : STAGE_LABELS[stage]}
+      {copied ? t("common.copied") : chip}
     </button>
   )
 }

@@ -17,13 +17,12 @@ export const REQUEST_STATUSES = [
 
 export type RequestStatus = (typeof REQUEST_STATUSES)[number]
 
-export const STATUS_LABELS: Record<RequestStatus, string> = {
-  novo: "Novo",
-  em_tratamento: "Em tratamento",
-  proposta_enviada: "Proposta enviada",
-  fechado: "Fechado",
-  perdido: "Perdido",
-}
+/*
+ * As etiquetas destes estados não vivem aqui: estão em `requestStatus.*` nos
+ * dicionários, e quem desenha um estado faz `t("requestStatus." + status)`. O
+ * mesmo vale para o tipo de viagem, a classe e o canal — `tripTypes.*`,
+ * `cabins.*` e `channels.*`.
+ */
 
 /**
  * Tailwind classes per status — shared by the list badge and the detail header.
@@ -36,25 +35,6 @@ export const STATUS_STYLES: Record<RequestStatus, string> = {
   proposta_enviada: "bg-adm-warn/15 text-adm-warn border-adm-warn/30",
   fechado: "bg-adm-ok/15 text-adm-ok border-adm-ok/30",
   perdido: "bg-adm-raise text-adm-muted border-adm-line",
-}
-
-export const TRIP_TYPE_LABELS: Record<string, string> = {
-  round_trip: "Ida e volta",
-  one_way: "Só ida",
-  multi_city: "Multi-destino",
-}
-
-export const CABIN_LABELS: Record<string, string> = {
-  economy: "Económica",
-  business: "Executiva",
-  first: "Primeira",
-}
-
-export const CHANNEL_LABELS: Record<string, string> = {
-  browser: "Formulário online",
-  whatsapp: "WhatsApp",
-  chat: "Chat do site",
-  manual: "Manual",
 }
 
 export interface RequestLead {

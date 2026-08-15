@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { searchFlights } from "@/lib/concierge-engine"
+import { getI18n } from "@/i18n/server"
 
 // Amadeus token/search calls run on the Node runtime.
 export const runtime = "nodejs"
@@ -13,11 +14,12 @@ export const runtime = "nodejs"
  * "cheapest" and "best" options for the chat UI to render as cards.
  */
 export async function POST(request: Request) {
+  const { t } = getI18n()
   let json: unknown
   try {
     json = await request.json()
   } catch {
-    return NextResponse.json({ error: "Corpo inválido." }, { status: 400 })
+    return NextResponse.json({ error: t("errors.invalidBody") }, { status: 400 })
   }
 
   const outcome = await searchFlights(json)
@@ -28,13 +30,13 @@ export async function POST(request: Request) {
 
   if (outcome.kind === "invalid") {
     return NextResponse.json(
-      { error: "Dados de pesquisa inválidos.", fieldErrors: outcome.fieldErrors },
+      { error: t("errors.invalidSearchData"), fieldErrors: outcome.fieldErrors },
       { status: 422 }
     )
   }
 
   return NextResponse.json(
-    { error: "Não foi possível pesquisar voos neste momento." },
+    { error: t("errors.flightSearchFailed") },
     { status: 502 }
   )
 }

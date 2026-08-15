@@ -7,14 +7,9 @@ import { earliestValidity } from "@/lib/proposal-math"
 import { LinkUnavailable } from "@/components/concierge/link-unavailable"
 import { CaseStepper } from "@/components/concierge/case-stepper"
 import { OfferComparator } from "@/components/concierge/offer-comparator"
+import { getI18n } from "@/i18n/server"
 
 export const dynamic = "force-dynamic"
-
-const CABIN_LABELS: Record<string, string> = {
-  economy: "Económica",
-  business: "Executiva",
-  first: "Primeira",
-}
 
 function formatDate(value: string | null): string {
   if (!value) return "—"
@@ -34,6 +29,7 @@ export default async function CaseProposalPage({
 }: {
   params: { token: string }
 }) {
+  const { t } = getI18n()
   const lookup = await getCaseByToken(params.token, 2)
   if (!lookup.ok) return <LinkUnavailable reason={lookup.reason} />
 
@@ -43,11 +39,10 @@ export default async function CaseProposalPage({
   if (link.status === "submetido") {
     return (
       <Panel icon={<CheckCircle2 className="h-9 w-9 text-green-500" />} tone="ok">
-        <h1 className="text-2xl font-bold text-slate-900">Está tratado</h1>
-        <p className="mt-3 leading-relaxed text-slate-500">
-          Já recebemos a sua escolha e os dados dos passageiros. A nossa equipa
-          entra em contacto com os próximos passos.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {t("proposal.doneTitle")}
+        </h1>
+        <p className="mt-3 leading-relaxed text-slate-500">{t("proposal.doneBody")}</p>
       </Panel>
     )
   }
@@ -63,16 +58,12 @@ export default async function CaseProposalPage({
     return (
       <Panel icon={<Hourglass className="h-8 w-8 text-slate-400" />}>
         <h1 className="text-2xl font-bold text-slate-900">
-          A atualizar a sua proposta
+          {t("proposal.preparingTitle")}
         </h1>
-        <p className="mt-3 leading-relaxed text-slate-500">
-          O seu agente está a rever os valores neste momento. Guarde este link —
-          assim que estiver pronto, as opções aparecem aqui e avisamo-lo por
-          email.
-        </p>
+        <p className="mt-3 leading-relaxed text-slate-500">{t("proposal.preparingBody")}</p>
         {trip?.reference && (
           <p className="mt-5 inline-block rounded-lg bg-slate-50 px-4 py-2 text-sm text-slate-500">
-            Referência:{" "}
+            {t("common.reference")}:{" "}
             <strong className="font-mono text-slate-900">
               {trip.reference}
             </strong>
@@ -87,10 +78,9 @@ export default async function CaseProposalPage({
   const pax = paxOf(trip)
   const paxTotal = pax.adults + pax.children + pax.infants
   const paxLabel = [
-    `${pax.adults} ${pax.adults === 1 ? "adulto" : "adultos"}`,
-    pax.children > 0 &&
-      `${pax.children} ${pax.children === 1 ? "criança" : "crianças"}`,
-    pax.infants > 0 && `${pax.infants} ${pax.infants === 1 ? "bebé" : "bebés"}`,
+    t("common.adults", { count: pax.adults }),
+    pax.children > 0 && t("common.children", { count: pax.children }),
+    pax.infants > 0 && t("common.infants", { count: pax.infants }),
   ]
     .filter(Boolean)
     .join(" · ")
@@ -101,30 +91,27 @@ export default async function CaseProposalPage({
 
       <header className="mb-6">
         <p className="text-[12.5px] font-semibold uppercase tracking-wider text-orange-600">
-          Proposta preparada pela WeeFly
+          {t("proposal.eyebrow")}
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-          {view.offers.length === 1
-            ? "Encontrámos uma opção para a sua viagem"
-            : `Encontrámos ${view.offers.length} opções para a sua viagem`}
+          {t("proposal.title", { count: view.offers.length })}
         </h1>
         <p className="mt-3 max-w-2xl leading-relaxed text-slate-500">
-          {view.proposal.opening_message ??
-            "Abra cada opção para ver o itinerário completo, as bagagens incluídas e o preço detalhado."}
+          {view.proposal.opening_message ?? t("proposal.defaultIntro")}
         </p>
 
         {trip && (
           <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-slate-200 pt-5">
-            <Fact label="Rota" mono>
+            <Fact label={t("proposal.factRoute")} mono>
               {trip.origin} → {trip.destination}
             </Fact>
-            <Fact label="Ida">{formatDate(trip.depart_date)}</Fact>
+            <Fact label={t("proposal.factOut")}>{formatDate(trip.depart_date)}</Fact>
             {trip.return_date && (
-              <Fact label="Volta">{formatDate(trip.return_date)}</Fact>
+              <Fact label={t("proposal.factBack")}>{formatDate(trip.return_date)}</Fact>
             )}
-            <Fact label="Passageiros">{paxLabel}</Fact>
-            <Fact label="Classe">
-              {CABIN_LABELS[trip.cabin_class] ?? trip.cabin_class}
+            <Fact label={t("proposal.factPassengers")}>{paxLabel}</Fact>
+            <Fact label={t("proposal.factClass")}>
+              {t(`cabins.${trip.cabin_class}`)}
             </Fact>
           </dl>
         )}
@@ -141,19 +128,18 @@ export default async function CaseProposalPage({
 
       {view.proposal.selected_offer_id && (
         <p className="mt-6 text-center text-[13px] text-slate-500">
-          Já escolheu uma opção.{" "}
+          {t("proposal.alreadyChose")}{" "}
           <Link
             href={`/p/${params.token}/passageiros`}
             className="font-semibold text-orange-600 hover:text-orange-700"
           >
-            Continuar para os dados dos passageiros
+            {t("proposal.continueToPassengers")}
           </Link>
         </p>
       )}
 
       <p className="mt-10 text-center text-xs leading-relaxed text-slate-400">
-        Este link é pessoal. Não o partilhe: dá acesso aos dados dos seus{" "}
-        {paxTotal === 1 ? "passageiro" : "passageiros"}.
+        {t("proposal.personalLink", { count: paxTotal })}
       </p>
     </div>
   )

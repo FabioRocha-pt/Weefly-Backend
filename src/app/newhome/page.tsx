@@ -3,11 +3,26 @@ import { Plane, UserRound, Clock } from "lucide-react"
 
 import { WeeFlyLogo } from "@/components/weefly-logo"
 import { ChatWidget } from "@/components/concierge/chat-widget"
+import { getDictionary, getI18n } from "@/i18n/server"
+import { DEFAULT_LOCALE } from "@/i18n/config"
+import { I18nProvider } from "@/i18n/provider"
+import { LocaleSwitcher } from "@/i18n/locale-switcher"
 
 const EMBER = "#FF4747"
 
-export default function NewHomePage() {
+export default function NewHomePage({
+  searchParams,
+}: {
+  searchParams: { lang?: string }
+}) {
+  const { locale, t, dictionary } = getI18n(searchParams)
+
   return (
+    <I18nProvider
+      locale={locale}
+      dictionary={dictionary}
+      fallback={locale === DEFAULT_LOCALE ? undefined : getDictionary(DEFAULT_LOCALE)}
+    >
     <div className="relative">
       {/* Soft ember glow behind the hero */}
       <div
@@ -24,20 +39,21 @@ export default function NewHomePage() {
         <Link href="/" className="flex items-center gap-2">
           <WeeFlyLogo className="h-7 w-auto text-[#FF4747]" />
           <span className="rounded-md bg-slate-900 px-2 py-0.5 text-xs font-bold tracking-wide text-white">
-            CONCIERGE
+            {t("common.conciergeBadge")}
           </span>
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-medium text-slate-500 sm:flex">
           <a href="#como-funciona" className="transition-colors hover:text-slate-900">
-            Como funciona
+            {t("home.navHow")}
           </a>
           <Link
             href="/concierge"
             className="rounded-xl px-4 py-2 text-white transition-transform hover:brightness-95 active:scale-[0.98]"
             style={{ backgroundColor: EMBER }}
           >
-            Pedido assistido
+            {t("home.navAssisted")}
           </Link>
+          <LocaleSwitcher />
         </nav>
       </header>
 
@@ -49,19 +65,17 @@ export default function NewHomePage() {
             style={{ backgroundColor: "#FFECEC", color: EMBER }}
           >
             <Plane className="h-3.5 w-3.5" />
-            O seu Concierge de viagens com IA
+            {t("home.badge")}
           </span>
 
           <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
-            Os seus voos,
+            {t("home.titleLine1")}
             <br />
-            <span style={{ color: EMBER }}>numa simples conversa.</span>
+            <span style={{ color: EMBER }}>{t("home.titleLine2")}</span>
           </h1>
 
           <p className="mx-auto mt-5 max-w-xl text-base text-slate-500 sm:text-lg">
-            Escreva para onde quer ir, como falaria com um amigo. Um dos nossos
-            agentes prepara-lhe as opções e responde-lhe aqui mesmo — sem
-            formulários, sem complicações.
+            {t("home.subtitle")}
           </p>
         </section>
 
@@ -79,22 +93,23 @@ export default function NewHomePage() {
         >
           <Feature
             icon={Plane}
-            title="Linguagem natural"
-            description="Diga a origem, o destino e as datas à sua maneira. Nós tratamos do resto."
+            title={t("home.feature1Title")}
+            description={t("home.feature1Body")}
           />
           <Feature
             icon={UserRound}
-            title="Um agente a sério"
-            description="As opções são preparadas à mão por quem conhece as rotas e fala com as companhias."
+            title={t("home.feature2Title")}
+            description={t("home.feature2Body")}
           />
           <Feature
             icon={Clock}
-            title="Sem ficar à espera"
-            description="Feche a página quando quiser. Avisamos por email e a conversa continua onde ficou."
+            title={t("home.feature3Title")}
+            description={t("home.feature3Body")}
           />
         </section>
       </main>
     </div>
+    </I18nProvider>
   )
 }
 

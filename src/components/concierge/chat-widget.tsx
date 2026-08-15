@@ -8,6 +8,7 @@ import {
   ChatProposal,
   type ProposalPayload,
 } from "@/components/concierge/chat-proposal"
+import { useT } from "@/i18n/provider"
 
 const STORAGE_KEY = "weefly.conversation"
 
@@ -23,14 +24,11 @@ interface Message {
   created_at: string
 }
 
-const SUGGESTIONS = [
-  "Praia para Lisboa dia 15",
-  "Quero ir a Boston em setembro, 2 adultos e uma criança",
-  "Lisboa → Paris, ida e volta na próxima semana",
+const SUGGESTION_KEYS = [
+  "chat.suggestion1",
+  "chat.suggestion2",
+  "chat.suggestion3",
 ]
-
-const GREETING =
-  "Olá! Diga-me para onde quer viajar, quando, e quantas pessoas vão. Depois passo o pedido a um dos nossos agentes, que lhe prepara as opções."
 
 /**
  * A conversa do WeeFly Concierge.
@@ -44,6 +42,7 @@ const GREETING =
  * dias depois à mesma conversa.
  */
 export function ChatWidget({ token: initialToken }: { token?: string }) {
+  const t = useT()
   const [token, setToken] = useState<string | null>(initialToken ?? null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
@@ -171,7 +170,7 @@ export function ChatWidget({ token: initialToken }: { token?: string }) {
             id: `err-${Date.now()}`,
             author: "bot",
             kind: "text",
-            body: "Não consegui enviar essa mensagem. Pode tentar outra vez?",
+            body: t("chat.sendFailed"),
             payload: null,
             created_at: new Date().toISOString(),
           },
@@ -212,16 +211,16 @@ export function ChatWidget({ token: initialToken }: { token?: string }) {
 
         {showGreeting && (
           <>
-            <Bubble author="bot">{GREETING}</Bubble>
+            <Bubble author="bot">{t("chat.greeting")}</Bubble>
             <div className="flex flex-wrap gap-2 pl-9">
-              {SUGGESTIONS.map((s) => (
+              {SUGGESTION_KEYS.map((key) => (
                 <button
-                  key={s}
+                  key={key}
                   type="button"
-                  onClick={() => send(s)}
+                  onClick={() => send(t(key))}
                   className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12.5px] text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900"
                 >
-                  {s}
+                  {t(key)}
                 </button>
               ))}
             </div>
@@ -235,15 +234,15 @@ export function ChatWidget({ token: initialToken }: { token?: string }) {
         {busy && (
           <Bubble author="bot">
             <span className="inline-flex items-center gap-2 text-slate-400">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />A escrever…
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              {t("chat.writing")}
             </span>
           </Bubble>
         )}
 
         {awaitingAgent && !busy && (
           <p className="px-1 py-2 text-center text-[12px] leading-relaxed text-slate-400">
-            O seu pedido está com um agente. Assim que as opções estiverem
-            prontas aparecem aqui — e avisamos por email, pode fechar a página.
+{t("chat.awaitingAgent")}
           </p>
         )}
 
@@ -260,14 +259,14 @@ export function ChatWidget({ token: initialToken }: { token?: string }) {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Escreva a sua mensagem…"
+          placeholder={t("chat.placeholder")}
           disabled={busy}
           className="min-w-0 flex-1 rounded-full border border-slate-200 px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-slate-400 focus:border-orange-400 disabled:opacity-60"
         />
         <button
           type="submit"
           disabled={busy || !input.trim()}
-          aria-label="Enviar"
+          aria-label={t("chat.sendLabel")}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-600 text-white transition-colors hover:bg-orange-700 disabled:opacity-40"
         >
           <Send className="h-4 w-4" />
@@ -284,6 +283,8 @@ function merge(previous: Message[], incoming: Message[]): Message[] {
 }
 
 function MessageRow({ message }: { message: Message }) {
+  const t = useT()
+
   if (message.kind === "system") {
     return (
       <p className="py-1 text-center text-[12px] text-slate-400">
@@ -313,7 +314,7 @@ function MessageRow({ message }: { message: Message }) {
             href={payload.url}
             className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-orange-600 px-4 py-2 text-[12.5px] font-bold text-white transition-colors hover:bg-orange-700"
           >
-            {payload.label ?? "Abrir"}
+            {payload.label ?? t("common.open")}
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         )}
@@ -338,6 +339,8 @@ function Bubble({
   author: "client" | "bot" | "agent"
   children: React.ReactNode
 }) {
+  const t = useT()
+
   if (author === "client") {
     return (
       <div className="flex justify-end">
@@ -368,7 +371,7 @@ function Bubble({
       <div className="max-w-[85%]">
         {author === "agent" && (
           <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
-            Agente WeeFly
+            {t("chat.agentLabel")}
           </span>
         )}
         <div className="rounded-2xl rounded-tl-md bg-slate-100 px-4 py-2.5 text-[14px] leading-relaxed text-slate-800">

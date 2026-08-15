@@ -5,23 +5,29 @@
  * request submitted through the public form. Unlike the client confirmation,
  * this one carries the full contact details so an agent can act immediately —
  * and it sets reply-to to the client, so hitting "Reply" answers the customer.
+ *
+ * Vai sempre em português, e de propósito: o destinatário é a equipa em Cabo
+ * Verde, não o cliente. Só as etiquetas partilhadas — tipo de viagem, classe,
+ * tratamento — saem do dicionário, e saem do português.
  */
 
 import {
   BORDER,
-  CABIN_LABELS,
   EMBER_RED,
   INK,
   MUTED,
   SURFACE_ALT,
-  TITLE_LABELS,
-  TRIP_TYPE_LABELS,
   type TravelRequestSummary,
   datesSummary,
   escapeHtml,
   passengersSummary,
   summaryRow,
 } from "./shared"
+import { createTranslator } from "@/i18n/translate"
+import ptDictionary from "@/i18n/dictionaries/pt.json"
+
+/** O tradutor da equipa: português, fixo. */
+const t = createTranslator(ptDictionary as Record<string, unknown>)
 
 export interface TravelRequestNotificationData extends TravelRequestSummary {
   email: string
@@ -55,15 +61,15 @@ export function buildTravelRequestNotificationEmail(
   const subject = `Novo pedido de viagem · ${data.origin} → ${data.destination} · ${data.fullName}`
 
   const tripRows = [
-    summaryRow("Tipo de viagem", TRIP_TYPE_LABELS[data.tripType]),
+    summaryRow("Tipo de viagem", t(`tripTypes.${data.tripType}`)),
     summaryRow("Trajeto", route),
     summaryRow("Datas", datesValue),
-    summaryRow("Passageiros", passengersSummary(data)),
-    summaryRow("Classe", CABIN_LABELS[data.cabinClass]),
+    summaryRow("Passageiros", passengersSummary(data, t)),
+    summaryRow("Classe", t(`cabins.${data.cabinClass}`)),
   ].join("")
 
   const contactRows = [
-    summaryRow("Nome", `${TITLE_LABELS[data.title]} ${name}`),
+    summaryRow("Nome", `${t(`titles.${data.title}`)} ${name}`),
     summaryRow(
       "Email",
       `<a href="mailto:${escapeHtml(data.email)}" style="color:${EMBER_RED};font-weight:600;">${escapeHtml(data.email)}</a>`
@@ -180,18 +186,18 @@ export function buildTravelRequestNotificationEmail(
     `NOVO PEDIDO DE VIAGEM — ${data.origin} -> ${data.destination}`,
     "",
     "Contacto:",
-    `- Nome: ${TITLE_LABELS[data.title]} ${data.fullName}`,
+    `- Nome: ${t(`titles.${data.title}`)} ${data.fullName}`,
     `- Email: ${data.email}`,
     `- Telefone: ${phone}`,
     `- Canal: ${sourceChannel}`,
     `- Recebido: ${formatTimestamp(submittedAt)}`,
     "",
     "Pedido:",
-    `- Tipo de viagem: ${TRIP_TYPE_LABELS[data.tripType]}`,
+    `- Tipo de viagem: ${t(`tripTypes.${data.tripType}`)}`,
     `- Trajeto: ${data.origin} -> ${data.destination}`,
     `- Datas: ${datesValue}`,
-    `- Passageiros: ${passengersSummary(data)}`,
-    `- Classe: ${CABIN_LABELS[data.cabinClass]}`,
+    `- Passageiros: ${passengersSummary(data, t)}`,
+    `- Classe: ${t(`cabins.${data.cabinClass}`)}`,
     "",
     "Responda a este email para contactar o cliente diretamente.",
   ].join("\n")

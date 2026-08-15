@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { passengerDetailsSchema } from "@/lib/validations"
 import { getCaseByToken } from "@/lib/booking-cases"
 import { createAdminClient } from "@/utils/supabase/admin"
+import { getI18n } from "@/i18n/server"
 
 export const runtime = "nodejs"
 
@@ -17,11 +18,12 @@ export async function POST(
   request: Request,
   { params }: { params: { token: string } }
 ) {
+  const { t } = getI18n()
   const lookup = await getCaseByToken(params.token, 2)
   if (!lookup.ok) {
     const status = lookup.reason === "locked" ? 403 : 404
     return NextResponse.json(
-      { error: "Este link não está disponível." },
+      { error: t("errors.linkUnavailable") },
       { status }
     )
   }
@@ -29,7 +31,7 @@ export async function POST(
   const { case: bookingCase, link } = lookup.view
   if (link.status === "submetido") {
     return NextResponse.json(
-      { error: "Estes dados já foram enviados." },
+      { error: t("errors.detailsAlreadySent") },
       { status: 409 }
     )
   }
@@ -38,14 +40,14 @@ export async function POST(
   try {
     json = await request.json()
   } catch {
-    return NextResponse.json({ error: "Corpo inválido." }, { status: 400 })
+    return NextResponse.json({ error: t("errors.invalidBody") }, { status: 400 })
   }
 
   const parsed = passengerDetailsSchema.safeParse(json)
   if (!parsed.success) {
     return NextResponse.json(
       {
-        error: "Dados inválidos.",
+        error: t("errors.invalidData"),
         fieldErrors: parsed.error.flatten().fieldErrors,
       },
       { status: 422 }
@@ -58,7 +60,7 @@ export async function POST(
   const expected = trip ? trip.adults + trip.children + trip.infants : null
   if (expected !== null && parsed.data.passengers.length !== expected) {
     return NextResponse.json(
-      { error: `São necessários dados de ${expected} passageiro(s).` },
+      { error: t("errors.passengersExpected", { count: expected }) },
       { status: 422 }
     )
   }
@@ -66,7 +68,7 @@ export async function POST(
   const admin = createAdminClient()
   if (!admin) {
     return NextResponse.json(
-      { error: "Serviço indisponível." },
+      { error: t("errors.serviceUnavailable") },
       { status: 503 }
     )
   }
@@ -91,7 +93,7 @@ export async function POST(
   if (error) {
     console.error("[cases] passenger upsert failed:", error)
     return NextResponse.json(
-      { error: "Não foi possível guardar os dados." },
+      { error: t("errors.detailsSaveFailed") },
       { status: 500 }
     )
   }

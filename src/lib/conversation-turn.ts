@@ -18,8 +18,10 @@
 import { createAdminClient } from "@/utils/supabase/admin"
 import { mintToken } from "@/lib/booking-cases"
 import { saveTravelRequest } from "@/lib/concierge-intake"
+import { getI18n } from "@/i18n/server"
+import type { Locale } from "@/i18n/config"
 import {
-  FALLBACK_REPLY,
+  fallbackReply,
   type ChatTurn,
   isComplete,
   parseMessage,
@@ -78,6 +80,7 @@ export async function handleClientTurn(input: {
   channel?: "web" | "whatsapp"
   externalId?: string
 }): Promise<TurnResult | null> {
+  const { t, locale } = getI18n()
   const admin = createAdminClient()
   if (!admin) return null
 
@@ -122,19 +125,18 @@ export async function handleClientTurn(input: {
     mode: "intake",
   })
 
-  let reply = FALLBACK_REPLY
+  let reply = fallbackReply()
   let draft = conversation.draft ?? {}
 
   if (parsed.ok) {
     draft = mergeDraft(draft, parsed.query)
-    reply = parsed.query.reply?.trim() || FALLBACK_REPLY
+    reply = parsed.query.reply?.trim() || fallbackReply()
   } else if (parsed.kind === "unparsed") {
     reply = parsed.reply
   } else if (parsed.kind === "unconfigured") {
-    reply =
-      "O assistente não está disponível de momento. Deixe-nos o seu email e um agente responde-lhe."
+    reply = t("chat.assistantUnavailable")
   } else {
-    reply = "Tive um problema a processar isso. Pode repetir?"
+    reply = t("chat.processingProblem")
   }
 
   await admin
@@ -155,12 +157,12 @@ export async function handleClientTurn(input: {
   // pormenores a um pedido entregue, e isso é conversa para o agente ler.
   let created: TurnResult["caseCreated"] = null
   if (!conversation.case_id && isComplete(draft as ParsedFlightQuery)) {
-    created = await openCase(conversation.id, draft as ParsedFlightQuery)
+    created = await openCase(conversation.id, draft as ParsedFlightQuery, locale)
     if (created) {
       const systemMessage = await appendMessage(conversation.id, {
         author: "bot",
         kind: "system",
-        body: `Pedido registado com a referência ${created.reference}. Um agente vai preparar as opções e avisá-lo por email.`,
+        body: t("chat.requestRegistered", { reference: created.reference }),
         payload: { reference: created.reference },
       })
       if (systemMessage) fresh.push(systemMessage)
@@ -185,7 +187,8 @@ export async function handleClientTurn(input: {
  */
 async function openCase(
   conversationId: string,
-  draft: ParsedFlightQuery
+  draft: ParsedFlightQuery,
+  locale: Locale
 ): Promise<{ caseId: string; reference: string } | null> {
   const admin = createAdminClient()
   if (!admin) return null
@@ -216,7 +219,9 @@ async function openCase(
          escreveu-nos por iniciativa própria a pedir uma cotação. */
       consent: true,
     },
-    { sourceChannel: "chat" }
+    /* A língua da conversa fica guardada com o lead: a proposta que o agente
+       compuser daqui a horas tem de sair nela. */
+    { sourceChannel: "chat", locale }
   )
 
   if (!saved) return null

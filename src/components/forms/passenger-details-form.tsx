@@ -21,29 +21,15 @@ import {
   passengerDetailsSchema,
   type PassengerDetailsFormData,
 } from "@/lib/validations"
+import { useT } from "@/i18n/provider"
+import { translateMessage } from "@/i18n/translate"
 
 export type PassengerSlot = {
   position: number
   passengerType: "adult" | "child" | "infant"
 }
 
-const TYPE_LABELS: Record<PassengerSlot["passengerType"], string> = {
-  adult: "Adulto",
-  child: "Criança",
-  infant: "Bebé",
-}
-
-const TYPE_HINTS: Record<PassengerSlot["passengerType"], string> = {
-  adult: "12+ anos",
-  child: "2–11 anos",
-  infant: "0–2 anos",
-}
-
-const GENDERS = [
-  { value: "m", label: "Masculino" },
-  { value: "f", label: "Feminino" },
-  { value: "x", label: "Outro" },
-] as const
+const GENDERS = ["m", "f", "x"] as const
 
 const todayStr = new Date().toISOString().split("T")[0]
 
@@ -60,6 +46,7 @@ export function PassengerDetailsForm({
   token: string
   slots: PassengerSlot[]
 }) {
+  const t = useT()
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -94,13 +81,11 @@ export function PassengerDetailsForm({
       })
       if (!res.ok) {
         const body = await res.json().catch(() => null)
-        throw new Error(body?.error ?? "Não foi possível enviar os dados.")
+        throw new Error(body?.error ?? "errors.detailsNotSent")
       }
       setSuccess(true)
     } catch (err) {
-      setServerError(
-        err instanceof Error ? err.message : "Ocorreu um erro inesperado."
-      )
+      setServerError(err instanceof Error ? err.message : "errors.unexpected")
     } finally {
       setSubmitting(false)
     }
@@ -112,10 +97,11 @@ export function PassengerDetailsForm({
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
           <CheckCircle2 className="h-9 w-9 text-green-500" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-900">Dados recebidos!</h2>
+        <h2 className="text-2xl font-bold text-slate-900">
+          {t("passengerForm.successTitle")}
+        </h2>
         <p className="mt-3 leading-relaxed text-slate-500">
-          Obrigado. A nossa equipa vai preparar a emissão e enviar-lhe o link de
-          pagamento em seguida.
+          {t("passengerForm.successBody")}
         </p>
       </div>
     )
@@ -134,10 +120,15 @@ export function PassengerDetailsForm({
             </span>
             <div>
               <h2 className="font-bold text-slate-900">
-                {TYPE_LABELS[slot.passengerType]} {index + 1}
+                {t("passengerForm.heading", {
+                  type: t(`passengerTypes.${slot.passengerType}`),
+                  index: index + 1,
+                })}
               </h2>
               <p className="text-xs text-slate-400">
-                {TYPE_HINTS[slot.passengerType]} · como consta no passaporte
+                {t("passengerForm.subheading", {
+                  hint: t(`passengerHints.${slot.passengerType}`),
+                })}
               </p>
             </div>
           </div>
@@ -150,25 +141,31 @@ export function PassengerDetailsForm({
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field
-                label="Nome próprio"
-                error={errors.passengers?.[index]?.firstName?.message}
+                label={t("passengerForm.firstName")}
+                error={translateMessage(
+                  t,
+                  errors.passengers?.[index]?.firstName?.message
+                )}
               >
                 <WithIcon icon={User}>
                   <Input
                     className="pl-10"
-                    placeholder="Ivandro"
+                    placeholder={t("passengerForm.firstNamePlaceholder")}
                     {...register(`passengers.${index}.firstName`)}
                   />
                 </WithIcon>
               </Field>
               <Field
-                label="Apelido"
-                error={errors.passengers?.[index]?.lastName?.message}
+                label={t("passengerForm.lastName")}
+                error={translateMessage(
+                  t,
+                  errors.passengers?.[index]?.lastName?.message
+                )}
               >
                 <WithIcon icon={User}>
                   <Input
                     className="pl-10"
-                    placeholder="Tavares Silva"
+                    placeholder={t("passengerForm.lastNamePlaceholder")}
                     {...register(`passengers.${index}.lastName`)}
                   />
                 </WithIcon>
@@ -177,19 +174,21 @@ export function PassengerDetailsForm({
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field
-                label="Género"
-                error={errors.passengers?.[index]?.gender?.message}
+                label={t("passengerForm.gender")}
+                error={translateMessage(
+                  t,
+                  errors.passengers?.[index]?.gender?.message
+                )}
               >
                 <div className="grid grid-cols-3 gap-2">
                   {GENDERS.map((g) => {
-                    const selected =
-                      watch(`passengers.${index}.gender`) === g.value
+                    const selected = watch(`passengers.${index}.gender`) === g
                     return (
                       <button
-                        key={g.value}
+                        key={g}
                         type="button"
                         onClick={() =>
-                          setValue(`passengers.${index}.gender`, g.value, {
+                          setValue(`passengers.${index}.gender`, g, {
                             shouldValidate: true,
                           })
                         }
@@ -200,15 +199,18 @@ export function PassengerDetailsForm({
                             : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                         )}
                       >
-                        {g.label}
+                        {t(`genders.${g}`)}
                       </button>
                     )
                   })}
                 </div>
               </Field>
               <Field
-                label="Data de nascimento"
-                error={errors.passengers?.[index]?.birthDate?.message}
+                label={t("passengerForm.birthDate")}
+                error={translateMessage(
+                  t,
+                  errors.passengers?.[index]?.birthDate?.message
+                )}
               >
                 <WithIcon icon={CalendarDays}>
                   <Input
@@ -222,13 +224,16 @@ export function PassengerDetailsForm({
             </div>
 
             <Field
-              label="Nacionalidade"
-              error={errors.passengers?.[index]?.nationality?.message}
+              label={t("passengerForm.nationality")}
+              error={translateMessage(
+                t,
+                errors.passengers?.[index]?.nationality?.message
+              )}
             >
               <WithIcon icon={Globe}>
                 <Input
                   className="pl-10"
-                  placeholder="Cabo-verdiana"
+                  placeholder={t("passengerForm.nationalityPlaceholder")}
                   {...register(`passengers.${index}.nationality`)}
                 />
               </WithIcon>
@@ -236,20 +241,26 @@ export function PassengerDetailsForm({
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field
-                label="Nº do passaporte"
-                error={errors.passengers?.[index]?.passportNumber?.message}
+                label={t("passengerForm.passportNumber")}
+                error={translateMessage(
+                  t,
+                  errors.passengers?.[index]?.passportNumber?.message
+                )}
               >
                 <WithIcon icon={BookUser}>
                   <Input
                     className="pl-10 uppercase"
-                    placeholder="CV1234567"
+                    placeholder={t("passengerForm.passportPlaceholder")}
                     {...register(`passengers.${index}.passportNumber`)}
                   />
                 </WithIcon>
               </Field>
               <Field
-                label="Validade do passaporte"
-                error={errors.passengers?.[index]?.passportExpiry?.message}
+                label={t("passengerForm.passportExpiry")}
+                error={translateMessage(
+                  t,
+                  errors.passengers?.[index]?.passportExpiry?.message
+                )}
               >
                 <WithIcon icon={CalendarDays}>
                   <Input
@@ -268,7 +279,7 @@ export function PassengerDetailsForm({
       {serverError && (
         <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{serverError}</span>
+          <span>{translateMessage(t, serverError)}</span>
         </div>
       )}
 
@@ -277,10 +288,10 @@ export function PassengerDetailsForm({
           {submitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              A enviar…
+              {t("passengerForm.submitting")}
             </>
           ) : (
-            "Enviar dados"
+            t("passengerForm.submit")
           )}
         </Button>
       </div>

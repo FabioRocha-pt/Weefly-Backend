@@ -11,12 +11,7 @@ export type OfferDirection = "ida" | "volta"
 
 export type Cabin = "economy" | "premium_economy" | "business" | "first"
 
-export const CABIN_LABELS: Record<Cabin, string> = {
-  economy: "Económica",
-  premium_economy: "Económica Premium",
-  business: "Executiva",
-  first: "Primeira",
-}
+/* As etiquetas das classes estão em `cabins.*` nos dicionários. */
 
 export interface OfferSegment {
   id: string
@@ -325,18 +320,29 @@ export function validityInstant(value: string | null): number | null {
   return Date.UTC(+y, +mo - 1, +d, +h, +mi) - CABO_VERDE_OFFSET_MINUTES * 60000
 }
 
-/** "6 de setembro, 18:00" — como o mockup C3 a escreve. */
-const MONTHS = [
-  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-]
-
-export function formatValidity(value: string | null): string | null {
+/**
+ * "6 de setembro, 18:00" — como o mockup C3 a escreve.
+ *
+ * O nome do mês vem do `Intl` e não de uma lista escrita à mão: são doze
+ * palavras por idioma que o browser já sabe de cor, e assim acompanham a
+ * língua de quem lê sem ninguém as manter.
+ *
+ * @param localeTag Etiqueta BCP-47 — ver `LOCALE_TAGS` em `i18n/config.ts`.
+ */
+export function formatValidity(
+  value: string | null,
+  localeTag = "pt-PT"
+): string | null {
   if (!value) return null
   const m = value.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
   if (!m) return null
-  const [, , mo, d, h, mi] = m
-  return `${Number(d)} de ${MONTHS[Number(mo) - 1]}, ${h}:${mi}`
+  const [, y, mo, d, h, mi] = m
+  const day = new Intl.DateTimeFormat(localeTag, {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(Date.UTC(+y, +mo - 1, +d))
+  return `${day}, ${h}:${mi}`
 }
 
 // --- Validação --------------------------------------------------------------
@@ -346,36 +352,49 @@ export function formatValidity(value: string | null): string | null {
  *
  * Publicar com um itinerário meio escrito é pior do que não publicar: o cliente
  * recebe um email a dizer que há uma proposta e encontra uma linha em branco.
- * A lista devolvida é mostrada tal e qual no painel de publicação.
+ * A lista devolvida é mostrada tal e qual no painel de publicação — daí não
+ * serem frases, mas chaves: a mesma verificação corre no browser (compositor) e
+ * no servidor (publicação), e cada lado traduz na língua de quem está a ler.
  */
-export function offerBlockers(offer: Offer, pax: PaxCounts): string[] {
-  const problems: string[] = []
+export interface OfferBlocker {
+  key: string
+  count?: number
+}
+
+export function offerBlockers(offer: Offer, pax: PaxCounts): OfferBlocker[] {
+  const problems: OfferBlocker[] = []
   const { ida } = legsOf(offer)
 
-  if (!offer.name.trim()) problems.push("falta o nome da opção")
-  if (ida.length === 0) problems.push("não tem trechos na ida")
+  if (!offer.name.trim()) problems.push({ key: "blockers.name" })
+  if (ida.length === 0) problems.push({ key: "blockers.noOutbound" })
 
   const incomplete = offer.segments.filter(
     (s) => !s.origin || !s.destination || !s.depart_at || !s.arrive_at
   )
   if (incomplete.length > 0) {
-    problems.push(
-      incomplete.length === 1
-        ? "há um trecho sem aeroportos ou horas"
-        : `há ${incomplete.length} trechos sem aeroportos ou horas`
-    )
+    problems.push({ key: "blockers.incomplete", count: incomplete.length })
   }
 
   const backwards = offer.segments.filter((s) => segmentMinutes(s) === null && s.depart_at && s.arrive_at)
-  if (backwards.length > 0) problems.push("há um trecho a chegar antes de partir")
+  if (backwards.length > 0) problems.push({ key: "blockers.backwards" })
 
-  if (offerTotal(offer, pax) <= 0) problems.push("o preço está a zero")
+  if (offerTotal(offer, pax) <= 0) problems.push({ key: "blockers.zeroPrice" })
   if (pax.adults > 0 && offer.price_adult <= 0) {
-    problems.push("falta a tarifa de adulto")
+    problems.push({ key: "blockers.adultFare" })
   }
   if (pax.children > 0 && offer.price_child <= 0) {
-    problems.push("falta a tarifa de criança")
+    problems.push({ key: "blockers.childFare" })
   }
 
   return problems
+}
+
+/** As chaves de um bloqueio viradas em frase, na língua de quem lê. */
+export function blockerText(
+  blocker: OfferBlocker,
+  t: (key: string, values?: Record<string, string | number | undefined>) => string
+): string {
+  return blocker.count === undefined
+    ? t(blocker.key)
+    : t(blocker.key, { count: blocker.count })
 }

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { Loader2, CreditCard } from "lucide-react"
 
 import { createPayLink } from "@/actions/booking-cases"
+import { useT } from "@/i18n/provider"
 
 const CURRENCIES = ["CVE", "EUR", "USD"]
 
@@ -15,6 +16,7 @@ const CURRENCIES = ["CVE", "EUR", "USD"]
  * match WeePay's `amount BIGINT`.
  */
 export function PayLinkForm({ caseId }: { caseId: string }) {
+  const t = useT()
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -35,7 +37,7 @@ export function PayLinkForm({ caseId }: { caseId: string }) {
             name="amount"
             inputMode="decimal"
             required
-            placeholder="0,00"
+            placeholder={t("admin.payAmountPlaceholder")}
             className="h-11 w-full rounded-lg border border-adm-line bg-adm-bg px-3 text-[13px] text-adm-txt outline-none transition-colors placeholder:text-adm-muted focus:border-adm-ember"
           />
         </div>
@@ -53,7 +55,7 @@ export function PayLinkForm({ caseId }: { caseId: string }) {
       </div>
       <input
         name="description"
-        placeholder="Descrição (ex.: 2 bilhetes RAI → LIS, ida e volta)"
+        placeholder={t("admin.payDescriptionPlaceholder")}
         className="h-11 w-full rounded-lg border border-adm-line bg-adm-bg px-3 text-[13px] text-adm-txt outline-none transition-colors placeholder:text-adm-muted focus:border-adm-ember"
       />
       {error && <p className="text-[12.5px] text-adm-ember">{error}</p>}
@@ -67,7 +69,7 @@ export function PayLinkForm({ caseId }: { caseId: string }) {
         ) : (
           <CreditCard className="h-4 w-4" />
         )}
-        Gerar link de pagamento
+        {t("admin.payGenerateManual")}
       </button>
     </form>
   )

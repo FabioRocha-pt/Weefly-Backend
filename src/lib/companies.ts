@@ -19,13 +19,6 @@ export type Company = {
   iban: string
 }
 
-/** Human labels for each company type. */
-export const COMPANY_TYPE_LABELS: Record<CompanyType, string> = {
-  rental: "Aluguer de carros",
-  housing: "Aluguer de casas",
-  tourism: "Excursões & experiências",
-}
-
 type CompanyRow = {
   id: string
   type: CompanyType

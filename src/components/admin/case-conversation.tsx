@@ -7,6 +7,7 @@ import { Loader2, Send, Sparkles, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { sendAgentMessage } from "@/actions/conversations"
 import type { ChatMessageRow } from "@/lib/conversations"
+import { useT } from "@/i18n/provider"
 
 /**
  * A conversa do cliente, vista do back-office.
@@ -24,6 +25,7 @@ export function CaseConversation({
   messages: ChatMessageRow[]
   conversationToken: string
 }) {
+  const t = useT()
   const router = useRouter()
   const [body, setBody] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -47,7 +49,7 @@ export function CaseConversation({
     <div className="space-y-3">
       <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
         {messages.length === 0 && (
-          <p className="text-[13px] text-adm-muted">Ainda sem mensagens.</p>
+          <p className="text-[13px] text-adm-muted">{t("admin.convEmpty")}</p>
         )}
         {messages.map((m) => (
           <Row key={m.id} message={m} />
@@ -61,7 +63,7 @@ export function CaseConversation({
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send()
           }}
-          placeholder="Escrever ao cliente… (Ctrl+Enter envia)"
+          placeholder={t("admin.convPlaceholder")}
           className="min-h-[70px] w-full resize-y rounded-lg border border-adm-line bg-adm-bg p-2.5 text-[13px] leading-relaxed text-adm-txt outline-none transition-colors placeholder:text-adm-muted focus:border-adm-ember"
         />
         {error && (
@@ -79,7 +81,7 @@ export function CaseConversation({
             ) : (
               <Send className="h-3.5 w-3.5" />
             )}
-            Enviar
+            {t("admin.convSend")}
           </button>
           <a
             href={`/c/${conversationToken}`}
@@ -87,7 +89,7 @@ export function CaseConversation({
             rel="noreferrer"
             className="text-[12px] font-medium text-adm-muted transition-colors hover:text-adm-txt-2"
           >
-            Ver como o cliente
+            {t("admin.convViewAsClient")}
           </a>
         </div>
       </div>
@@ -96,6 +98,8 @@ export function CaseConversation({
 }
 
 function Row({ message }: { message: ChatMessageRow }) {
+  const t = useT()
+
   if (message.kind === "system") {
     return (
       <p className="py-0.5 text-center text-[11.5px] text-adm-muted">
@@ -108,7 +112,7 @@ function Row({ message }: { message: ChatMessageRow }) {
     const payload = (message.payload ?? {}) as { revision?: number }
     return (
       <p className="rounded-lg bg-adm-ok/10 px-3 py-2 text-[12px] text-adm-ok">
-        Proposta R{payload.revision ?? 1} entregue na conversa.
+        {t("admin.convProposalDelivered", { revision: payload.revision ?? 1 })}
       </p>
     )
   }
@@ -139,11 +143,11 @@ function Row({ message }: { message: ChatMessageRow }) {
           <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-adm-muted">
             {message.author === "agent" ? (
               <>
-                <UserRound className="h-3 w-3" /> Agente
+                <UserRound className="h-3 w-3" /> {t("admin.convAgent")}
               </>
             ) : (
               <>
-                <Sparkles className="h-3 w-3" /> Assistente
+                <Sparkles className="h-3 w-3" /> {t("admin.convAssistant")}
               </>
             )}
           </span>

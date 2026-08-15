@@ -11,7 +11,7 @@ import {
   refreshWeePayStatus,
   startWeePayPayment,
 } from "@/lib/payments"
-import { PAYMENT_STATUS_LABELS } from "@/lib/case-status"
+import { getI18n } from "@/i18n/server"
 
 export type PaymentActionState = { error: string | null; notice?: string }
 
@@ -26,11 +26,12 @@ function touch(caseId: string) {
 export async function generatePaymentLink(
   caseId: string
 ): Promise<PaymentActionState> {
+  const { t } = getI18n()
   const supabase = createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: "Sessão expirada. Volte a entrar." }
+  if (!user) return { error: t("errors.sessionExpired") }
 
   const outcome = await startWeePayPayment(caseId)
   touch(caseId)
@@ -39,9 +40,9 @@ export async function generatePaymentLink(
     return {
       error: null,
       notice: outcome.url
-        ? "Link de pagamento gerado. O cliente já o vê no link 3."
+        ? t("notices.payLinkGenerated")
         : (outcome.message ??
-          "A WeePay abriu o pagamento, mas não devolveu link — verifique o estado daqui a pouco."),
+          t("notices.payOpenedNoLink")),
     }
   }
 
@@ -49,17 +50,17 @@ export async function generatePaymentLink(
     case "not_configured":
       return {
         error:
-          "A WeePay ainda não está configurada (falta WEEPAY_API_URL). Combine o pagamento com o cliente e registe-o aqui.",
+          t("errors.weepayNotConfiguredLong"),
       }
     case "no_payment":
       return {
         error:
-          "Este caso ainda não tem valor. Ele entra sozinho quando o cliente escolher uma opção, ou registe-o à mão.",
+          t("errors.caseHasNoAmount"),
       }
     case "already":
-      return { error: "Este pagamento já está fechado." }
+      return { error: t("errors.paymentClosed") }
     default:
-      return { error: outcome.message ?? "A WeePay recusou o pedido." }
+      return { error: outcome.message ?? t("errors.weepayRefused") }
   }
 }
 
@@ -67,11 +68,12 @@ export async function generatePaymentLink(
 export async function checkPaymentState(
   caseId: string
 ): Promise<PaymentActionState> {
+  const { t } = getI18n()
   const supabase = createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: "Sessão expirada. Volte a entrar." }
+  if (!user) return { error: t("errors.sessionExpired") }
 
   const outcome = await refreshWeePayStatus(caseId)
   touch(caseId)
@@ -79,22 +81,23 @@ export async function checkPaymentState(
   if (outcome.ok) {
     return {
       error: null,
-      notice: outcome.changed
-        ? `Estado atualizado: ${PAYMENT_STATUS_LABELS[outcome.status]}.`
-        : `Sem alterações — continua em ${PAYMENT_STATUS_LABELS[outcome.status]}.`,
+      notice: t(
+        outcome.changed ? "notices.statusUpdated" : "notices.statusUnchanged",
+        { status: t(`paymentStatus.${outcome.status}`) }
+      ),
     }
   }
 
   switch (outcome.reason) {
     case "not_configured":
-      return { error: "A WeePay ainda não está configurada." }
+      return { error: t("errors.weepayNotConfigured") }
     case "no_transaction":
       return {
         error:
-          "Não há transação WeePay neste caso. Gere o link de pagamento primeiro.",
+          t("errors.noWeepayTransaction"),
       }
     default:
-      return { error: outcome.message ?? "Não foi possível verificar." }
+      return { error: outcome.message ?? t("errors.checkFailed") }
   }
 }
 
@@ -109,11 +112,12 @@ export async function confirmPaymentReceived(
   caseId: string,
   paymentId: string
 ): Promise<PaymentActionState> {
+  const { t } = getI18n()
   const supabase = createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: "Sessão expirada. Volte a entrar." }
+  if (!user) return { error: t("errors.sessionExpired") }
 
   const result = await applyPaymentStatus(paymentId, "COMPLETED", {
     source: "admin",
@@ -124,16 +128,16 @@ export async function confirmPaymentReceived(
 
   if (result.ok) {
     await notifyClientPaid(caseId)
-    return { error: null, notice: "Pagamento registado e cliente avisado." }
+    return { error: null, notice: t("notices.paymentRecorded") }
   }
 
   if (result.reason === "illegal") {
     return {
       error:
-        "Este pagamento não pode passar a Pago a partir do estado em que está. Verifique o estado na WeePay.",
+        t("errors.cannotMarkPaid"),
     }
   }
-  return { error: "Não foi possível registar o pagamento." }
+  return { error: t("errors.paymentRecordFailed") }
 }
 
 // --- Lado do cliente ---------------------------------------------------------
@@ -147,15 +151,16 @@ export async function confirmPaymentReceived(
  * transferiu, e o back-office passar a ver quem está à espera de confirmação.
  */
 export async function declarePaid(token: string): Promise<PaymentActionState> {
+  const { t } = getI18n()
   const lookup = await getCaseByToken(token, 3)
-  if (!lookup.ok) return { error: "Este link não está disponível." }
+  if (!lookup.ok) return { error: t("errors.linkUnavailable") }
 
   const bookingCase = lookup.view.case
   const payment = await latestPayment(bookingCase.id)
-  if (!payment) return { error: "Ainda não há valor a pagar neste pedido." }
+  if (!payment) return { error: t("errors.nothingToPayYet") }
 
   const admin = createAdminClient()
-  if (!admin) return { error: "Serviço indisponível." }
+  if (!admin) return { error: t("errors.serviceUnavailable") }
 
   await admin
     .from("case_payments")
@@ -169,12 +174,18 @@ export async function declarePaid(token: string): Promise<PaymentActionState> {
 
   await notifyTeamDeclared(bookingCase.id)
 
-  return { error: null, notice: "Obrigado — vamos confirmar e avisamos-lhe." }
+  return { error: null, notice: t("notices.declareThanks") }
 }
 
 // --- Avisos ------------------------------------------------------------------
 
-/** Best-effort: um email falhado nunca desfaz um pagamento registado. */
+/**
+ * Best-effort: um email falhado nunca desfaz um pagamento registado.
+ *
+ * Sai na língua guardada no lead — quem carrega no botão é o agente, e o
+ * idioma dele não diz nada sobre o de quem lê. `sendPaymentConfirmedEmail`
+ * vai buscá-la ao caso.
+ */
 async function notifyClientPaid(caseId: string): Promise<void> {
   const { sendPaymentConfirmedEmail } = await import("@/lib/emails/send")
   try {

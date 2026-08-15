@@ -8,10 +8,10 @@ import {
   getCasePassengers,
   getCasePayment,
 } from "@/lib/booking-cases"
-import { LINK_STAGE_NAMES, LINK_STATUS_LABELS } from "@/lib/case-status"
 import { conversationForCase, getMessages } from "@/lib/conversations"
 import { isWeePayConfigured } from "@/lib/weepay"
 import { CaseConversation } from "@/components/admin/case-conversation"
+import { getI18n } from "@/i18n/server"
 import { PayLinkForm } from "@/components/admin/pay-link-form"
 import { PaymentPanel } from "@/components/admin/payment-panel"
 
@@ -32,17 +32,12 @@ function formatDateTime(value: string | null): string {
   }).format(new Date(value))
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  adult: "Adulto",
-  child: "Criança",
-  infant: "Bebé",
-}
-
 export default async function CaseDetailPage({
   params,
 }: {
   params: { id: string }
 }) {
+  const { t } = getI18n()
   const bookingCase = await getCase(params.id)
   if (!bookingCase) notFound()
 
@@ -62,7 +57,7 @@ export default async function CaseDetailPage({
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           {conversation && (
-            <Panel title="Conversa com o cliente">
+            <Panel title={t("admin.panelConversation")}>
               <CaseConversation
                 caseId={bookingCase.id}
                 messages={chatMessages}
@@ -72,7 +67,7 @@ export default async function CaseDetailPage({
           )}
 
           {/* onde está o cliente */}
-          <Panel title="Onde está o cliente">
+          <Panel title={t("admin.panelWhereClient")}>
             <ul className="divide-y divide-adm-line-soft">
               {bookingCase.links.map((l) => (
                 <li
@@ -80,15 +75,21 @@ export default async function CaseDetailPage({
                   className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[13px]"
                 >
                   <span className="font-medium text-adm-txt">
-                    {l.stage}. {LINK_STAGE_NAMES[l.stage]}
+                    {l.stage}. {t("linkStages." + l.stage)}
                   </span>
                   <span className="flex items-center gap-3 text-[11px] text-adm-muted">
                     {l.first_opened_at && (
-                      <span>Aberto {formatDateTime(l.first_opened_at)}</span>
+                      <span>
+                        {t("admin.opened", {
+                          when: formatDateTime(l.first_opened_at),
+                        })}
+                      </span>
                     )}
                     {l.submitted_at && (
                       <span className="text-adm-ok">
-                        Preenchido {formatDateTime(l.submitted_at)}
+                        {t("admin.filled", {
+                          when: formatDateTime(l.submitted_at),
+                        })}
                       </span>
                     )}
                     <span
@@ -101,7 +102,7 @@ export default async function CaseDetailPage({
                             : "text-adm-muted"
                       )}
                     >
-                      {LINK_STATUS_LABELS[l.status]}
+                      {t("linkStatus." + l.status)}
                     </span>
                   </span>
                 </li>
@@ -110,18 +111,21 @@ export default async function CaseDetailPage({
           </Panel>
 
           {trip && (
-            <Panel title="Pedido de viagem">
+            <Panel title={t("admin.panelTrip")}>
               <dl className="divide-y divide-adm-line-soft">
                 <Row
-                  label="Trajeto"
+                  label={t("admin.tripRoute")}
                   value={`${trip.origin} → ${trip.destination}`}
                 />
-                <Row label="Partida" value={formatDate(trip.depart_date)} />
+                <Row label={t("admin.tripDepart")} value={formatDate(trip.depart_date)} />
                 {trip.return_date && (
-                  <Row label="Regresso" value={formatDate(trip.return_date)} />
+                  <Row
+                    label={t("admin.tripReturn")}
+                    value={formatDate(trip.return_date)}
+                  />
                 )}
                 <Row
-                  label="Passageiros"
+                  label={t("admin.tripPassengers")}
                   value={`${trip.adults + trip.children + trip.infants}`}
                 />
               </dl>
@@ -129,23 +133,22 @@ export default async function CaseDetailPage({
                 href={`/admin/pedidos/${trip.id}`}
                 className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-adm-ember hover:text-adm-ember-dark"
               >
-                Ver pedido completo
+                {t("admin.seeFullRequest")}
                 <ExternalLink className="h-3.5 w-3.5" />
               </Link>
             </Panel>
           )}
 
-          <Panel title="Passageiros">
+          <Panel title={t("admin.panelPassengers")}>
             {passengers.length === 0 ? (
               <p className="flex items-center gap-2 text-[13px] text-adm-muted">
                 <Users className="h-4 w-4" />
-                Ainda sem dados. O cliente preenche-os depois de escolher uma
-                opção no{" "}
+                {t("admin.noPassengersYet")}{" "}
                 <Link
                   href={`/admin/casos/${bookingCase.id}/ofertas`}
                   className="font-semibold text-adm-ember hover:text-adm-ember-dark"
                 >
-                  link 2
+                  {t("admin.link2")}
                 </Link>
                 .
               </p>
@@ -154,10 +157,14 @@ export default async function CaseDetailPage({
                 <table className="w-full text-left text-[13px]">
                   <thead className="text-[11px] uppercase tracking-wider text-adm-muted">
                     <tr>
-                      <th className="pb-2 font-semibold">Nome</th>
-                      <th className="pb-2 font-semibold">Tipo</th>
-                      <th className="pb-2 font-semibold">Passaporte</th>
-                      <th className="pb-2 font-semibold">Validade</th>
+                      <th className="pb-2 font-semibold">{t("admin.colName")}</th>
+                      <th className="pb-2 font-semibold">{t("admin.colType")}</th>
+                      <th className="pb-2 font-semibold">
+                        {t("admin.colPassport")}
+                      </th>
+                      <th className="pb-2 font-semibold">
+                        {t("admin.colValidUntil")}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-adm-line-soft">
@@ -170,7 +177,7 @@ export default async function CaseDetailPage({
                           </span>
                         </td>
                         <td className="py-2.5 text-adm-txt-2">
-                          {TYPE_LABELS[p.passenger_type]}
+                          {t("passengerTypes." + p.passenger_type)}
                         </td>
                         <td className="py-2.5 font-mono text-[12px] text-adm-txt-2">
                           {p.passport_number}
@@ -188,21 +195,18 @@ export default async function CaseDetailPage({
         </div>
 
         <div className="space-y-5">
-          <Panel title="Pagamento">
+          <Panel title={t("admin.panelPayment")}>
             {!payment ? (
               <>
                 <p className="mb-4 text-[13px] leading-relaxed text-adm-muted">
-                  O valor entra aqui sozinho quando o cliente escolher uma opção
-                  no{" "}
+                  {t("admin.payAutoHint")}{" "}
                   <Link
                     href={`/admin/casos/${bookingCase.id}/ofertas`}
                     className="font-semibold text-adm-ember hover:text-adm-ember-dark"
                   >
-                    separador Ofertas
+                    {t("admin.payOffersTab")}
                   </Link>
-                  . Se o caso foi fechado por fora, registe-o à mão abaixo — até
-                  lá o <b className="text-adm-txt-2">Pay link</b> diz ao cliente
-                  que a tarifa ainda está a ser preparada.
+                  {t("admin.payManualHint")}
                 </p>
                 <PayLinkForm caseId={bookingCase.id} />
               </>
@@ -222,10 +226,10 @@ export default async function CaseDetailPage({
 
           {payment?.status === "COMPLETED" &&
             bookingCase.stage !== "emitido" && (
-              <Panel title="Emissão">
+              <Panel title={t("admin.panelIssue")}>
                 <p className="mb-3 flex items-center gap-2 text-[13px] text-adm-muted">
                   <Ticket className="h-4 w-4" />
-                  Envie os bilhetes ao cliente e marque como emitido.
+                  {t("admin.issueHint")}
                 </p>
                 <IssueTicketsForm caseId={bookingCase.id} />
               </Panel>

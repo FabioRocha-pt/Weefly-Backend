@@ -5,8 +5,15 @@ import { redirect } from "next/navigation"
 import { headers } from "next/headers"
 
 import { createClient } from "@/utils/supabase/server"
+import { getI18n } from "@/i18n/server"
 
-/** Returned to the form on failure. On success the action redirects instead. */
+/**
+ * Returned to the form on failure. On success the action redirects instead.
+ *
+ * A frase já vem traduzida: a action corre dentro do pedido e por isso alcança
+ * o cookie do idioma. As que vêm do Supabase passam tal e qual — em inglês,
+ * porque é a única língua em que ele as escreve.
+ */
 export type AuthActionState = { error: string | null }
 
 /** Read a trimmed string field from FormData. */
@@ -24,6 +31,7 @@ function field(formData: FormData, key: string): string {
  * the snake_case metadata keys the profiles table expects.
  */
 export async function signUp(formData: FormData): Promise<AuthActionState> {
+  const { t } = getI18n()
   const email = field(formData, "email")
   const password = field(formData, "password")
   const firstName = field(formData, "firstName")
@@ -32,7 +40,7 @@ export async function signUp(formData: FormData): Promise<AuthActionState> {
   const phone = field(formData, "phone")
 
   if (!email || !password) {
-    return { error: "Email e password são obrigatórios." }
+    return { error: t("errors.emailPasswordRequired") }
   }
 
   const origin =
@@ -61,7 +69,7 @@ export async function signUp(formData: FormData): Promise<AuthActionState> {
   } catch (err) {
     return {
       error:
-        err instanceof Error ? err.message : "Erro inesperado ao criar conta.",
+        err instanceof Error ? err.message : t("errors.signUpUnexpected"),
     }
   }
 
@@ -71,11 +79,12 @@ export async function signUp(formData: FormData): Promise<AuthActionState> {
 
 /** Sign in with email + password. */
 export async function signIn(formData: FormData): Promise<AuthActionState> {
+  const { t } = getI18n()
   const email = field(formData, "email")
   const password = field(formData, "password")
 
   if (!email || !password) {
-    return { error: "Preencha o email e a password." }
+    return { error: t("errors.fillEmailPassword") }
   }
 
   try {
@@ -89,7 +98,7 @@ export async function signIn(formData: FormData): Promise<AuthActionState> {
     if (error) return { error: error.message }
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : "Erro inesperado ao entrar.",
+      error: err instanceof Error ? err.message : t("errors.signInUnexpected"),
     }
   }
 

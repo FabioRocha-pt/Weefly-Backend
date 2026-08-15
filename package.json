@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "i18n:check": "node scripts/check-i18n.mjs"
+  },
+  "engines": {
+    "node": ">=18.17"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.113.0",

@@ -16,6 +16,7 @@ import { randomBytes } from "crypto"
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import type { ParsedFlightQuery } from "@/lib/flight-parse"
+import type { Translator } from "@/i18n/translate"
 
 export type MessageAuthor = "client" | "bot" | "agent"
 export type MessageKind = "text" | "proposal" | "link" | "system"
@@ -175,6 +176,14 @@ export async function postProposalToConversation(input: {
   pax: { adults: number; children: number; infants: number }
   offers: unknown[]
   openingMessage: string | null
+  /**
+   * O tradutor da língua do cliente, não da do agente.
+   *
+   * Esta mensagem fica gravada na conversa e é lida por quem pediu a viagem.
+   * Quem a escreve é o agente, a publicar a proposta — daí o tradutor vir de
+   * fora em vez de sair de um `getI18n()` aqui dentro.
+   */
+  t: Translator
 }): Promise<boolean> {
   const conversation = await conversationForCase(input.caseId)
   if (!conversation) return false
@@ -182,8 +191,8 @@ export async function postProposalToConversation(input: {
   const body =
     input.openingMessage?.trim() ||
     (input.revision > 1
-      ? "Revi os valores da sua proposta. Estas são as opções atualizadas."
-      : `Preparei ${input.offers.length === 1 ? "uma opção" : `${input.offers.length} opções`} para a sua viagem. Veja qual lhe serve melhor.`)
+      ? input.t("chatProposal.revisedIntro")
+      : input.t("chatProposal.defaultIntro", { count: input.offers.length }))
 
   const message = await appendMessage(conversation.id, {
     author: "agent",

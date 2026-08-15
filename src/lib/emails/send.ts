@@ -9,6 +9,11 @@
  * Todos os envios são best-effort. Um email é um aviso sobre uma coisa que já
  * aconteceu; falhar não desfaz o pagamento nem a declaração.
  *
+ * Idiomas: o aviso ao cliente sai na língua guardada no lead (ver a migração
+ * 0008) — quem carrega no botão é o agente, e a língua dele não diz nada sobre
+ * a de quem vai ler. O aviso à equipa vai sempre em português, porque quem o lê
+ * está em Cabo Verde.
+ *
  * SÓ SERVIDOR.
  */
 
@@ -17,6 +22,8 @@ import { Resend } from "resend"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { formatAmount } from "@/lib/case-status"
 import { BORDER, EMBER_RED, INK, MUTED, SURFACE_ALT, escapeHtml } from "./shared"
+import { DEFAULT_LOCALE, LOCALE_TAGS, type Locale } from "@/i18n/config"
+import { getTranslator, localeForClient } from "@/i18n/server"
 
 const FROM =
   process.env.CONCIERGE_FROM_EMAIL ??
@@ -42,6 +49,8 @@ interface CaseContext {
   destination: string | null
   amount: number
   currency: string
+  /** A língua em que o cliente falou connosco — ver `0008_lead_locale.sql`. */
+  locale: Locale
 }
 
 function unwrap(value: unknown): Record<string, unknown> | null {
@@ -56,7 +65,7 @@ async function context(caseId: string): Promise<CaseContext | null> {
   const { data } = await admin
     .from("booking_cases")
     .select(
-      "id, token, trip_request:trip_requests (reference, origin, destination, lead:leads (full_name, email))"
+      "id, token, trip_request:trip_requests (reference, origin, destination, lead:leads (full_name, email, locale))"
     )
     .eq("id", caseId)
     .maybeSingle()
@@ -84,12 +93,13 @@ async function context(caseId: string): Promise<CaseContext | null> {
     destination: (trip?.destination as string) ?? null,
     amount: (payment as { amount: number } | null)?.amount ?? 0,
     currency: (payment as { currency: string } | null)?.currency ?? "CVE",
+    locale: localeForClient(lead?.locale as string | null),
   }
 }
 
-function shell(title: string, body: string): string {
+function shell(title: string, body: string, locale: Locale = DEFAULT_LOCALE): string {
   return `<!DOCTYPE html>
-<html lang="pt">
+<html lang="${LOCALE_TAGS[locale]}">
 <head><meta charset="utf-8" /><meta name="color-scheme" content="light only" /><title>${escapeHtml(title)}</title></head>
 <body style="margin:0;padding:0;background:${SURFACE_ALT};font-family:'Plus Jakarta Sans','Segoe UI',system-ui,-apple-system,sans-serif;color:${INK};">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SURFACE_ALT};padding:32px 16px;">
@@ -143,32 +153,42 @@ export async function sendPaymentConfirmedEmail(caseId: string): Promise<boolean
   const ctx = await context(caseId)
   if (!ctx?.clientEmail) return false
 
+  const { locale } = ctx
+  const t = getTranslator(locale)
   const route =
     ctx.origin && ctx.destination ? `${ctx.origin} → ${ctx.destination}` : null
   const amount = formatAmount(ctx.amount, ctx.currency)
-  const subject = `Pagamento confirmado${route ? ` · ${ctx.origin} → ${ctx.destination}` : ""}`
+  const subject = route
+    ? t("email.paidSubjectRoute", { route })
+    : t("email.paidSubject")
 
   const html = shell(
     subject,
-    `<h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:${INK};letter-spacing:-0.02em;">Recebemos o seu pagamento</h1>
+    `<h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:${INK};letter-spacing:-0.02em;">${escapeHtml(t("email.paidHeading"))}</h1>
      ${route ? `<p style="margin:0 0 6px;font-size:13px;font-weight:600;color:${EMBER_RED};">${escapeHtml(route)}${ctx.reference ? ` · ${escapeHtml(ctx.reference)}` : ""}</p>` : ""}
      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${MUTED};">
-       Olá <strong style="color:${INK};">${escapeHtml(ctx.clientName)}</strong>, está confirmado o pagamento de
-       <strong style="color:${INK};">${escapeHtml(amount)}</strong>.
+       ${t("email.paidBody", {
+         name: `<strong style="color:${INK};">${escapeHtml(ctx.clientName)}</strong>`,
+         amount: `<strong style="color:${INK};">${escapeHtml(amount)}</strong>`,
+       })}
      </p>
      <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${MUTED};">
-       Vamos agora emitir os bilhetes e enviá-los para este mesmo endereço. Não é
-       preciso fazer mais nada da sua parte.
-     </p>`
+       ${escapeHtml(t("email.paidNext"))}
+     </p>`,
+    locale
   )
 
   const text = [
-    `Olá ${ctx.clientName},`,
+    t("email.paidTextHello", { name: ctx.clientName }),
     "",
-    `Está confirmado o pagamento de ${amount}.`,
-    route ? `Viagem: ${route}${ctx.reference ? ` (${ctx.reference})` : ""}` : "",
+    t("email.paidTextConfirmed", { amount }),
+    route
+      ? t("email.paidTextTrip", {
+          route: `${route}${ctx.reference ? ` (${ctx.reference})` : ""}`,
+        })
+      : "",
     "",
-    "Vamos emitir os bilhetes e enviá-los para este endereço.",
+    t("email.paidTextNext"),
     "© WeeFly Africa",
   ]
     .filter(Boolean)

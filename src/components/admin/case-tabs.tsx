@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 import { cn } from "@/lib/utils"
+import { useT } from "@/i18n/provider"
 
 /**
  * Os separadores do caso, tal como na barra do mockup A4.
@@ -19,12 +20,13 @@ export function CaseTabs({
   caseId: string
   offerCount: number
 }) {
+  const t = useT()
   const pathname = usePathname()
   const base = `/admin/casos/${caseId}`
 
   const tabs = [
-    { href: base, label: "Pedido", count: null as number | null },
-    { href: `${base}/ofertas`, label: "Ofertas", count: offerCount },
+    { href: base, label: t("admin.tabRequest"), count: null as number | null },
+    { href: `${base}/ofertas`, label: t("admin.tabOffers"), count: offerCount },
   ]
 
   return (

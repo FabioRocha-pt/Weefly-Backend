@@ -5,6 +5,10 @@ import { notFound } from "next/navigation"
 import { WeeFlyLogo } from "@/components/weefly-logo"
 import { getConversation } from "@/lib/conversations"
 import { ChatWidget } from "@/components/concierge/chat-widget"
+import { getDictionary, getI18n } from "@/i18n/server"
+import { DEFAULT_LOCALE } from "@/i18n/config"
+import { I18nProvider } from "@/i18n/provider"
+import { LocaleSwitcher } from "@/i18n/locale-switcher"
 
 export const dynamic = "force-dynamic"
 
@@ -24,13 +28,22 @@ export const metadata: Metadata = {
  */
 export default async function ConversationPage({
   params,
+  searchParams,
 }: {
   params: { token: string }
+  searchParams: { lang?: string }
 }) {
   const conversation = await getConversation(params.token)
   if (!conversation) notFound()
 
+  const { locale, t, dictionary } = getI18n(searchParams)
+
   return (
+    <I18nProvider
+      locale={locale}
+      dictionary={dictionary}
+      fallback={locale === DEFAULT_LOCALE ? undefined : getDictionary(DEFAULT_LOCALE)}
+    >
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-2 px-4 sm:px-6">
@@ -38,8 +51,11 @@ export default async function ConversationPage({
             <WeeFlyLogo className="h-7 w-auto text-[#FF4747]" />
           </Link>
           <span className="rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
-            Concierge
+            {t("common.concierge")}
           </span>
+          <div className="ml-auto">
+            <LocaleSwitcher />
+          </div>
         </div>
       </header>
 
@@ -48,10 +64,10 @@ export default async function ConversationPage({
           <ChatWidget token={params.token} />
         </div>
         <p className="mt-4 text-center text-[11.5px] leading-relaxed text-slate-400">
-          Este endereço é pessoal. Não o partilhe — dá acesso ao seu pedido de
-          viagem.
+          {t("chat.personalLink")}
         </p>
       </main>
     </div>
+    </I18nProvider>
   )
 }

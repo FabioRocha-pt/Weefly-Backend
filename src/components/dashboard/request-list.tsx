@@ -4,25 +4,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Request } from "@/types"
 import { Calendar, Send, Eye } from "lucide-react"
+import { getI18n } from "@/i18n/server"
+
+/** A cor do crachá; a palavra vem de `requestListStatus.<estado>`. */
+const STATUS_VARIANT: Record<Request["status"], "novo" | "proposta" | "confirmada"> = {
+  novo: "novo",
+  proposta: "proposta",
+  confirmada: "confirmada",
+  rejeitada: "proposta",
+}
 
 interface RequestListProps {
   requests: Request[]
   dark?: boolean
 }
 
-const STATUS_LABELS: Record<Request["status"], { label: string; variant: "novo" | "proposta" | "confirmada" }> = {
-  novo: { label: "Novo", variant: "novo" },
-  proposta: { label: "Proposta", variant: "proposta" },
-  confirmada: { label: "Confirmada", variant: "confirmada" },
-  rejeitada: { label: "Rejeitada", variant: "proposta" },
-}
-
 export function RequestList({ requests, dark }: RequestListProps) {
+  const { t } = getI18n()
+
   return (
     <Card className={cn("border-0 shadow-sm", dark ? "bg-gray-800" : "bg-white")}>
       <CardHeader className={cn("pb-4", dark ? "border-gray-700" : "border-slate-100")}>
         <CardTitle className={cn("text-lg", dark ? "text-white" : "text-slate-900")}>
-          Pedidos de terceiros
+          {t("dashboard.requestsTitle")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -46,8 +50,8 @@ export function RequestList({ requests, dark }: RequestListProps) {
                     {request.service}
                   </p>
                 </div>
-                <Badge variant={STATUS_LABELS[request.status].variant}>
-                  {STATUS_LABELS[request.status].label}
+                <Badge variant={STATUS_VARIANT[request.status]}>
+                  {t(`requestListStatus.${request.status}`)}
                 </Badge>
               </div>
 
@@ -59,18 +63,18 @@ export function RequestList({ requests, dark }: RequestListProps) {
                   {request.status === "novo" && (
                     <Button size="sm" variant="ghost" className="h-8">
                       <Calendar className="w-4 h-4 mr-1" />
-                      Agendar
+                      {t("dashboard.schedule")}
                     </Button>
                   )}
                   {request.status === "proposta" && (
                     <Button size="sm" variant="ghost" className="h-8">
                       <Send className="w-4 h-4 mr-1" />
-                      Reenviar
+                      {t("dashboard.resend")}
                     </Button>
                   )}
                   <Button size="sm" variant="ghost" className="h-8">
                     <Eye className="w-4 h-4 mr-1" />
-                    Detalhes
+                    {t("dashboard.details")}
                   </Button>
                 </div>
               </div>

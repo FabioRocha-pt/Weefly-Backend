@@ -3,6 +3,7 @@
 import { Plane, Clock, TrendingDown, Sparkles, ArrowRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useT } from "@/i18n/provider"
 import type {
   FlightTripType,
   FormattedFlightOffer,
@@ -22,16 +23,16 @@ interface FlightOfferCardProps {
 
 const VARIANT_META: Record<
   OfferVariant,
-  { label: string; icon: typeof TrendingDown; badgeClass: string; highlight: boolean }
+  { labelKey: string; icon: typeof TrendingDown; badgeClass: string; highlight: boolean }
 > = {
   cheapest: {
-    label: "Mais barato",
+    labelKey: "flightOffer.cheapest",
     icon: TrendingDown,
     badgeClass: "bg-emerald-50 text-emerald-700",
     highlight: false,
   },
   best: {
-    label: "Melhor opção",
+    labelKey: "flightOffer.best",
     icon: Sparkles,
     badgeClass: "bg-[#FFECEC] text-[#FF4747]",
     highlight: true,
@@ -44,10 +45,13 @@ export function FlightOfferCard({
   tripType,
   onBook,
 }: FlightOfferCardProps) {
+  const t = useT()
   const meta = VARIANT_META[variant]
   const Icon = meta.icon
   const legLabels =
-    tripType === "round_trip" ? ["Ida", "Volta"] : ["Ida"]
+    tripType === "round_trip"
+      ? [t("legs.outbound"), t("legs.inbound")]
+      : [t("legs.outbound")]
 
   return (
     <div
@@ -65,13 +69,13 @@ export function FlightOfferCard({
           )}
         >
           <Icon className="h-3.5 w-3.5" />
-          {meta.label}
+          {t(meta.labelKey)}
         </span>
         <div className="text-right">
           <div className="text-2xl font-extrabold tracking-tight text-slate-900">
             {offer.price.label}
           </div>
-          <div className="text-xs text-slate-400">preço total</div>
+          <div className="text-xs text-slate-400">{t("flightOffer.totalPrice")}</div>
         </div>
       </div>
 
@@ -81,7 +85,7 @@ export function FlightOfferCard({
           <ItineraryRow
             key={i}
             itinerary={itinerary}
-            label={legLabels[i] ?? "Trecho"}
+            label={legLabels[i] ?? t("flightOffer.leg")}
           />
         ))}
       </div>
@@ -90,8 +94,8 @@ export function FlightOfferCard({
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
         <span className="text-xs text-slate-400">
           {offer.seatsLeft != null && offer.seatsLeft <= 5
-            ? `Só ${offer.seatsLeft} lugares a este preço`
-            : "Lugares disponíveis"}
+            ? t("flightOffer.seatsLeft", { count: offer.seatsLeft })
+            : t("flightOffer.seatsAvailable")}
         </span>
         <button
           type="button"
@@ -99,7 +103,7 @@ export function FlightOfferCard({
           style={{ backgroundColor: EMBER }}
           className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:brightness-95 active:scale-[0.98]"
         >
-          Book Now
+          {t("flightOffer.book")}
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>

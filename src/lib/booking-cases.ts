@@ -53,6 +53,8 @@ export interface BookingCaseRow {
       phone_prefix: string | null
       phone: string | null
       source_channel: string
+      /** Ver `0008_lead_locale.sql` — a língua dos emails diferidos. */
+      locale: string | null
     } | null
   } | null
 }
@@ -63,7 +65,7 @@ const CASE_COLUMNS = `
   trip_request:trip_requests (
     id, reference, origin, destination, depart_date, return_date,
     adults, children, infants, cabin_class, trip_type,
-    lead:leads (full_name, email, phone_prefix, phone, source_channel)
+    lead:leads (full_name, email, phone_prefix, phone, source_channel, locale)
   )
 `
 

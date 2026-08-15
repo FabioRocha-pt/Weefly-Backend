@@ -1,9 +1,13 @@
 import type { Metadata } from "next"
 
-export const metadata: Metadata = {
-  title: "WeeFly Concierge — os seus voos, em conversa",
-  description:
-    "Diga para onde quer voar em linguagem natural. O WeeFly Concierge encontra as melhores tarifas e opções por si.",
+import { getI18n } from "@/i18n/server"
+
+export function generateMetadata(): Metadata {
+  const { t } = getI18n()
+  return {
+    title: t("meta.newHomeTitle"),
+    description: t("meta.newHomeDescription"),
+  }
 }
 
 /**

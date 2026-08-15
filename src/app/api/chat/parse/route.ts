@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { parseMessage } from "@/lib/concierge-engine"
+import { getI18n } from "@/i18n/server"
 
 // The Anthropic SDK uses the Node runtime.
 export const runtime = "nodejs"
@@ -15,9 +16,15 @@ export const runtime = "nodejs"
  * parsed query straight off the JSON body.
  */
 
-/** Body: the latest user message plus any prior chat turns for slot-filling. */
+/**
+ * Body: the latest user message plus any prior chat turns for slot-filling.
+ *
+ * A mensagem é a chave de tradução e não a frase, pela mesma razão dos
+ * esquemas em `lib/validations.ts`: o esquema é construído quando o módulo
+ * carrega, muito antes de sabermos em que idioma o pedido vem.
+ */
 const parseRequestSchema = z.object({
-  message: z.string().min(1, "Mensagem vazia."),
+  message: z.string().min(1, "errors.emptyMessage"),
   history: z
     .array(
       z.object({
@@ -30,17 +37,18 @@ const parseRequestSchema = z.object({
 })
 
 export async function POST(request: Request) {
+  const { t } = getI18n()
   let json: unknown
   try {
     json = await request.json()
   } catch {
-    return NextResponse.json({ error: "Corpo inválido." }, { status: 400 })
+    return NextResponse.json({ error: t("errors.invalidBody") }, { status: 400 })
   }
 
   const parsed = parseRequestSchema.safeParse(json)
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Pedido inválido.", fieldErrors: parsed.error.flatten().fieldErrors },
+      { error: t("errors.invalidRequest"), fieldErrors: parsed.error.flatten().fieldErrors },
       { status: 422 }
     )
   }
@@ -54,18 +62,18 @@ export async function POST(request: Request) {
   switch (outcome.kind) {
     case "unconfigured":
       return NextResponse.json(
-        { error: "O serviço de conversação não está configurado." },
+        { error: t("errors.chatNotConfigured") },
         { status: 503 }
       )
     case "unparsed":
       // Degrade into a chat reply rather than an error the widget must handle.
       return NextResponse.json(
-        { error: "Não consegui interpretar o pedido.", reply: outcome.reply },
+        { error: t("errors.couldNotParse"), reply: outcome.reply },
         { status: 200 }
       )
     default:
       return NextResponse.json(
-        { error: "Não foi possível processar a mensagem." },
+        { error: t("errors.messageProcessFailed") },
         { status: 502 }
       )
   }

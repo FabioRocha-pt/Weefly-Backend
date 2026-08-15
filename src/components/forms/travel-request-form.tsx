@@ -36,11 +36,13 @@ import {
   PASSENGER_TITLES,
   PHONE_PREFIXES,
 } from "@/types"
+import { useT } from "@/i18n/provider"
+import { translateMessage, type Translator } from "@/i18n/translate"
 
 const STEPS = [
-  { id: 0, label: "Viagem", icon: Plane },
-  { id: 1, label: "Passageiros & classe", icon: Users },
-  { id: 2, label: "Dados pessoais", icon: User },
+  { id: 0, labelKey: "travelForm.stepTrip", icon: Plane },
+  { id: 1, labelKey: "travelForm.stepPassengers", icon: Users },
+  { id: 2, labelKey: "travelForm.stepPersonal", icon: User },
 ] as const
 
 /** Fields validated before advancing out of each step. */
@@ -57,6 +59,7 @@ const today = new Date().toISOString().split("T")[0]
  * binds the submission to that booking case. Absent on the public /concierge page.
  */
 export function TravelRequestForm({ token }: { token?: string } = {}) {
+  const t = useT()
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -111,7 +114,7 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
       })
       const body = await res.json().catch(() => null)
       if (!res.ok) {
-        throw new Error(body?.error ?? "Não foi possível enviar o pedido.")
+        throw new Error(body?.error ?? "errors.requestNotSent")
       }
       // Only promise a confirmation email if one actually went out.
       setConfirmationSent(body?.emailSent === true)
@@ -119,7 +122,7 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
       setSuccess(true)
     } catch (err) {
       setServerError(
-        err instanceof Error ? err.message : "Ocorreu um erro inesperado."
+        err instanceof Error ? err.message : "errors.unexpected"
       )
     } finally {
       setSubmitting(false)
@@ -129,6 +132,7 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
   if (success) {
     return (
       <SuccessScreen
+        t={t}
         name={watch("fullName")}
         email={confirmationSent ? watch("email") : ""}
         reference={reference}
@@ -138,7 +142,7 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <StepperBar current={step} />
+      <StepperBar t={t} current={step} />
 
       <form
         onSubmit={handleSubmit(onSubmit)}
@@ -148,12 +152,16 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
         {step === 0 && (
           <div className="space-y-6 animate-fade-in">
             <StepHeading
-              title="A sua viagem"
-              subtitle="Conte-nos para onde quer voar e quando."
+              title={t("travelForm.tripTitle")}
+              subtitle={t("travelForm.tripSubtitle")}
             />
 
-            <Field label="Tipo de viagem" error={errors.tripType?.message}>
+            <Field
+              label={t("travelForm.tripType")}
+              error={translateMessage(t, errors.tripType?.message)}
+            >
               <Segmented
+                t={t}
                 options={TRIP_TYPES}
                 value={tripType}
                 onChange={(v) =>
@@ -163,20 +171,26 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
             </Field>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Origem" error={errors.origin?.message}>
+              <Field
+                label={t("travelForm.origin")}
+                error={translateMessage(t, errors.origin?.message)}
+              >
                 <InputWithIcon icon={MapPin}>
                   <Input
                     className="pl-10"
-                    placeholder="Ex.: Praia (RAI)"
+                    placeholder={t("travelForm.originPlaceholder")}
                     {...register("origin")}
                   />
                 </InputWithIcon>
               </Field>
-              <Field label="Destino" error={errors.destination?.message}>
+              <Field
+                label={t("travelForm.destination")}
+                error={translateMessage(t, errors.destination?.message)}
+              >
                 <InputWithIcon icon={MapPin}>
                   <Input
                     className="pl-10"
-                    placeholder="Ex.: Lisboa (LIS)"
+                    placeholder={t("travelForm.destinationPlaceholder")}
                     {...register("destination")}
                   />
                 </InputWithIcon>
@@ -184,7 +198,10 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Data de partida" error={errors.departDate?.message}>
+              <Field
+                label={t("travelForm.departDate")}
+                error={translateMessage(t, errors.departDate?.message)}
+              >
                 <InputWithIcon icon={CalendarDays}>
                   <Input
                     type="date"
@@ -196,8 +213,8 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
               </Field>
               {tripType === "round_trip" && (
                 <Field
-                  label="Data de regresso"
-                  error={errors.returnDate?.message}
+                  label={t("travelForm.returnDate")}
+                  error={translateMessage(t, errors.returnDate?.message)}
                 >
                   <InputWithIcon icon={CalendarDays}>
                     <Input
@@ -217,21 +234,23 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
         {step === 1 && (
           <div className="space-y-6 animate-fade-in">
             <StepHeading
-              title="Passageiros & classe"
-              subtitle="Quem viaja e em que conforto."
+              title={t("travelForm.passengersTitle")}
+              subtitle={t("travelForm.passengersSubtitle")}
             />
 
             <div className="space-y-3">
               <Counter
-                label="Adultos"
-                hint="12+ anos"
+                t={t}
+                label={t("travelForm.adults")}
+                hint={t("travelForm.adultsHint")}
                 value={watch("adults")}
                 min={1}
                 onChange={(n) => setValue("adults", n, { shouldValidate: true })}
               />
               <Counter
-                label="Crianças"
-                hint="2–11 anos"
+                t={t}
+                label={t("travelForm.children")}
+                hint={t("travelForm.childrenHint")}
                 value={watch("children")}
                 min={0}
                 onChange={(n) =>
@@ -239,8 +258,9 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
                 }
               />
               <Counter
-                label="Bebés"
-                hint="0–2 anos, ao colo"
+                t={t}
+                label={t("travelForm.infants")}
+                hint={t("travelForm.infantsHint")}
                 value={watch("infants")}
                 min={0}
                 onChange={(n) =>
@@ -248,12 +268,18 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
                 }
               />
               {errors.infants?.message && (
-                <p className="text-sm text-red-500">{errors.infants.message}</p>
+                <p className="text-sm text-red-500">
+                  {translateMessage(t, errors.infants.message)}
+                </p>
               )}
             </div>
 
-            <Field label="Classe" error={errors.cabinClass?.message}>
+            <Field
+              label={t("travelForm.cabin")}
+              error={translateMessage(t, errors.cabinClass?.message)}
+            >
               <Segmented
+                t={t}
                 options={CABIN_CLASSES}
                 value={watch("cabinClass")}
                 onChange={(v) =>
@@ -268,12 +294,16 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
         {step === 2 && (
           <div className="space-y-6 animate-fade-in">
             <StepHeading
-              title="Os seus dados"
-              subtitle="Para a nossa equipa de Concierge o contactar."
+              title={t("travelForm.personalTitle")}
+              subtitle={t("travelForm.personalSubtitle")}
             />
 
-            <Field label="Título" error={errors.title?.message}>
+            <Field
+              label={t("travelForm.title")}
+              error={translateMessage(t, errors.title?.message)}
+            >
               <Segmented
+                t={t}
                 options={PASSENGER_TITLES}
                 value={watch("title")}
                 onChange={(v) => setValue("title", v, { shouldValidate: true })}
@@ -281,32 +311,39 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
             </Field>
 
             <Field
-              label="Nome completo (como no passaporte)"
-              error={errors.fullName?.message}
+              label={t("travelForm.fullName")}
+              error={translateMessage(t, errors.fullName?.message)}
             >
               <InputWithIcon icon={User}>
                 <Input
                   className="pl-10"
-                  placeholder="Ex.: Ivandro Tavares Silva"
+                  placeholder={t("travelForm.fullNamePlaceholder")}
                   {...register("fullName")}
                 />
               </InputWithIcon>
             </Field>
 
-            <Field label="Email" error={errors.email?.message}>
+            <Field
+              label={t("auth.email")}
+              error={translateMessage(t, errors.email?.message)}
+            >
               <InputWithIcon icon={Mail}>
                 <Input
                   type="email"
                   className="pl-10"
-                  placeholder="nome@email.com"
+                  placeholder={t("travelForm.emailPlaceholder")}
                   {...register("email")}
                 />
               </InputWithIcon>
             </Field>
 
-            <Field label="Telefone" error={errors.phone?.message}>
+            <Field
+              label={t("onboarding.phone")}
+              error={translateMessage(t, errors.phone?.message)}
+            >
               <div className="flex gap-2">
                 <select
+                  aria-label={t("auth.phonePrefix")}
                   className="flex h-11 w-32 shrink-0 rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 transition-all"
                   {...register("phonePrefix")}
                 >
@@ -320,7 +357,7 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
                   <Input
                     type="tel"
                     className="pl-10"
-                    placeholder="999 99 99"
+                    placeholder={t("travelForm.phonePlaceholder")}
                     {...register("phone")}
                   />
                 </InputWithIcon>
@@ -336,14 +373,12 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
                 className="mt-0.5"
               />
               <span className="text-sm text-slate-600">
-                Autorizo a WeeFly a contactar-me e a tratar os meus dados para
-                efeitos deste pedido de viagem, nos termos da política de
-                privacidade.
+                {t("travelForm.consent")}
               </span>
             </label>
             {errors.consent?.message && (
               <p className="-mt-3 text-sm text-red-500">
-                {errors.consent.message}
+                {translateMessage(t, errors.consent.message)}
               </p>
             )}
           </div>
@@ -352,7 +387,7 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
         {serverError && (
           <div className="mt-6 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>{serverError}</span>
+            <span>{translateMessage(t, serverError)}</span>
           </div>
         )}
 
@@ -361,7 +396,7 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
           {step > 0 ? (
             <Button type="button" variant="outline" onClick={goBack}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Anterior
+              {t("travelForm.previous")}
             </Button>
           ) : (
             <span />
@@ -369,7 +404,7 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
 
           {step < STEPS.length - 1 ? (
             <Button type="button" onClick={goNext}>
-              Continuar
+              {t("common.continue")}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
@@ -377,10 +412,10 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  A enviar…
+                  {t("travelForm.submitting")}
                 </>
               ) : (
-                "Enviar pedido"
+                t("travelForm.submit")
               )}
             </Button>
           )}
@@ -394,7 +429,7 @@ export function TravelRequestForm({ token }: { token?: string } = {}) {
 /* Sub-components                                                       */
 /* ------------------------------------------------------------------ */
 
-function StepperBar({ current }: { current: number }) {
+function StepperBar({ t, current }: { t: Translator; current: number }) {
   return (
     <div className="mb-8 flex items-center justify-center">
       {STEPS.map((s, i) => {
@@ -419,7 +454,7 @@ function StepperBar({ current }: { current: number }) {
                   isActive ? "text-slate-900" : "text-slate-400"
                 )}
               >
-                {s.label}
+                {t(s.labelKey)}
               </span>
             </div>
             {i < STEPS.length - 1 && (
@@ -489,11 +524,13 @@ function InputWithIcon({
 
 /** Generic segmented control for small option sets (enum pickers). */
 function Segmented<T extends string>({
+  t,
   options,
   value,
   onChange,
 }: {
-  options: readonly { value: T; label: string }[]
+  t: Translator
+  options: readonly { value: T; labelKey: string }[]
   value: T | undefined
   onChange: (value: T) => void
 }) {
@@ -513,7 +550,7 @@ function Segmented<T extends string>({
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
             )}
           >
-            {opt.label}
+            {t(opt.labelKey)}
           </button>
         )
       })}
@@ -522,12 +559,14 @@ function Segmented<T extends string>({
 }
 
 function Counter({
+  t,
   label,
   hint,
   value,
   min,
   onChange,
 }: {
+  t: Translator
   label: string
   hint: string
   value: number
@@ -545,7 +584,7 @@ function Counter({
           type="button"
           onClick={() => onChange(Math.max(min, value - 1))}
           disabled={value <= min}
-          aria-label={`Menos ${label}`}
+          aria-label={t("travelForm.counterLess", { label })}
           className="w-9 h-9 rounded-full border border-slate-300 flex items-center justify-center text-slate-600 hover:border-orange-500 hover:text-orange-600 disabled:opacity-40 disabled:hover:border-slate-300 disabled:hover:text-slate-600 transition-colors"
         >
           <Minus className="w-4 h-4" />
@@ -557,7 +596,7 @@ function Counter({
           type="button"
           onClick={() => onChange(Math.min(9, value + 1))}
           disabled={value >= 9}
-          aria-label={`Mais ${label}`}
+          aria-label={t("travelForm.counterMore", { label })}
           className="w-9 h-9 rounded-full border border-slate-300 flex items-center justify-center text-slate-600 hover:border-orange-500 hover:text-orange-600 disabled:opacity-40 transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -568,10 +607,12 @@ function Counter({
 }
 
 function SuccessScreen({
+  t,
   name,
   email,
   reference,
 }: {
+  t: Translator
   name: string
   email: string
   reference: string | null
@@ -584,21 +625,22 @@ function SuccessScreen({
           <CheckCircle2 className="w-9 h-9 text-green-500" />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-3">
-          Pedido recebido{firstName ? `, ${firstName}` : ""}!
+          {firstName
+            ? t("travelForm.successTitle", { name: firstName })
+            : t("travelForm.successTitleNoName")}
         </h2>
         <p className="text-slate-500 leading-relaxed">
-          A nossa equipa de Concierge está a preparar as melhores opções e
-          tarifas de voos para si e irá retornar o contacto brevemente.
+          {t("travelForm.successBody")}
         </p>
         {reference && (
           <p className="mt-5 inline-block rounded-lg bg-slate-50 px-4 py-2 text-sm text-slate-500">
-            Referência:{" "}
+            {t("travelForm.successReference")}{" "}
             <strong className="font-mono text-slate-900">{reference}</strong>
           </p>
         )}
         {email && (
           <p className="mt-4 text-sm text-slate-400">
-            Enviámos uma confirmação para <strong>{email}</strong>.
+            {t("travelForm.successEmail", { email })}
           </p>
         )}
       </div>

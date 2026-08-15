@@ -6,19 +6,22 @@ import { Bell, Menu } from "lucide-react"
 
 import { Sidebar, type SidebarCompany } from "@/components/dashboard/sidebar"
 import { UserMenu, type UserMenuData } from "@/components/dashboard/user-menu"
+import { LocaleSwitcher } from "@/i18n/locale-switcher"
+import { useT } from "@/i18n/provider"
 
-const TITLES: Record<string, string> = {
-  "/inicio": "Início",
-  "/empresa/dashboard": "Dashboard da empresa",
-  "/empresa/produtos": "Produtos",
-  "/empresa/calendario": "Calendário & preços",
-  "/empresa/reservas": "Reservas",
-  "/empresa/avaliacoes": "Avaliações",
-  "/empresa/financeiro": "Financeiro",
-  "/empresa/definicoes": "Definições da empresa",
-  "/agente": "Área de agente",
-  "/agente/clientes": "Clientes",
-  "/agente/carteira": "Carteira",
+/** O título do cabeçalho é a mesma etiqueta que o menu lateral usa. */
+const TITLE_KEYS: Record<string, string> = {
+  "/inicio": "nav.home",
+  "/empresa/dashboard": "nav.companyDashboard",
+  "/empresa/produtos": "nav.products",
+  "/empresa/calendario": "nav.calendar",
+  "/empresa/reservas": "nav.bookings",
+  "/empresa/avaliacoes": "nav.reviews",
+  "/empresa/financeiro": "nav.finance",
+  "/empresa/definicoes": "nav.companySettings",
+  "/agente": "nav.agentArea",
+  "/agente/clientes": "nav.clients",
+  "/agente/carteira": "nav.wallet",
 }
 
 export function DashboardShell({
@@ -30,9 +33,10 @@ export function DashboardShell({
   companies: SidebarCompany[]
   children: React.ReactNode
 }) {
+  const t = useT()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const title = TITLES[pathname] ?? "Início"
+  const title = t(TITLE_KEYS[pathname] ?? "nav.home")
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -61,7 +65,7 @@ export function DashboardShell({
             <button
               onClick={() => setMobileOpen(true)}
               className="lg:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700"
-              aria-label="Abrir menu"
+              aria-label={t("nav.openMenu")}
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -69,7 +73,11 @@ export function DashboardShell({
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+            <LocaleSwitcher />
+            <button
+              className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label={t("nav.notifications")}
+            >
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-600 rounded-full" />
             </button>

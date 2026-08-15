@@ -3,8 +3,11 @@ import { AlertTriangle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { getI18n } from "@/i18n/server"
 
 export default function LinkInvalidoPage() {
+  const { t } = getI18n()
+
   return (
     <div className="w-full max-w-md">
       <Card className="border-0 shadow-lg">
@@ -16,24 +19,22 @@ export default function LinkInvalidoPage() {
 
           {/* Title */}
           <h1 className="text-2xl font-bold text-slate-900 mb-3">
-            Este link já não é válido
+            {t("auth.invalidTitle")}
           </h1>
 
           {/* Description */}
-          <p className="text-slate-600 mb-8 max-w-sm">
-            O link de ativação expirou ou já foi utilizado. Peça um novo — enviamos de imediato para nome@empresa.cv
-          </p>
+          <p className="text-slate-600 mb-8 max-w-sm">{t("auth.invalidBody")}</p>
 
           {/* Send new link button */}
           <Button className="bg-orange-600 hover:bg-orange-700 mb-6">
-            Enviar novo link
+            {t("auth.invalidCta")}
           </Button>
 
           {/* Help text */}
           <p className="text-sm text-slate-500">
-            Precisa de ajuda?{" "}
+            {t("auth.invalidHelpPrefix")}{" "}
             <Link href="/ajuda" className="text-orange-600 hover:text-orange-700 font-medium">
-              Fale com a equipa WeeFly
+              {t("auth.invalidHelpLink")}
             </Link>
           </p>
         </CardContent>

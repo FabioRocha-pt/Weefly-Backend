@@ -20,28 +20,29 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { WeeFlyLogo } from "@/components/weefly-logo"
+import { useT } from "@/i18n/provider"
 
 interface NavItem {
-  label: string
+  labelKey: string
   href: string
   icon: React.ReactNode
 }
 
 const PROVIDER_NAV: NavItem[] = [
-  { label: "Início (todas as empresas)", href: "/inicio", icon: <Home className="w-5 h-5" /> },
-  { label: "Dashboard da empresa", href: "/empresa/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-  { label: "Produtos", href: "/empresa/produtos", icon: <Package className="w-5 h-5" /> },
-  { label: "Calendário & preços", href: "/empresa/calendario", icon: <Calendar className="w-5 h-5" /> },
-  { label: "Reservas", href: "/empresa/reservas", icon: <BookOpen className="w-5 h-5" /> },
-  { label: "Avaliações", href: "/empresa/avaliacoes", icon: <Star className="w-5 h-5" /> },
-  { label: "Financeiro", href: "/empresa/financeiro", icon: <Wallet className="w-5 h-5" /> },
-  { label: "Definições da empresa", href: "/empresa/definicoes", icon: <Settings className="w-5 h-5" /> },
+  { labelKey: "nav.homeAll", href: "/inicio", icon: <Home className="w-5 h-5" /> },
+  { labelKey: "nav.companyDashboard", href: "/empresa/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+  { labelKey: "nav.products", href: "/empresa/produtos", icon: <Package className="w-5 h-5" /> },
+  { labelKey: "nav.calendar", href: "/empresa/calendario", icon: <Calendar className="w-5 h-5" /> },
+  { labelKey: "nav.bookings", href: "/empresa/reservas", icon: <BookOpen className="w-5 h-5" /> },
+  { labelKey: "nav.reviews", href: "/empresa/avaliacoes", icon: <Star className="w-5 h-5" /> },
+  { labelKey: "nav.finance", href: "/empresa/financeiro", icon: <Wallet className="w-5 h-5" /> },
+  { labelKey: "nav.companySettings", href: "/empresa/definicoes", icon: <Settings className="w-5 h-5" /> },
 ]
 
 const AGENT_NAV: NavItem[] = [
-  { label: "Área de agente", href: "/agente", icon: <Compass className="w-5 h-5" /> },
-  { label: "Clientes", href: "/agente/clientes", icon: <Building className="w-5 h-5" /> },
-  { label: "Carteira", href: "/agente/carteira", icon: <Wallet className="w-5 h-5" /> },
+  { labelKey: "nav.agentArea", href: "/agente", icon: <Compass className="w-5 h-5" /> },
+  { labelKey: "nav.clients", href: "/agente/clientes", icon: <Building className="w-5 h-5" /> },
+  { labelKey: "nav.wallet", href: "/agente/carteira", icon: <Wallet className="w-5 h-5" /> },
 ]
 
 export type SidebarCompany = {
@@ -63,6 +64,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ companies, onClose }: SidebarProps) {
+  const t = useT()
   const pathname = usePathname()
   const router = useRouter()
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
@@ -96,11 +98,15 @@ export function Sidebar({ companies, onClose }: SidebarProps) {
                 : "bg-slate-900 text-white"
             )}
           >
-            {mode === "agent" ? "AGENTE" : "PRO"}
+            {mode === "agent" ? t("nav.agentBadge") : t("auth.proBadge")}
           </span>
         </Link>
         {onClose && (
-          <button onClick={onClose} className="lg:hidden p-1 text-slate-400 hover:text-slate-600" aria-label="Fechar menu">
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1 text-slate-400 hover:text-slate-600"
+            aria-label={t("nav.closeMenu")}
+          >
             <X className="w-5 h-5" />
           </button>
         )}
@@ -121,7 +127,7 @@ export function Sidebar({ companies, onClose }: SidebarProps) {
             )}
           >
             <Car className="w-4 h-4" />
-            <span>Fornecedor</span>
+            <span>{t("nav.modeProvider")}</span>
           </button>
           <button
             onClick={() => handleToggle("agent")}
@@ -135,7 +141,7 @@ export function Sidebar({ companies, onClose }: SidebarProps) {
             )}
           >
             <Compass className="w-4 h-4" />
-            <span>Agente</span>
+            <span>{t("nav.modeAgent")}</span>
           </button>
         </div>
       </div>
@@ -144,7 +150,7 @@ export function Sidebar({ companies, onClose }: SidebarProps) {
       {mode === "provider" && (
         <div className="px-4 pb-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 px-1">
-            Empresa ativa
+            {t("nav.activeCompany")}
           </p>
 
           {activeCompany ? (
@@ -179,7 +185,7 @@ export function Sidebar({ companies, onClose }: SidebarProps) {
                       onClick={() => setShowCompanyDropdown(false)}
                       className="w-full px-4 py-2 text-left text-sm text-orange-600 font-medium hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100"
                     >
-                      + Criar empresa
+                      {t("nav.createCompany")}
                     </Link>
                   </div>
                 </div>
@@ -190,7 +196,7 @@ export function Sidebar({ companies, onClose }: SidebarProps) {
               href="/criar-empresa"
               className="w-full flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all"
             >
-              + Criar primeira empresa
+              {t("nav.createFirstCompany")}
             </Link>
           )}
         </div>
@@ -218,7 +224,7 @@ export function Sidebar({ companies, onClose }: SidebarProps) {
                   )}
                 >
                   {item.icon}
-                  <span>{item.label}</span>
+                  <span>{t(item.labelKey)}</span>
                 </Link>
               </li>
             )
@@ -228,9 +234,11 @@ export function Sidebar({ companies, onClose }: SidebarProps) {
 
       {/* Footer */}
       <div className={cn("m-4 p-4 rounded-xl", isDark ? "bg-gray-800" : "bg-slate-50")}>
-        <p className={cn("text-sm font-semibold", isDark ? "text-white" : "text-slate-900")}>Login único.</p>
+        <p className={cn("text-sm font-semibold", isDark ? "text-white" : "text-slate-900")}>
+          {t("nav.footerTitle")}
+        </p>
         <p className={cn("text-xs mt-1", isDark ? "text-gray-400" : "text-slate-500")}>
-          Acede a todas as empresas sem PIN. Gestão de equipa (RBAC) chega em breve.
+          {t("nav.footerBody")}
         </p>
       </div>
     </aside>

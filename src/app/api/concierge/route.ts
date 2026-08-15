@@ -6,6 +6,7 @@ import { buildTravelRequestConfirmationEmail } from "@/lib/emails/travel-request
 import { buildTravelRequestNotificationEmail } from "@/lib/emails/travel-request-notification"
 import { markEmailOutcome, saveTravelRequest } from "@/lib/concierge-intake"
 import { bindTripRequestToCase } from "@/lib/booking-cases"
+import { getI18n } from "@/i18n/server"
 
 // Resend uses the Node runtime; keep this off the edge so nodemailer-style
 // SDKs and env secrets behave predictably.
@@ -34,11 +35,12 @@ const teamRecipients = TEAM_EMAILS.length > 0 ? TEAM_EMAILS : DEFAULT_TEAM_EMAIL
  * open a Lead + TripRequest.
  */
 export async function POST(request: Request) {
+  const { t, locale } = getI18n()
   let payload: unknown
   try {
     payload = await request.json()
   } catch {
-    return NextResponse.json({ error: "Corpo do pedido inválido." }, { status: 400 })
+    return NextResponse.json({ error: t("errors.invalidRequestBody") }, { status: 400 })
   }
 
   // Server-side validation mirrors the client schema (acceptance criterion 3.2).
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       {
-        error: "Dados do pedido inválidos.",
+        error: t("errors.invalidRequestData"),
         fieldErrors: parsed.error.flatten().fieldErrors,
       },
       { status: 422 }
@@ -58,7 +60,11 @@ export async function POST(request: Request) {
   // Persist FIRST. The database is the system of record: if Resend is down or
   // the address bounces, the lead must still be sitting in the back-office.
   // Delivery outcome is backfilled below once the sends have been attempted.
-  const saved = await saveTravelRequest(data, { sourceChannel: "browser" })
+  const saved = await saveTravelRequest(data, {
+    sourceChannel: "browser",
+    /* Guardado agora para os emails que saem mais tarde — ver 0008. */
+    locale,
+  })
 
   // When the form was reached through an admin-generated link, attach the
   // request to that case and close Link 1. A bad or already-used token is not
@@ -111,7 +117,12 @@ export async function POST(request: Request) {
     phone: data.phone,
     sourceChannel: "Formulário online (weefly.africa)",
   })
-  const confirmation = buildTravelRequestConfirmationEmail(trip)
+  /*
+   * A confirmação sai na língua em que a pessoa acabou de preencher o
+   * formulário — este pedido ainda traz o cookie do idioma, e é a única
+   * altura em todo o fluxo em que o sabemos de certeza.
+   */
+  const confirmation = buildTravelRequestConfirmationEmail(trip, t, locale)
 
   // The two sends are independent: a bounced client confirmation must never
   // cost the team its lead, and vice-versa.

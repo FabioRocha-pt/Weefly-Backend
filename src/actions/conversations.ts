@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { createClient } from "@/utils/supabase/server"
 import { postAgentMessage } from "@/lib/conversations"
+import { getI18n } from "@/i18n/server"
 
 export type ConversationActionState = { error: string | null }
 
@@ -19,19 +20,20 @@ export async function sendAgentMessage(
   caseId: string,
   body: string
 ): Promise<ConversationActionState> {
+  const { t } = getI18n()
   const text = body.trim()
-  if (!text) return { error: "Escreva alguma coisa." }
+  if (!text) return { error: t("errors.writeSomething") }
 
   const supabase = createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: "Sessão expirada. Volte a entrar." }
+  if (!user) return { error: t("errors.sessionExpired") }
 
   const sent = await postAgentMessage(caseId, text, user.id)
   if (!sent) {
     return {
-      error: "Este caso não tem conversa associada — chegou por link, não por chat.",
+      error: t("errors.caseHasNoConversation"),
     }
   }
 

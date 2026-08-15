@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { passwordResetSchema, type PasswordResetFormData } from "@/lib/validations"
+import { useT } from "@/i18n/provider"
 
 export function PasswordResetRequestForm() {
+  const t = useT()
   const [isSubmitted, setIsSubmitted] = useState(false)
 
   const form = useForm<PasswordResetFormData>({
@@ -36,15 +38,13 @@ export function PasswordResetRequestForm() {
             <Key className="w-10 h-10 text-green-600" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-3">
-            Email enviado
+            {t("auth.resetSentTitle")}
           </h1>
-          <p className="text-slate-600 mb-8 max-w-sm">
-            Enviámos um link de recuperação para o seu email. Clique no link para definir uma nova password.
-          </p>
+          <p className="text-slate-600 mb-8 max-w-sm">{t("auth.resetSentBody")}</p>
           <Link href="/login">
             <Button variant="outline">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao login
+              {t("auth.backToLogin")}
             </Button>
           </Link>
         </CardContent>
@@ -64,31 +64,35 @@ export function PasswordResetRequestForm() {
 
         {/* Title */}
         <h1 className="text-2xl font-bold text-slate-900 text-center mb-3">
-          Recuperar password
+          {t("auth.resetTitle")}
         </h1>
 
         {/* Description */}
         <p className="text-slate-600 text-center mb-8 max-w-sm mx-auto">
-          Indique o email da sua conta. Enviamos-lhe um link para definir uma nova password.
+          {t("auth.resetBody")}
         </p>
 
         {/* Form */}
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("auth.email")}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="o-seu@email.com"
+              placeholder={t("auth.resetEmailPlaceholder")}
               {...form.register("email")}
             />
             {form.formState.errors.email && (
-              <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
+              <p className="text-sm text-red-500">
+                {t(form.formState.errors.email.message ?? "")}
+              </p>
             )}
           </div>
 
           <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "A enviar..." : "Enviar link de recuperação"}
+            {form.formState.isSubmitting
+              ? t("auth.resetSubmitting")
+              : t("auth.resetSubmit")}
           </Button>
 
           <div className="text-center">
@@ -97,7 +101,7 @@ export function PasswordResetRequestForm() {
               className="text-sm text-slate-600 hover:text-orange-600 flex items-center justify-center space-x-1"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Voltar ao login</span>
+              <span>{t("auth.backToLogin")}</span>
             </Link>
           </div>
         </form>

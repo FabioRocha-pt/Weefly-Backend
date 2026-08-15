@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { handleClientTurn } from "@/lib/conversation-turn"
+import { getI18n } from "@/i18n/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -14,11 +15,12 @@ export const dynamic = "force-dynamic"
  * browser não é sítio para guardar nem uma coisa nem outra.
  */
 export async function POST(request: Request) {
+  const { t } = getI18n()
   let body: unknown
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: "Corpo inválido." }, { status: 400 })
+    return NextResponse.json({ error: t("errors.invalidBody") }, { status: 400 })
   }
 
   const { token, message } = (body ?? {}) as {
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
   }
 
   if (typeof message !== "string" || !message.trim()) {
-    return NextResponse.json({ error: "Mensagem vazia." }, { status: 422 })
+    return NextResponse.json({ error: t("errors.emptyMessage") }, { status: 422 })
   }
 
   const result = await handleClientTurn({
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
 
   if (!result) {
     return NextResponse.json(
-      { error: "Não foi possível processar a mensagem." },
+      { error: t("errors.messageProcessFailed") },
       { status: 503 }
     )
   }

@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useTransition } from"react"
-import { Check, Loader2 } from"lucide-react"
+import { useState, useTransition } from "react"
+import { Check, Loader2 } from "lucide-react"
 
-import { cn } from"@/lib/utils"
-import { updateRequestStatus } from"@/actions/travel-requests"
+import { cn } from "@/lib/utils"
+import { updateRequestStatus } from "@/actions/travel-requests"
 import {
- REQUEST_STATUSES,
- STATUS_LABELS,
- type RequestStatus,
-} from"@/lib/travel-request-status"
+  REQUEST_STATUSES,
+  type RequestStatus,
+} from "@/lib/travel-request-status"
+import { useT } from "@/i18n/provider"
 
 /**
  * Status workflow control. Optimistic on the button that was clicked, with a
@@ -22,6 +22,7 @@ export function StatusSelector({
  id: string
  current: RequestStatus
 }) {
+ const t = useT()
  const [status, setStatus] = useState<RequestStatus>(current)
  const [error, setError] = useState<string | null>(null)
  const [pending, startTransition] = useTransition()
@@ -57,10 +58,10 @@ export function StatusSelector({
  onClick={() => change(s)}
  disabled={pending}
  className={cn(
-"flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-all disabled:opacity-60",
+                  "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-all disabled:opacity-60",
  active
- ?"border-adm-ember bg-adm-ember/10 text-adm-ember-dark"
- :"border-adm-line bg-adm-panel text-adm-txt-2 hover:border-adm-muted"
+ ? "border-adm-ember bg-adm-ember/10 text-adm-ember-dark"
+ : "border-adm-line bg-adm-panel text-adm-txt-2 hover:border-adm-muted"
  )}
  >
  {active &&
@@ -69,7 +70,7 @@ export function StatusSelector({
  ) : (
  <Check className="h-3.5 w-3.5" />
  ))}
- {STATUS_LABELS[s]}
+ {t("requestStatus." + s)}
  </button>
  )
  })}

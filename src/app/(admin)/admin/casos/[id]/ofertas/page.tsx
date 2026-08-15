@@ -3,20 +3,9 @@ import { notFound } from "next/navigation"
 import { getCase, type BookingCaseRow } from "@/lib/booking-cases"
 import { ensureProposal, paxOf } from "@/lib/proposals"
 import { OfferComposer } from "@/components/admin/offer-composer"
+import { getI18n } from "@/i18n/server"
 
 export const dynamic = "force-dynamic"
-
-const TRIP_TYPE_LABELS: Record<string, string> = {
-  round_trip: "Ida e volta",
-  one_way: "Só ida",
-  multi_city: "Multi-destino",
-}
-
-const CABIN_LABELS: Record<string, string> = {
-  economy: "Económica",
-  business: "Executiva",
-  first: "Primeira",
-}
 
 function formatDate(value: string | null): string {
   if (!value) return "—"
@@ -30,6 +19,7 @@ export default async function CaseOffersPage({
 }: {
   params: { id: string }
 }) {
+  const { t } = getI18n()
   const bookingCase = await getCase(params.id)
   if (!bookingCase) notFound()
 
@@ -38,8 +28,7 @@ export default async function CaseOffersPage({
     return (
       <div className="rounded-xl border border-adm-line bg-adm-panel p-8 text-center">
         <p className="text-[13px] text-adm-muted">
-          Não foi possível abrir a proposta deste caso. Verifique se a migração
-          0005 já foi aplicada à base de dados.
+          {t("admin.composerNoProposal")}
         </p>
       </div>
     )
@@ -64,6 +53,7 @@ export default async function CaseOffersPage({
  * estático, não tem razão nenhuma para ir em JavaScript para o browser.
  */
 function ClientBrief({ bookingCase }: { bookingCase: BookingCaseRow }) {
+  const { t } = getI18n()
   const trip = bookingCase.trip_request
   const link1 = bookingCase.links.find((l) => l.stage === 1)
 
@@ -71,16 +61,14 @@ function ClientBrief({ bookingCase }: { bookingCase: BookingCaseRow }) {
     <aside className="rounded-xl border border-adm-line bg-adm-panel xl:sticky xl:top-[18px]">
       <header className="border-b border-adm-line-soft p-3.5">
         <h2 className="text-xs font-extrabold uppercase tracking-[.11em] text-adm-muted">
-          Pedido do cliente
+          {t("admin.briefTitle")}
         </h2>
       </header>
 
       <div className="p-3.5">
         {!trip ? (
           <p className="text-[12.5px] leading-relaxed text-adm-muted">
-            O cliente ainda não preencheu o link 1. Pode compor a proposta à
-            mesma — os totais assumem <b className="text-adm-txt-2">1 adulto</b>{" "}
-            até o pedido chegar.
+            {t("admin.briefNoRequest")}
           </p>
         ) : (
           <>
@@ -98,28 +86,46 @@ function ClientBrief({ bookingCase }: { bookingCase: BookingCaseRow }) {
               </div>
             </div>
 
-            <Kv label="Tipo" value={TRIP_TYPE_LABELS[trip.trip_type] ?? trip.trip_type} />
-            <Kv label="Ida" value={formatDate(trip.depart_date)} mono />
+            <Kv
+              label={t("admin.briefType")}
+              value={t("tripTypes." + trip.trip_type)}
+            />
+            <Kv label={t("admin.briefOut")} value={formatDate(trip.depart_date)} mono />
             {trip.return_date && (
-              <Kv label="Volta" value={formatDate(trip.return_date)} mono />
+              <Kv
+                label={t("admin.briefBack")}
+                value={formatDate(trip.return_date)}
+                mono
+              />
             )}
-            <Kv label="Adultos" value={String(trip.adults)} mono />
+            <Kv label={t("admin.briefAdults")} value={String(trip.adults)} mono />
             {trip.children > 0 && (
-              <Kv label="Crianças 2–11" value={String(trip.children)} mono />
+              <Kv
+                label={t("admin.briefChildren")}
+                value={String(trip.children)}
+                mono
+              />
             )}
             {trip.infants > 0 && (
-              <Kv label="Bebés" value={String(trip.infants)} mono />
+              <Kv label={t("admin.briefInfants")} value={String(trip.infants)} mono />
             )}
             <Kv
-              label="Classe"
-              value={CABIN_LABELS[trip.cabin_class] ?? trip.cabin_class}
+              label={t("admin.briefClass")}
+              value={t("cabins." + trip.cabin_class)}
             />
-            <Kv label="Canal" value={trip.lead?.source_channel ?? "—"} />
+            <Kv
+              label={t("admin.briefChannel")}
+              value={
+                trip.lead?.source_channel
+                  ? t("channels." + trip.lead.source_channel)
+                  : "—"
+              }
+            />
 
             {link1?.first_opened_at && (
               <div className="mt-3 flex items-center gap-2 text-xs text-adm-muted">
                 <span className="h-1.5 w-1.5 rounded-full bg-adm-ok" />
-                Link 1 aberto pelo cliente
+                {t("admin.briefLinkOpened")}
               </div>
             )}
           </>

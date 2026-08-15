@@ -11,6 +11,9 @@
  * autenticação, e sem ele o email não tem para onde apontar. É por isso que a
  * página do cliente leva `robots: noindex` e o rodapé avisa que o endereço é
  * pessoal.
+ *
+ * O email do cliente recebe um `Translator` de fora — sai na língua dele. O
+ * aviso interno, mais abaixo, fica em português: quem o lê é a equipa.
  */
 
 import {
@@ -33,6 +36,12 @@ import {
   stopsLabel,
   timeOf,
 } from "@/lib/proposal-math"
+import { DEFAULT_LOCALE, LOCALE_TAGS, type Locale } from "@/i18n/config"
+import { createTranslator, type Translator } from "@/i18n/translate"
+import ptDictionary from "@/i18n/dictionaries/pt.json"
+
+/** O tradutor português: o do aviso interno, e o recurso de quem não indicar idioma. */
+const pt = createTranslator(ptDictionary as Record<string, unknown>)
 
 export interface ProposalEmailData {
   clientName: string
@@ -48,14 +57,10 @@ export interface ProposalEmailData {
   revision: number
 }
 
-function paxLine(pax: PaxCounts): string {
-  const parts = [`${pax.adults} ${pax.adults === 1 ? "adulto" : "adultos"}`]
-  if (pax.children > 0) {
-    parts.push(`${pax.children} ${pax.children === 1 ? "criança" : "crianças"}`)
-  }
-  if (pax.infants > 0) {
-    parts.push(`${pax.infants} ${pax.infants === 1 ? "bebé" : "bebés"}`)
-  }
+function paxLine(pax: PaxCounts, t: Translator): string {
+  const parts = [t("common.adults", { count: pax.adults })]
+  if (pax.children > 0) parts.push(t("common.children", { count: pax.children }))
+  if (pax.infants > 0) parts.push(t("common.infants", { count: pax.infants }))
   return parts.join(" · ")
 }
 
@@ -72,12 +77,12 @@ function legLine(offer: Offer, direction: "ida" | "volta"): string | null {
   ].join(" · ")
 }
 
-function offerCard(offer: Offer, data: ProposalEmailData): string {
+function offerCard(offer: Offer, data: ProposalEmailData, t: Translator): string {
   const total = formatMoney(offerTotal(offer, data.pax), data.currency)
   const badges = [
-    offer.is_recommended ? "Recomendada pelo agente" : null,
-    offer.is_cheapest ? "Mais barata" : null,
-    offer.is_fastest ? "Mais rápida" : null,
+    offer.is_recommended ? t("proposal.badgeRecommended") : null,
+    offer.is_cheapest ? t("proposal.badgeCheapest") : null,
+    offer.is_fastest ? t("proposal.badgeFastest") : null,
   ].filter(Boolean) as string[]
 
   const badgeHtml = badges
@@ -91,7 +96,7 @@ function offerCard(offer: Offer, data: ProposalEmailData): string {
     .map((d) => {
       const line = legLine(offer, d)
       if (!line) return ""
-      const label = d === "ida" ? "Ida" : "Volta"
+      const label = t(d === "ida" ? "legs.outbound" : "legs.inbound")
       return `<tr>
         <td style="padding:5px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${MUTED};width:44px;vertical-align:top;">${label}</td>
         <td style="padding:5px 0;font-size:13px;color:${INK};">${escapeHtml(line)}</td>
@@ -106,7 +111,7 @@ function offerCard(offer: Offer, data: ProposalEmailData): string {
     <tr>
       <td style="padding:16px 18px;">
         ${badgeHtml}
-        <p style="margin:${badges.length ? "4px" : "0"} 0 10px;font-size:16px;font-weight:700;color:${INK};">${escapeHtml(offer.name || "Opção sem nome")}</p>
+        <p style="margin:${badges.length ? "4px" : "0"} 0 10px;font-size:16px;font-weight:700;color:${INK};">${escapeHtml(offer.name || t("email.proposalUnnamed"))}</p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${legs}</table>
         ${codes ? `<p style="margin:10px 0 0;font-size:11px;color:${MUTED};font-family:monospace;">${escapeHtml(codes)}${offer.fare_name ? ` — ${escapeHtml(offer.fare_name)}` : ""}</p>` : ""}
         ${offer.agent_note ? `<p style="margin:10px 0 0;background:${SURFACE_ALT};border-radius:8px;padding:10px 11px;font-size:12.5px;line-height:1.5;color:${MUTED};">${escapeHtml(offer.agent_note)}</p>` : ""}
@@ -114,14 +119,18 @@ function offerCard(offer: Offer, data: ProposalEmailData): string {
     </tr>
     <tr>
       <td style="padding:0 18px 16px;border-top:1px solid ${BORDER};">
-        <p style="margin:12px 0 0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${MUTED};">Total · ${escapeHtml(paxLine(data.pax))}</p>
+        <p style="margin:12px 0 0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${MUTED};">${escapeHtml(t("email.proposalTotalFor", { pax: paxLine(data.pax, t) }))}</p>
         <p style="margin:2px 0 0;font-size:20px;font-weight:700;color:${INK};letter-spacing:-0.02em;">${escapeHtml(total)}</p>
       </td>
     </tr>
   </table>`
 }
 
-export function buildProposalPublishedEmail(data: ProposalEmailData): {
+export function buildProposalPublishedEmail(
+  data: ProposalEmailData,
+  t: Translator = pt,
+  locale: Locale = DEFAULT_LOCALE
+): {
   subject: string
   html: string
   text: string
@@ -130,18 +139,20 @@ export function buildProposalPublishedEmail(data: ProposalEmailData): {
   const name = escapeHtml(data.clientName)
   const route = `${escapeHtml(data.origin)} → ${escapeHtml(data.destination)}`
 
-  const subject =
-    data.revision > 1
-      ? `Atualizámos a sua proposta · ${data.origin} → ${data.destination}`
-      : `A sua proposta de viagem está pronta · ${data.origin} → ${data.destination}`
+  const plainRoute = `${data.origin} → ${data.destination}`
+
+  const subject = t(
+    data.revision > 1 ? "email.proposalSubjectRevised" : "email.proposalSubjectNew",
+    { route: plainRoute }
+  )
 
   const intro =
     data.revision > 1
-      ? "Revimos os valores da sua proposta. As opções abaixo substituem as que lhe tínhamos enviado."
-      : `Preparámos ${count === 1 ? "uma opção" : `${count} opções`} para a sua viagem. Abra o link para ver o itinerário completo, as bagagens incluídas e o preço detalhado de cada uma.`
+      ? t("email.proposalIntroRevised")
+      : t("email.proposalIntro", { count })
 
   const html = `<!DOCTYPE html>
-<html lang="pt">
+<html lang="${LOCALE_TAGS[locale]}">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -167,11 +178,11 @@ export function buildProposalPublishedEmail(data: ProposalEmailData): {
         <tr>
           <td style="padding:36px 32px 4px;">
             <h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:${INK};letter-spacing:-0.02em;">
-              ${data.revision > 1 ? "Proposta atualizada" : `Encontrámos ${count === 1 ? "uma opção" : `${count} opções`} para si`}
+              ${escapeHtml(data.revision > 1 ? t("email.proposalHeadingRevised") : t("email.proposalHeading", { count }))}
             </h1>
             <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:${EMBER_RED};">${route}${data.reference ? ` · ${escapeHtml(data.reference)}` : ""}</p>
             <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${MUTED};">
-              Olá <strong style="color:${INK};">${name}</strong>. ${escapeHtml(intro)}
+              ${t("email.proposalHello", { name: `<strong style="color:${INK};">${name}</strong>`, intro: escapeHtml(intro) })}
             </p>
             ${
               data.openingMessage
@@ -183,18 +194,17 @@ export function buildProposalPublishedEmail(data: ProposalEmailData): {
 
         <tr>
           <td style="padding:8px 32px 0;">
-            ${data.offers.map((o) => offerCard(o, data)).join("")}
+            ${data.offers.map((o) => offerCard(o, data, t)).join("")}
           </td>
         </tr>
 
         <tr>
           <td style="padding:16px 32px 8px;" align="center">
             <a href="${data.link}" style="display:inline-block;background:${EMBER_RED};color:#ffffff;font-size:15px;font-weight:700;padding:15px 30px;border-radius:999px;">
-              Ver e escolher a minha opção
+              ${escapeHtml(t("email.proposalCta"))}
             </a>
             <p style="margin:14px 0 0;font-size:12px;line-height:1.6;color:${MUTED};">
-              Este endereço é pessoal — depois de escolher, é aí que preenche os dados dos passaportes.
-              Não o partilhe.
+              ${escapeHtml(t("email.proposalPersonalLink"))}
             </p>
           </td>
         </tr>
@@ -203,11 +213,10 @@ export function buildProposalPublishedEmail(data: ProposalEmailData): {
           <td style="padding:28px 32px 32px;">
             <hr style="border:none;border-top:1px solid ${BORDER};margin:0 0 16px;" />
             <p style="margin:0;font-size:12px;line-height:1.6;color:#98A1AE;">
-              Recebe esta mensagem porque pediu uma cotação de viagem à WeeFly.
-              Se tiver dúvidas, responda a este email e fala diretamente com o seu agente.
+              ${escapeHtml(t("email.proposalFooter"))}
             </p>
             <p style="margin:12px 0 0;font-size:12px;color:#98A1AE;">
-              © ${new Date().getFullYear()} WeeFly Africa · Praia, Cabo Verde
+              ${escapeHtml(t("email.copyright", { year: new Date().getFullYear() }))}
             </p>
           </td>
         </tr>
@@ -218,25 +227,25 @@ export function buildProposalPublishedEmail(data: ProposalEmailData): {
 </html>`
 
   const text = [
-    `Olá ${data.clientName},`,
+    t("email.proposalTextHello", { name: data.clientName }),
     "",
     intro,
     data.openingMessage ? `\n${data.openingMessage}` : "",
     "",
     ...data.offers.flatMap((offer) => {
       const lines = [
-        `— ${offer.name || "Opção sem nome"} — ${formatMoney(offerTotal(offer, data.pax), data.currency)}`,
+        `— ${offer.name || t("email.proposalUnnamed")} — ${formatMoney(offerTotal(offer, data.pax), data.currency)}`,
       ]
       const ida = legLine(offer, "ida")
       const volta = legLine(offer, "volta")
-      if (ida) lines.push(`  Ida:   ${ida}`)
-      if (volta) lines.push(`  Volta: ${volta}`)
+      if (ida) lines.push(`  ${t("legs.outbound")}: ${ida}`)
+      if (volta) lines.push(`  ${t("legs.inbound")}: ${volta}`)
       if (offer.agent_note) lines.push(`  ${offer.agent_note}`)
       return [...lines, ""]
     }),
-    `Ver e escolher: ${data.link}`,
+    t("email.proposalTextSee", { link: data.link }),
     "",
-    "Este endereço é pessoal. Não o partilhe.",
+    t("email.proposalTextPersonal"),
     "© WeeFly Africa",
   ].join("\n")
 
@@ -273,7 +282,7 @@ export function buildProposalTeamEmail(data: ProposalTeamEmailData): {
       const colour = margin <= 0 ? EMBER_RED : "#2F9E77"
       return `<tr>
         <td style="padding:10px 0;border-bottom:1px solid ${BORDER};font-size:13px;color:${INK};">
-          ${escapeHtml(offer.name || "Opção sem nome")}
+          ${escapeHtml(offer.name || pt("email.proposalUnnamed"))}
           ${offer.is_recommended ? `<span style="color:${MUTED};font-size:11px;"> · recomendada</span>` : ""}
         </td>
         <td style="padding:10px 0;border-bottom:1px solid ${BORDER};font-size:13px;color:${INK};text-align:right;font-weight:600;">${escapeHtml(formatMoney(total, data.currency))}</td>
@@ -291,7 +300,7 @@ export function buildProposalTeamEmail(data: ProposalTeamEmailData): {
       <p style="margin:0 0 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.09em;color:${EMBER_RED};">Proposta enviada · revisão R${data.revision}</p>
       <h1 style="margin:0 0 4px;font-size:19px;font-weight:800;color:${INK};">${escapeHtml(data.clientName)} · ${escapeHtml(data.origin)} → ${escapeHtml(data.destination)}</h1>
       <p style="margin:0 0 18px;font-size:13px;color:${MUTED};">
-        ${escapeHtml(paxLine(data.pax))}${data.reference ? ` · ${escapeHtml(data.reference)}` : ""}${data.clientEmail ? ` · ${escapeHtml(data.clientEmail)}` : ""}${data.agentName ? ` · enviada por ${escapeHtml(data.agentName)}` : ""}
+        ${escapeHtml(paxLine(data.pax, pt))}${data.reference ? ` · ${escapeHtml(data.reference)}` : ""}${data.clientEmail ? ` · ${escapeHtml(data.clientEmail)}` : ""}${data.agentName ? ` · enviada por ${escapeHtml(data.agentName)}` : ""}
       </p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
@@ -312,13 +321,13 @@ export function buildProposalTeamEmail(data: ProposalTeamEmailData): {
   const text = [
     `Proposta R${data.revision} enviada`,
     `${data.clientName} · ${data.origin} -> ${data.destination}`,
-    `${paxLine(data.pax)}${data.reference ? ` · ${data.reference}` : ""}${data.clientEmail ? ` · ${data.clientEmail}` : ""}`,
+    `${paxLine(data.pax, pt)}${data.reference ? ` · ${data.reference}` : ""}${data.clientEmail ? ` · ${data.clientEmail}` : ""}`,
     "",
     ...data.offers.map((offer, i) => {
       const total = offerTotal(offer, data.pax)
       const margin = total - (data.costs[i] ?? 0)
       const pct = total > 0 ? ((margin / total) * 100).toFixed(1) : "0,0"
-      return `- ${offer.name || "Opção sem nome"}: ${formatMoney(total, data.currency)} · margem ${formatMoney(margin, data.currency)} (${pct}%)`
+      return `- ${offer.name || pt("email.proposalUnnamed")}: ${formatMoney(total, data.currency)} · margem ${formatMoney(margin, data.currency)} (${pct}%)`
     }),
     "",
     `Link do cliente: ${data.link}`,

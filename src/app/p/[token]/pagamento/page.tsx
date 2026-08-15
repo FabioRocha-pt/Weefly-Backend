@@ -5,11 +5,8 @@ import { createAdminClient } from "@/utils/supabase/admin"
 import { LinkUnavailable } from "@/components/concierge/link-unavailable"
 import { CaseStepper } from "@/components/concierge/case-stepper"
 import { DeclarePaidButton } from "@/components/concierge/declare-paid-button"
-import {
-  PAYMENT_STATUS_LABELS,
-  formatAmount,
-  type CasePayment,
-} from "@/lib/case-status"
+import { getI18n } from "@/i18n/server"
+import { formatAmount, type CasePayment } from "@/lib/case-status"
 
 export const dynamic = "force-dynamic"
 
@@ -34,6 +31,7 @@ export default async function CasePaymentPage({
 }: {
   params: { token: string }
 }) {
+  const { t } = getI18n()
   const lookup = await getCaseByToken(params.token, 3)
   if (!lookup.ok) return <LinkUnavailable reason={lookup.reason} />
 
@@ -63,27 +61,18 @@ export default async function CasePaymentPage({
             )}
           </div>
           <h1 className="text-2xl font-bold text-slate-900">
-            {issued ? "Bilhetes emitidos" : "Pagamento confirmado"}
+            {t(issued ? "payment.issuedTitle" : "payment.confirmedTitle")}
           </h1>
           <p className="mt-3 leading-relaxed text-slate-500">
-            {issued ? (
-              <>
-                Está tudo tratado. Os bilhetes foram enviados para o seu email —
-                confirme também a pasta de spam se não os encontrar.
-              </>
-            ) : (
-              <>
-                Obrigado! Recebemos o seu pagamento de{" "}
-                <strong className="text-slate-900">
-                  {formatAmount(payment.amount, payment.currency)}
-                </strong>
-                . Vamos emitir os bilhetes e enviá-los para o seu email.
-              </>
-            )}
+            {issued
+              ? t("payment.issuedBody")
+              : t("payment.confirmedBody", {
+                  amount: formatAmount(payment.amount, payment.currency),
+                })}
           </p>
           {trip?.reference && (
             <p className="mt-5 inline-block rounded-lg bg-slate-50 px-4 py-2 text-sm text-slate-500">
-              Referência:{" "}
+              {t("common.reference")}:{" "}
               <strong className="font-mono text-slate-900">
                 {trip.reference}
               </strong>
@@ -106,13 +95,13 @@ export default async function CasePaymentPage({
           </p>
         )}
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-          Pagamento
+          {t("payment.title")}
         </h1>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="border-b border-slate-100 pb-6 text-center">
-          <p className="text-sm text-slate-500">Total a pagar</p>
+          <p className="text-sm text-slate-500">{t("payment.totalToPay")}</p>
           <p className="mt-2 text-4xl font-bold tracking-tight text-slate-900">
             {formatAmount(payment.amount, payment.currency)}
           </p>
@@ -133,11 +122,11 @@ export default async function CasePaymentPage({
                 href={payment.payment_url}
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-orange-600 px-6 py-4 font-bold text-white transition-colors hover:bg-orange-700"
               >
-                Pagar agora
+                {t("payment.payNow")}
               </a>
               <p className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
                 <ShieldCheck className="h-3.5 w-3.5" />
-                Pagamento processado de forma segura pela WeePay
+                {t("payment.securedBy")}
               </p>
             </>
           ) : (
@@ -153,21 +142,17 @@ export default async function CasePaymentPage({
               <div className="rounded-xl bg-slate-50 p-5 text-center">
                 <Clock className="mx-auto mb-3 h-6 w-6 text-slate-400" />
                 <p className="text-sm font-medium text-slate-900">
-                  Valor fechado, a combinar o pagamento
+                  {t("payment.arrangingTitle")}
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                  O seu agente entra em contacto com a forma de pagamento. Se
-                  preferir adiantar-se, fale connosco em{" "}
-                  <a
-                    href="mailto:info@weefly.africa"
-                    className="font-semibold text-orange-600"
-                  >
-                    info@weefly.africa
-                  </a>
-                  .
+                  {t("payment.arrangingBody", {
+                    email: t("common.supportEmail"),
+                  })}
                 </p>
                 <p className="mt-3 text-xs text-slate-400">
-                  Estado: {PAYMENT_STATUS_LABELS[payment.status]}
+                  {t("payment.statusLabel", {
+                    status: t(`paymentStatus.${payment.status}`),
+                  })}
                 </p>
               </div>
 
@@ -194,31 +179,29 @@ function AwaitingFare({
 }: {
   trip: { origin: string; destination: string; reference: string } | null
 }) {
+  const { t } = getI18n()
   return (
     <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-10">
       <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50">
         <Hourglass className="h-8 w-8 text-slate-400" />
       </div>
       <h1 className="text-2xl font-bold text-slate-900">
-        Ainda a preparar o valor
+        {t("payment.awaitingFareTitle")}
       </h1>
       {trip && (
         <p className="mt-2 text-sm font-semibold uppercase tracking-wider text-orange-600">
           {trip.origin} → {trip.destination}
         </p>
       )}
-      <p className="mt-3 leading-relaxed text-slate-500">
-        A nossa equipa está a fechar a melhor tarifa para a sua viagem. Assim
-        que estiver pronta, o valor aparece nesta mesma página — guarde o link.
-      </p>
+      <p className="mt-3 leading-relaxed text-slate-500">{t("payment.awaitingFareBody")}</p>
       {trip?.reference && (
         <p className="mt-5 inline-block rounded-lg bg-slate-50 px-4 py-2 text-sm text-slate-500">
-          Referência:{" "}
+          {t("common.reference")}:{" "}
           <strong className="font-mono text-slate-900">{trip.reference}</strong>
         </p>
       )}
       <p className="mt-6 text-sm text-slate-400">
-        Dúvidas?{" "}
+        {t("payment.questions")}{" "}
         <a
           href="mailto:info@weefly.africa"
           className="font-semibold text-orange-600"

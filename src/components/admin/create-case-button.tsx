@@ -7,6 +7,8 @@ import { Check, Copy, Loader2, Plus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createCase } from "@/actions/booking-cases"
 import { LINK_STAGE_PATHS } from "@/lib/case-status"
+import { useT } from "@/i18n/provider"
+import { translateMessage } from "@/i18n/translate"
 
 /*
  * O link 2 não está aqui de propósito.
@@ -15,9 +17,9 @@ import { LINK_STAGE_PATHS } from "@/lib/case-status"
  * mostrar agora um endereço que responde "ainda não disponível" ensinaria o
  * vendedor a enviar links partidos.
  */
-const STAGES: { stage: number; title: string; hint: string }[] = [
-  { stage: 1, title: "1 · Pedido de viagem", hint: "para onde vai, datas, quem viaja" },
-  { stage: 3, title: "3 · Pagamento", hint: "só mostra valor depois de o definir" },
+const STAGES = [
+  { stage: 1, titleKey: "admin.newCaseStage1", hintKey: "admin.newCaseStage1Hint" },
+  { stage: 3, titleKey: "admin.newCaseStage3", hintKey: "admin.newCaseStage3Hint" },
 ]
 
 /**
@@ -29,6 +31,7 @@ const STAGES: { stage: number; title: string; hint: string }[] = [
  * work — the token, the three addresses, and a message ready to paste.
  */
 export function CreateCaseButton() {
+  const t = useT()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [token, setToken] = useState<string | null>(null)
@@ -40,7 +43,7 @@ export function CreateCaseButton() {
     startTransition(async () => {
       const result = await createCase()
       if (result.error || !result.token) {
-        setError(result.error ?? "Não foi possível criar o link.")
+        setError(result.error ?? "errors.caseCreateFailed")
         setOpen(true)
         return
       }
@@ -59,13 +62,7 @@ export function CreateCaseButton() {
   const origin = typeof window !== "undefined" ? window.location.origin : ""
   const link1 = token ? `${origin}/p/${token}` : ""
 
-  const message = token
-    ? `Olá! Aqui está o seu link pessoal WeeFly para eu procurar as melhores tarifas:
-
-${link1}
-
-Preencha para onde vai, as datas e quem viaja. Recebo logo o pedido e envio-lhe as opções.`
-    : ""
+  const message = token ? t("admin.newCaseClientMessage", { link: link1 }) : ""
 
   return (
     <>
@@ -80,7 +77,7 @@ Preencha para onde vai, as datas e quem viaja. Recebo logo o pedido e envio-lhe 
         ) : (
           <Plus className="h-3.5 w-3.5" />
         )}
-        Novo link de atendimento
+        {t("admin.newCase")}
       </button>
 
       {open && (
@@ -94,18 +91,18 @@ Preencha para onde vai, as datas e quem viaja. Recebo logo o pedido e envio-lhe 
             <header className="flex items-start justify-between gap-4 border-b border-adm-line p-5">
               <div>
                 <h2 className="text-base font-bold text-adm-txt">
-                  {error ? "Não foi possível criar" : "Link criado"}
+                  {error ? t("admin.newCaseFailed") : t("admin.newCaseCreated")}
                 </h2>
                 <p className="mt-1 text-[12.5px] leading-relaxed text-adm-muted">
                   {error
-                    ? "O caso não chegou a ser gravado."
-                    : "Copie e cole na conversa. O caso já aparece na lista em E0."}
+                    ? t("admin.newCaseFailedHint")
+                    : t("admin.newCaseCreatedHint")}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={close}
-                aria-label="Fechar"
+                aria-label={t("common.close")}
                 className="rounded-md p-1.5 text-adm-muted transition-colors hover:bg-adm-raise hover:text-adm-txt"
               >
                 <X className="h-4 w-4" />
@@ -115,43 +112,40 @@ Preencha para onde vai, as datas e quem viaja. Recebo logo o pedido e envio-lhe 
             <div className="flex-1 space-y-5 overflow-y-auto p-5">
               {error ? (
                 <p className="rounded-lg bg-adm-ember/10 p-3 text-[13px] text-adm-ember">
-                  {error}
+                  {translateMessage(t, error)}
                 </p>
               ) : (
                 <>
                   <section>
                     <h3 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-adm-muted">
-                      Endereços já disponíveis
+                      {t("admin.newCaseAddresses")}
                     </h3>
                     <div className="space-y-2">
-                      {STAGES.map(({ stage, title, hint }) => (
+                      {STAGES.map(({ stage, titleKey, hintKey }) => (
                         <CopyRow
                           key={stage}
-                          title={title}
-                          hint={hint}
+                          title={t(titleKey)}
+                          hint={t(hintKey)}
+                          copyLabel={t("common.copy")}
+                          copiedLabel={t("common.copied")}
                           value={`${origin}/p/${token}${LINK_STAGE_PATHS[stage]}`}
                         />
                       ))}
                     </div>
                     <p className="mt-2.5 rounded-lg border border-dashed border-adm-line p-2.5 text-[11.5px] leading-relaxed text-adm-muted">
                       <b className="text-adm-txt-2">
-                        2 · Proposta e passageiros
+                        {t("admin.newCaseStage2Pending")}
                       </b>{" "}
-                      — ainda não existe. Nasce quando compuser as opções no
-                      separador Ofertas e carregar em{" "}
-                      <b className="text-adm-txt-2">Publicar e avisar cliente</b>
-                      , que envia o endereço ao cliente por email.
+                      {t("admin.newCaseStage2PendingHint")}
                     </p>
                     <p className="mt-3 rounded-lg bg-adm-warn/10 p-2.5 text-[11.5px] leading-relaxed text-adm-warn">
-                      Estes links dão acesso aos dados dos passageiros. Envie-os
-                      só ao cliente, na conversa onde o atendeu.{" "}
-                      <b>Nunca em grupos.</b>
+                      {t("admin.newCaseWarning")}
                     </p>
                   </section>
 
                   <section>
                     <h3 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-adm-muted">
-                      Mensagem pronta a enviar
+                      {t("admin.newCaseMessage")}
                     </h3>
                     <textarea
                       readOnly
@@ -160,14 +154,19 @@ Preencha para onde vai, as datas e quem viaja. Recebo logo o pedido e envio-lhe 
                       className="min-h-[150px] w-full rounded-lg border border-adm-line bg-adm-bg p-3 text-[12.5px] leading-relaxed text-adm-txt-2 outline-none focus:border-adm-ember"
                     />
                     <div className="mt-2 flex gap-2">
-                      <CopyButton value={message} label="Copiar mensagem" wide />
+                      <CopyButton
+                        value={message}
+                        label={t("admin.newCaseCopyMessage")}
+                        copiedLabel={t("common.copied")}
+                        wide
+                      />
                       <a
                         href={`https://wa.me/?text=${encodeURIComponent(message)}`}
                         target="_blank"
                         rel="noreferrer"
                         className="flex-1 rounded-lg border border-adm-line bg-adm-raise px-3 py-2 text-center text-[12px] font-semibold text-adm-txt-2 transition-colors hover:text-adm-txt"
                       >
-                        Abrir no WhatsApp
+                        {t("admin.newCaseWhatsapp")}
                       </a>
                     </div>
                   </section>
@@ -181,7 +180,7 @@ Preencha para onde vai, as datas e quem viaja. Recebo logo o pedido e envio-lhe 
                 onClick={close}
                 className="flex-1 rounded-lg border border-adm-line bg-adm-raise px-3 py-2 text-[13px] font-semibold text-adm-txt-2 transition-colors hover:text-adm-txt"
               >
-                Fechar
+                {t("common.close")}
               </button>
               {!error && (
                 <button
@@ -190,7 +189,7 @@ Preencha para onde vai, as datas e quem viaja. Recebo logo o pedido e envio-lhe 
                   disabled={pending}
                   className="flex-1 rounded-lg bg-adm-ember px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-adm-ember-dark disabled:opacity-60"
                 >
-                  Criar outro
+                  {t("admin.newCaseAnother")}
                 </button>
               )}
             </footer>
@@ -205,16 +204,20 @@ function CopyRow({
   title,
   hint,
   value,
+  copyLabel,
+  copiedLabel,
 }: {
   title: string
   hint: string
   value: string
+  copyLabel: string
+  copiedLabel: string
 }) {
   return (
     <div className="rounded-lg border border-adm-line bg-adm-bg p-2.5">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[12px] font-semibold text-adm-txt">{title}</span>
-        <CopyButton value={value} label="Copiar" />
+        <CopyButton value={value} label={copyLabel} copiedLabel={copiedLabel} />
       </div>
       <p className="mt-0.5 text-[11px] text-adm-muted">{hint}</p>
       <code className="mt-1.5 block break-all font-mono text-[11px] text-adm-txt-2">
@@ -227,10 +230,12 @@ function CopyRow({
 function CopyButton({
   value,
   label,
+  copiedLabel,
   wide,
 }: {
   value: string
   label: string
+  copiedLabel: string
   wide?: boolean
 }) {
   const [copied, setCopied] = useState(false)
@@ -250,7 +255,7 @@ function CopyButton({
       )}
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-      {copied ? "Copiado" : label}
+      {copied ? copiedLabel : label}
     </button>
   )
 }

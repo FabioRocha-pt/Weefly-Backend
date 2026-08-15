@@ -12,8 +12,11 @@ import { registerSchema, type RegisterFormData } from "@/lib/validations"
 import { AuthCard } from "@/components/auth/auth-card"
 import { COUNTRIES, PHONE_PREFIXES } from "@/types"
 import { signUp } from "@/actions/auth"
+import { useT } from "@/i18n/provider"
+import { translateMessage } from "@/i18n/translate"
 
 export function RegisterForm() {
+  const t = useT()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [phonePrefix, setPhonePrefix] = useState("+238")
@@ -54,55 +57,61 @@ export function RegisterForm() {
 
   return (
     <AuthCard
-      title="Registo"
-      description="Para fornecedores de serviços e agentes."
+      title={t("auth.registerTitle")}
+      description={t("auth.registerSubtitle")}
     >
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* First + last name */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="firstName">Nome</Label>
+            <Label htmlFor="firstName">{t("auth.firstName")}</Label>
             <Input
               id="firstName"
-              placeholder="O seu nome"
+              placeholder={t("auth.firstNamePlaceholder")}
               {...form.register("firstName")}
             />
             {form.formState.errors.firstName && (
-              <p className="text-sm text-red-500">{form.formState.errors.firstName.message}</p>
+              <p className="text-sm text-red-500">
+                {t(form.formState.errors.firstName.message ?? "")}
+              </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="lastName">Apelido</Label>
+            <Label htmlFor="lastName">{t("auth.lastName")}</Label>
             <Input
               id="lastName"
-              placeholder="O seu apelido"
+              placeholder={t("auth.lastNamePlaceholder")}
               {...form.register("lastName")}
             />
             {form.formState.errors.lastName && (
-              <p className="text-sm text-red-500">{form.formState.errors.lastName.message}</p>
+              <p className="text-sm text-red-500">
+                {t(form.formState.errors.lastName.message ?? "")}
+              </p>
             )}
           </div>
         </div>
 
         {/* Email */}
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("auth.email")}</Label>
           <Input
             id="email"
             type="email"
-            placeholder="nome@empresa.cv"
+            placeholder={t("auth.emailPlaceholder")}
             {...form.register("email")}
           />
           {form.formState.errors.email && (
-            <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
+            <p className="text-sm text-red-500">
+              {t(form.formState.errors.email.message ?? "")}
+            </p>
           )}
         </div>
 
         {/* Country + phone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="country">País</Label>
+            <Label htmlFor="country">{t("auth.country")}</Label>
             <select
               id="country"
               className="flex h-11 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
@@ -110,20 +119,22 @@ export function RegisterForm() {
             >
               {COUNTRIES.map((country) => (
                 <option key={country.value} value={country.value}>
-                  {country.label}
+                  {t(country.labelKey)}
                 </option>
               ))}
             </select>
             {form.formState.errors.country && (
-              <p className="text-sm text-red-500">{form.formState.errors.country.message}</p>
+              <p className="text-sm text-red-500">
+                {t(form.formState.errors.country.message ?? "")}
+              </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Telefone</Label>
+            <Label htmlFor="phone">{t("auth.phone")}</Label>
             <div className="flex">
               <select
-                aria-label="Indicativo do país"
+                aria-label={t("auth.phonePrefix")}
                 value={phonePrefix}
                 onChange={(e) => setPhonePrefix(e.target.value)}
                 className="w-24 h-11 rounded-l-lg border border-r-0 border-slate-300 bg-white px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -141,64 +152,72 @@ export function RegisterForm() {
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="999 99 99"
+                  placeholder={t("auth.phonePlaceholder")}
                   className="pl-10 rounded-l-none"
                   {...form.register("phone")}
                 />
               </div>
             </div>
             {form.formState.errors.phone && (
-              <p className="text-sm text-red-500">{form.formState.errors.phone.message}</p>
+              <p className="text-sm text-red-500">
+                {t(form.formState.errors.phone.message ?? "")}
+              </p>
             )}
           </div>
         </div>
 
         {/* Password */}
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("auth.password")}</Label>
           <div className="relative">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
-              placeholder="Mínimo 8 caracteres"
+              placeholder={t("auth.passwordPlaceholder")}
               {...form.register("password")}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700"
-              aria-label={showPassword ? "Ocultar password" : "Mostrar password"}
+              aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          <p className="text-xs text-slate-500">Use pelo menos 8 caracteres, com um número.</p>
+          <p className="text-xs text-slate-500">{t("auth.passwordHint")}</p>
           {form.formState.errors.password && (
-            <p className="text-sm text-red-500">{form.formState.errors.password.message}</p>
+            <p className="text-sm text-red-500">
+              {t(form.formState.errors.password.message ?? "")}
+            </p>
           )}
         </div>
 
         {/* Confirm password */}
         <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirmar password</Label>
+          <Label htmlFor="confirmPassword">{t("auth.confirmPassword")}</Label>
           <div className="relative">
             <Input
               id="confirmPassword"
               type={showConfirmPassword ? "text" : "password"}
-              placeholder="Repita a password"
+              placeholder={t("auth.confirmPlaceholder")}
               {...form.register("confirmPassword")}
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700"
-              aria-label={showConfirmPassword ? "Ocultar password" : "Mostrar password"}
+              aria-label={
+                showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")
+              }
             >
               {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
           {form.formState.errors.confirmPassword && (
-            <p className="text-sm text-red-500">{form.formState.errors.confirmPassword.message}</p>
+            <p className="text-sm text-red-500">
+              {t(form.formState.errors.confirmPassword.message ?? "")}
+            </p>
           )}
         </div>
 
@@ -206,19 +225,22 @@ export function RegisterForm() {
         {serverError && (
           <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>{serverError}</span>
+            <span>{translateMessage(t, serverError)}</span>
           </div>
         )}
 
         {/* Submit */}
         <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "A processar..." : "Criar conta"}
+          {form.formState.isSubmitting
+            ? t("auth.registerSubmitting")
+            : t("auth.createAccount")}
         </Button>
 
         <p className="text-xs text-slate-500 text-center">
-          Ao criar conta aceita os{" "}
-          <span className="text-orange-600 font-medium">Termos</span> e a{" "}
-          <span className="text-orange-600 font-medium">Política de Privacidade</span>.
+          {t("auth.termsPrefix")}{" "}
+          <span className="text-orange-600 font-medium">{t("auth.terms")}</span>{" "}
+          {t("auth.termsAnd")}{" "}
+          <span className="text-orange-600 font-medium">{t("auth.privacy")}</span>.
         </p>
       </form>
     </AuthCard>

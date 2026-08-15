@@ -27,6 +27,7 @@ import {
   isWeePayConfigured,
   toPaymentStatus,
 } from "@/lib/weepay"
+import { getI18n } from "@/i18n/server"
 
 /**
  * Manual §8.1 — para onde cada estado pode ir.
@@ -247,8 +248,11 @@ export async function startWeePayPayment(
 ): Promise<StartOutcome> {
   if (!isWeePayConfigured()) return { ok: false, reason: "not_configured" }
 
+  const { t } = getI18n()
+
   const admin = createAdminClient()
-  if (!admin) return { ok: false, reason: "failed", message: "Indisponível." }
+  if (!admin)
+    return { ok: false, reason: "failed", message: t("errors.unavailable") }
 
   const payment = await latestPayment(caseId)
   if (!payment) return { ok: false, reason: "no_payment" }
@@ -272,8 +276,7 @@ export async function startWeePayPayment(
     return {
       ok: false,
       reason: "failed",
-      message:
-        "O caso não tem email do cliente, e a WeePay exige um para abrir o pagamento.",
+      message: t("errors.noClientEmailForWeepay"),
     }
   }
 
@@ -348,6 +351,8 @@ export async function refreshWeePayStatus(
   | { ok: true; status: PaymentStatus; changed: boolean }
   | { ok: false; reason: "not_configured" | "no_transaction" | "failed"; message?: string }
 > {
+  const { t } = getI18n()
+
   const payment = await latestPayment(caseId)
   if (!payment) return { ok: false, reason: "no_transaction" }
   if (!payment.weepay_transaction_id) {
@@ -374,8 +379,11 @@ export async function refreshWeePayStatus(
       reason: "failed",
       message:
         applied.reason === "illegal"
-          ? `A WeePay diz ${outcome.result.status}, mas o pagamento já está em ${payment.status}. Nada foi alterado.`
-          : "Não foi possível aplicar o estado.",
+          ? t("notices.weepayAheadOfUs", {
+              remote: t(`paymentStatus.${outcome.result.status}`),
+              local: t(`paymentStatus.${payment.status}`),
+            })
+          : t("errors.statusApplyFailed"),
     }
   }
 

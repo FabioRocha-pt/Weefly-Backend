@@ -1,18 +1,23 @@
+"use client"
+
 import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useT } from "@/i18n/provider"
 
 interface Step {
   id: number
-  label: string
+  labelKey: string
 }
 
 const STEPS: Step[] = [
-  { id: 1, label: "Conta" },
-  { id: 2, label: "Tipo de empresa" },
-  { id: 3, label: "Dados da empresa" },
+  { id: 1, labelKey: "onboarding.step1" },
+  { id: 2, labelKey: "onboarding.step2" },
+  { id: 3, labelKey: "onboarding.step3" },
 ]
 
 export function Stepper({ currentStep }: { currentStep: number }) {
+  const t = useT()
+
   return (
     <div className="flex items-center justify-center">
       {STEPS.map((step, index) => {
@@ -38,7 +43,7 @@ export function Stepper({ currentStep }: { currentStep: number }) {
                   isActive ? "text-slate-900" : "text-slate-400"
                 )}
               >
-                {step.label}
+                {t(step.labelKey)}
               </span>
             </div>
 

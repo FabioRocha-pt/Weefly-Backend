@@ -109,6 +109,72 @@ src/
     └── index.ts                 # TypeScript types
 ```
 
+## Deploy (Plesk / VPS)
+
+Requires **Node 18.17+** (Next 14). Build with `npm run build`, run with
+`npm start`.
+
+### As variáveis de ambiente são o passo que falha
+
+`.env.local` está no `.gitignore` — nunca chega ao servidor por git. Um deploy
+que só faz `git pull && npm run build && npm start` arranca **sem nenhuma
+chave**, e o sintoma não é um erro: é o formulário a responder "pedido
+recebido" e nenhum email a sair. É deliberado (uma chave em falta nunca perde
+um lead), mas esconde a causa.
+
+No Plesk, o Node corre por baixo do Passenger e **não lê o teu shell**. As
+variáveis têm de ser postas num destes dois sítios:
+
+1. **Plesk → Domains → _domínio_ → Node.js → Custom environment variables** —
+   é o caminho suportado. Depois de gravar, carregar em **Restart App**.
+2. Ou um ficheiro `.env.production` na *Application Root* (a mesma pasta do
+   `package.json`). O `next start` lê-o no arranque. Atenção: a Application
+   Root do Plesk e a Document Root são coisas diferentes — o ficheiro tem de
+   estar na primeira.
+
+Mínimo para o email funcionar:
+
+```
+RESEND_API_KEY=re_...
+CONCIERGE_FROM_EMAIL="WeeFly Concierge <concierge@weefly.africa>"
+CONCIERGE_TEAM_EMAIL=info@weefly.africa,info@weefly.cv
+NEXT_PUBLIC_SITE_URL=https://<domínio>
+CONCIERGE_DIAGNOSE_TOKEN=<string aleatória>
+```
+
+Reiniciar a app depois de mexer. Next.js lê `process.env` no arranque; alterar
+variáveis com o processo a correr não muda nada.
+
+### Confirmar que estão lá
+
+```
+https://<domínio>/api/concierge/diagnose?token=<CONCIERGE_DIAGNOSE_TOKEN>
+```
+
+Responde com a configuração que o processo **realmente** vê e uma lista de
+`blockers`. Um 404 quer dizer que nem o próprio token chegou ao processo — ou
+seja, o problema é o carregamento das variáveis, não o Resend.
+
+Para tentar um envio a sério e ver o erro cru do Resend:
+
+```
+…/api/concierge/diagnose?token=<token>&send=tu@exemplo.cv
+```
+
+### Ler os registos
+
+O caminho do email regista tudo o que corre mal, com marcadores próprios:
+
+| No log | Significa |
+|---|---|
+| `RESEND_API_KEY not set — skipping emails` | a variável não chegou ao processo |
+| `client confirmation failed:` | o Resend recusou — remetente por verificar, chave inválida |
+| `client confirmation threw:` | nem chegou ao Resend — rede/firewall de saída |
+| `LEAD NOT DELIVERED —` | o aviso à equipa não saiu; a linha traz o lead inteiro |
+
+No Plesk os registos estão em **Logs**, ou em
+`/var/www/vhosts/<domínio>/logs/`.
+
 ## Design System
 
 ### Colors

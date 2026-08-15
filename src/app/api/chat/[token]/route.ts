@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getConversation, getMessages } from "@/lib/conversations"
+import { getI18n } from "@/i18n/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -24,9 +25,10 @@ export async function GET(
   request: Request,
   { params }: { params: { token: string } }
 ) {
+  const { t } = getI18n()
   const conversation = await getConversation(params.token)
   if (!conversation) {
-    return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 })
+    return NextResponse.json({ error: t("errors.conversationNotFound") }, { status: 404 })
   }
 
   const since = new URL(request.url).searchParams.get("since") ?? undefined

@@ -14,6 +14,7 @@ import {
 } from "@/lib/case-status"
 import { CaseLinkButtons } from "@/components/admin/case-link-buttons"
 import { CaseTabs } from "@/components/admin/case-tabs"
+import { getI18n } from "@/i18n/server"
 
 export const dynamic = "force-dynamic"
 
@@ -39,6 +40,7 @@ export default async function CaseLayout({
   params: { id: string }
   children: React.ReactNode
 }) {
+  const { t } = getI18n()
   const bookingCase = await getCase(params.id)
   if (!bookingCase) notFound()
 
@@ -53,7 +55,7 @@ export default async function CaseLayout({
         className="inline-flex items-center gap-1.5 text-[13px] font-medium text-adm-muted transition-colors hover:text-adm-txt"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Links de atendimento
+        {t("admin.backToList")}
       </Link>
 
       <div className="rounded-xl border border-adm-line bg-adm-panel px-5 pt-5">
@@ -61,7 +63,7 @@ export default async function CaseLayout({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-xl font-bold text-adm-txt">
-                {trip?.lead?.full_name ?? "Aguarda preenchimento"}
+                {trip?.lead?.full_name ?? t("admin.awaitingFill")}
               </h1>
               {trip?.reference && (
                 <span className="rounded-md bg-adm-raise px-2 py-1 font-mono text-[12px] text-adm-txt-2">
@@ -80,28 +82,33 @@ export default async function CaseLayout({
                     WAITING_DOT[display.waiting]
                   )}
                 />
-                {display.code} · {display.label}
+                {display.code} ·{" "}
+                {t("caseStageShort." + bookingCase.stage)}
               </span>
             </div>
 
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
-              <Meta label="Contacto">
+              <Meta label={t("admin.metaContact")}>
                 {trip?.lead?.email ?? "—"}
                 {trip?.lead?.phone
                   ? ` · ${trip.lead.phone_prefix ?? ""} ${trip.lead.phone}`.trimEnd()
                   : ""}
               </Meta>
-              <Meta label="Criado">{formatDateTime(bookingCase.created_at)}</Meta>
-              <Meta label="Sem mexer há">
+              <Meta label={t("admin.metaCreated")}>
+                {formatDateTime(bookingCase.created_at)}
+              </Meta>
+              <Meta label={t("admin.metaUntouched")}>
                 {elapsedSince(bookingCase.updated_at)}
               </Meta>
               {proposal && (
-                <Meta label="Revisão">
+                <Meta label={t("admin.metaRevision")}>
                   R{proposal.proposal.revision}
                   <span className="text-adm-muted">
-                    {proposal.proposal.status === "publicada"
-                      ? " · publicada"
-                      : " · rascunho"}
+                    {t(
+                      proposal.proposal.status === "publicada"
+                        ? "admin.revisionPublished"
+                        : "admin.revisionDraft"
+                    )}
                   </span>
                 </Meta>
               )}
@@ -114,7 +121,7 @@ export default async function CaseLayout({
               links={bookingCase.links}
             />
             <span className="text-[11px] text-adm-muted">
-              clique para copiar o endereço
+              {t("admin.linkCopyHint")}
             </span>
           </div>
         </div>

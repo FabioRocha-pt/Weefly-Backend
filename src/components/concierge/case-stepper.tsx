@@ -1,14 +1,17 @@
+"use client"
+
 import { Check } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useT } from "@/i18n/provider"
 
-const STEPS = [
-  "Pedido enviado",
-  "Pesquisa concluída",
-  "Escolher voo",
-  "Dados dos passageiros",
-  "Pagamento",
-  "Bilhete emitido",
+const STEP_KEYS = [
+  "stepper.step1",
+  "stepper.step2",
+  "stepper.step3",
+  "stepper.step4",
+  "stepper.step5",
+  "stepper.step6",
 ]
 
 /**
@@ -20,15 +23,17 @@ const STEPS = [
  * chegar aqui, o pedido chegou e alguém já pesquisou.
  */
 export function CaseStepper({ current }: { current: number }) {
+  const t = useT()
+
   return (
-    <nav aria-label="Progresso do pedido" className="mb-8 overflow-x-auto">
+    <nav aria-label={t("stepper.label")} className="mb-8 overflow-x-auto">
       <ol className="flex min-w-max items-center gap-2">
-        {STEPS.map((label, i) => {
+        {STEP_KEYS.map((key, i) => {
           const step = i + 1
           const done = step < current
           const now = step === current
           return (
-            <li key={label} className="flex items-center gap-2">
+            <li key={key} className="flex items-center gap-2">
               <span
                 className={cn(
                   "flex items-center gap-1.5 whitespace-nowrap text-[12.5px] font-semibold",
@@ -48,9 +53,9 @@ export function CaseStepper({ current }: { current: number }) {
                 >
                   {done ? <Check className="h-3 w-3" /> : step}
                 </span>
-                {label}
+                {t(key)}
               </span>
-              {step < STEPS.length && (
+              {step < STEP_KEYS.length && (
                 <span className="h-px w-6 shrink-0 bg-slate-200" aria-hidden />
               )}
             </li>

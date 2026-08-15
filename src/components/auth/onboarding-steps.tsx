@@ -1,9 +1,15 @@
+import { getI18n } from "@/i18n/server"
+
 export function OnboardingSteps({ currentStep = 1 }: { currentStep?: 1 | 2 | 3 }) {
+  const { t } = getI18n()
+
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="text-orange-600 font-semibold text-lg mb-2">1. Registro pessoal</h3>
-        <p className="text-slate-600 text-sm">Preencha seus dados pessoais para criar a sua conta.</p>
+        <h3 className="text-orange-600 font-semibold text-lg mb-2">
+          1. {t("auth.step1Title")}
+        </h3>
+        <p className="text-slate-600 text-sm">{t("auth.step1Body")}</p>
       </div>
 
       <div className="space-y-2">
@@ -19,9 +25,9 @@ export function OnboardingSteps({ currentStep = 1 }: { currentStep?: 1 | 2 | 3 }
           >
             2
           </div>
-          <span className="font-medium">Confirmar o email</span>
+          <span className="font-medium">{t("auth.step2Title")}</span>
         </div>
-        <p className="text-slate-500 text-sm ml-9">Receba um link para ativar a sua conta.</p>
+        <p className="text-slate-500 text-sm ml-9">{t("auth.step2BodyShort")}</p>
       </div>
 
       <div className="space-y-2">
@@ -37,9 +43,9 @@ export function OnboardingSteps({ currentStep = 1 }: { currentStep?: 1 | 2 | 3 }
           >
             3
           </div>
-          <span className="font-medium">Crie suas empresas</span>
+          <span className="font-medium">{t("auth.step3Title")}</span>
         </div>
-        <p className="text-slate-500 text-sm ml-9">Adicione as empresas que pretende gerir na plataforma.</p>
+        <p className="text-slate-500 text-sm ml-9">{t("auth.step3Body")}</p>
       </div>
     </div>
   )

@@ -25,7 +25,12 @@ const pathVariants: Variants = {
   }),
 }
 
-export function Preloader() {
+/**
+ * @param label O texto que só o leitor de ecrã ouve. Vem de fora porque o
+ * preloader vive no layout de raiz, acima de qualquer provider de tradução —
+ * quem o desenha já tem o tradutor à mão e passa a frase feita.
+ */
+export function Preloader({ label }: { label: string }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -102,7 +107,7 @@ export function Preloader() {
             </motion.svg>
           </motion.div>
 
-          <span className="sr-only">A carregar WeeFly PRO…</span>
+          <span className="sr-only">{label}</span>
         </motion.div>
       )}
     </AnimatePresence>

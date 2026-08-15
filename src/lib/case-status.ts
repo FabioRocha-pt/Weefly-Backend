@@ -23,18 +23,8 @@ export const CASE_STAGES = [
 
 export type CaseStage = (typeof CASE_STAGES)[number]
 
-export const CASE_STAGE_LABELS: Record<CaseStage, string> = {
-  novo: "Link enviado",
-  pedido_recebido: "Pedido recebido",
-  proposta_enviada: "Opções enviadas",
-  opcao_escolhida: "Opção escolhida",
-  detalhes_pendentes: "À espera de dados",
-  detalhes_recebidos: "Dados recebidos",
-  pagamento_pendente: "À espera de pagamento",
-  pago: "Pago",
-  emitido: "Bilhetes emitidos",
-  cancelado: "Cancelado",
-}
+/* As etiquetas longas de cada etapa estão em `caseStages.*`, e as curtas do
+   vocabulário E0–E5 em `caseStageShort.*`. */
 
 export const CASE_STAGE_STYLES: Record<CaseStage, string> = {
   novo: "bg-slate-100 text-slate-600 border-slate-200",
@@ -64,21 +54,20 @@ export type Waiting = "us" | "them" | "done" | "off"
 
 export interface StageDisplay {
   code: string
-  label: string
   waiting: Waiting
 }
 
 export const CASE_STAGE_DISPLAY: Record<CaseStage, StageDisplay> = {
-  novo: { code: "E0", label: "Link criado", waiting: "off" },
-  pedido_recebido: { code: "E1", label: "Em cotação", waiting: "us" },
-  proposta_enviada: { code: "E2", label: "Opções enviadas", waiting: "them" },
-  opcao_escolhida: { code: "E3", label: "Escolheu, falta preencher", waiting: "them" },
-  detalhes_pendentes: { code: "E2", label: "À espera de dados", waiting: "them" },
-  detalhes_recebidos: { code: "E3", label: "Dados preenchidos", waiting: "us" },
-  pagamento_pendente: { code: "E4", label: "Aguarda pagamento", waiting: "them" },
-  pago: { code: "E4", label: "Pago, sem bilhete", waiting: "us" },
-  emitido: { code: "E5", label: "Emitido", waiting: "done" },
-  cancelado: { code: "—", label: "Cancelado", waiting: "off" },
+  novo: { code: "E0", waiting: "off" },
+  pedido_recebido: { code: "E1", waiting: "us" },
+  proposta_enviada: { code: "E2", waiting: "them" },
+  opcao_escolhida: { code: "E3", waiting: "them" },
+  detalhes_pendentes: { code: "E2", waiting: "them" },
+  detalhes_recebidos: { code: "E3", waiting: "us" },
+  pagamento_pendente: { code: "E4", waiting: "them" },
+  pago: { code: "E4", waiting: "us" },
+  emitido: { code: "E5", waiting: "done" },
+  cancelado: { code: "—", waiting: "off" },
 }
 
 /** Dot colour for the waiting axis — see `.dot.us/.them/.done/.off` in A2/A3. */
@@ -104,18 +93,12 @@ export const CASE_STAGE_CHIP: Record<CaseStage, string> = {
 
 export type LinkStatus = "bloqueado" | "ativo" | "submetido" | "expirado"
 
-export const LINK_STATUS_LABELS: Record<LinkStatus, string> = {
-  bloqueado: "Bloqueado",
-  ativo: "Ativo",
-  submetido: "Preenchido",
-  expirado: "Expirado",
-}
-
-export const LINK_STAGE_NAMES: Record<number, string> = {
-  1: "Pedido de viagem",
-  2: "Proposta e passageiros",
-  3: "Pagamento",
-}
+/*
+ * As etiquetas de `LinkStatus`, das etapas e dos estados de pagamento vivem
+ * nos dicionários — `linkStatus.*`, `linkStages.*` e `paymentStatus.*`. Aqui
+ * ficam só os valores que a base de dados guarda e as classes de cor, que não
+ * mudam de língua.
+ */
 
 /**
  * Path segment appended to /p/{token} for each stage.
@@ -153,20 +136,6 @@ export const TERMINAL_PAYMENT_STATUSES: PaymentStatus[] = [
   "REFUNDED",
   "PARTIALLY_REFUNDED",
 ]
-
-export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  STARTED: "Iniciado",
-  PENDING: "Pendente",
-  AUTHORIZED: "Autorizado",
-  CAPTURED: "Capturado",
-  COMPLETED: "Pago",
-  FAILED: "Falhou",
-  CANCELLED: "Cancelado",
-  EXPIRED: "Expirado",
-  REFUNDED: "Reembolsado",
-  PARTIALLY_REFUNDED: "Reembolso parcial",
-  DISPUTED: "Em disputa",
-}
 
 export interface CaseLinkRow {
   id: string

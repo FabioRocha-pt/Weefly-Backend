@@ -10,6 +10,7 @@ import {
   PassengerDetailsForm,
   type PassengerSlot,
 } from "@/components/forms/passenger-details-form"
+import { getI18n } from "@/i18n/server"
 
 export const dynamic = "force-dynamic"
 
@@ -42,6 +43,7 @@ export default async function CasePassengersPage({
 }: {
   params: { token: string }
 }) {
+  const { t } = getI18n()
   const lookup = await getCaseByToken(params.token, 2)
   if (!lookup.ok) return <LinkUnavailable reason={lookup.reason} />
 
@@ -53,11 +55,10 @@ export default async function CasePassengersPage({
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
           <CheckCircle2 className="h-9 w-9 text-green-500" />
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">Dados já recebidos</h1>
-        <p className="mt-3 leading-relaxed text-slate-500">
-          Já temos os dados dos passageiros. A nossa equipa entrará em contacto
-          com os próximos passos.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {t("passengers.alreadyTitle")}
+        </h1>
+        <p className="mt-3 leading-relaxed text-slate-500">{t("passengers.alreadyBody")}</p>
       </div>
     )
   }
@@ -77,17 +78,14 @@ export default async function CasePassengersPage({
     return (
       <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-10">
         <h1 className="text-2xl font-bold text-slate-900">
-          Falta escolher o voo
+          {t("passengers.missingChoiceTitle")}
         </h1>
-        <p className="mt-3 leading-relaxed text-slate-500">
-          Antes de preencher os passaportes, escolha uma das opções que o seu
-          agente preparou.
-        </p>
+        <p className="mt-3 leading-relaxed text-slate-500">{t("passengers.missingChoiceBody")}</p>
         <Link
           href={`/p/${params.token}/proposta`}
           className="mt-6 inline-flex items-center justify-center rounded-full bg-orange-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-orange-700"
         >
-          Ver as opções
+          {t("passengers.missingChoiceCta")}
         </Link>
       </div>
     )
@@ -117,28 +115,24 @@ export default async function CasePassengersPage({
           </p>
         )}
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-          Dados dos passageiros
+          {t("passengers.title")}
         </h1>
-        <p className="mt-3 leading-relaxed text-slate-500">
-          Escreva os nomes exatamente como aparecem no passaporte. Depois de o
-          bilhete ser emitido, corrigir um nome obriga a reemissão e tem custo da
-          companhia.
-        </p>
+        <p className="mt-3 leading-relaxed text-slate-500">{t("passengers.subtitle")}</p>
       </div>
 
       {chosen && proposal && (
         <div className="mb-8 flex flex-wrap items-start justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="min-w-0">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Opção escolhida
+              {t("passengers.chosenOption")}
             </span>
             <p className="mt-1 text-[15px] font-bold text-slate-900">
-              {chosen.name || "Opção sem nome"}
+              {chosen.name || t("passengers.unnamedOffer")}
             </p>
             <p className="mt-0.5 text-[13px] text-slate-500">
               {[
                 stopsLabel(legsOf(chosen).ida),
-                chosen.fare_name && `Tarifa ${chosen.fare_name}`,
+                chosen.fare_name && t("proposal.fareName", { name: chosen.fare_name }),
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -147,12 +141,12 @@ export default async function CasePassengersPage({
               href={`/p/${params.token}/proposta`}
               className="mt-2 inline-block text-[13px] font-semibold text-orange-600 hover:text-orange-700"
             >
-              Trocar de opção
+              {t("passengers.changeOption")}
             </Link>
           </div>
           <div className="shrink-0 text-left sm:text-right">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Total a pagar
+              {t("passengers.totalToPay")}
             </span>
             <p className="mt-1 font-mono text-2xl font-semibold tracking-tight text-slate-900">
               {formatMoney(
@@ -161,8 +155,7 @@ export default async function CasePassengersPage({
               )}
             </p>
             <p className="text-[12px] text-slate-500">
-              {slots.length}{" "}
-              {slots.length === 1 ? "passageiro" : "passageiros"} ·{" "}
+              {t("common.passengers", { count: slots.length })} ·{" "}
               {proposal.proposal.currency}
             </p>
           </div>

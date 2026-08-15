@@ -6,7 +6,6 @@ import { ChevronDown, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { selectOffer } from "@/actions/proposals"
 import {
-  CABIN_LABELS,
   type Offer,
   type OfferSegment,
   type PaxCounts,
@@ -24,14 +23,17 @@ import {
   timeOf,
   validityInstant,
 } from "@/lib/proposal-math"
+import { useI18n, useT } from "@/i18n/provider"
+import type { Translator } from "@/i18n/translate"
+import { LOCALE_TAGS } from "@/i18n/config"
 
 type Sort = "recomendada" | "preco" | "duracao" | "escalas"
 
-const SORT_LABELS: Record<Sort, string> = {
-  recomendada: "Recomendada",
-  preco: "Preço",
-  duracao: "Duração",
-  escalas: "Menos escalas",
+const SORT_KEYS: Record<Sort, string> = {
+  recomendada: "proposal.sortRecommended",
+  preco: "proposal.sortPrice",
+  duracao: "proposal.sortDuration",
+  escalas: "proposal.sortStops",
 }
 
 export function OfferComparator({
@@ -49,6 +51,7 @@ export function OfferComparator({
   selectedOfferId: string | null
   validUntil: string | null
 }) {
+  const t = useT()
   const [sort, setSort] = useState<Sort>("recomendada")
   const [openId, setOpenId] = useState<string | null>(null)
   const [choosing, setChoosing] = useState<string | null>(null)
@@ -96,9 +99,9 @@ export function OfferComparator({
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-[12.5px] font-semibold text-slate-500">
-          Ordenar por
+          {t("proposal.sortBy")}
         </span>
-        {(Object.keys(SORT_LABELS) as Sort[]).map((key) => (
+        {(Object.keys(SORT_KEYS) as Sort[]).map((key) => (
           <button
             key={key}
             type="button"
@@ -111,11 +114,11 @@ export function OfferComparator({
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
             )}
           >
-            {SORT_LABELS[key]}
+            {t(SORT_KEYS[key])}
           </button>
         ))}
         <span className="ml-auto text-[12.5px] text-slate-400">
-          {offers.length} {offers.length === 1 ? "opção" : "opções"}
+          {t("proposal.count", { count: offers.length })}
         </span>
       </div>
 
@@ -132,6 +135,7 @@ export function OfferComparator({
             disabled={pending}
             onToggle={() => setOpenId(openId === offer.id ? null : offer.id)}
             onChoose={() => choose(offer.id)}
+            t={t}
           />
         ))}
       </div>
@@ -147,6 +151,7 @@ export function OfferComparator({
  * o HTML e a primeira renderização é um erro de hidratação.
  */
 function ValidityBanner({ validUntil }: { validUntil: string | null }) {
+  const { t, locale } = useI18n()
   const deadline = validityInstant(validUntil)
   const [left, setLeft] = useState<number | null>(null)
 
@@ -164,7 +169,7 @@ function ValidityBanner({ validUntil }: { validUntil: string | null }) {
     left === null
       ? "—"
       : left <= 0
-        ? "Preço a reconfirmar"
+        ? t("proposal.validityExpiredClock")
         : formatCountdown(left)
 
   const expired = left !== null && left <= 0
@@ -181,13 +186,13 @@ function ValidityBanner({ validUntil }: { validUntil: string | null }) {
       <div className="min-w-0 flex-1">
         <h3 className="text-[15px] font-bold text-slate-900">
           {expired
-            ? "A validade destes preços expirou"
-            : `Os preços abaixo são garantidos até ${formatDeadline(validUntil)}`}
+            ? t("proposal.validityExpiredTitle")
+            : t("proposal.validityTitle", {
+                deadline: formatDeadline(validUntil, LOCALE_TAGS[locale]),
+              })}
         </h3>
         <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
-          {expired
-            ? "A companhia pode ter alterado a tarifa. Escolha à mesma a opção que prefere — nós reconfirmamos o valor antes de pedir o pagamento."
-            : "Depois dessa hora a companhia pode alterar a tarifa e temos de reconfirmar o valor. Se precisar de mais tempo, fale com o seu agente."}
+          {t(expired ? "proposal.validityExpiredBody" : "proposal.validityBody")}
         </p>
       </div>
       <span
@@ -216,16 +221,27 @@ function formatCountdown(seconds: number): string {
   return days > 0 ? `${days}d ${clock}` : clock
 }
 
-const MONTHS = [
-  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-]
-
-function formatDeadline(value: string | null): string {
+/**
+ * "6 de setembro, 18:00 (WAT)" — e o equivalente em inglês e francês.
+ *
+ * Construído com `Intl` a partir do tag do idioma em vez de uma lista de meses
+ * escrita à mão: são três línguas hoje e a lista teria de crescer com cada uma.
+ * A data é lida como hora de parede (ver a migração 0005), por isso é montada
+ * em UTC e formatada em UTC — caso contrário o fuso do browser deslocava-a.
+ */
+function formatDeadline(value: string | null, locale: string): string {
   const m = value?.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
   if (!m) return "—"
-  const [, , mo, d, h, mi] = m
-  return `${Number(d)} de ${MONTHS[Number(mo) - 1]}, ${h}:${mi} (WAT)`
+  const [, y, mo, d, h, mi] = m
+  const at = new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi))
+  const formatted = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(at)
+  return `${formatted} (WAT)`
 }
 
 // --- Cartão da oferta --------------------------------------------------------
@@ -240,6 +256,7 @@ function OfferCard({
   disabled,
   onToggle,
   onChoose,
+  t,
 }: {
   offer: Offer
   pax: PaxCounts
@@ -250,13 +267,17 @@ function OfferCard({
   disabled: boolean
   onToggle: () => void
   onChoose: () => void
+  t: Translator
 }) {
   const legs = legsOf(offer)
   const paxTotal = pax.adults + pax.children + pax.infants
   const badges = [
-    offer.is_recommended && { label: "Recomendada pelo agente", tone: "dark" },
-    offer.is_cheapest && { label: "Mais barata", tone: "ok" },
-    offer.is_fastest && { label: "Menos tempo de viagem", tone: "plain" },
+    offer.is_recommended && {
+      label: t("proposal.badgeRecommended"),
+      tone: "dark",
+    },
+    offer.is_cheapest && { label: t("proposal.badgeCheapest"), tone: "ok" },
+    offer.is_fastest && { label: t("proposal.badgeFastest"), tone: "plain" },
   ].filter(Boolean) as { label: string; tone: string }[]
 
   return (
@@ -290,16 +311,17 @@ function OfferCard({
             legs[d].length === 0 ? null : (
               <LegStrip
                 key={d}
-                label={d === "ida" ? "Ida" : "Volta"}
+                label={t(d === "ida" ? "legs.outbound" : "legs.inbound")}
                 segments={legs[d]}
                 fareName={offer.fare_name}
+                t={t}
               />
             )
           )}
 
           {offer.agent_note && (
             <p className="mt-4 rounded-xl bg-slate-50 p-4 text-[13px] leading-relaxed text-slate-600">
-              <b className="text-slate-900">Nota do agente:</b>{" "}
+              <b className="text-slate-900">{t("proposal.agentNote")}</b>{" "}
               {offer.agent_note}
             </p>
           )}
@@ -310,9 +332,7 @@ function OfferCard({
             aria-expanded={open}
             className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-orange-600 transition-colors hover:text-orange-700"
           >
-            {open
-              ? "Fechar detalhe"
-              : "Ver itinerário completo, condições e preço detalhado"}
+            {t(open ? "proposal.discloseClose" : "proposal.discloseOpen")}
             <ChevronDown
               className={cn("h-4 w-4 transition-transform", open && "rotate-180")}
             />
@@ -321,13 +341,13 @@ function OfferCard({
 
         <aside className="flex flex-col justify-center gap-1 border-t border-dashed border-slate-200 bg-slate-50/60 p-5 md:border-l md:border-t-0 sm:p-6">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Total para {paxTotal} {paxTotal === 1 ? "passageiro" : "passageiros"}
+            {t("proposal.totalFor", { count: paxTotal })}
           </span>
           <p className="font-mono text-2xl font-semibold tracking-tight text-slate-900">
             {formatMoney(offerTotal(offer, pax), currency)}
           </p>
           <p className="mb-3 text-[11.5px] text-slate-500">
-            Inclui taxas e serviço WeeFly
+            {t("proposal.includesTaxes")}
           </p>
           <button
             type="button"
@@ -341,14 +361,14 @@ function OfferCard({
             )}
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            {chosen ? "Continuar com esta" : "Escolher esta opção"}
+            {t(chosen ? "proposal.continueCta" : "proposal.chooseCta")}
           </button>
         </aside>
       </div>
 
       {open && (
         <div className="border-t border-slate-200 bg-slate-50/60 p-5 sm:p-6">
-          <OfferDetail offer={offer} pax={pax} currency={currency} />
+          <OfferDetail offer={offer} pax={pax} currency={currency} t={t} />
         </div>
       )}
     </article>
@@ -359,10 +379,12 @@ function LegStrip({
   label,
   segments,
   fareName,
+  t,
 }: {
   label: string
   segments: OfferSegment[]
   fareName: string | null
+  t: Translator
 }) {
   const first = segments[0]
   const last = segments[segments.length - 1]
@@ -408,7 +430,7 @@ function LegStrip({
         </div>
         <p className="mt-2 text-[11.5px] text-slate-500">
           <span className="font-mono">{flightCodes(segments)}</span>
-          {fareName && <span> · Tarifa {fareName}</span>}
+          {fareName && <span> · {t("proposal.fareName", { name: fareName })}</span>}
         </p>
       </div>
     </div>
@@ -420,19 +442,21 @@ function OfferDetail({
   offer,
   pax,
   currency,
+  t,
 }: {
   offer: Offer
   pax: PaxCounts
   currency: string
+  t: Translator
 }) {
   const legs = legsOf(offer)
   const conditions = [
-    ["Bagagem de mão", offer.baggage_cabin],
-    ["Bagagem de porão", offer.baggage_hold],
-    ["Alteração de datas", offer.change_policy],
-    ["Reembolso", offer.refund_policy],
-    ["Marcação de lugar", offer.seat_policy],
-    ["Documentos exigidos", offer.documents],
+    [t("proposal.conditionBaggageCabin"), offer.baggage_cabin],
+    [t("proposal.conditionBaggageHold"), offer.baggage_hold],
+    [t("proposal.conditionChange"), offer.change_policy],
+    [t("proposal.conditionRefund"), offer.refund_policy],
+    [t("proposal.conditionSeat"), offer.seat_policy],
+    [t("proposal.conditionDocuments"), offer.documents],
   ].filter(([, value]) => Boolean(value)) as [string, string][]
 
   return (
@@ -442,14 +466,19 @@ function OfferDetail({
           legs[d].length === 0 ? null : (
             <div key={d}>
               <p className="mb-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-                Itinerário · {d === "ida" ? "Ida" : "Volta"}
+                {t("proposal.detailItinerary")} ·{" "}
+                {t(d === "ida" ? "legs.outbound" : "legs.inbound")}
               </p>
               {legs[d].map((segment, i) => (
                 <div key={segment.id}>
                   {i > 0 && (
                     <p className="my-2 rounded-lg bg-white px-3 py-2 text-[12px] text-slate-500">
-                      Escala em {segment.origin ?? "—"} ·{" "}
-                      {formatDuration(layoverMinutes(legs[d][i - 1], segment))}
+                      {t("proposal.layover", {
+                        place: segment.origin ?? "—",
+                        duration: formatDuration(
+                          layoverMinutes(legs[d][i - 1], segment)
+                        ),
+                      })}
                     </p>
                   )}
                   <p className="font-mono text-[11.5px] text-slate-500">
@@ -457,9 +486,9 @@ function OfferDetail({
                       .filter(Boolean)
                       .join(" ")}
                     {segment.equipment ? ` · ${segment.equipment}` : ""} ·{" "}
-                    {CABIN_LABELS[segment.cabin]}
+                    {t("cabins." + segment.cabin)}
                     {segment.booking_class
-                      ? ` (classe ${segment.booking_class})`
+                      ? ` (${segment.booking_class})`
                       : ""}
                   </p>
                   <div className="mt-1.5 border-l-2 border-slate-200 pl-4">
@@ -483,7 +512,7 @@ function OfferDetail({
         {conditions.length > 0 && (
           <div>
             <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-              Condições da tarifa
+              {t("proposal.detailConditions")}
             </p>
             <dl className="divide-y divide-slate-200 rounded-xl bg-white px-4">
               {conditions.map(([label, value]) => (
@@ -504,59 +533,60 @@ function OfferDetail({
 
       <div>
         <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-          Preço detalhado
+          {t("proposal.detailPrice")}
         </p>
         <dl className="divide-y divide-slate-200 rounded-xl bg-white px-4">
           {pax.adults > 0 && (
             <PriceLine
-              label={`Adultos ${pax.adults} × ${formatAmountPlain(offer.price_adult)}`}
+              label={`${t("proposal.priceAdults")} ${pax.adults} × ${formatAmountPlain(offer.price_adult)}`}
               value={formatAmountPlain(offer.price_adult * pax.adults)}
             />
           )}
           {pax.children > 0 && (
             <PriceLine
-              label={`Criança ${pax.children} × ${formatAmountPlain(offer.price_child)}`}
-              note="2–11 anos, com assento"
+              label={`${t("proposal.priceChild")} ${pax.children} × ${formatAmountPlain(offer.price_child)}`}
+              note={t("proposal.priceChildNote")}
               value={formatAmountPlain(offer.price_child * pax.children)}
             />
           )}
           {pax.infants > 0 && (
             <PriceLine
-              label={`Bebé ${pax.infants} × ${formatAmountPlain(offer.price_infant)}`}
-              note="Menos de 2 anos, ao colo"
+              label={`${t("proposal.priceInfant")} ${pax.infants} × ${formatAmountPlain(offer.price_infant)}`}
+              note={t("proposal.priceInfantNote")}
               value={formatAmountPlain(offer.price_infant * pax.infants)}
             />
           )}
           {offer.taxes_total > 0 && (
             <PriceLine
-              label="Taxas de aeroporto e encargos"
+              label={t("proposal.priceTaxes")}
               value={formatAmountPlain(offer.taxes_total)}
             />
           )}
           {offer.service_fee > 0 && (
             <PriceLine
-              label="Serviço WeeFly"
-              note="Pesquisa, emissão e acompanhamento"
+              label={t("proposal.priceService")}
+              note={t("proposal.priceServiceNote")}
               value={formatAmountPlain(offer.service_fee)}
             />
           )}
           {offer.lock_fee_enabled && offer.lock_fee > 0 && (
             <PriceLine
-              label="Fixação de tarifa"
-              note="Garante o preço para além da validade"
+              label={t("proposal.priceLockFee")}
+              note={t("proposal.priceLockFeeNote")}
               value={formatAmountPlain(offer.lock_fee)}
             />
           )}
           <div className="flex items-center justify-between gap-4 py-3">
-            <dt className="text-sm font-bold text-slate-900">Total a pagar</dt>
+            <dt className="text-sm font-bold text-slate-900">
+              {t("proposal.priceTotal")}
+            </dt>
             <dd className="font-mono text-base font-bold text-slate-900">
               {formatMoney(offerTotal(offer, pax), currency)}
             </dd>
           </div>
         </dl>
         <p className="mt-3 text-[12px] leading-relaxed text-slate-500">
-          Valores em {currency}. O pagamento é feito por link ou transferência,
-          com instruções no passo seguinte.
+          {t("proposal.priceCurrencyNote", { currency })}
         </p>
       </div>
     </div>

@@ -7,6 +7,7 @@ import {
   REQUEST_STATUSES,
   type RequestStatus,
 } from "@/lib/travel-request-status"
+import { getI18n } from "@/i18n/server"
 
 export type RequestActionState = { error: string | null }
 
@@ -25,12 +26,13 @@ function field(formData: FormData, key: string): string {
 export async function updateRequestStatus(
   formData: FormData
 ): Promise<RequestActionState> {
+  const { t } = getI18n()
   const id = field(formData, "id")
   const status = field(formData, "status")
 
-  if (!id) return { error: "Pedido inválido." }
+  if (!id) return { error: t("errors.invalidRequest") }
   if (!REQUEST_STATUSES.includes(status as RequestStatus)) {
-    return { error: "Estado inválido." }
+    return { error: t("errors.invalidStatus") }
   }
 
   const supabase = createClient()
@@ -42,10 +44,10 @@ export async function updateRequestStatus(
 
   if (error) {
     console.error("[back-office] updateRequestStatus failed:", error)
-    return { error: "Não foi possível atualizar o estado." }
+    return { error: t("errors.statusUpdateFailed") }
   }
   if (!data || data.length === 0) {
-    return { error: "Sem permissão para atualizar este pedido." }
+    return { error: t("errors.noPermissionRequest") }
   }
 
   revalidatePath("/admin")
@@ -57,18 +59,19 @@ export async function updateRequestStatus(
 export async function addRequestNote(
   formData: FormData
 ): Promise<RequestActionState> {
+  const { t } = getI18n()
   const id = field(formData, "id")
   const body = field(formData, "body")
 
-  if (!id) return { error: "Pedido inválido." }
-  if (!body) return { error: "A nota não pode estar vazia." }
+  if (!id) return { error: t("errors.invalidRequest") }
+  if (!body) return { error: t("errors.emptyNote") }
 
   const supabase = createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) return { error: "Sessão expirada. Volte a entrar." }
+  if (!user) return { error: t("errors.sessionExpired") }
 
   const { error } = await supabase.from("trip_request_notes").insert({
     trip_request_id: id,
@@ -79,7 +82,7 @@ export async function addRequestNote(
 
   if (error) {
     console.error("[back-office] addRequestNote failed:", error)
-    return { error: "Não foi possível guardar a nota." }
+    return { error: t("errors.noteSaveFailed") }
   }
 
   revalidatePath(`/admin/pedidos/${id}`)
