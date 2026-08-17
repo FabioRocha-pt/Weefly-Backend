@@ -42,8 +42,11 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico
      * - common image assets
+     * - mockups (HTML autónomo em public/, e o /price-checker que lhe aponta):
+     *   são páginas estáticas sem sessão nem rota protegida, por isso não vale
+     *   a pena gastar uma chamada ao Supabase a cada pedido.
      * Feel free to add more public asset extensions here.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|mockups|price-checker|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 }
