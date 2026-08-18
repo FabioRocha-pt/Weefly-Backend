@@ -146,10 +146,22 @@ export interface CaseLinkRow {
   submitted_at: string | null
 }
 
+/*
+ * 'infant_seat' e 'infant_lap' vieram com a migração 0009: um bebé com assento
+ * ocupa lugar e paga tarifa de criança, um bebé no colo não. 'infant' fica no
+ * vocabulário porque é o que as linhas antigas têm.
+ */
+export type PassengerType =
+  | "adult"
+  | "child"
+  | "infant"
+  | "infant_seat"
+  | "infant_lap"
+
 export interface CasePassenger {
   id: string
   position: number
-  passenger_type: "adult" | "child" | "infant"
+  passenger_type: PassengerType
   first_name: string
   last_name: string
   gender: string | null
@@ -157,6 +169,12 @@ export interface CasePassenger {
   nationality: string | null
   passport_number: string | null
   passport_expiry: string | null
+  /* Migração 0009 — o que a emissão pede e a tabela não tinha. */
+  title?: string | null
+  issuing_country?: string | null
+  ticket_number?: string | null
+  seat_outbound?: string | null
+  seat_inbound?: string | null
 }
 
 export interface CasePayment {

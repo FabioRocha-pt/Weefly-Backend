@@ -45,8 +45,12 @@ export const config = {
      * - mockups (HTML autónomo em public/, e o /price-checker que lhe aponta):
      *   são páginas estáticas sem sessão nem rota protegida, por isso não vale
      *   a pena gastar uma chamada ao Supabase a cada pedido.
+     * - /pc (o Price Checker em React): a autorização do cliente é o token no
+     *   endereço, não uma sessão, e os ecrãs não passam pelo dicionário da app.
+     *   Sem isto, cada abertura do link gastava uma validação de sessão que não
+     *   é usada por ninguém. O back-office dele continua atrás de /admin.
      * Feel free to add more public asset extensions here.
      */
-    "/((?!_next/static|_next/image|favicon.ico|mockups|price-checker|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|mockups|price-checker|pc(?:/|$)|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 }

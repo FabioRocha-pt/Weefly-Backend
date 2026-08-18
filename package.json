@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "i18n:check": "node scripts/check-i18n.mjs"
+    "i18n:check": "node scripts/check-i18n.mjs",
+    "bo:seed": "node scripts/seed-bo-users.mjs"
   },
   "engines": {
     "node": ">=18.17"
