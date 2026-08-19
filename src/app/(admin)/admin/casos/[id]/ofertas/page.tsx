@@ -23,7 +23,13 @@ export default async function CaseOffersPage({
   const bookingCase = await getCase(params.id)
   if (!bookingCase) notFound()
 
-  const view = await ensureProposal(bookingCase.id)
+  /* A moeda da proposta nasce da moeda em que o cliente pediu a cotação. Sem
+     isto a proposta nascia sempre em CVE, e o ecrã do cliente mostrava os
+     números em EUR — o mesmo valor lido em duas moedas diferentes. */
+  const view = await ensureProposal(
+    bookingCase.id,
+    bookingCase.trip_request?.currency || "CVE"
+  )
   if (!view) {
     return (
       <div className="rounded-xl border border-adm-line bg-adm-panel p-8 text-center">

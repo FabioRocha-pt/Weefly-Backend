@@ -51,7 +51,7 @@ export default async function PriceCheckerCasePage({
    * sem esperar: um carimbo que falha não impede ninguém de ver a página.
    */
   const stage = state.screen === "p5" || state.screen === "p4b" ? 2 : state.screen.startsWith("p7") ? 3 : 1
-  void touchLink(params.token, stage as 1 | 2 | 3)
+  void touchLink(state, stage as 1 | 2 | 3)
 
   const view = Array.isArray(searchParams.view)
     ? searchParams.view[0]

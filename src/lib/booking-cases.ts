@@ -47,6 +47,8 @@ export interface BookingCaseRow {
     infants: number
     cabin_class: string
     trip_type: string
+    /** A moeda em que o cliente pediu a cotação (?currency= do link /pc). */
+    currency: string | null
     lead: {
       full_name: string
       email: string
@@ -64,7 +66,7 @@ const CASE_COLUMNS = `
   links:case_links (id, stage, status, unlocked_at, first_opened_at, submitted_at),
   trip_request:trip_requests (
     id, reference, origin, destination, depart_date, return_date,
-    adults, children, infants, cabin_class, trip_type,
+    adults, children, infants, cabin_class, trip_type, currency,
     lead:leads (full_name, email, phone_prefix, phone, source_channel, locale)
   )
 `

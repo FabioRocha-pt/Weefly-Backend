@@ -119,6 +119,18 @@ export interface BoQueueRow {
   pnr: string | null
 }
 
+/*
+ * `offers:case_offers!proposal_id` — a dica de relação não é decorativa.
+ *
+ * Há dois caminhos entre case_proposals e case_offers: offers.proposal_id e
+ * proposals.selected_offer_id (migração 0005). Sem a dica, o PostgREST recusa a
+ * query inteira ("more than one relationship was found"), e como esta função
+ * devolve a fila vazia quando a query falha, o back-office ficava sem casos e
+ * cada ficha respondia 404.
+ *
+ * O comentário vive aqui e não dentro da template string: o que estiver entre
+ * as backticks vai literalmente no parâmetro `select`.
+ */
 const QUEUE_COLUMNS = `
   id, token, stage, created_at, updated_at, created_by, pnr,
   trip_request:trip_requests (
@@ -129,7 +141,7 @@ const QUEUE_COLUMNS = `
   ),
   proposals:case_proposals (
     id, status, published_at, selected_offer_id, selected_at,
-    offers:case_offers (
+    offers:case_offers!proposal_id (
       id, position, include_in_proposal, valid_until,
       price_adult, price_child, price_infant, taxes_total, service_fee,
       lock_fee, lock_fee_enabled
@@ -198,6 +210,13 @@ export interface BoQueueFilters {
   market?: string
   owner?: string
   limit?: number
+  /**
+   * Um caso só, para a ficha.
+   *
+   * Sem isto, abrir uma ficha lia os 300 casos mais recentes para encontrar uma
+   * linha — e um caso mais antigo do que esses 300 simplesmente não abria.
+   */
+  caseId?: string
 }
 
 export type BoBucket =
@@ -245,11 +264,15 @@ export async function loadBoQueue(
   }
   if (!admin) return empty
 
-  const { data, error } = await admin
+  let query = admin
     .from("booking_cases")
     .select(QUEUE_COLUMNS)
     .order("created_at", { ascending: false })
-    .limit(filters.limit ?? 300)
+    .limit(filters.caseId ? 1 : (filters.limit ?? 300))
+
+  if (filters.caseId) query = query.eq("id", filters.caseId)
+
+  const { data, error } = await query
 
   if (error) {
     console.error("[bo/pc] fila falhou:", error.message)
@@ -508,13 +531,13 @@ const CABIN_LABEL_PT: Record<string, string> = {
  *
  * Reaproveita `loadBoQueue` para a linha em si em vez de repetir a derivação do
  * estado: são duas leituras onde poderia haver uma, e é o preço de o estado ser
- * calculado num sítio só.
+ * calculado num sítio só. Pedida por `caseId`, a fila lê uma linha e não 300.
  */
 export async function loadBoCase(caseId: string): Promise<BoCaseDetail | null> {
   const admin = createAdminClient()
   if (!admin) return null
 
-  const queue = await loadBoQueue({ bucket: "tudo", limit: 300 })
+  const queue = await loadBoQueue({ bucket: "tudo", caseId })
   const row = queue.rows.find((r) => r.caseId === caseId)
   if (!row) return null
 

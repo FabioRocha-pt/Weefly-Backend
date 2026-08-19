@@ -75,10 +75,10 @@ export function PickedOption({
         </div>
         <div className="pr">
           <span className="k">Total to pay</span>
-          <div className="amt">{money(total, state.request.currency)}</div>
+          <div className="amt">{money(total, state.quoteCurrency)}</div>
           <div className="mt">
-            {money(fare, state.request.currency)} +{" "}
-            {money(taxes, state.request.currency)} in taxes
+            {money(fare, state.quoteCurrency)} +{" "}
+            {money(taxes, state.quoteCurrency)} in taxes
           </div>
         </div>
       </div>

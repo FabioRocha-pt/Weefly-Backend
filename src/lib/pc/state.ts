@@ -11,7 +11,7 @@
  */
 
 import { createAdminClient } from "@/utils/supabase/admin"
-import { getCaseByToken, markLinkOpened } from "@/lib/booking-cases"
+import { markLinkOpened } from "@/lib/booking-cases"
 import { getPublishedProposal } from "@/lib/proposals"
 import { offerTotal, type Offer, type PaxCounts } from "@/lib/proposal-math"
 import {
@@ -83,6 +83,12 @@ export interface PcIssuedView {
   issuedAt: string | null
 }
 
+export interface PcLinkRow {
+  id: string
+  stage: number
+  status: LinkStatus
+}
+
 export interface PcState {
   token: string
   caseId: string
@@ -92,7 +98,24 @@ export interface PcState {
   contact: PcContactView
   /** Etapa 3 — o estado do link de pagamento. */
   paymentLinkStatus: LinkStatus | null
+  /**
+   * As três etapas do caso, já lidas.
+   *
+   * Ficam no estado para o carimbo de "primeira abertura" ser um update por id
+   * em vez de uma segunda resolução do token — que era ler o caso inteiro outra
+   * vez para descobrir o que esta leitura já tinha na mão.
+   */
+  links: PcLinkRow[]
   offers: Offer[]
+  /**
+   * A moeda em que a proposta foi composta — a que os preços realmente são.
+   *
+   * Nasce da moeda do pedido, mas é a da proposta que manda: é nela que o
+   * vendedor escreveu os números e é nela que o pagamento é cobrado. Mostrar os
+   * preços na moeda do pedido quando as duas divergem era ler escudos como se
+   * fossem euros.
+   */
+  quoteCurrency: string
   /** Total de cada oferta, já multiplicado pelos passageiros deste pedido. */
   totals: Record<string, number>
   pax: PaxCounts
@@ -134,7 +157,7 @@ export async function loadPcState(token: string): Promise<PcLookup> {
     .from("booking_cases")
     .select(
       `id, token, stage, created_at, pnr, issued_at,
-       links:case_links (stage, status),
+       links:case_links (id, stage, status),
        trip_request:trip_requests (
          id, reference, trip_type, origin, destination, depart_date, return_date,
          adults, children, infants, infants_in_seat, infants_on_lap,
@@ -195,10 +218,26 @@ export async function loadPcState(token: string): Promise<PcLookup> {
   const stage = String(row.stage)
   const cancelled = stage === "cancelado"
 
-  const links = (row.links ?? []) as { stage: number; status: LinkStatus }[]
+  const links = (row.links ?? []) as PcLinkRow[]
   const paymentLinkStatus = links.find((l) => l.stage === 3)?.status ?? null
 
-  const published = await getPublishedProposal(caseId)
+  /*
+   * As três leituras que faltam não dependem umas das outras — proposta,
+   * passageiros e pagamento — e em série custavam três idas à base de dados
+   * empilhadas em cada abertura do link. Em paralelo custam a mais lenta.
+   */
+  const [published, passengerResult, loadedPayment] = await Promise.all([
+    getPublishedProposal(caseId),
+    admin
+      .from("case_passengers")
+      .select(
+        "id, position, passenger_type, title, first_name, last_name, gender, birth_date, nationality, passport_number, passport_expiry, issuing_country, ticket_number"
+      )
+      .eq("case_id", caseId)
+      .order("position"),
+    getPcPayment(caseId),
+  ])
+
   const offers = published?.offers ?? []
 
   const pax: PaxCounts = {
@@ -215,17 +254,9 @@ export async function loadPcState(token: string): Promise<PcLookup> {
   const selectedOfferId = published?.proposal.selected_offer_id ?? null
   const selectedAt = published?.proposal.selected_at ?? null
 
-  const { data: passengerRows } = await admin
-    .from("case_passengers")
-    .select(
-      "id, position, passenger_type, title, first_name, last_name, gender, birth_date, nationality, passport_number, passport_expiry, issuing_country, ticket_number"
-    )
-    .eq("case_id", caseId)
-    .order("position")
+  const passengers = (passengerResult.data ?? []) as unknown as CasePassenger[]
 
-  const passengers = (passengerRows ?? []) as unknown as CasePassenger[]
-
-  let payment = await getPcPayment(caseId)
+  let payment = loadedPayment
   let expiry: PcState["expiry"] = { expired: false, cause: null }
 
   if (payment) {
@@ -246,7 +277,9 @@ export async function loadPcState(token: string): Promise<PcLookup> {
     request,
     contact,
     paymentLinkStatus,
+    links,
     offers,
+    quoteCurrency: published?.proposal.currency ?? request.currency,
     totals,
     pax,
     selectedOfferId,
@@ -335,10 +368,16 @@ export function selectedOffer(state: PcState): Offer | null {
   return state.offers.find((o) => o.id === state.selectedOfferId) ?? null
 }
 
-/** Marca a primeira abertura da etapa que este ecrã representa. */
-export async function touchLink(token: string, stage: 1 | 2 | 3): Promise<void> {
-  const lookup = await getCaseByToken(token, stage)
-  if (lookup.ok) await markLinkOpened(lookup.view.link.id)
+/**
+ * Marca a primeira abertura da etapa que este ecrã representa.
+ *
+ * Recebe o estado já carregado em vez do token: a etapa está lá dentro, e
+ * resolver o token outra vez custava uma leitura completa do caso por cada
+ * abertura do link.
+ */
+export async function touchLink(state: PcState, stage: 1 | 2 | 3): Promise<void> {
+  const link = state.links.find((l) => l.stage === stage)
+  if (link && link.status !== "bloqueado") await markLinkOpened(link.id)
 }
 
 function unwrap(value: unknown): Record<string, any> | null {

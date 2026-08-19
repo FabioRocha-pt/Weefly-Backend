@@ -75,7 +75,7 @@ export function ScreenP5({ state }: { state: PcState }) {
             key={offer.id}
             offer={offer}
             total={state.totals[offer.id] ?? 0}
-            currency={state.request.currency}
+            currency={state.quoteCurrency}
             request={state.request}
             pending={pending && choosing === offer.id}
             onChoose={() => {
