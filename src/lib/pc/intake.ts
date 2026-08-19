@@ -140,6 +140,101 @@ function firstDate(input: PcIntake): string {
   return input.departDate
 }
 
+// ── o travão do formulário público ───────────────────────────────────────────
+
+/** Janela em que duas submissões iguais são a mesma submissão. */
+const DEDUPE_MINUTES = 15
+/** Janela e teto do limite por origem. */
+const RATE_MINUTES = 10
+const RATE_MAX = 5
+
+export interface RecentSubmission {
+  token: string
+  reference: string
+}
+
+function minutesAgo(minutes: number): string {
+  return new Date(Date.now() - minutes * 60_000).toISOString()
+}
+
+/**
+ * O mesmo pedido, submetido outra vez.
+ *
+ * O caso mais comum não é fraude: é um duplo clique, um refresh, ou o cliente a
+ * carregar outra vez porque a rede demorou. Criar-lhe um segundo caso divide a
+ * conversa em dois sítios e põe dois pedidos iguais na fila do vendedor. Devolver
+ * o token do primeiro é o comportamento certo — ele volta ao pedido que já fez em
+ * vez de ver um erro que não explica nada.
+ *
+ * Compara email, rota e data de partida: mudar qualquer um deles é um pedido
+ * novo, não uma repetição.
+ */
+export async function findRecentSubmission(
+  input: Pick<PcIntake, "email" | "departDate"> & {
+    origin: string
+    destination: string
+  }
+): Promise<RecentSubmission | null> {
+  const admin = createAdminClient()
+  if (!admin) return null
+
+  const email = input.email.trim().toLowerCase()
+
+  const { data } = await admin
+    .from("trip_requests")
+    .select(
+      `id, reference, created_at,
+       lead:leads!inner (email),
+       cases:booking_cases!inner (token, stage)`
+    )
+    .eq("origin", input.origin)
+    .eq("destination", input.destination)
+    .eq("depart_date", input.departDate)
+    .eq("intake", "price_checker")
+    .gte("created_at", minutesAgo(DEDUPE_MINUTES))
+    .order("created_at", { ascending: false })
+    .limit(10)
+
+  for (const row of (data ?? []) as Record<string, any>[]) {
+    const lead = Array.isArray(row.lead) ? row.lead[0] : row.lead
+    if (String(lead?.email ?? "").toLowerCase() !== email) continue
+
+    const cases = (Array.isArray(row.cases) ? row.cases : [row.cases]).filter(Boolean)
+    const alive = cases.find((c: any) => c?.stage !== "cancelado")
+    if (alive?.token) {
+      return { token: String(alive.token), reference: String(row.reference) }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Quantos pedidos entraram desta origem na última janela.
+ *
+ * Conta por IP porque é o que temos — `consent_ip` já era guardado para cumprir
+ * a promessa do ecrã de consentimento, e serve aqui sem recolher nada de novo.
+ * Um IP partilhado (um escritório, uma operadora móvel) pode legitimamente
+ * submeter vários pedidos, e é por isso que o teto é generoso: o alvo é o script
+ * que submete cem, não a família que submete três.
+ */
+export async function countRecentSubmissions(ip: string | null): Promise<number> {
+  if (!ip) return 0
+  const admin = createAdminClient()
+  if (!admin) return 0
+
+  const { count } = await admin
+    .from("trip_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("consent_ip", ip)
+    .gte("created_at", minutesAgo(RATE_MINUTES))
+
+  return count ?? 0
+}
+
+/** O teto e a janela, para quem chama poder escrever a mensagem. */
+export const RATE_LIMIT = { max: RATE_MAX, minutes: RATE_MINUTES }
+
 /**
  * Cria lead + pedido + caso, e devolve o endereço permanente do cliente.
  *

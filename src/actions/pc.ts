@@ -17,7 +17,12 @@ import { headers } from "next/headers"
 import { z } from "zod"
 
 import { createAdminClient } from "@/utils/supabase/admin"
-import { createPriceCheckerCase } from "@/lib/pc/intake"
+import {
+  RATE_LIMIT,
+  countRecentSubmissions,
+  createPriceCheckerCase,
+  findRecentSubmission,
+} from "@/lib/pc/intake"
 import { loadPcState, paxTotal } from "@/lib/pc/state"
 import {
   attachProof,
@@ -32,6 +37,7 @@ import {
   CURRENCIES,
   CCS,
   NATIONALITIES,
+  PROOF_REVIEW_HOURS,
   carrierName,
   type PayMethodId,
 } from "@/lib/pc/catalog"
@@ -161,6 +167,46 @@ export async function submitPcRequest(
   const v = parsed.data
   const head = headers()
 
+  /* Atrás de um proxy o `x-forwarded-for` traz a cadeia; o primeiro é o cliente. */
+  const ip =
+    head.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    head.get("x-real-ip") ??
+    null
+
+  const origin = v.origin ?? v.legs[0]?.origin ?? ""
+  const destination =
+    v.destination ?? v.legs[v.legs.length - 1]?.destination ?? ""
+  const departDate = v.departDate ?? v.legs[0]?.date ?? ""
+
+  /*
+   * Duplo clique, refresh, ou rede lenta: o mesmo pedido outra vez não é um
+   * pedido novo. Devolver o token do primeiro leva o cliente ao pedido que ele
+   * já fez, em vez de partir a conversa em dois casos e pôr duas linhas iguais
+   * na fila de quem atende.
+   */
+  const repeated = await findRecentSubmission({
+    email: v.email,
+    origin,
+    destination,
+    departDate,
+  })
+  if (repeated) {
+    return { ok: true, token: repeated.token, reference: repeated.reference }
+  }
+
+  /*
+   * O travão. Um formulário público sem limite é uma fila de trabalho aberta a
+   * quem escrever um script — e agora que cada pedido gera um aviso à equipa,
+   * seria também uma caixa de correio inundada.
+   */
+  if (await countRecentSubmissions(ip) >= RATE_LIMIT.max) {
+    return {
+      ok: false,
+      error:
+        "You have sent us several requests in a row. Give us a few minutes to look at them, or message us on WhatsApp.",
+    }
+  }
+
   const created = await createPriceCheckerCase({
     trip: v.trip,
     cabin: v.cabin,
@@ -181,12 +227,8 @@ export async function submitPcRequest(
     locale: v.locale,
     currency: v.currency,
     agentSlug: v.agentSlug ?? null,
-    /* O ecrã de consentimento promete guardar IP e dispositivo. Atrás de um
-       proxy o `x-forwarded-for` traz a cadeia; o primeiro é o cliente. */
-    consentIp:
-      head.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      head.get("x-real-ip") ??
-      null,
+    /* O ecrã de consentimento promete guardar IP e dispositivo. */
+    consentIp: ip,
     consentAgent: head.get("user-agent")?.slice(0, 300) ?? null,
   })
 
@@ -196,6 +238,8 @@ export async function submitPcRequest(
       error: "We could not save your request. Please try again in a moment.",
     }
   }
+
+  await notifyTeamNewRequest(created.caseId)
 
   revalidatePath("/admin/price-checker")
 
@@ -473,13 +517,13 @@ export async function uploadPcProof(
       ])
   }
 
-  await notifyTeam(state.caseId)
+  await notifyTeam(state.caseId, { proof: true })
 
   revalidatePath(`/pc/${token}`)
   revalidatePath("/admin/price-checker")
   revalidatePath(`/admin/price-checker/${state.caseId}`)
 
-  return { ok: true, reviewHours: 48 }
+  return { ok: true, reviewHours: PROOF_REVIEW_HOURS }
 }
 
 /**
@@ -514,7 +558,9 @@ export async function declarePcPaid(
          declaração é. O prazo das 48h arranca igual: a espera do cliente passa
          a ser nossa. */
       proof_status: "recebido",
-      review_deadline_at: new Date(Date.now() + 48 * 3600_000).toISOString(),
+      review_deadline_at: new Date(
+        Date.now() + PROOF_REVIEW_HOURS * 3600_000
+      ).toISOString(),
       ...(METHODS.includes(method as PayMethodId) ? { method } : {}),
       ...(provider ? { pay_provider: provider } : {}),
     })
@@ -612,11 +658,27 @@ export async function requestPcResearch(token: string): Promise<PcResult> {
 }
 
 /** Best-effort: um email falhado nunca desfaz o que o cliente acabou de fazer. */
-async function notifyTeam(caseId: string): Promise<void> {
+async function notifyTeam(caseId: string, options: { proof?: boolean } = {}): Promise<void> {
   try {
     const { sendPaymentDeclaredEmail } = await import("@/lib/emails/send")
-    await sendPaymentDeclaredEmail(caseId)
+    await sendPaymentDeclaredEmail(caseId, options)
   } catch (err) {
     console.error("[pc] aviso à equipa falhou:", err)
+  }
+}
+
+/**
+ * O aviso de pedido novo.
+ *
+ * Separado do `notifyTeam` porque é outra notícia para outro momento, e porque
+ * um pedido que entra tem de avisar mesmo que o email de pagamento esteja mal
+ * configurado — falham de forma independente.
+ */
+async function notifyTeamNewRequest(caseId: string): Promise<void> {
+  try {
+    const { sendPcRequestReceivedEmail } = await import("@/lib/emails/send")
+    await sendPcRequestReceivedEmail(caseId)
+  } catch (err) {
+    console.error("[pc] aviso de pedido novo falhou:", err)
   }
 }
