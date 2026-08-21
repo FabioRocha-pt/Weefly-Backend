@@ -7,21 +7,14 @@ const nextConfig = {
   },
 
   /*
-   * Mockups estáticos servidos em URLs limpos.
+   * Não há reescritas.
    *
-   * O Price Checker (P1 → P9) é uma página autónoma: traz o seu próprio
-   * <head>, tipografia e folha de estilos, e por isso não passa pelo layout
-   * da app — envolvê-la no RootLayout partiria o desenho. Fica em
-   * public/mockups/ e é reescrita para um caminho apresentável.
-   *
-   * A query string passa na reescrita, por isso os parâmetros do link
-   * (?lang= &currency= &cc= &agent= &ref=) continuam a funcionar.
+   * Havia uma, /price-checker → public/mockups/price-checker.html, do tempo em
+   * que o Price Checker era um mockup HTML autónomo. Havia assim três endereços
+   * a responder à mesma pergunta — /pc, /price-checker e o ficheiro em
+   * /mockups/ — e dois deles mostravam um desenho que já não é o produto.
+   * O Price Checker é o /pc, em React, e é o único.
    */
-  async rewrites() {
-    return [
-      { source: "/price-checker", destination: "/mockups/price-checker.html" },
-    ];
-  },
 };
 
 module.exports = nextConfig; // (ou export default nextConfig se for .mjs)

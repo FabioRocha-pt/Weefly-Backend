@@ -10,6 +10,7 @@
 import { cache } from "react"
 
 import { createClient } from "@/utils/supabase/server"
+import { getCurrentUser } from "@/lib/current-user"
 import type {
   RequestLead,
   RequestNote,
@@ -39,14 +40,19 @@ function normaliseRow(row: Record<string, unknown>): TravelRequestRow {
   }
 }
 
-/** Is the signed-in user a member of platform_staff? */
+/**
+ * Is the signed-in user a member of platform_staff?
+ *
+ * The user comes from `getCurrentUser()` — which the admin layout already
+ * awaits — instead of a second `auth.getUser()`. Both are `cache()`d, so the
+ * pair now costs one round trip to the auth server per render instead of two,
+ * and every `/admin` page pays that walk before it renders anything.
+ */
 export const isPlatformStaff = cache(async (): Promise<boolean> => {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return false
 
+  const supabase = createClient()
   const { data } = await supabase
     .from("platform_staff")
     .select("user_id")

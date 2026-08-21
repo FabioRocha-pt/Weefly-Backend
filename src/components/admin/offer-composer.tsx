@@ -44,9 +44,12 @@ import {
   layoverMinutes,
   legMinutes,
   legsOf,
+  dayOffset,
   blockerText,
   offerBlockers,
   offerTotal,
+  offerWarnings,
+  type RequestedDates,
   parseMoney,
   segmentMinutes,
   stopsLabel,
@@ -115,6 +118,39 @@ function localMoment(value: string | null): string {
 let keySeed = 0
 function nextKey(): string {
   return `s${keySeed++}`
+}
+
+/** No máximo um aviso de gravação a cada dez minutos (BO-05). */
+const AUTOSAVE_TOAST_MS = 10 * 60 * 1000
+
+const draftKey = (caseId: string, offerId: string) =>
+  `weefly.bo.composer.${caseId}.${offerId}`
+
+/**
+ * O rascunho de emergência.
+ *
+ * Só é escrito quando a gravação no servidor falha — sessão expirada, rede em
+ * baixo — e existe para responder à única pergunta que interessa nesse momento:
+ * "perdi o que escrevi?". Não perdeu. Fica no browser desta pessoa até a
+ * gravação seguinte passar.
+ */
+function keepLocalDraft(caseId: string, offerId: string, serial: string) {
+  try {
+    window.localStorage.setItem(
+      draftKey(caseId, offerId),
+      JSON.stringify({ at: new Date().toISOString(), draft: serial })
+    )
+  } catch {
+    /* sem quota o aviso de erro continua a aparecer no ecrã */
+  }
+}
+
+function dropLocalDraft(caseId: string, offerId: string) {
+  try {
+    window.localStorage.removeItem(draftKey(caseId, offerId))
+  } catch {
+    /* nada a limpar */
+  }
 }
 
 function fromAdminOffer(offer: AdminOffer): OfferState {
@@ -263,6 +299,7 @@ export function OfferComposer({
   proposal,
   offers: serverOffers,
   pax,
+  requested,
   brief,
 }: {
   caseId: string
@@ -270,6 +307,8 @@ export function OfferComposer({
   proposal: Proposal
   offers: AdminOffer[]
   pax: PaxCounts
+  /** BO-07 · as datas que o cliente pediu, para as validar contra a oferta. */
+  requested: RequestedDates
   /** A coluna do pedido do cliente, renderizada no servidor. */
   brief: React.ReactNode
 }) {
@@ -287,7 +326,12 @@ export function OfferComposer({
     "idle" | "saving" | "saved" | "error"
   >("idle")
   const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
+
+  /* Quando saiu o último aviso de gravação. Começa no passado para o primeiro
+     aparecer — é o que diz ao vendedor que a gravação automática existe. */
+  const lastToast = useRef(0)
 
   const snapshots = useRef<Record<string, string>>(
     Object.fromEntries(
@@ -324,9 +368,22 @@ export function OfferComposer({
 
   const open = offers.find((o) => o.id === openId) ?? null
 
-  /* Gravação automática da oferta aberta. 900 ms depois da última tecla: tempo
-     suficiente para não gravar a meio de uma palavra, curto o bastante para
-     ninguém sair da página a pensar que perdeu o que escreveu. */
+  /*
+   * BO-05 · a gravação automática, sem piscar e sem gritar.
+   *
+   * Três coisas mudaram em relação ao comportamento que o cliente viu:
+   *
+   *   · não há `router.refresh()` nenhum atrás da gravação. Gravar é escrever no
+   *     servidor, não voltar a desenhar o painel: o que está no ecrã é o que o
+   *     vendedor acabou de escrever, e é o mais fresco que existe;
+   *   · a confirmação é um aviso discreto, no máximo um a cada dez minutos. O
+   *     indicador "a gravar / gravado" continua no cabeçalho para quem o
+   *     procurar, mas deixa de haver um sobressalto visual por cada pausa entre
+   *     duas palavras;
+   *   · se a gravação falhar, o rascunho fica guardado no browser e o vendedor é
+   *     avisado com uma frase que diz o que fazer — em vez de um estado
+   *     silencioso que só se descobre ao recarregar.
+   */
   useEffect(() => {
     if (published || !open) return
     const serial = JSON.stringify(draftOf(open))
@@ -339,16 +396,31 @@ export function OfferComposer({
         if (result.error) {
           setSaveState("error")
           setError(result.error)
+          keepLocalDraft(caseId, open.id, serial)
           return
         }
         snapshots.current[open.id] = serial
+        dropLocalDraft(caseId, open.id)
         setSaveState("saved")
         setError(null)
+
+        const now = Date.now()
+        if (now - lastToast.current > AUTOSAVE_TOAST_MS) {
+          lastToast.current = now
+          setToast(t("admin.composerAutosaved"))
+        }
       })
     }, 900)
 
     return () => clearTimeout(timer)
-  }, [open, caseId, published])
+  }, [open, caseId, published, t])
+
+  /* O aviso apaga-se sozinho: é uma confirmação, não uma mensagem para ler. */
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 3200)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   function patch(id: string, changes: Partial<OfferState>) {
     setOffers((prev) =>
@@ -384,6 +456,14 @@ export function OfferComposer({
     })
   }
 
+  /**
+   * Trocar a ordem das opções.
+   *
+   * A ordem nova aplica-se no ecrã e vai para o servidor, mas sem
+   * `router.refresh()` a seguir: a lista que o servidor devolveria é a mesma que
+   * já está desenhada, e voltar a desenhá-la a cada clique na seta era metade do
+   * piscar de que a BO-05 se queixa.
+   */
   function move(id: string, delta: number) {
     const from = offers.findIndex((o) => o.id === id)
     const to = from + delta
@@ -392,7 +472,14 @@ export function OfferComposer({
     const [moved] = next.splice(from, 1)
     next.splice(to, 0, moved)
     setOffers(next)
-    run(() => reorderOffers(caseId, next.map((o) => o.id)))
+    setError(null)
+    startTransition(async () => {
+      const result = await reorderOffers(
+        caseId,
+        next.map((o) => o.id)
+      )
+      if (result.error) setError(result.error)
+    })
   }
 
   return (
@@ -410,7 +497,10 @@ export function OfferComposer({
         {error && (
           <div className="flex items-start gap-2 rounded-xl border border-adm-ember/40 bg-adm-ember/10 p-4 text-[12.5px] leading-relaxed text-adm-ember">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{error}</span>
+            <span>
+              {error}
+              {saveState === "error" && ` ${t("admin.composerSaveFailedKept")}`}
+            </span>
           </div>
         )}
 
@@ -429,6 +519,7 @@ export function OfferComposer({
               offer={offer}
               index={index}
               pax={pax}
+              requested={requested}
               currency={proposal.currency}
               disabled={published || pending}
               locked={published}
@@ -473,6 +564,22 @@ export function OfferComposer({
         )}
       </main>
 
+      {/*
+        BO-05 · a confirmação da gravação automática.
+        Fixa no canto, some sozinha, e no máximo uma a cada dez minutos — o
+        contrário do painel inteiro a repintar-se a cada pausa na escrita.
+      */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-full border border-adm-line bg-adm-panel px-3.5 py-2 text-[12px] font-semibold text-adm-txt-2 shadow-lg"
+        >
+          <Check className="h-3.5 w-3.5 text-adm-ok" />
+          {toast}
+        </div>
+      )}
+
       {/* ═══ direita · pré-visualização e publicação ═══ */}
       <aside className="flex flex-col gap-[18px] xl:sticky xl:top-[18px]">
         <ClientPreview
@@ -490,6 +597,7 @@ export function OfferComposer({
           offers={offers}
           serverOffers={serverOffers}
           pax={pax}
+          requested={requested}
           pending={pending}
           saveState={saveState}
           onError={setError}
@@ -508,6 +616,7 @@ function OpenOffer({
   offer,
   index,
   pax,
+  requested,
   currency,
   disabled,
   locked,
@@ -521,6 +630,7 @@ function OpenOffer({
   offer: OfferState
   index: number
   pax: PaxCounts
+  requested: RequestedDates
   currency: string
   disabled: boolean
   locked: boolean
@@ -540,6 +650,10 @@ function OpenOffer({
   const cost = parseMoney(offer.cost_total)
   const margin = total - cost
   const marginPct = total > 0 ? ((margin / total) * 100).toFixed(1) : "0,0"
+
+  const airportNames = useAirportNames(
+    offer.segments.flatMap((seg) => [seg.origin, seg.destination])
+  )
 
   function addSegment() {
     onPatch({ segments: [...offer.segments, emptySegment(leg)] })
@@ -608,6 +722,8 @@ function OpenOffer({
             back: t("admin.composerSegments", { count: legs.volta.length }),
           })}
         >
+          <DateChecks offer={preview} pax={pax} requested={requested} t={t} />
+
           <div className="mb-3 flex gap-1.5">
             {(["ida", "volta"] as const).map((d) => (
               <button
@@ -658,6 +774,18 @@ function OpenOffer({
                   </span>
                   <span className="text-xs font-bold text-adm-txt-2">
                     {segment.origin || "—"} → {segment.destination || "—"}
+                  </span>
+                  <span className="truncate text-[11px] text-adm-muted">
+                    {[segment.origin, segment.destination]
+                      .map((code) =>
+                        !code
+                          ? null
+                          : airportNames[code.toUpperCase()] === null
+                            ? `${code.toUpperCase()} ${t("admin.composerUnknownIata")}`
+                            : (airportNames[code.toUpperCase()] ?? null)
+                      )
+                      .filter(Boolean)
+                      .join(" → ")}
                   </span>
                   <IconButton
                     title={t("admin.composerRemoveSegment")}
@@ -842,11 +970,9 @@ function OpenOffer({
             onClick={addSegment}
             className="w-full rounded-[9px] border border-dashed border-adm-line py-2.5 text-xs font-bold text-adm-muted transition-colors hover:border-[#46587A] hover:text-adm-txt-2"
           >
-            {t(
-              leg === "ida"
-                ? "admin.composerAddSegmentOut"
-                : "admin.composerAddSegmentBack"
-            )}
+            {/* BO-06 · "Adicionar trecho à ida" dizia duas vezes a mesma coisa:
+                a direção já está no separador em que o botão vive. */}
+            {t("admin.composerAddSegment")}
           </button>
         </Section>
 
@@ -1059,6 +1185,105 @@ function OpenOffer({
   )
 }
 
+/**
+ * FE-01 · os códigos IATA desta oferta, virados em nomes de cidade.
+ *
+ * O mesmo endpoint que o formulário do cliente usa — `/api/airports` — e é
+ * essa a razão de ser deste pedaço: o catálogo é um só, servido de um só sítio,
+ * e o back-office lê-o pela mesma porta que o cliente e que o futuro bot do
+ * WhatsApp. O vendedor escreve "SID" copiado do Amadeus e vê "Sal" debaixo do
+ * campo; se escrever um código que não existe, vê que não existe antes de o
+ * cliente ver.
+ */
+function useAirportNames(codes: string[]): Record<string, string | null> {
+  const [names, setNames] = useState<Record<string, string | null>>({})
+  const wanted = codes
+    .filter((c) => /^[A-Za-z]{3}$/.test(c))
+    .map((c) => c.toUpperCase())
+  const key = Array.from(new Set(wanted)).sort().join(",")
+
+  useEffect(() => {
+    if (!key) return
+    const controller = new AbortController()
+
+    fetch(`/api/airports?iata=${encodeURIComponent(key)}`, {
+      signal: controller.signal,
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!json?.results) return
+        const found: Record<string, string | null> = {}
+        for (const code of key.split(",")) found[code] = null
+        for (const place of json.results as { iata: string; city: string; name: string }[]) {
+          found[place.iata] = place.city || place.name
+        }
+        setNames((current) => ({ ...current, ...found }))
+      })
+      .catch(() => {
+        /* sem catálogo o campo continua a valer pelo código */
+      })
+
+    return () => controller.abort()
+  }, [key])
+
+  return names
+}
+
+/**
+ * BO-07 · o que as datas desta oferta dizem, enquanto se escreve.
+ *
+ * Duas listas e a diferença entre elas é o ponto: em cima o que impede
+ * publicar, em baixo o que é para verificar. As mesmas regras correm outra vez
+ * no servidor ao publicar (`publishProposal`) — esta é a versão rápida, para
+ * quem está a escrever ver o erro no momento em que o comete.
+ */
+function DateChecks({
+  offer,
+  pax,
+  requested,
+  t,
+}: {
+  offer: Offer
+  pax: PaxCounts
+  requested: RequestedDates
+  t: Translator
+}) {
+  /* Só os problemas de datas: o nome em falta e o preço a zero têm o seu lugar
+     no painel de publicação, e repeti-los aqui era ruído a cada tecla. */
+  const dateKeys = [
+    "blockers.backwards",
+    "blockers.outOfOrder",
+    "blockers.departureMismatch",
+    "blockers.returnMismatch",
+  ]
+  const problems = offerBlockers(offer, pax, requested).filter((b) =>
+    dateKeys.includes(b.key)
+  )
+  const warnings = offerWarnings(offer)
+
+  if (problems.length === 0 && warnings.length === 0) return null
+
+  return (
+    <div className="mb-3 space-y-1.5">
+      {problems.length > 0 && (
+        <div className="flex items-start gap-2 rounded-[9px] bg-adm-ember/[.14] p-2.5 text-xs leading-relaxed text-adm-ember">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            {problems.map((b) => blockerText(b, t)).join(" · ")}
+          </span>
+        </div>
+      )}
+      {warnings.length > 0 && (
+        <div className="rounded-[9px] bg-adm-warn/[.14] p-2.5 text-xs leading-relaxed text-[#F0C983]">
+          {t("blockers.warnings", {
+            items: warnings.map((w) => blockerText(w, t)).join(" · "),
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- Oferta fechada ----------------------------------------------------------
 
 function CollapsedOffer({
@@ -1188,7 +1413,7 @@ function ClientPreview({
         </h2>
         {published && (
           <a
-            href={`/p/${token}/proposta`}
+            href={`/pc/${token}`}
             target="_blank"
             rel="noreferrer"
             className="ml-auto inline-flex items-center gap-1.5 rounded-[9px] border border-adm-line bg-adm-panel-2 px-2.5 py-1.5 text-xs font-semibold text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt"
@@ -1303,6 +1528,14 @@ function PreviewLeg({
       <div className="text-right">
         <span className="block font-mono text-sm font-semibold leading-tight">
           {timeOf(last.arrive_at)}
+          {/* BO-07 · uma chegada no dia seguinte é aceite e mostrada como +1,
+              aqui e no cartão do cliente. Rejeitá-la seria rejeitar metade dos
+              voos de longo curso. */}
+          {dayOffset(segments) > 0 && (
+            <sup className="ml-0.5 text-[9px] font-bold">
+              +{dayOffset(segments)}
+            </sup>
+          )}
         </span>
         <span className="font-mono text-[10px] font-semibold tracking-[.06em] text-[#3A4557]">
           {last.destination ?? "—"}
@@ -1321,6 +1554,7 @@ function PublishPanel({
   offers,
   serverOffers,
   pax,
+  requested,
   pending,
   saveState,
   onError,
@@ -1334,6 +1568,7 @@ function PublishPanel({
   offers: OfferState[]
   serverOffers: AdminOffer[]
   pax: PaxCounts
+  requested: RequestedDates
   pending: boolean
   saveState: "idle" | "saving" | "saved" | "error"
   onError: (message: string | null) => void
@@ -1366,7 +1601,7 @@ function PublishPanel({
 
   const going = offers.filter((o) => included[o.id])
   const blockers = going.flatMap((offer, i) => {
-    const problems = offerBlockers(asOffer(offer, i), pax)
+    const problems = offerBlockers(asOffer(offer, i), pax, requested)
     return problems.length === 0
       ? []
       : [
@@ -1587,7 +1822,7 @@ function CopyLink({ token, t }: { token: string; t: Translator }) {
       type="button"
       onClick={async () => {
         await navigator.clipboard.writeText(
-          `${window.location.origin}/p/${token}/proposta`
+          `${window.location.origin}/pc/${token}`
         )
         setCopied(true)
         setTimeout(() => setCopied(false), 1600)

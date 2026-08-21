@@ -47,7 +47,8 @@ export function ScreenP5({ state }: { state: PcState }) {
         <h1>
           {offers.length === 1 ? "One option for " : "Two options for "}
           <em>
-            {cityOf(state.request.origin)} → {cityOf(state.request.destination)}
+            {cityOf(state.request.origin, state.request.cities)} →{" "}
+            {cityOf(state.request.destination, state.request.cities)}
           </em>
         </h1>
         <p>

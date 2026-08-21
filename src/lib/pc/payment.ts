@@ -207,6 +207,8 @@ async function insertPayment(
   currency: string,
   description: string
 ): Promise<PcPayment | null> {
+  const expiresAt = hoursFromNow(PAY_WINDOW_HOURS)
+
   const { data, error } = await admin
     .from("case_payments")
     .insert({
@@ -215,7 +217,7 @@ async function insertPayment(
       currency,
       description,
       status: "PENDING",
-      expires_at: hoursFromNow(PAY_WINDOW_HOURS),
+      expires_at: expiresAt,
       idempotency_key: `case_${caseId}_${Date.now()}`,
     })
     .select(PAYMENT_COLUMNS)
@@ -225,6 +227,23 @@ async function insertPayment(
     console.error("[pc/payment] criação falhou:", error.message)
     return null
   }
+
+  /*
+   * BO-02 · a etapa 3 abre-se no mesmo gesto, com prazo.
+   *
+   * O link de pagamento tem de ter validade e servir uma vez: a validade é este
+   * `expires_at` (o `enforceExpiry` fecha-o quando passa) e a unicidade é o
+   * estado da etapa — passa a "submetido" quando o pagamento é confirmado (ver
+   * `markPaid` em lib/payments.ts) e a partir daí o ecrã do cliente é o de
+   * "pago", não outro convite a pagar.
+   */
+  await admin
+    .from("case_links")
+    .update({ status: "ativo", unlocked_at: new Date().toISOString(), expires_at: expiresAt })
+    .eq("case_id", caseId)
+    .eq("stage", 3)
+    .eq("status", "bloqueado")
+
   return data as PcPayment
 }
 

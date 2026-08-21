@@ -459,6 +459,210 @@ export async function boIssueTickets(
   return { ok: true, notice: `Emitido. PNR ${v.pnr}.` }
 }
 
+
+// ── BO-04 · as datas do pedido ───────────────────────────────────────────────
+
+const datesSchema = z.object({
+  caseId: z.string().uuid(),
+  departDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data de ida inválida."),
+  returnDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
+  /* O motivo não é decoração: é o que fica no histórico e o que o cliente lê no
+     aviso. Uma frase de dez caracteres não explica nada a ninguém. */
+  reason: z
+    .string()
+    .trim()
+    .min(12, "Escreva porque as datas mudam — o cliente vai ler esta frase."),
+})
+
+/**
+ * Propor novas datas ao cliente.
+ *
+ * BO-04 · a origem e o destino de um pedido não se editam nunca: uma rota
+ * diferente é um pedido diferente. As datas mudam, mas só quando as pedidas não
+ * têm lugar — e só por aqui, que é a única porta que existe: com motivo
+ * obrigatório, com o pedido original guardado intacto, com registo de quem o
+ * fez e com aviso ao cliente. Editar em silêncio um campo do formulário era o
+ * que esta ação substitui.
+ *
+ * Uma proposta já publicada volta a rascunho e sobe de revisão (R1 → R2): os
+ * preços foram feitos para as datas antigas, e deixá-los à vista com datas
+ * novas era mostrar ao cliente um valor que já sabemos estar a mudar.
+ */
+export async function boProposeNewDates(
+  input: z.input<typeof datesSchema>
+): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const parsed = datesSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+  const v = parsed.data
+
+  if (v.returnDate && v.returnDate < v.departDate) {
+    return { ok: false, error: "A volta não pode ser antes da ida." }
+  }
+
+  const admin = createAdminClient()
+  if (!admin) return { ok: false, error: "Serviço indisponível." }
+
+  const { data: raw } = await admin
+    .from("booking_cases")
+    .select(
+      `id, stage, pnr, trip_request_id,
+       trip_request:trip_requests (
+         id, depart_date, return_date, trip_type,
+         original_depart_date, original_return_date
+       )`
+    )
+    .eq("id", v.caseId)
+    .maybeSingle()
+
+  const record = raw as Record<string, any> | null
+  const trip = Array.isArray(record?.trip_request)
+    ? record?.trip_request[0]
+    : record?.trip_request
+
+  if (!record || !trip) return { ok: false, error: "Caso não encontrado." }
+
+  /* Depois de emitido as datas já não são uma proposta: são um bilhete, e
+     mudá-las é uma reemissão que passa pela companhia. */
+  if (record.stage === "emitido" || record.pnr) {
+    return {
+      ok: false,
+      error: "Este caso já está emitido. Uma mudança de datas é uma reemissão.",
+    }
+  }
+
+  const payment = await getPcPayment(v.caseId)
+  if (payment?.admin_confirmed || payment?.status === "COMPLETED") {
+    return {
+      ok: false,
+      error: "O cliente já pagou. Fale com ele antes de mexer nas datas.",
+    }
+  }
+
+  const fromDepart = (trip.depart_date as string | null) ?? null
+  const fromReturn = (trip.return_date as string | null) ?? null
+
+  if (fromDepart === v.departDate && (fromReturn ?? null) === (v.returnDate ?? null)) {
+    return { ok: false, error: "As datas são as mesmas que já estão no pedido." }
+  }
+
+  const { error } = await admin
+    .from("trip_requests")
+    .update({
+      depart_date: v.departDate,
+      return_date: v.returnDate ?? null,
+      /* O pedido original é escrito uma vez e nunca mais: a segunda mudança de
+         datas não apaga aquilo que o cliente pediu à primeira. */
+      original_depart_date: trip.original_depart_date ?? fromDepart,
+      original_return_date: trip.original_return_date ?? fromReturn,
+      dates_changed_at: new Date().toISOString(),
+      dates_changed_by: identity.userId,
+      dates_changed_by_email: identity.email,
+      dates_change_reason: v.reason,
+    })
+    .eq("id", trip.id)
+
+  if (error) {
+    console.error("[bo/pc] datas não gravadas:", error.message)
+    return { ok: false, error: "Não foi possível gravar as datas." }
+  }
+
+  /* A proposta publicada volta a rascunho, com revisão nova. */
+  let revision: number | null = null
+  const { data: proposal } = await admin
+    .from("case_proposals")
+    .select("id, status, revision")
+    .eq("case_id", v.caseId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const draft = proposal as { id: string; status: string; revision: number } | null
+  if (draft?.status === "publicada") {
+    revision = draft.revision + 1
+    await admin
+      .from("case_proposals")
+      .update({ status: "rascunho", revision })
+      .eq("id", draft.id)
+      .eq("status", "publicada")
+  }
+
+  await logCaseEvent({
+    caseId: v.caseId,
+    kind: "dates_proposed",
+    title: "Novas datas propostas ao cliente",
+    detail: [
+      `${fromDepart ?? "—"}${fromReturn ? ` – ${fromReturn}` : ""}`,
+      "→",
+      `${v.departDate}${v.returnDate ? ` – ${v.returnDate}` : ""}`,
+      `· ${v.reason}`,
+      revision ? `· revisão R${revision}` : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+    payload: {
+      from: { departDate: fromDepart, returnDate: fromReturn },
+      to: { departDate: v.departDate, returnDate: v.returnDate ?? null },
+      reason: v.reason,
+      revision,
+    },
+  })
+
+  const notified = await notifyClientDates(v.caseId, {
+    fromDepart,
+    fromReturn,
+    toDepart: v.departDate,
+    toReturn: v.returnDate ?? null,
+    reason: v.reason,
+  })
+
+  touch(v.caseId)
+
+  return {
+    ok: true,
+    notice: [
+      "Datas atualizadas e registadas.",
+      revision ? `A proposta voltou a rascunho como R${revision}.` : "",
+      notified
+        ? "O cliente foi avisado por email."
+        : "Não foi possível avisar o cliente por email — fale com ele pelo WhatsApp.",
+    ]
+      .filter(Boolean)
+      .join(" "),
+  }
+}
+
+/** Best-effort, como os outros avisos: o registo já está gravado. */
+async function notifyClientDates(
+  caseId: string,
+  change: {
+    fromDepart: string | null
+    fromReturn: string | null
+    toDepart: string
+    toReturn: string | null
+    reason: string
+  }
+): Promise<boolean> {
+  try {
+    const { sendDatesProposedEmail } = await import("@/lib/emails/send")
+    return await sendDatesProposedEmail(caseId, change)
+  } catch (err) {
+    console.error("[bo/pc] aviso de datas falhou:", err)
+    return false
+  }
+}
+
 /** Best-effort — ver o mesmo padrão em actions/payments.ts. */
 async function notifyClientPaid(caseId: string): Promise<void> {
   try {

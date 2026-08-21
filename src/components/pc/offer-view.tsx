@@ -45,22 +45,28 @@ export function legsOfOffer(offer: Offer): {
 }
 
 /** "Non-stop" · "1 stop in Lisbon" — a versão inglesa de `stopsLabel`. */
-export function stopsEn(segments: OfferSegment[]): string {
+export function stopsEn(
+  segments: OfferSegment[],
+  cities?: Record<string, string>
+): string {
   const stops = segments.length - 1
   if (stops <= 0) return "Non-stop"
   if (stops === 1) {
     const wait = layoverMinutes(segments[0], segments[1])
-    const where = cityOf(segments[0].destination)
+    const where = cityOf(segments[0].destination, cities)
     return wait === null ? `1 stop in ${where}` : `${where} · ${formatDuration(wait)}`
   }
   return `${stops} stops`
 }
 
-export function offerStopsSummary(offer: Offer): string {
+export function offerStopsSummary(
+  offer: Offer,
+  cities?: Record<string, string>
+): string {
   const legs = legsOfOffer(offer)
   if (!legs.length) return ""
   if (legs.every((l) => l.segments.length === 1)) return "Non-stop"
-  if (legs.length === 1) return stopsEn(legs[0].segments)
+  if (legs.length === 1) return stopsEn(legs[0].segments, cities)
   const outbound = legs[0].segments.length > 1
   const inbound = legs[1].segments.length > 1
   if (outbound && inbound) return "1 stop each way"
@@ -108,9 +114,11 @@ function legLabel(
 export function LegStrip({
   segments,
   label,
+  cities,
 }: {
   segments: OfferSegment[]
   label: string
+  cities?: Record<string, string>
 }) {
   const first = segments[0]
   const last = segments[segments.length - 1]
@@ -124,7 +132,7 @@ export function LegStrip({
         <div className="node">
           <span className="tm">{timeOf(first.depart_at)}</span>
           <span className="ia">{first.origin ?? "—"}</span>
-          <span className="dt">{cityOf(first.origin)}</span>
+          <span className="dt">{cityOf(first.origin, cities)}</span>
         </div>
         <div className="bar" aria-hidden="true">
           <span className="du">{formatDuration(total)}</span>
@@ -132,7 +140,7 @@ export function LegStrip({
           <span className="d a" />
           {segments.length > 1 && <span className="st" />}
           <span className="d b" />
-          <span className="sp">{stopsEn(segments)}</span>
+          <span className="sp">{stopsEn(segments, cities)}</span>
         </div>
         <div className="node r">
           <span className="tm">
@@ -140,7 +148,7 @@ export function LegStrip({
             {plus > 0 && <sup style={{ fontSize: 10 }}>+{plus}</sup>}
           </span>
           <span className="ia">{last.destination ?? "—"}</span>
-          <span className="dt">{cityOf(last.destination)}</span>
+          <span className="dt">{cityOf(last.destination, cities)}</span>
         </div>
       </div>
     </div>
@@ -214,13 +222,14 @@ export function OfferCard({
       <div className="prop-body">
         <div className="airline">
           {offer.name || carrierName(offer.segments[0]?.carrier_code)}{" "}
-          <span className="tagline">{offerStopsSummary(offer)}</span>
+          <span className="tagline">{offerStopsSummary(offer, request.cities)}</span>
         </div>
 
         {legs.map((leg, index) => (
           <LegStrip
             key={leg.direction}
             segments={leg.segments}
+            cities={request.cities}
             label={legLabel(leg.direction, index, multi, leg.segments[0].depart_at)}
           />
         ))}

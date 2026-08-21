@@ -33,14 +33,16 @@ import { recordOfferSelection } from "@/lib/proposals"
 import { offerTotal } from "@/lib/proposal-math"
 import { logCaseEvent } from "@/lib/case-events"
 import {
-  AP,
   CURRENCIES,
-  CCS,
+  MAX_LEGS,
   NATIONALITIES,
+  PAY_WINDOW_HOURS,
   PROOF_REVIEW_HOURS,
   carrierName,
   type PayMethodId,
 } from "@/lib/pc/catalog"
+import { isKnownIata } from "@/lib/airports"
+import { COUNTRY_BY_ISO, toE164 } from "@/lib/countries"
 
 export type PcResult = { ok: true; notice?: string } | { ok: false; error: string }
 
@@ -51,7 +53,7 @@ const iata = z
   .string()
   .trim()
   .toUpperCase()
-  .refine((v) => Boolean(AP(v)), "Escolha um aeroporto da lista")
+  .refine(isKnownIata, "Escolha um aeroporto da lista")
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida")
 
@@ -74,17 +76,28 @@ const requestSchema = z
     returnDate: isoDate.nullable().optional(),
     legs: z
       .array(z.object({ origin: iata, destination: iata, date: isoDate }))
-      .max(3)
+      .max(MAX_LEGS)
       .default([]),
     name: z
       .string()
       .trim()
       .refine((v) => v.split(/\s+/).filter(Boolean).length >= 2, "Nome completo"),
-    dialCode: z.string().refine((v) => CCS.some((c) => c.c === v), "Indicativo"),
-    phone: z
+    /*
+     * O país e o indicativo, os dois.
+     *
+     * O indicativo sozinho não identifica o país — o +1 é de vinte — e é o país
+     * que decide o mercado, a moeda e os métodos de pagamento que o cliente vê.
+     * Chegam ambos e são verificados um contra o outro.
+     */
+    country: z
       .string()
-      .transform((v) => v.replace(/\D/g, ""))
-      .refine((v) => v.length >= 6 && v.length <= 15, "Telefone"),
+      .trim()
+      .toUpperCase()
+      .refine((v) => Boolean(COUNTRY_BY_ISO[v]), "País do telefone"),
+    dialCode: z.string().trim(),
+    /* O ecrã manda o número já em E.164; aqui é normalizado outra vez, porque
+       um pedido chega a esta função por fetch tão facilmente como por clique. */
+    phone: z.string().trim().min(4, "Telefone"),
     email: z.string().trim().email(),
     consent: z.literal(true),
     locale: z.enum(["pt", "en", "fr"]).default("en"),
@@ -92,6 +105,18 @@ const requestSchema = z
     agentSlug: z.string().trim().max(40).nullable().optional(),
   })
   .superRefine((v, ctx) => {
+    const expectedDial = COUNTRY_BY_ISO[v.country]?.dial
+    if (expectedDial && v.dialCode !== expectedDial) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dialCode"],
+        message: "O indicativo não é o do país escolhido",
+      })
+    }
+    if (!toE164(v.dialCode || expectedDial || "", v.phone)) {
+      ctx.addIssue({ code: "custom", path: ["phone"], message: "Telefone" })
+    }
+
     // Um bebé no colo por adulto — é o limite da companhia, não nosso.
     if (v.infantsOnLap > v.adults) {
       ctx.addIssue({
@@ -103,7 +128,11 @@ const requestSchema = z
 
     if (v.trip === "multi") {
       if (v.legs.length < 2) {
-        ctx.addIssue({ code: "custom", path: ["legs"], message: "Indique 2 ou 3 voos" })
+        ctx.addIssue({
+          code: "custom",
+          path: ["legs"],
+          message: `Indique entre 2 e ${MAX_LEGS} voos`,
+        })
         return
       }
       v.legs.forEach((leg, i) => {
@@ -221,6 +250,7 @@ export async function submitPcRequest(
     legs: v.legs,
     name: v.name,
     dialCode: v.dialCode,
+    country: v.country,
     phone: v.phone,
     email: v.email,
     consent: true,
@@ -249,11 +279,16 @@ export async function submitPcRequest(
 // ── P5 · escolher a opção ────────────────────────────────────────────────────
 
 /**
- * O cliente escolhe. A escolha abre a janela de pagamento no mesmo gesto.
+ * O cliente escolhe a opção.
  *
- * O valor do pagamento é calculado aqui a partir da oferta e dos passageiros do
- * pedido — nunca vem do formulário. É a diferença entre um preço e um preço que
- * o cliente pode editar.
+ * O que aqui **não** acontece é abrir a janela de pagamento. Acontecia, e era o
+ * erro BO-02: um valor a cobrar existia antes de haver passageiros, e um link
+ * de pagamento criado antes de a tarifa estar fixada pode levar o montante
+ * errado. Dinheiro a mexer-se contra um preço velho é a classe de erro mais
+ * caro deste sistema.
+ *
+ * O pagamento nasce um passo depois, quando os passaportes estão todos
+ * completos — ver `savePcPassengers`.
  */
 export async function choosePcOffer(
   token: string,
@@ -275,15 +310,6 @@ export async function choosePcOffer(
   if (!recorded) return { ok: false, error: "We could not record your choice." }
 
   const amount = offerTotal(offer, state.pax)
-  const description = [
-    offer.name || carrierName(offer.segments[0]?.carrier_code),
-    `${state.request.origin} → ${state.request.destination}`,
-    state.request.reference,
-  ]
-    .filter(Boolean)
-    .join(" · ")
-
-  await openPaymentWindow(state.caseId, amount, recorded.currency, description)
 
   const admin = createAdminClient()
   if (admin) {
@@ -419,6 +445,54 @@ export async function savePcPassengers(
     detail: `${parsed.data.length} de ${expected}`,
     actorKind: "client",
   })
+
+  /*
+   * BO-02 · é aqui que o link de pagamento nasce, e em nenhum outro sítio.
+   *
+   * Duas condições, as duas verificadas do lado do servidor: a opção está
+   * escolhida (acima) e os passageiros estão todos completos (a gravação que
+   * acabou de acontecer é o conjunto inteiro, validado campo a campo pelo
+   * `passengerSchema`). Só depois disso existe um valor a cobrar e alguém a
+   * quem o cobrar.
+   *
+   * O montante é calculado da oferta escolhida e dos passageiros do pedido —
+   * nunca vem do formulário. E a descrição leva a referência do caso, porque é
+   * ela que aparece no extrato de quem paga.
+   */
+  const chosen = state.offers.find((o) => o.id === state.selectedOfferId)
+  if (chosen) {
+    const amount = offerTotal(chosen, state.pax)
+    const description = [
+      chosen.name || carrierName(chosen.segments[0]?.carrier_code),
+      `${state.request.origin} → ${state.request.destination}`,
+      state.request.reference,
+    ]
+      .filter(Boolean)
+      .join(" · ")
+
+    const payment = await openPaymentWindow(
+      state.caseId,
+      amount,
+      state.quoteCurrency,
+      description
+    )
+
+    if (!payment) {
+      console.error(
+        "[pc] passageiros guardados mas o pagamento não abriu:",
+        state.caseId
+      )
+    } else if (!state.payment) {
+      await logCaseEvent({
+        caseId: state.caseId,
+        kind: "payment_window_opened",
+        title: "Link de pagamento gerado",
+        detail: `${amount / 100} ${state.quoteCurrency} · expira em ${PAY_WINDOW_HOURS}h`,
+        actorKind: "system",
+        payload: { amount, currency: state.quoteCurrency },
+      })
+    }
+  }
 
   revalidatePath(`/pc/${token}`)
   revalidatePath(`/admin/price-checker/${state.caseId}`)

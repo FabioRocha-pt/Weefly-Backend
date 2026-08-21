@@ -7,7 +7,7 @@
  * Sem imports de servidor — o servidor renderiza os mesmos ecrãs.
  */
 
-import { AP, CUR, MONTHS, type CabinKind, type TripKind } from "@/lib/pc/catalog"
+import { CUR, MONTHS, type CabinKind, type TripKind } from "@/lib/pc/catalog"
 
 export const pad = (n: number) => String(n).padStart(2, "0")
 
@@ -183,9 +183,19 @@ export const CABIN_LABEL: Record<CabinKind, string> = {
   first: "First class",
 }
 
-/** "Praia" a partir de um IATA, com o próprio código como recurso. */
-export function cityOf(ia: string | null | undefined): string {
-  return AP(ia)?.ct ?? ia ?? "—"
+/**
+ * "Praia" a partir de um IATA.
+ *
+ * O mapa vem do servidor (`PcRequestView.cities`), que é o único lado que tem o
+ * catálogo dos nove mil aeroportos. Sem mapa — ou com um código que ele não
+ * traz — fica o próprio código, que é curto mas nunca está errado.
+ */
+export function cityOf(
+  ia: string | null | undefined,
+  cities?: Record<string, string>
+): string {
+  if (!ia) return "—"
+  return cities?.[ia] ?? ia
 }
 
 /** O link do WhatsApp com a referência já escrita na mensagem. */

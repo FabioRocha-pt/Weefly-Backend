@@ -8,6 +8,8 @@ import { getBoAccess, boInitials } from "@/lib/bo-access"
 import { RoutePreloader } from "@/components/route-preloader"
 import { WeeFlyLogo } from "@/components/weefly-logo"
 import { BoTopbarActions } from "@/components/bo/topbar-actions"
+import { BoUserMenu } from "@/components/bo/user-menu"
+import { BoLiveUpdates } from "@/components/bo/live-updates"
 
 /**
  * WeeFly — o back-office do Price Checker.
@@ -37,12 +39,15 @@ export const metadata: Metadata = {
   title: "WeeFly Admin · Price Checker",
 }
 
+/*
+ * As entradas "Pedidos" e "Casos" apontavam para o back-office antigo, que já
+ * não existe. Este é agora o único back-office: a fila é a lista de casos, e as
+ * outras entradas são vistas filtradas da mesma fila.
+ */
 const NAV = [
   { label: "Price Checker", href: "/admin/price-checker", current: true },
   { label: "Pagamentos", href: "/admin/price-checker?tab=por_validar" },
   { label: "Emissões", href: "/admin/price-checker?tab=pagos_sem_bilhete" },
-  { label: "Pedidos", href: "/admin/pedidos" },
-  { label: "Casos", href: "/admin" },
 ]
 
 export default async function BoPriceCheckerLayout({
@@ -82,13 +87,17 @@ export default async function BoPriceCheckerLayout({
               </nav>
               <div className="topbar-right">
                 <BoTopbarActions />
-                <span className="who">
-                  <span className="avatar">{boInitials(access.identity)}</span>
-                  {access.identity.label}
-                </span>
+                <BoUserMenu
+                  label={access.identity.label}
+                  email={access.identity.email}
+                  initials={boInitials(access.identity)}
+                  role={access.identity.role}
+                />
               </div>
             </div>
           </header>
+          {/* BO-03 · a fila deixa de esperar por um F5. Ver o componente. */}
+          <BoLiveUpdates />
           {children}
         </>
       )}

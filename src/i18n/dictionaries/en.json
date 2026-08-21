@@ -415,7 +415,10 @@
     "composerEmpty": "No option has been put together yet. Create the first one and write in the itinerary the airline gave you.",
     "composerNewOffer": "New option",
     "composerNewOfferHint": "· or duplicate an existing one to vary the fare",
-    "composerNoProposal": "Couldn't open this case's proposal. Check that migration 0005 has been applied to the database.",
+    "composerSessionExpired": "Your session expired while this page was loading. Reload it — nothing about the case was lost.",
+    "composerNoAccess": "This account can open the back-office but is not allowed to touch proposals. Ask an administrator to add it to the platform team.",
+    "composerSchemaMissing": "The database has no proposal tables. Apply migration 0005 (supabase/migrations/0005_case_proposals.sql) and open this tab again.",
+    "composerProposalFailed": "Couldn't open this case's proposal. Try reloading; if it persists, the exact error is in the server log.",
     "composerOfferName": "Option name · e.g. Cabo Verde Airlines · via Sal",
     "composerFlagRecommended": "Recommended",
     "composerFlagCheapest": "Cheapest",
@@ -435,8 +438,6 @@
     "composerNoOutbound": "The outbound has no legs. Without them the option can't be published.",
     "composerNoInbound": "No inbound legs — this stays a one-way trip.",
     "composerRemoveSegment": "Remove leg",
-    "composerAddSegmentOut": "+ Add an outbound leg",
-    "composerAddSegmentBack": "+ Add an inbound leg",
     "composerCarrier": "Airline",
     "composerFlightNo": "Flight no.",
     "composerEquipment": "Aircraft",
@@ -534,7 +535,11 @@
     "phChange": "$90 fee + fare difference",
     "phRefund": "Non-refundable",
     "phSeat": "At check-in, free of charge",
-    "phDocuments": "Passport valid 6 months + ESTA or US visa"
+    "phDocuments": "Passport valid 6 months + ESTA or US visa",
+    "composerAddSegment": "+ Add flight",
+    "composerAutosaved": "Saved automatically",
+    "composerSaveFailedKept": "What you wrote is kept in this browser — don't reload the page; try saving again, or sign in again in another tab.",
+    "composerUnknownIata": "· unknown code"
   },
   "validation": {
     "nameMin": "Name must be at least 2 characters",
@@ -1078,7 +1083,17 @@
     "paidTextHello": "Hello {name},",
     "paidTextConfirmed": "Your payment of {amount} is confirmed.",
     "paidTextTrip": "Trip: {route}",
-    "paidTextNext": "We'll issue the tickets and send them to this address."
+    "paidTextNext": "We'll issue the tickets and send them to this address.",
+    "datesSubject": "About your travel dates · {route}",
+    "datesHeading": "We need to move your dates",
+    "datesBody": "Hello {name}, the dates you asked for ({from}) are not available for this route. We are proposing {to} instead.",
+    "datesReason": "Why: {reason}",
+    "datesNext": "Nothing is booked and nothing is charged. Open your request to see the new options — or reply to this email if these dates do not work for you.",
+    "datesCta": "See my request",
+    "datesTextHello": "Hello {name},",
+    "datesTextChange": "The dates you asked for ({from}) are not available. We propose {to}.",
+    "datesTextReason": "Why: {reason}",
+    "datesTextNext": "Nothing is booked and nothing is charged. Open your request or reply to this email."
   },
   "blockers": {
     "name": "the option has no name",
@@ -1090,7 +1105,15 @@
     "adultFare": "the adult fare is missing",
     "childFare": "the child fare is missing",
     "line": "{offer}: {problems}",
-    "missing": "Still to complete — {faults}"
+    "missing": "Still to complete — {faults}",
+    "outOfOrder": "one flight departs before the previous one lands",
+    "departureMismatch": "the outbound is not on the date the customer asked for — use \"Propose new dates\" on the case",
+    "returnMismatch": "the return is not on the date the customer asked for — use \"Propose new dates\" on the case",
+    "tightConnection_one": "{count} minute connection — under the 45 we recommend",
+    "tightConnection_other": "{count} minute connection — under the 45 we recommend",
+    "overnight_one": "the arrival is the next day (+{count})",
+    "overnight_other": "the arrival is {count} days later (+{count})",
+    "warnings": "Worth checking · {items}"
   },
   "prefill": {
     "offerName": "Suggestion",

@@ -82,6 +82,13 @@ h1 em{font-style:normal;color:var(--ember)}
 .opt[aria-checked="true"] .ck{opacity:1}
 .opt .tx small{display:block;font-size:11.5px;font-weight:500;color:var(--muted);margin-top:1px}
 
+/* A pesquisa dentro do seletor de país: 247 países sem campo de pesquisa é uma
+   lista onde ninguém encontra o seu. Fica colada ao topo do popover porque é o
+   primeiro sítio onde a mão vai. */
+.pop .ccsearch{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;font-size:14px;font-weight:500;color:var(--ink)}
+.pop .ccsearch:focus{outline:0;border-color:var(--navy-soft)}
+.pop.scroll{scroll-padding-top:44px}
+
 .cnt{display:flex;align-items:center;gap:12px;padding:9px 16px}
 .cnt .t{flex:1}
 .cnt .t b{display:block;font-size:14.5px;font-weight:600}

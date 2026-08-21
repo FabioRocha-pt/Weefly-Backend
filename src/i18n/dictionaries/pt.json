@@ -415,7 +415,10 @@
     "composerEmpty": "Ainda não há nenhuma opção composta. Crie a primeira e escreva o itinerário que a companhia lhe deu.",
     "composerNewOffer": "Nova opção",
     "composerNewOfferHint": "· ou duplique uma existente para variar a tarifa",
-    "composerNoProposal": "Não foi possível abrir a proposta deste caso. Verifique se a migração 0005 já foi aplicada à base de dados.",
+    "composerSessionExpired": "A sua sessão expirou enquanto esta página carregava. Recarregue — os dados do caso estão todos guardados.",
+    "composerNoAccess": "Esta conta entrou no back-office mas não tem permissão para mexer em propostas. Peça a um administrador para a acrescentar à equipa da plataforma.",
+    "composerSchemaMissing": "A base de dados não tem as tabelas das propostas. Aplique a migração 0005 (supabase/migrations/0005_case_proposals.sql) e volte a abrir.",
+    "composerProposalFailed": "Não foi possível abrir a proposta deste caso. Tente recarregar; se continuar, o erro exato está no registo do servidor.",
     "composerOfferName": "Nome da opção · ex.: Cabo Verde Airlines · via Sal",
     "composerFlagRecommended": "Recomendada",
     "composerFlagCheapest": "Mais barata",
@@ -435,8 +438,6 @@
     "composerNoOutbound": "A ida não tem trechos. Sem eles a opção não pode ser publicada.",
     "composerNoInbound": "Sem trechos de volta — fica uma viagem só de ida.",
     "composerRemoveSegment": "Remover trecho",
-    "composerAddSegmentOut": "+ Adicionar trecho à ida",
-    "composerAddSegmentBack": "+ Adicionar trecho à volta",
     "composerCarrier": "Cia",
     "composerFlightNo": "Voo nº",
     "composerEquipment": "Equipamento",
@@ -534,7 +535,11 @@
     "phChange": "Com taxa de $90 + diferença",
     "phRefund": "Não reembolsável",
     "phSeat": "No check-in, sem custo",
-    "phDocuments": "Passaporte válido 6 meses + ESTA ou visto dos EUA"
+    "phDocuments": "Passaporte válido 6 meses + ESTA ou visto dos EUA",
+    "composerAddSegment": "+ Adicionar voo",
+    "composerAutosaved": "Guardado automaticamente",
+    "composerSaveFailedKept": "O que escreveu está guardado neste browser — não recarregue a página; tente gravar outra vez ou volte a entrar na sua conta noutro separador.",
+    "composerUnknownIata": "· código desconhecido"
   },
   "validation": {
     "nameMin": "Nome deve ter pelo menos 2 caracteres",
@@ -1078,7 +1083,17 @@
     "paidTextHello": "Olá {name},",
     "paidTextConfirmed": "Está confirmado o pagamento de {amount}.",
     "paidTextTrip": "Viagem: {route}",
-    "paidTextNext": "Vamos emitir os bilhetes e enviá-los para este endereço."
+    "paidTextNext": "Vamos emitir os bilhetes e enviá-los para este endereço.",
+    "datesSubject": "Sobre as datas da sua viagem · {route}",
+    "datesHeading": "Precisamos de mudar as suas datas",
+    "datesBody": "Olá {name}, as datas que pediu ({from}) não têm lugar nesta rota. Propomos {to} em vez delas.",
+    "datesReason": "Porquê: {reason}",
+    "datesNext": "Nada está reservado e nada está cobrado. Abra o seu pedido para ver as opções nas novas datas — ou responda a este email se estas datas não lhe servirem.",
+    "datesCta": "Ver o meu pedido",
+    "datesTextHello": "Olá {name},",
+    "datesTextChange": "As datas que pediu ({from}) não estão disponíveis. Propomos {to}.",
+    "datesTextReason": "Porquê: {reason}",
+    "datesTextNext": "Nada está reservado e nada está cobrado. Abra o seu pedido ou responda a este email."
   },
   "blockers": {
     "name": "falta o nome da opção",
@@ -1090,7 +1105,15 @@
     "adultFare": "falta a tarifa de adulto",
     "childFare": "falta a tarifa de criança",
     "line": "{offer}: {problems}",
-    "missing": "Falta completar — {faults}"
+    "missing": "Falta completar — {faults}",
+    "outOfOrder": "há um voo a partir antes de o anterior aterrar",
+    "departureMismatch": "a ida não é no dia que o cliente pediu — use \"Propor novas datas\" na ficha do caso",
+    "returnMismatch": "a volta não é no dia que o cliente pediu — use \"Propor novas datas\" na ficha do caso",
+    "tightConnection_one": "escala de {count} minuto — abaixo dos 45 recomendados",
+    "tightConnection_other": "escala de {count} minutos — abaixo dos 45 recomendados",
+    "overnight_one": "a chegada é no dia seguinte (+{count})",
+    "overnight_other": "a chegada é {count} dias depois (+{count})",
+    "warnings": "A confirmar · {items}"
   },
   "prefill": {
     "offerName": "Sugestão",

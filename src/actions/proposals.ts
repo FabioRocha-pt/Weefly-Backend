@@ -135,10 +135,18 @@ async function editableProposal(
   return { id: view.proposal.id, currency: view.proposal.currency }
 }
 
+/**
+ * Os ecrãs do back-office que esta escrita torna desatualizados.
+ *
+ * Não inclui o /pc do cliente de propósito: essa rota é `force-dynamic` e as
+ * consultas ao Supabase vão com `no-store`, por isso o refresh do cliente lê
+ * sempre a base de dados. Revalidar aqui não adiantaria nada — o que ele tem em
+ * cache está no browser dele, e só o refresh o limpa.
+ */
 function touch(caseId: string) {
-  revalidatePath("/admin")
-  revalidatePath(`/admin/casos/${caseId}`)
-  revalidatePath(`/admin/casos/${caseId}/ofertas`)
+  revalidatePath("/admin/price-checker")
+  revalidatePath(`/admin/price-checker/${caseId}`)
+  revalidatePath(`/admin/price-checker/${caseId}/ofertas`)
 }
 
 // --- Proposta ---------------------------------------------------------------
@@ -149,8 +157,15 @@ export async function initProposal(
 ): Promise<ProposalActionState> {
   const { t } = getI18n()
   if (!caseId) return { error: t("errors.invalidCase") }
-  const view = await ensureProposal(caseId, currency)
-  if (!view) return { error: t("errors.proposalOpenFailed") }
+  const result = await ensureProposal(caseId, currency)
+  if (!result.ok) {
+    return {
+      error:
+        result.reason === "no_session"
+          ? t("errors.sessionExpired")
+          : t("errors.proposalOpenFailed"),
+    }
+  }
   touch(caseId)
   return OK
 }
@@ -456,7 +471,7 @@ function teamRecipients(): string[] {
 /**
  * Publica a proposta: é este gesto, e só este, que faz o link 2 existir.
  *
- * Antes disto o endereço /p/{token}/proposta responde "ainda a ser preparada",
+ * Antes disto o /pc/{token} do cliente mostra o ecrã de espera (P4a),
  * porque é exatamente o que é verdade. Publicar valida o que vai sair, destranca
  * a etapa 2, move o caso para E2 e avisa quem tem de ser avisado.
  */
@@ -492,10 +507,22 @@ export async function publishProposal(
 
   const pax = paxOf(bookingCase.trip_request)
 
+  /*
+   * BO-07 · as datas do pedido entram na validação.
+   *
+   * O browser já verificou o mesmo enquanto o vendedor escrevia, e é aqui que
+   * conta: esta função é um endpoint, e a verificação do ecrã é uma cortesia
+   * para quem o usa, não uma garantia sobre o que chega.
+   */
+  const requested = {
+    departDate: bookingCase.trip_request?.depart_date ?? null,
+    returnDate: bookingCase.trip_request?.return_date ?? null,
+  }
+
   // Publicar com um itinerário meio escrito é pior do que não publicar: o
   // cliente recebe um email a anunciar uma proposta e encontra linhas em branco.
   const faults = going.flatMap((offer) => {
-    const problems = offerBlockers(offer, pax)
+    const problems = offerBlockers(offer, pax, requested)
     return problems.length === 0
       ? []
       : [
@@ -551,26 +578,11 @@ export async function publishProposal(
     .in("stage", behind)
 
   /*
-   * Se o caso nasceu de uma conversa, a proposta é entregue lá dentro. É este
-   * o gesto que fecha o círculo do chatbot: o cliente pediu a conversar e a
-   * resposta do agente chega ao mesmo sítio, sem o obrigar a saltar para um
-   * link que ele não sabe de onde veio.
+   * A proposta era também entregue dentro da conversa do chatbot, para quem
+   * tinha chegado por aí. O chat vivia em /c/{token} e em /newhome, e nenhum dos
+   * dois existe — escrever a proposta lá dentro passaria a ser uma gravação que
+   * ninguém pode abrir. O cliente vê a proposta onde vê tudo o resto: no /pc.
    */
-  const { postProposalToConversation } = await import("@/lib/conversations")
-  const deliveredInChat = await postProposalToConversation({
-    t: getTranslator(localeForClient(bookingCase.trip_request?.lead?.locale)),
-    caseId,
-    caseToken: bookingCase.token,
-    revision: view.proposal.revision,
-    currency: view.proposal.currency,
-    pax,
-    offers: going.map(({ cost_total: _cost, ...offer }) => offer),
-    openingMessage:
-      input.openingMessage !== undefined
-        ? text(input.openingMessage, 2000)
-        : view.proposal.opening_message,
-  })
-
   const warning = await notifyPublication({
     bookingCase,
     offers: going,
@@ -584,7 +596,6 @@ export async function publishProposal(
     notifyClient: input.notifyClient !== false,
     notifyTeam: input.notifyTeam !== false,
     agentName: user.email ?? null,
-    deliveredInChat,
   })
 
   touch(caseId)
@@ -608,8 +619,6 @@ async function notifyPublication(input: {
   notifyClient: boolean
   notifyTeam: boolean
   agentName: string | null
-  /** A proposta já foi escrita na conversa do cliente. */
-  deliveredInChat: boolean
 }): Promise<string | undefined> {
   const { t } = getI18n()
   const { bookingCase } = input
@@ -618,19 +627,14 @@ async function notifyPublication(input: {
   const clientT = getTranslator(clientLocale)
 
   /*
-   * Para onde o email aponta depende de como o cliente chegou. Quem pediu a
-   * conversar volta à conversa, onde reconhece o que escreveu; quem recebeu um
-   * link do vendedor vai para o comparador. Mandar toda a gente para o mesmo
-   * sítio faria metade das pessoas aterrar num ecrã que nunca viram.
+   * Um endereço, sempre o mesmo: /pc/{token}, o link que o cliente já tem desde
+   * que fez o pedido. Antes havia dois — a conversa em /c/{token} e o comparador
+   * em /p/{token}/proposta — e o email escolhia entre eles conforme o canal de
+   * entrada. Os dois percursos deixaram de existir, e a escolha também: o ecrã
+   * do /pc é derivado do estado do caso, por isso o mesmo link mostra a proposta
+   * a quem a tem para ver e o ecrã de espera a quem ainda não.
    */
-  const { conversationForCase } = await import("@/lib/conversations")
-  const conversation = input.deliveredInChat
-    ? await conversationForCase(bookingCase.id)
-    : null
-
-  const link = conversation
-    ? `${baseUrl()}/c/${conversation.token}`
-    : `${baseUrl()}/p/${bookingCase.token}/proposta`
+  const link = `${baseUrl()}/pc/${bookingCase.token}`
 
   if (!process.env.RESEND_API_KEY) {
     console.warn(

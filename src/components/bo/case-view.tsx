@@ -22,7 +22,8 @@ import { formatMoney } from "@/lib/proposal-math"
 import { BoPaymentPanel } from "@/components/bo/payment-panel"
 import { BoIssuancePanel } from "@/components/bo/issuance-panel"
 import { BoNoteForm } from "@/components/bo/note-form"
-import { CCS } from "@/lib/pc/catalog"
+import { BoDatesPanel } from "@/components/bo/dates-panel"
+import { countryName, flagOf } from "@/lib/countries"
 
 type TabId =
   | "t-pedido"
@@ -72,8 +73,9 @@ const dt = (iso: string | null | undefined, withTime = true): string => {
   })
 }
 
-const marketName = (prefix: string) =>
-  CCS.find((c) => c.c === prefix)?.n ?? prefix
+/** O mercado do caso, escrito como uma pessoa o lê. */
+const marketName = (iso: string) =>
+  iso ? `${flagOf(iso)} ${countryName(iso, "pt")}` : "—"
 
 export function BoCaseView({
   detail,
@@ -158,9 +160,6 @@ export function BoCaseView({
             >
               WhatsApp
             </a>
-            <Link className="btn btn-sm" href={`/admin/casos/${row.caseId}`}>
-              Ficha antiga
-            </Link>
           </div>
         </div>
 
@@ -213,6 +212,12 @@ export function BoCaseView({
               <Kv k="Tipo" v={detail.trip.tripLabel} />
               <Kv k="Ida" v={dt(row.departDate, false)} mono />
               {row.returnDate && <Kv k="Volta" v={dt(row.returnDate, false)} mono />}
+              {detail.trip.datesChangedAt && (
+                <Kv
+                  k="Datas alteradas"
+                  v={`${dt(detail.trip.datesChangedAt)} · ${detail.trip.datesChangedBy ?? "equipa"}`}
+                />
+              )}
               <Kv k="Adultos" v={String(detail.trip.adults)} mono />
               <Kv k="Crianças 2–11" v={String(detail.trip.children)} mono />
               <Kv
@@ -272,6 +277,29 @@ export function BoCaseView({
               </div>
             </div>
 
+            <BoDatesPanel
+              caseId={row.caseId}
+              origin={row.origin}
+              destination={row.destination}
+              departDate={row.departDate}
+              returnDate={row.returnDate}
+              tripLabel={detail.trip.tripLabel}
+              roundTrip={Boolean(row.returnDate) || detail.trip.tripLabel === "Ida e volta"}
+              original={{
+                departDate: detail.trip.originalDepartDate,
+                returnDate: detail.trip.originalReturnDate,
+                changedAt: detail.trip.datesChangedAt,
+                changedBy: detail.trip.datesChangedBy,
+                reason: detail.trip.datesChangeReason,
+              }}
+              locked={row.state === "emitido" || row.state === "pago_sem_bilhete"}
+              lockedReason={
+                row.state === "emitido"
+                  ? "Caso emitido: mudar datas é uma reemissão, e passa pela companhia."
+                  : "O cliente já pagou. Fale com ele antes de mexer nas datas."
+              }
+            />
+
             <BoNoteForm caseId={row.caseId} notes={detail.notes} />
           </main>
         </div>
@@ -313,9 +341,10 @@ export function BoCaseView({
               <div className="panel-b">
                 {!proposal ? (
                   <p className="note">
-                    Ainda não há proposta publicada. O compositor de ofertas — com
-                    importação do Amadeus, itinerário, preço e pré-visualização do
-                    cartão do cliente — é o mesmo que já existe no back-office.
+                    Ainda não há proposta publicada. Compõe-se no separador
+                    Propostas — itinerário, preço e pré-visualização do cartão que
+                    o cliente vai ver — e o cliente só vê o resultado depois de
+                    publicares.
                   </p>
                 ) : (
                   <>
@@ -377,7 +406,7 @@ export function BoCaseView({
                 <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
                   <Link
                     className="btn btn-sm btn-primary"
-                    href={`/admin/casos/${row.caseId}/ofertas`}
+                    href={`/admin/price-checker/${row.caseId}/ofertas`}
                   >
                     {proposal ? "Editar propostas" : "Compor propostas"}
                   </Link>

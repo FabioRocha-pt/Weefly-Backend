@@ -16,8 +16,10 @@ const AUTH_ROUTES: readonly string[] = ["/login", "/registro"]
 /**
  * Prefixes that require a session (dashboard + onboarding + back-office).
  *
- * /admin additionally requires platform_staff membership — enforced by the
- * admin layout and, authoritatively, by RLS.
+ * `/admin` cobre o único back-office que existe, o /admin/price-checker, e
+ * garante só a sessão. Quem pode entrar é decidido pela allowlist (`bo_allowlist`,
+ * ver lib/bo-access.ts) no layout e em cada server action, e autoritariamente
+ * pelo RLS na base de dados.
  */
 const PROTECTED_PREFIXES: readonly string[] = [
   "/inicio",

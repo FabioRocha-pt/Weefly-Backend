@@ -21,7 +21,7 @@ import {
 } from "@/lib/pc/bo-queue"
 import { elapsedSince } from "@/lib/case-status"
 import { formatMoney } from "@/lib/proposal-math"
-import { CCS } from "@/lib/pc/catalog"
+import { countryName } from "@/lib/countries"
 
 const EMPTY: Record<BoBucket, string> = {
   por_validar: "Nenhum comprovativo à espera de validação. Este é o balde que nunca deve ter fila.",
@@ -33,8 +33,9 @@ const EMPTY: Record<BoBucket, string> = {
   tudo: "Ainda não entrou nenhum pedido pelo Price Checker.",
 }
 
-const MARKET_NAME = (prefix: string): string =>
-  CCS.find((c) => c.c === prefix)?.co ?? prefix
+/* A coluna é estreita: fica o código do país, que é o que a equipa lê de
+   relance, com o nome inteiro no title. */
+const MARKET_NAME = (iso: string): string => iso || "—"
 
 export function BoQueueTable({
   rows,
@@ -124,7 +125,10 @@ export function BoQueueTable({
                       <div className="cli-sub mono">{row.clientPhone}</div>
                     </td>
                     <td>
-                      <span className="chan">
+                      <span
+                        className="chan"
+                        title={row.market ? countryName(row.market, "pt") : ""}
+                      >
                         <i>WEB</i>
                         Link · {MARKET_NAME(row.market)}
                       </span>

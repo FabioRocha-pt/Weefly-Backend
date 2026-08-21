@@ -415,7 +415,10 @@
     "composerEmpty": "Aucune option composée pour l'instant. Créez la première et saisissez l'itinéraire que la compagnie vous a donné.",
     "composerNewOffer": "Nouvelle option",
     "composerNewOfferHint": "· ou dupliquez-en une pour varier le tarif",
-    "composerNoProposal": "Impossible d'ouvrir la proposition de ce dossier. Vérifiez que la migration 0005 a bien été appliquée à la base de données.",
+    "composerSessionExpired": "Votre session a expiré pendant le chargement de cette page. Rechargez — rien du dossier n a été perdu.",
+    "composerNoAccess": "Ce compte accède au back-office mais n a pas le droit de modifier les propositions. Demandez à un administrateur de l ajouter à l équipe de la plateforme.",
+    "composerSchemaMissing": "La base de données n a pas les tables des propositions. Appliquez la migration 0005 (supabase/migrations/0005_case_proposals.sql) puis rouvrez cet onglet.",
+    "composerProposalFailed": "Impossible d ouvrir la proposition de ce dossier. Rechargez la page ; si le problème persiste, l erreur exacte est dans le journal du serveur.",
     "composerOfferName": "Nom de l'option · ex. : Cabo Verde Airlines · via Sal",
     "composerFlagRecommended": "Recommandée",
     "composerFlagCheapest": "La moins chère",
@@ -435,8 +438,6 @@
     "composerNoOutbound": "L'aller n'a aucun tronçon. Sans eux, l'option ne peut pas être publiée.",
     "composerNoInbound": "Aucun tronçon retour — cela reste un aller simple.",
     "composerRemoveSegment": "Supprimer le tronçon",
-    "composerAddSegmentOut": "+ Ajouter un tronçon à l'aller",
-    "composerAddSegmentBack": "+ Ajouter un tronçon au retour",
     "composerCarrier": "Cie",
     "composerFlightNo": "Vol nº",
     "composerEquipment": "Appareil",
@@ -534,7 +535,11 @@
     "phChange": "Frais de 90 $ + différence tarifaire",
     "phRefund": "Non remboursable",
     "phSeat": "À l'enregistrement, sans frais",
-    "phDocuments": "Passeport valable 6 mois + ESTA ou visa américain"
+    "phDocuments": "Passeport valable 6 mois + ESTA ou visa américain",
+    "composerAddSegment": "+ Ajouter un vol",
+    "composerAutosaved": "Enregistré automatiquement",
+    "composerSaveFailedKept": "Ce que vous avez écrit est conservé dans ce navigateur — ne rechargez pas la page ; réessayez d'enregistrer, ou reconnectez-vous dans un autre onglet.",
+    "composerUnknownIata": "· code inconnu"
   },
   "validation": {
     "nameMin": "Le prénom doit comporter au moins 2 caractères",
@@ -1078,7 +1083,17 @@
     "paidTextHello": "Bonjour {name},",
     "paidTextConfirmed": "Votre paiement de {amount} est confirmé.",
     "paidTextTrip": "Voyage : {route}",
-    "paidTextNext": "Nous allons émettre les billets et les envoyer à cette adresse."
+    "paidTextNext": "Nous allons émettre les billets et les envoyer à cette adresse.",
+    "datesSubject": "À propos des dates de votre voyage · {route}",
+    "datesHeading": "Nous devons déplacer vos dates",
+    "datesBody": "Bonjour {name}, les dates demandées ({from}) ne sont pas disponibles sur cette route. Nous vous proposons {to}.",
+    "datesReason": "Pourquoi : {reason}",
+    "datesNext": "Rien n'est réservé et rien n'est facturé. Ouvrez votre demande pour voir les options aux nouvelles dates — ou répondez à cet e-mail si ces dates ne vous conviennent pas.",
+    "datesCta": "Voir ma demande",
+    "datesTextHello": "Bonjour {name},",
+    "datesTextChange": "Les dates demandées ({from}) ne sont pas disponibles. Nous proposons {to}.",
+    "datesTextReason": "Pourquoi : {reason}",
+    "datesTextNext": "Rien n'est réservé et rien n'est facturé. Ouvrez votre demande ou répondez à cet e-mail."
   },
   "blockers": {
     "name": "l'option n'a pas de nom",
@@ -1090,7 +1105,15 @@
     "adultFare": "le tarif adulte manque",
     "childFare": "le tarif enfant manque",
     "line": "{offer} : {problems}",
-    "missing": "Reste à compléter — {faults}"
+    "missing": "Reste à compléter — {faults}",
+    "outOfOrder": "un vol part avant l'atterrissage du précédent",
+    "departureMismatch": "l'aller n'est pas à la date demandée par le client — utilisez « Proposer de nouvelles dates »",
+    "returnMismatch": "le retour n'est pas à la date demandée par le client — utilisez « Proposer de nouvelles dates »",
+    "tightConnection_one": "escale de {count} minute — sous les 45 recommandées",
+    "tightConnection_other": "escale de {count} minutes — sous les 45 recommandées",
+    "overnight_one": "l'arrivée est le lendemain (+{count})",
+    "overnight_other": "l'arrivée est {count} jours plus tard (+{count})",
+    "warnings": "À vérifier · {items}"
   },
   "prefill": {
     "offerName": "Suggestion",

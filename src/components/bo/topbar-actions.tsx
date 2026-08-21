@@ -10,11 +10,13 @@
 
 import { useEffect, useMemo, useState } from "react"
 
-import { CCS, CURRENCIES } from "@/lib/pc/catalog"
+import { CURRENCIES } from "@/lib/pc/catalog"
+import { COUNTRIES, COUNTRY_BY_ISO, countryName, flagOf } from "@/lib/countries"
 
 interface Market {
   name: string
-  cc: string
+  /** ISO-3166 alpha-2 — é o país que vai no link, não o indicativo. */
+  country: string
   currency: string
   lang: string
 }
@@ -25,12 +27,19 @@ interface Market {
  * sem ter de escolher nada.
  */
 const MARKETS: Market[] = [
-  { name: "Cabo Verde", cc: "+238", currency: "CVE", lang: "pt" },
-  { name: "Portugal", cc: "+351", currency: "EUR", lang: "pt" },
-  { name: "França", cc: "+33", currency: "EUR", lang: "fr" },
-  { name: "Estados Unidos", cc: "+1", currency: "USD", lang: "en" },
-  { name: "Países Baixos", cc: "+31", currency: "EUR", lang: "en" },
+  { name: "Cabo Verde", country: "CV", currency: "CVE", lang: "pt" },
+  { name: "Portugal", country: "PT", currency: "EUR", lang: "pt" },
+  { name: "França", country: "FR", currency: "EUR", lang: "fr" },
+  { name: "Estados Unidos", country: "US", currency: "USD", lang: "en" },
+  { name: "Países Baixos", country: "NL", currency: "EUR", lang: "en" },
 ]
+
+/* Os cinco atalhos acima são os mercados onde a WeeFly vende; o seletor de país
+   tem os 247, porque um cliente da diáspora pode estar em qualquer um deles e o
+   país é o que decide o indicativo e os métodos de pagamento que ele vê. */
+const COUNTRY_OPTIONS = [...COUNTRIES].sort((a, b) =>
+  countryName(a.iso, "pt").localeCompare(countryName(b.iso, "pt"), "pt")
+)
 
 const AGENTS = [
   { slug: "nelida", name: "Nélida Fortes" },
@@ -78,7 +87,7 @@ export function LinkDrawer({
   const [market, setMarket] = useState(MARKETS[2].name)
   const [lang, setLang] = useState("fr")
   const [currency, setCurrency] = useState("EUR")
-  const [cc, setCc] = useState("+33")
+  const [country, setCountry] = useState("FR")
   const [origin, setOrigin] = useState("")
 
   /* O endereço tem de ser o real, não "weefly.africa" em duro: em pré-produção o
@@ -91,7 +100,7 @@ export function LinkDrawer({
     setMarket(name)
     const found = MARKETS.find((m) => m.name === name)
     if (!found) return
-    setCc(found.cc)
+    setCountry(found.country)
     setCurrency(found.currency)
     setLang(found.lang)
   }
@@ -100,10 +109,10 @@ export function LinkDrawer({
     const params = new URLSearchParams()
     params.set("lang", lang)
     params.set("currency", currency)
-    params.set("cc", cc)
+    params.set("country", country)
     if (agent) params.set("agent", agent)
     return `${origin || "https://weefly.africa"}/pc?${params.toString()}`
-  }, [origin, lang, currency, cc, agent])
+  }, [origin, lang, currency, country, agent])
 
   const bare = `${origin || "https://weefly.africa"}/pc`
 
@@ -192,20 +201,34 @@ export function LinkDrawer({
                 </select>
               </div>
               <div className="f s4">
-                <label>Indicativo</label>
-                <select className="mono" value={cc} onChange={(e) => setCc(e.target.value)}>
-                  {CCS.map((c) => (
-                    <option key={c.c} value={c.c}>
-                      {c.c} · {c.n}
+                <label>País do cliente</label>
+                <select value={country} onChange={(e) => setCountry(e.target.value)}>
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <option key={c.iso} value={c.iso}>
+                      {flagOf(c.iso)} {countryName(c.iso, "pt")} · {c.dial}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
             <p className="note" style={{ marginTop: 11 }}>
-              O idioma e a moeda são definidos aqui e o cliente já abre o link com
-              tudo certo. Pode trocar, mas por omissão vê o que faz sentido no
-              mercado dele.
+              O idioma, a moeda e o país são definidos aqui e o cliente já abre o
+              link com tudo certo — o indicativo do telefone vem do país
+              ({COUNTRY_BY_ISO[country]?.dial ?? "—"}). Pode trocar, mas por
+              omissão vê o que faz sentido no mercado dele.
+            </p>
+
+            {/*
+              BO-02 · aqui não se cria nem se mostra nenhum link de pagamento.
+              Esta é a porta de entrada do cliente, e nesta altura não existe
+              caso, nem opção escolhida, nem valor. O link de pagamento nasce
+              sozinho, um passo depois de os passaportes estarem completos.
+            */}
+            <p className="note" style={{ marginTop: 9 }}>
+              Não há aqui nenhum valor a cobrar: o link de pagamento é gerado
+              automaticamente depois de o cliente escolher uma opção e preencher
+              os dados de todos os passageiros. Até aí não há montante nem
+              passageiro a quem o cobrar.
             </p>
           </section>
 

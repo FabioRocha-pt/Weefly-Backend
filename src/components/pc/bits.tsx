@@ -282,7 +282,7 @@ export function RouteSummary({ request }: { request: PcRequestView }) {
     <>
       <div className="pt">
         <span className="ia">{request.origin || "—"}</span>
-        <span className="cy">{cityOf(request.origin)}</span>
+        <span className="cy">{cityOf(request.origin, request.cities)}</span>
       </div>
       <div className="mid" aria-hidden="true">
         <span className="ln" />
@@ -291,7 +291,7 @@ export function RouteSummary({ request }: { request: PcRequestView }) {
       </div>
       <div className="pt r">
         <span className="ia">{request.destination || "—"}</span>
-        <span className="cy">{cityOf(request.destination)}</span>
+        <span className="cy">{cityOf(request.destination, request.cities)}</span>
       </div>
     </>
   )
@@ -316,7 +316,7 @@ export function SummaryRows({
     request.legs.forEach((leg, i) =>
       rows.push([
         `Flight ${i + 1}`,
-        `${cityOf(leg.origin)} → ${cityOf(leg.destination)} · ${fmtDateY(leg.date)}`,
+        `${cityOf(leg.origin, request.cities)} → ${cityOf(leg.destination, request.cities)} · ${fmtDateY(leg.date)}`,
       ])
     )
   }

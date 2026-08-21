@@ -20,6 +20,8 @@ import {
   type CabinKind,
   type TripKind,
 } from "@/lib/pc/catalog"
+import { cityNames } from "@/lib/airports"
+import { countryForLocale, countryOfDial } from "@/lib/countries"
 import {
   enforceExpiry,
   getPcPayment,
@@ -67,6 +69,15 @@ export interface PcRequestView {
   agentSlug: string | null
   legs: PcLegView[]
   createdAt: string
+  /**
+   * Os nomes das cidades dos códigos deste caso, resolvidos no servidor.
+   *
+   * O catálogo de aeroportos tem nove mil linhas e vive só do lado do servidor
+   * (ver `lib/airports.ts`). O ecrã do cliente precisa de meia dúzia de nomes —
+   * os da rota e os dos trechos das ofertas — e leva-os já resolvidos, em vez de
+   * meio megabyte de JSON para escrever "Praia".
+   */
+  cities: Record<string, string>
 }
 
 export interface PcContactView {
@@ -75,6 +86,10 @@ export interface PcContactView {
   email: string
   dialCode: string
   phone: string
+  /** ISO-3166 alpha-2 do país do telefone. O +1 é de vinte países. */
+  country: string
+  /** O número em E.164, como o WhatsApp e o gateway de SMS o pedem. */
+  phoneE164: string | null
   locale: string
 }
 
@@ -153,7 +168,7 @@ export async function loadPcState(token: string): Promise<PcLookup> {
    * isso seria errado neste fluxo — um pagamento expirado tem um ecrã próprio
    * (P8) e não uma página de link inválido. Por isso o caso é lido em cru.
    */
-  const { data: raw } = await admin
+  const { data: raw, error: readError } = await admin
     .from("booking_cases")
     .select(
       `id, token, stage, created_at, pnr, issued_at,
@@ -162,14 +177,27 @@ export async function loadPcState(token: string): Promise<PcLookup> {
          id, reference, trip_type, origin, destination, depart_date, return_date,
          adults, children, infants, infants_in_seat, infants_on_lap,
          cabin_class, currency, agent_slug, created_at,
-         lead:leads (full_name, email, phone_prefix, phone, locale),
+         lead:leads (full_name, email, phone_prefix, phone, phone_country, phone_e164, locale),
          legs:trip_request_legs (position, origin, destination, depart_date)
        )`
     )
     .eq("token", token)
     .maybeSingle()
 
-  if (!raw) return { ok: false, reason: "not_found" }
+  if (!raw) {
+    /*
+     * Um token que não existe e uma leitura que falhou dão o mesmo ecrã ao
+     * cliente — "este link já não está disponível" — e é o certo: ele não pode
+     * fazer nada com a diferença. Quem pode é quem mantém isto, e por isso a
+     * diferença fica no log: uma coluna que falta (uma migração por aplicar)
+     * apareceria de outra forma como "todos os links do mundo são inválidos",
+     * sem uma única linha a dizer porquê.
+     */
+    if (readError) {
+      console.error("[pc/state] leitura do caso falhou:", readError.message)
+    }
+    return { ok: false, reason: "not_found" }
+  }
 
   const row = raw as Record<string, any>
   const trip = unwrap(row.trip_request)
@@ -203,14 +231,25 @@ export async function loadPcState(token: string): Promise<PcLookup> {
       }))
       .sort((a, b) => a.position - b.position),
     createdAt: String(trip.created_at ?? row.created_at),
+    /* Preenchido mais abaixo, quando as ofertas já foram lidas: os códigos dos
+       trechos também precisam de nome, e só ali se sabe quais são. */
+    cities: {},
   }
 
+  const dialCode = String(lead?.phone_prefix ?? "+238")
   const contact: PcContactView = {
     fullName,
     firstName: fullName.split(/\s+/)[0] ?? "",
     email: String(lead?.email ?? ""),
-    dialCode: String(lead?.phone_prefix ?? "+238"),
+    dialCode,
     phone: String(lead?.phone ?? ""),
+    /* Pedidos anteriores à migração 0010 não têm país guardado; o indicativo é
+       o melhor palpite que resta, e a língua do lead desempata o resto. */
+    country:
+      String(lead?.phone_country ?? "").toUpperCase() ||
+      countryOfDial(dialCode) ||
+      countryForLocale(String(lead?.locale ?? "en")),
+    phoneE164: (lead?.phone_e164 as string | null) ?? null,
     locale: String(lead?.locale ?? "en"),
   }
 
@@ -239,6 +278,13 @@ export async function loadPcState(token: string): Promise<PcLookup> {
   ])
 
   const offers = published?.offers ?? []
+
+  request.cities = cityNames([
+    request.origin,
+    request.destination,
+    ...request.legs.flatMap((l) => [l.origin, l.destination]),
+    ...offers.flatMap((o) => o.segments.flatMap((sg) => [sg.origin, sg.destination])),
+  ])
 
   const pax: PaxCounts = {
     adults: request.adults,

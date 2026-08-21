@@ -22,17 +22,16 @@ import type { PcState } from "@/lib/pc/state"
 import {
   BANK_DETAILS,
   BENEFICIARY,
-  COUNTRY,
   OFFICE_ADDRESS,
   OFFICE_HOURS,
   PROOF_MAX_BYTES,
   PROOF_REVIEW_HOURS,
-  countryOfDialCode,
   methodsFor,
   providersFor,
   type PayMethod,
   type PayMethodId,
 } from "@/lib/pc/catalog"
+import { countryName } from "@/lib/countries"
 import { money, phoneDisplay } from "@/lib/pc/format"
 import { IcFile, IcWa, MethodIcon, Rows } from "@/components/pc/bits"
 import { CopyButton, WaButton, useToast } from "@/components/pc/chrome"
@@ -44,7 +43,9 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
   const [pending, startTransition] = useTransition()
 
   const payment = state.payment
-  const country = countryOfDialCode(state.contact.dialCode)
+  /* O país vem da escolha do cliente e não do indicativo: o +1 é de vinte
+     países, e é o país que decide os métodos de pagamento e o banco. */
+  const country = state.contact.country
   const methods = useMemo(() => methodsFor(country), [country])
 
   const [method, setMethod] = useState<PayMethodId>(
@@ -58,7 +59,27 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
-  if (!payment) return null
+  /*
+   * Sem pagamento não há nada a mostrar — e a partir da BO-02 isto é um estado
+   * possível: o link de pagamento nasce quando os passaportes ficam completos, e
+   * se essa escrita falhar o cliente aterra aqui. Dizer-lhe o que se passa é
+   * melhor do que um ecrã em branco.
+   */
+  if (!payment) {
+    return (
+      <main className="shell view">
+        <div className="card">
+          <h2>Almost there</h2>
+          <p className="mnote" style={{ marginTop: 8 }}>
+            We are preparing the payment details for your trip. Refresh this page
+            in a moment — if it stays like this, message us on WhatsApp and we
+            will send the instructions by hand.
+          </p>
+        </div>
+        <div className="spacer" />
+      </main>
+    )
+  }
 
   const total = payment.amount
   const currency = payment.currency
@@ -169,11 +190,12 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
         <div className="sechead">
           <h3>How would you like to pay?</h3>
           <span className="rt">
-            {COUNTRY[country] ?? country} · {currency}
+            {countryName(country, state.contact.locale)} · {currency}
           </span>
         </div>
         <p className="mnote">
-          These are the methods available for <b>{COUNTRY[country] ?? country}</b>. We
+          These are the methods available for{" "}
+          <b>{countryName(country, state.contact.locale)}</b>. We
           accept most local payment methods around the world — if you don&apos;t see
           yours, tell us on WhatsApp and we&apos;ll arrange it.
         </p>

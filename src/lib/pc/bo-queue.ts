@@ -16,6 +16,7 @@
 import { createAdminClient } from "@/utils/supabase/admin"
 import { offerTotal, type PaxCounts } from "@/lib/proposal-math"
 import { CABIN_FROM_DB, TRIP_FROM_DB } from "@/lib/pc/catalog"
+import { countryOfDial } from "@/lib/countries"
 import type { PaymentStatus } from "@/lib/case-status"
 
 /**
@@ -95,6 +96,13 @@ export interface BoQueueRow {
   clientName: string
   clientPhone: string
   clientEmail: string
+  /**
+   * O mercado do cliente, em ISO-3166 alpha-2.
+   *
+   * Era o indicativo telefónico ("+33"), o que confundia vinte países num só
+   * quando o indicativo é partilhado. Passa a ser o país guardado no lead; para
+   * os pedidos anteriores à migração 0010 fica o palpite a partir do indicativo.
+   */
   market: string
   locale: string
   currency: string
@@ -137,7 +145,7 @@ const QUEUE_COLUMNS = `
     reference, trip_type, origin, destination, depart_date, return_date,
     adults, children, infants, infants_in_seat, infants_on_lap,
     cabin_class, currency, agent_slug, created_at,
-    lead:leads (full_name, email, phone, phone_prefix, locale)
+    lead:leads (full_name, email, phone, phone_prefix, phone_country, locale)
   ),
   proposals:case_proposals (
     id, status, published_at, selected_offer_id, selected_at,
@@ -344,7 +352,10 @@ export async function loadBoQueue(
       clientName: String(lead?.full_name ?? "—"),
       clientPhone: `${lead?.phone_prefix ?? ""} ${lead?.phone ?? ""}`.trim(),
       clientEmail: String(lead?.email ?? ""),
-      market: String(lead?.phone_prefix ?? ""),
+      market:
+        String(lead?.phone_country ?? "").toUpperCase() ||
+        countryOfDial(String(lead?.phone_prefix ?? "")) ||
+        "",
       locale: String(lead?.locale ?? "pt"),
       currency: String(trip.currency ?? payment?.currency ?? "EUR"),
       agentSlug: (trip.agent_slug as string | null) ?? null,
@@ -497,6 +508,19 @@ export interface BoCaseDetail {
     consentIp: string | null
     consentAgent: string | null
     intake: string
+    /**
+     * As datas que o cliente pediu, quando a equipa já lhas mudou.
+     *
+     * BO-04 · a rota nunca se edita e as datas só mudam por uma ação explícita,
+     * com motivo. O pedido original fica aqui para a ficha o poder mostrar
+     * intacto ao lado das datas em vigor — um caso onde ninguém mexeu tem estes
+     * dois campos a nulo.
+     */
+    originalDepartDate: string | null
+    originalReturnDate: string | null
+    datesChangedAt: string | null
+    datesChangedBy: string | null
+    datesChangeReason: string | null
   }
   ownerEmail: string | null
   notes: { id: string; body: string; author_email: string | null; created_at: string }[]
@@ -549,6 +573,8 @@ export async function loadBoCase(caseId: string): Promise<BoCaseDetail | null> {
        trip_request:trip_requests (
          id, trip_type, cabin_class, adults, children, infants,
          infants_in_seat, infants_on_lap, intake, consent_ip, consent_agent,
+         original_depart_date, original_return_date, dates_changed_at,
+         dates_changed_by_email, dates_change_reason,
          lead:leads (consent_at),
          legs:trip_request_legs (position, origin, destination, depart_date),
          notes:trip_request_notes (id, body, author_email, created_at)
@@ -592,6 +618,11 @@ export async function loadBoCase(caseId: string): Promise<BoCaseDetail | null> {
       consentIp: (trip.consent_ip as string | null) ?? null,
       consentAgent: (trip.consent_agent as string | null) ?? null,
       intake: String(trip.intake ?? "concierge"),
+      originalDepartDate: (trip.original_depart_date as string | null) ?? null,
+      originalReturnDate: (trip.original_return_date as string | null) ?? null,
+      datesChangedAt: (trip.dates_changed_at as string | null) ?? null,
+      datesChangedBy: (trip.dates_changed_by_email as string | null) ?? null,
+      datesChangeReason: (trip.dates_change_reason as string | null) ?? null,
     },
     ownerEmail,
     notes: ((trip.notes ?? []) as Record<string, any>[])

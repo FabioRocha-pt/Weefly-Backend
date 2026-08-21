@@ -15,12 +15,13 @@ import { createAdminClient } from "@/utils/supabase/admin"
 import { mintToken } from "@/lib/booking-cases"
 import { logCaseEvent } from "@/lib/case-events"
 import {
-  AP,
   CABIN_TO_DB,
   TRIP_TO_DB,
   type CabinKind,
   type TripKind,
 } from "@/lib/pc/catalog"
+import { isKnownIata } from "@/lib/airports"
+import { toE164 } from "@/lib/countries"
 
 export interface PcLeg {
   origin: string
@@ -44,6 +45,8 @@ export interface PcIntake {
   legs: PcLeg[]
   name: string
   dialCode: string
+  /** ISO-3166 alpha-2 do país do telefone — o +1 é de vinte países. */
+  country: string
   phone: string
   email: string
   consent: boolean
@@ -77,11 +80,28 @@ async function upsertLead(
   const email = input.email.trim().toLowerCase()
   const now = new Date().toISOString()
 
+  /*
+   * O número guardado três vezes, e cada uma serve para algo.
+   *
+   * `phone_e164` é o que o WhatsApp e o gateway de SMS pedem, e é a única forma
+   * que não depende de contexto nenhum. `phone_prefix` e `phone` ficam porque o
+   * back-office e os emails já os leem, e porque é assim que a pessoa reconhece
+   * o próprio número. `phone_country` desfaz a ambiguidade dos indicativos
+   * partilhados: sem ele, um +1 não diz se o cliente está em Boston ou em Santo
+   * Domingo — e isso decide a moeda e os métodos de pagamento que ele vê.
+   */
+  const e164 = toE164(input.dialCode, input.phone)
+  const national = e164
+    ? e164.slice(input.dialCode.replace(/\D/g, "").length + 1)
+    : input.phone.replace(/\D/g, "")
+
   const contact = {
     full_name: input.name.trim(),
     email,
     phone_prefix: input.dialCode,
-    phone: input.phone.trim(),
+    phone: national,
+    phone_e164: e164,
+    phone_country: input.country.toUpperCase(),
     locale: input.locale,
     consent: input.consent,
     consent_at: input.consent ? now : null,
@@ -373,5 +393,5 @@ export async function createPriceCheckerCase(
 
 /** Valida um IATA contra o catálogo — o formulário envia texto livre. */
 export function isKnownAirport(ia: string | null | undefined): boolean {
-  return Boolean(ia && AP(ia))
+  return isKnownIata(ia)
 }

@@ -361,9 +361,37 @@ export interface OfferBlocker {
   count?: number
 }
 
-export function offerBlockers(offer: Offer, pax: PaxCounts): OfferBlocker[] {
+/** As datas que o cliente pediu, contra as quais a oferta é medida. */
+export interface RequestedDates {
+  departDate: string | null
+  returnDate: string | null
+}
+
+/**
+ * Escala abaixo da qual a ligação é apertada.
+ *
+ * Não bloqueia — quarenta minutos em Sal é uma ligação normal e em Charles de
+ * Gaulle é um voo perdido, e o sistema não sabe a diferença. Avisa, e quem
+ * decide é quem está a compor.
+ */
+export const TIGHT_CONNECTION_MINUTES = 45
+
+/**
+ * A data de partida de um sentido: a do primeiro trecho.
+ *
+ * Só a parte da data, sem hora — é o que se compara com o que o cliente pediu.
+ */
+function legDate(segments: OfferSegment[]): string | null {
+  return segments[0]?.depart_at?.slice(0, 10) ?? null
+}
+
+export function offerBlockers(
+  offer: Offer,
+  pax: PaxCounts,
+  requested?: RequestedDates
+): OfferBlocker[] {
   const problems: OfferBlocker[] = []
-  const { ida } = legsOf(offer)
+  const { ida, volta } = legsOf(offer)
 
   if (!offer.name.trim()) problems.push({ key: "blockers.name" })
   if (ida.length === 0) problems.push({ key: "blockers.noOutbound" })
@@ -375,8 +403,53 @@ export function offerBlockers(offer: Offer, pax: PaxCounts): OfferBlocker[] {
     problems.push({ key: "blockers.incomplete", count: incomplete.length })
   }
 
-  const backwards = offer.segments.filter((s) => segmentMinutes(s) === null && s.depart_at && s.arrive_at)
+  /*
+   * BO-07 · as datas, aos três níveis que o pedido descreve.
+   *
+   * 1 · dentro do trecho: a chegada é depois da partida. Uma chegada de
+   *     madrugada no dia seguinte é legítima e passa — é o "+1" que o cartão
+   *     mostra; o que não passa é chegar antes de sair, que só pode ser um erro
+   *     de escrita.
+   */
+  const backwards = offer.segments.filter(
+    (s) => s.depart_at && s.arrive_at && (segmentMinutes(s) ?? -1) <= 0
+  )
   if (backwards.length > 0) problems.push({ key: "blockers.backwards" })
+
+  /*
+   * 2 · entre trechos: cada voo parte depois de o anterior aterrar. Sem isto
+   *     publica-se um itinerário em que o cliente embarca antes de chegar à
+   *     escala, e é ele que descobre no aeroporto.
+   */
+  const outOfOrder = [ida, volta].some((leg) =>
+    leg.some(
+      (segment, i) =>
+        i > 0 &&
+        leg[i - 1].arrive_at &&
+        segment.depart_at &&
+        (layoverMinutes(leg[i - 1], segment) ?? -1) < 0
+    )
+  )
+  if (outOfOrder) problems.push({ key: "blockers.outOfOrder" })
+
+  /*
+   * 3 · contra o pedido: a ida parte no dia que o cliente pediu, e a volta no
+   *     dia que ele pediu para voltar. Uma oferta noutras datas não é uma
+   *     oferta melhor, é outra viagem — e mudar as datas do cliente tem uma
+   *     porta própria, com motivo e aviso (BO-04, "Propor novas datas").
+   */
+  if (requested?.departDate && ida.length > 0) {
+    const out = legDate(ida)
+    if (out && out !== requested.departDate.slice(0, 10)) {
+      problems.push({ key: "blockers.departureMismatch" })
+    }
+  }
+  if (requested?.returnDate && volta.length > 0) {
+    const back = legDate(volta)
+    if (back && back !== requested.returnDate.slice(0, 10)) {
+      problems.push({ key: "blockers.returnMismatch" })
+    }
+  }
 
   if (offerTotal(offer, pax) <= 0) problems.push({ key: "blockers.zeroPrice" })
   if (pax.adults > 0 && offer.price_adult <= 0) {
@@ -387,6 +460,33 @@ export function offerBlockers(offer: Offer, pax: PaxCounts): OfferBlocker[] {
   }
 
   return problems
+}
+
+/**
+ * O que merece um aviso mas não impede publicar.
+ *
+ * A diferença entre isto e `offerBlockers` é quem decide: um bloqueio é uma
+ * regra ("não se publica um itinerário que chega antes de partir"), um aviso é
+ * um julgamento que é de quem compõe ("45 minutos em Lisboa dá; em Paris não").
+ */
+export function offerWarnings(offer: Offer): OfferBlocker[] {
+  const warnings: OfferBlocker[] = []
+  const { ida, volta } = legsOf(offer)
+
+  for (const leg of [ida, volta]) {
+    for (let i = 1; i < leg.length; i++) {
+      const wait = layoverMinutes(leg[i - 1], leg[i])
+      if (wait !== null && wait >= 0 && wait < TIGHT_CONNECTION_MINUTES) {
+        warnings.push({ key: "blockers.tightConnection", count: wait })
+      }
+    }
+    /* A chegada no dia seguinte é normal em voos de longo curso; o aviso existe
+       para que ninguém a leia como um erro de escrita ao rever a oferta. */
+    const plus = dayOffset(leg)
+    if (plus > 0) warnings.push({ key: "blockers.overnight", count: plus })
+  }
+
+  return warnings
 }
 
 /** As chaves de um bloqueio viradas em frase, na língua de quem lê. */

@@ -76,6 +76,12 @@ function caseAdminLink(ctx: CaseContext): string {
     : `${base}/admin/casos/${ctx.caseId}`
 }
 
+/** O endereço permanente do cliente: /pc/{token}, o mesmo desde o pedido. */
+function clientLink(ctx: CaseContext): string {
+  const base = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")
+  return base ? `${base}/pc/${ctx.token}` : ""
+}
+
 /** "2A · 1C · 1B" — a mesma abreviatura da coluna de passageiros da fila. */
 function paxOf(trip: Record<string, unknown> | null): string {
   const n = (key: string) => Number(trip?.[key] ?? 0)
@@ -333,6 +339,89 @@ export async function sendPaymentDeclaredEmail(
     html,
     text,
     ...(ctx.clientEmail ? { replyTo: ctx.clientEmail } : {}),
+  })
+}
+
+/**
+ * Ao cliente, quando a equipa propõe outras datas (BO-04).
+ *
+ * As datas de um pedido não se mudam em silêncio: quem as pediu tem de saber
+ * que mudaram, quais são as novas e porquê. O motivo escrito pelo agente vai no
+ * corpo do email tal e qual — é a frase que ele escreveu sabendo que o cliente a
+ * ia ler.
+ *
+ * Na língua do cliente, não na do agente: ver o mesmo argumento em
+ * `notifyPublication`.
+ */
+export async function sendDatesProposedEmail(
+  caseId: string,
+  change: {
+    fromDepart: string | null
+    fromReturn: string | null
+    toDepart: string
+    toReturn: string | null
+    reason: string
+  }
+): Promise<boolean> {
+  const ctx = await context(caseId)
+  if (!ctx?.clientEmail) return false
+
+  const { locale } = ctx
+  const t = getTranslator(locale)
+
+  const range = (from: string | null, to: string | null) =>
+    [from ? formatDate(from) : "—", to ? formatDate(to) : null]
+      .filter(Boolean)
+      .join(" – ")
+
+  const before = range(change.fromDepart, change.fromReturn)
+  const after = range(change.toDepart, change.toReturn)
+  const route =
+    ctx.origin && ctx.destination ? `${ctx.origin} → ${ctx.destination}` : "—"
+
+  const subject = t("email.datesSubject", { route })
+  const link = clientLink(ctx)
+
+  const html = shell(
+    subject,
+    `<h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:${INK};letter-spacing:-0.02em;">${escapeHtml(t("email.datesHeading"))}</h1>
+     <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:${EMBER_RED};">${escapeHtml(route)}${ctx.reference ? ` · ${escapeHtml(ctx.reference)}` : ""}</p>
+     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
+       ${t("email.datesBody", {
+         name: `<strong style="color:${INK};">${escapeHtml(ctx.clientName)}</strong>`,
+         from: `<strong style="color:${INK};">${escapeHtml(before)}</strong>`,
+         to: `<strong style="color:${INK};">${escapeHtml(after)}</strong>`,
+       })}
+     </p>
+     <p style="margin:0 0 20px;padding:12px 14px;border-left:3px solid ${EMBER_RED};background:${SURFACE_ALT};font-size:14px;line-height:1.6;color:${INK};">
+       ${escapeHtml(t("email.datesReason", { reason: change.reason }))}
+     </p>
+     <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">
+       ${escapeHtml(t("email.datesNext"))}
+     </p>
+     ${link ? `<a href="${link}" style="display:inline-block;background:${EMBER_RED};color:#ffffff;font-size:14px;font-weight:700;padding:13px 24px;border-radius:999px;text-decoration:none;">${escapeHtml(t("email.datesCta"))}</a>` : ""}`,
+    locale
+  )
+
+  const text = [
+    t("email.datesTextHello", { name: ctx.clientName }),
+    "",
+    t("email.datesTextChange", { from: before, to: after }),
+    t("email.datesTextReason", { reason: change.reason }),
+    "",
+    t("email.datesTextNext"),
+    link,
+    "© WeeFly Africa",
+  ]
+    .filter(Boolean)
+    .join("\n")
+
+  return send({
+    to: ctx.clientEmail,
+    subject,
+    html,
+    text,
+    replyTo: team()[0],
   })
 }
 

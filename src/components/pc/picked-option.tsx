@@ -57,9 +57,10 @@ export function PickedOption({
         <div>
           <span className="k">Chosen option</span>
           <div className="rt">
-            {cityOf(state.request.origin)} → {cityOf(state.request.destination)}
+            {cityOf(state.request.origin, state.request.cities)} →{" "}
+            {cityOf(state.request.destination, state.request.cities)}
             {" · "}
-            {offerStopsSummary(offer).toLowerCase()}
+            {offerStopsSummary(offer, state.request.cities).toLowerCase()}
           </div>
           <div className="mt">
             {offer.name || carrierName(offer.segments[0]?.carrier_code)} · {dates} ·{" "}

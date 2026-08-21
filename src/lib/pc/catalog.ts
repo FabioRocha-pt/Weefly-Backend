@@ -1,139 +1,49 @@
 /**
  * WeeFly Price Checker — os catálogos que o ecrã e o servidor partilham.
  *
- * Tudo isto vinha em duro dentro do mockup (public/mockups/price-checker.html).
- * Passa a viver aqui porque as duas pontas precisam dos mesmos valores: o
- * formulário para autocompletar aeroportos e o servidor para validar o que
- * recebeu. Um catálogo duplicado seria um catálogo que divergia.
+ * O que ficou aqui é o vocabulário do produto: tipos de viagem, classes,
+ * companhias, moedas e métodos de pagamento. Os catálogos grandes saíram para
+ * onde a sua dimensão manda:
+ *
+ *   · aeroportos, cidades e países → `lib/airports.ts` (só servidor, nove mil
+ *     linhas) e `/api/airports` para quem pesquisa;
+ *   · indicativos telefónicos e nomes de países → `lib/countries.ts`
+ *     (isomórfico, 7 KB, porque o formulário filtra a cada tecla).
  *
  * Sem importações de servidor — é usado por Client Components.
  */
 
-// ── aeroportos ───────────────────────────────────────────────────────────────
+// ── países, para os campos que pedem um país pelo nome ───────────────────────
 
-export interface Airport {
-  /** IATA */
-  ia: string
-  /** cidade */
-  ct: string
-  /** país e nome do aeroporto, como aparece na sugestão */
-  cy: string
-  /** ISO-3166 alpha-2 */
-  co: string
-}
+import { COUNTRIES } from "@/lib/countries"
 
-export const AIRPORTS: Airport[] = [
-  { ia: "RAI", ct: "Praia",         cy: "Cape Verde · Nelson Mandela",     co: "CV" },
-  { ia: "SID", ct: "Sal",           cy: "Cape Verde · Amilcar Cabral",     co: "CV" },
-  { ia: "VXE", ct: "Sao Vicente",   cy: "Cape Verde · Cesaria Evora",      co: "CV" },
-  { ia: "BVC", ct: "Boa Vista",     cy: "Cape Verde · Aristides Pereira",  co: "CV" },
-  { ia: "LIS", ct: "Lisbon",        cy: "Portugal · Humberto Delgado",     co: "PT" },
-  { ia: "OPO", ct: "Porto",         cy: "Portugal · Francisco Sa Carneiro", co: "PT" },
-  { ia: "FNC", ct: "Funchal",       cy: "Portugal · Madeira",              co: "PT" },
-  { ia: "ORY", ct: "Paris Orly",    cy: "France",                          co: "FR" },
-  { ia: "CDG", ct: "Paris Charles de Gaulle", cy: "France",                co: "FR" },
-  { ia: "LYS", ct: "Lyon",          cy: "France · Saint-Exupery",          co: "FR" },
-  { ia: "MRS", ct: "Marseille",     cy: "France · Provence",               co: "FR" },
-  { ia: "BOS", ct: "Boston",        cy: "United States · Logan",           co: "US" },
-  { ia: "JFK", ct: "New York",      cy: "United States · JFK",             co: "US" },
-  { ia: "IAD", ct: "Washington",    cy: "United States · Dulles",          co: "US" },
-  { ia: "AMS", ct: "Amsterdam",     cy: "Netherlands · Schiphol",          co: "NL" },
-  { ia: "BRU", ct: "Brussels",      cy: "Belgium · Zaventem",              co: "BE" },
-  { ia: "LUX", ct: "Luxembourg",    cy: "Luxembourg · Findel",             co: "LU" },
-  { ia: "GVA", ct: "Geneva",        cy: "Switzerland · Cointrin",          co: "CH" },
-  { ia: "LHR", ct: "London",        cy: "United Kingdom · Heathrow",       co: "GB" },
-  { ia: "MAD", ct: "Madrid",        cy: "Spain · Barajas",                 co: "ES" },
-  { ia: "BCN", ct: "Barcelona",     cy: "Spain · El Prat",                 co: "ES" },
-  { ia: "MXP", ct: "Milan",         cy: "Italy · Malpensa",                co: "IT" },
-  { ia: "CMN", ct: "Casablanca",    cy: "Morocco · Mohammed V",            co: "MA" },
-  { ia: "DSS", ct: "Dakar",         cy: "Senegal · Blaise Diagne",         co: "SN" },
-  { ia: "ABJ", ct: "Abidjan",       cy: "Ivory Coast · Felix Houphouet",   co: "CI" },
-  { ia: "ACC", ct: "Accra",         cy: "Ghana · Kotoka",                  co: "GH" },
-  { ia: "BIS", ct: "Bissau",        cy: "Guinea-Bissau · Osvaldo Vieira",  co: "GW" },
-  { ia: "LAD", ct: "Luanda",        cy: "Angola · Quatro de Fevereiro",    co: "AO" },
-  { ia: "MPM", ct: "Maputo",        cy: "Mozambique",                      co: "MZ" },
-  { ia: "FOR", ct: "Fortaleza",     cy: "Brazil · Pinto Martins",          co: "BR" },
-  { ia: "GRU", ct: "Sao Paulo",     cy: "Brazil · Guarulhos",              co: "BR" },
-  { ia: "REC", ct: "Recife",        cy: "Brazil · Guararapes",             co: "BR" },
+/**
+ * As nacionalidades e os países emissores de passaporte.
+ *
+ * Era uma lista de vinte países com "Other" no fim, e "Other" num passaporte
+ * não serve para emitir um bilhete. São agora todos, pela mesma razão dos
+ * indicativos: quem viaja com um passaporte angolano emitido em Lisboa tem de
+ * poder dizer as duas coisas. "Other" fica aceite porque há pedidos antigos
+ * guardados com ele.
+ */
+export const NATIONALITIES: string[] = [
+  ...COUNTRIES.map((c) => c.name).sort((a, b) => a.localeCompare(b, "en")),
+  "Other",
 ]
-
-export const AIRPORT_BY_IATA: Record<string, Airport> = Object.fromEntries(
-  AIRPORTS.map((a) => [a.ia, a])
-)
-
-export const AP = (ia: string | null | undefined): Airport | null =>
-  (ia && AIRPORT_BY_IATA[ia]) || null
-
-export const POPULAR = ["RAI", "SID", "LIS", "ORY", "CDG", "BOS", "AMS", "DSS"]
-
-/** "Praia (RAI)" — como o campo mostra um aeroporto já escolhido. */
-export function airportLabel(ia: string | null | undefined): string {
-  const a = AP(ia)
-  return a ? `${a.ct} (${a.ia})` : ""
-}
-
-export function searchAirports(query: string, limit = 8): Airport[] {
-  const t = query.trim().toLowerCase()
-  if (!t) return POPULAR.map((ia) => AIRPORT_BY_IATA[ia]).filter(Boolean)
-  return AIRPORTS.filter(
-    (a) =>
-      a.ct.toLowerCase().includes(t) ||
-      a.ia.toLowerCase().includes(t) ||
-      a.cy.toLowerCase().includes(t)
-  ).slice(0, limit)
-}
-
-// ── indicativos e países ─────────────────────────────────────────────────────
-
-export interface DialCode {
-  c: string
-  n: string
-  co: string
-}
-
-export const CCS: DialCode[] = [
-  { c: "+238", n: "Cape Verde",     co: "CV" },
-  { c: "+351", n: "Portugal",       co: "PT" },
-  { c: "+33",  n: "France",         co: "FR" },
-  { c: "+1",   n: "USA & Canada",   co: "US" },
-  { c: "+31",  n: "Netherlands",    co: "NL" },
-  { c: "+32",  n: "Belgium",        co: "BE" },
-  { c: "+34",  n: "Spain",          co: "ES" },
-  { c: "+39",  n: "Italy",          co: "IT" },
-  { c: "+44",  n: "United Kingdom", co: "GB" },
-  { c: "+41",  n: "Switzerland",    co: "CH" },
-  { c: "+352", n: "Luxembourg",     co: "LU" },
-  { c: "+49",  n: "Germany",        co: "DE" },
-  { c: "+221", n: "Senegal",        co: "SN" },
-  { c: "+225", n: "Ivory Coast",    co: "CI" },
-  { c: "+233", n: "Ghana",          co: "GH" },
-  { c: "+245", n: "Guinea-Bissau",  co: "GW" },
-  { c: "+244", n: "Angola",         co: "AO" },
-  { c: "+258", n: "Mozambique",     co: "MZ" },
-  { c: "+212", n: "Morocco",        co: "MA" },
-  { c: "+55",  n: "Brazil",         co: "BR" },
-]
-
-export const COUNTRY: Record<string, string> = {
-  CV: "Cape Verde", PT: "Portugal", FR: "France", US: "United States",
-  NL: "Netherlands", BE: "Belgium", ES: "Spain", IT: "Italy",
-  GB: "United Kingdom", CH: "Switzerland", LU: "Luxembourg", DE: "Germany",
-  SN: "Senegal", CI: "Ivory Coast", GH: "Ghana", GW: "Guinea-Bissau",
-  AO: "Angola", MZ: "Mozambique", MA: "Morocco", BR: "Brazil",
-}
-
-export const NATIONALITIES = [
-  "Cape Verde", "Portugal", "France", "United States", "Netherlands",
-  "Belgium", "Spain", "Italy", "United Kingdom", "Switzerland", "Luxembourg",
-  "Germany", "Senegal", "Ivory Coast", "Ghana", "Guinea-Bissau", "Angola",
-  "Mozambique", "Morocco", "Brazil", "Other",
-]
-
-export function countryOfDialCode(cc: string): string {
-  return CCS.find((x) => x.c === cc)?.co ?? "CV"
-}
 
 // ── viagem ───────────────────────────────────────────────────────────────────
+
+/**
+ * Quantos voos cabem num multi-city.
+ *
+ * Quatro é a sugestão da Q3 do change request log; a resposta do cliente muda
+ * este número e mais nada — o formulário, a validação do servidor e o
+ * back-office leem-no todos daqui. A restrição da base de dados
+ * (`trip_request_legs.position`) tem folga até seis, para que subir este limite
+ * não obrigue a uma migração.
+ */
+export const MAX_LEGS = 4
+export const MIN_LEGS = 2
 
 export type TripKind = "round" | "oneway" | "multi"
 export type CabinKind = "economy" | "premium" | "business" | "first"
