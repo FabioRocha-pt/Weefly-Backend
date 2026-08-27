@@ -13,6 +13,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 
 import type { PcState } from "@/lib/pc/state"
+import { fareHeldUntil, priceNature } from "@/lib/proposal-math"
 import { selectedOfferOf, offerStopsSummary } from "@/components/pc/offer-view"
 import { carrierName } from "@/lib/pc/catalog"
 import {
@@ -46,7 +47,10 @@ export function PickedOption({
           state.request.trip === "round" ? state.request.returnDate : null
         )
 
-  const guaranteed = Boolean(offer.valid_until)
+  /* FB-04 · garantido só com retenção real da companhia. Ver `priceNature`. */
+  const guaranteed =
+    priceNature(offer, state.proposalPublishedAt) === "guaranteed"
+  const heldUntil = fareHeldUntil(offer)
   const total = state.totals[offer.id] ?? payment?.amount ?? 0
   const taxes = offer.taxes_total
   const fare = Math.max(0, total - taxes)
@@ -97,10 +101,14 @@ export function PickedOption({
           <div>
             <b>Pay within this window to keep the price</b>
             <p>
-              {guaranteed
-                ? `The fare is guaranteed until ${fmtDateY(
-                    payment.expires_at.slice(0, 10)
-                  )} at ${payment.expires_at.slice(11, 16)}. After that the airline may change it and we will have to ask you to reconfirm.`
+              {/* A janela de pagamento e a retenção da companhia são dois
+                  prazos diferentes, e o texto só fala da segunda quando ela
+                  existe de facto. Antes dizia "guaranteed until" com a data da
+                  janela de pagamento — que é nossa, não da companhia. */}
+              {guaranteed && heldUntil
+                ? `The airline is holding this fare until ${fmtDateY(
+                    new Date(heldUntil).toISOString().slice(0, 10)
+                  )} at ${new Date(heldUntil).toISOString().slice(11, 16)} UTC. After that it may change it and we will have to ask you to reconfirm.`
                 : "This fare is indicative. The sooner you pay, the more likely we hold it: we reconfirm with the airline before issuing."}
             </p>
           </div>

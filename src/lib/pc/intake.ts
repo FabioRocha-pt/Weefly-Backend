@@ -36,6 +36,8 @@ export interface PcIntake {
   children: number
   infantsInSeat: number
   infantsOnLap: number
+  /** VIP-10 · malas de porão pedidas. Zero é uma resposta, não uma ausência. */
+  baggageHold: number
   /** Presente quando trip !== 'multi'. */
   origin: string | null
   destination: string | null
@@ -291,6 +293,8 @@ export async function createPriceCheckerCase(
         infants: input.infantsInSeat + input.infantsOnLap,
         infants_in_seat: input.infantsInSeat,
         infants_on_lap: input.infantsOnLap,
+        /* VIP-10 · o que o cliente pediu, para pré-preencher a proposta. */
+        baggage_hold: input.baggageHold,
         cabin_class: CABIN_TO_DB[input.cabin],
         currency: input.currency,
         agent_slug: input.agentSlug,

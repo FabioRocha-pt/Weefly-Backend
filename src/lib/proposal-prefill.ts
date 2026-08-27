@@ -114,6 +114,16 @@ export async function prefillProposalFromSearch(input: {
       /* Nasce fora da proposta. O agente marca a caixa no painel de publicação
          depois de conferir os valores — nunca antes. */
       include_in_proposal: false,
+      /*
+       * PC-06a · as horas vieram de uma pesquisa e ninguém olhou para elas.
+       *
+       * É o único sítio da aplicação que escreve isto a `false`. Uma oferta
+       * composta à mão tem as horas que quem a compôs lá pôs; esta tem as que a
+       * pesquisa devolveu, e entre a pesquisa e a proposta pode ter mudado
+       * qualquer coisa. O painel de publicação não deixa sair enquanto alguém
+       * não as reconhecer.
+       */
+      times_confirmed: false,
       price_adult: adult,
       price_child: pax.children > 0 ? child : 0,
       price_infant: 0,

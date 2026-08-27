@@ -89,6 +89,41 @@ export const CABIN_FROM_DB: Record<string, CabinKind> = {
   first: "first",
 }
 
+// ── bagagem ──────────────────────────────────────────────────────────────────
+
+/**
+ * VIP-10 · quantas malas de porão o formulário oferece.
+ *
+ * O seletor mostra 0, 1 e 2, que é o que uma pessoa escolhe sem pensar. A
+ * restrição da base de dados tem folga até nove pela mesma razão do `MAX_LEGS`:
+ * o limite é do produto e muda aqui, não numa migração.
+ *
+ * Isto é o que o cliente **pede**, não o que a tarifa **inclui** — quem cota vê
+ * este número ao lado e responde com a bagagem da oferta (`FB-03`). Confundir os
+ * dois faria uma proposta prometer o que ninguém verificou.
+ */
+export const MAX_BAGGAGE = 2
+
+/**
+ * Uma contagem de bagagem, escrita como uma pessoa a lê.
+ *
+ * Um só sítio para as duas pontas — o seletor do formulário (`VIP-10`) e as
+ * condições da oferta (`FB-03`) — porque são o mesmo número visto duas vezes, e
+ * duas maneiras de o escrever fariam o cliente pensar que são coisas
+ * diferentes.
+ *
+ * Zero tem palavras próprias: "No checked bag" é o que faz alguém escolher
+ * outra opção, e "0 checked bags" é uma linha que os olhos saltam.
+ */
+export function baggageLabel(
+  count: number,
+  kind: "cabin" | "hold" = "hold"
+): string {
+  const noun = kind === "cabin" ? "cabin bag" : "checked bag"
+  if (count <= 0) return `No ${noun}`
+  return `${count} ${noun}${count === 1 ? "" : "s"}`
+}
+
 export const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",

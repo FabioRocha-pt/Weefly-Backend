@@ -25,6 +25,11 @@ yarn-error.log*
 # local env files
 .env
 .env*.local
+# O .env.example deixou de ser versionado: era o ficheiro onde as credenciais
+# acabavam por ser escritas à mão enquanto se testava, e um ficheiro de exemplo
+# que às vezes tem segredos reais é um ficheiro de segredos. As variáveis a
+# sério vivem no ambiente do Plesk; a cópia local fica em .env.local.
+.env.example
 
 # typescript
 *.tsbuildinfo

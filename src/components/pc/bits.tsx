@@ -10,6 +10,7 @@
  */
 
 import type { PcRequestView, PcScreen, PcState } from "@/lib/pc/state"
+import { baggageLabel } from "@/lib/pc/catalog"
 import {
   cityOf,
   fmtDateY,
@@ -33,6 +34,15 @@ export const IcSwap = ({ size = 15 }: { size?: number }) => (
       strokeLinecap="round"
       strokeLinejoin="round"
     />
+  </svg>
+)
+
+/** VIP-10 · a mala de porão, no seletor de bagagem do passo 1. */
+export const IcBag = ({ size = 15 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+    <rect x="3" y="5.6" width="12" height="9.4" rx="1.8" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M6.8 5.4V3.9c0-.6.5-1.1 1.1-1.1h2.2c.6 0 1.1.5 1.1 1.1v1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M7.4 8.6v3.4M10.6 8.6v3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
   </svg>
 )
 
@@ -323,6 +333,9 @@ export function SummaryRows({
 
   rows.push(["Passengers", paxFull(request)])
   rows.push(["Cabin", CABIN_LABEL[request.cabin]])
+  /* VIP-10 · a bagagem é do contrato de campos e por isso aparece no resumo:
+     é o cliente a poder verificar o que pediu antes de nos cobrar por isso. */
+  rows.push(["Baggage", baggageLabel(request.baggageHold)])
 
   if (withContact && contact) {
     rows.push(["Contact", phoneDisplay(contact.dialCode, contact.phone)])

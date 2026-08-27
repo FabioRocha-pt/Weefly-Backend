@@ -23,6 +23,7 @@ import {
   timeOf,
   validityInstant,
 } from "@/lib/proposal-math"
+import { baggageLabel } from "@/lib/pc/catalog"
 import { useI18n, useT } from "@/i18n/provider"
 import type { Translator } from "@/i18n/translate"
 import { LOCALE_TAGS } from "@/i18n/config"
@@ -451,8 +452,19 @@ function OfferDetail({
 }) {
   const legs = legsOf(offer)
   const conditions = [
-    [t("proposal.conditionBaggageCabin"), offer.baggage_cabin],
-    [t("proposal.conditionBaggageHold"), offer.baggage_hold],
+    /* FB-03 · contagem primeiro, texto antigo depois. Ver a migração 0012. */
+    [
+      t("proposal.conditionBaggageCabin"),
+      offer.baggage_cabin_count != null
+        ? baggageLabel(offer.baggage_cabin_count, "cabin")
+        : offer.baggage_cabin,
+    ],
+    [
+      t("proposal.conditionBaggageHold"),
+      offer.baggage_hold_count != null
+        ? baggageLabel(offer.baggage_hold_count)
+        : offer.baggage_hold,
+    ],
     [t("proposal.conditionChange"), offer.change_policy],
     [t("proposal.conditionRefund"), offer.refund_policy],
     [t("proposal.conditionSeat"), offer.seat_policy],

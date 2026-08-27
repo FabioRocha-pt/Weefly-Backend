@@ -41,10 +41,15 @@ const SEGMENT_COLUMNS = `
 const OFFER_PUBLIC_COLUMNS = `
   id, position, name, include_in_proposal,
   is_recommended, is_cheapest, is_fastest,
-  fare_name, baggage_cabin, baggage_hold, change_policy, refund_policy,
+  fare_name, baggage_cabin, baggage_hold,
+  baggage_cabin_count, baggage_hold_count,
+  non_refundable, times_confirmed,
+  change_policy, refund_policy,
   seat_policy, documents,
   price_adult, price_child, price_infant, taxes_total, service_fee,
-  lock_fee, lock_fee_enabled, valid_until, agent_note,
+  lock_fee, lock_fee_enabled, valid_until,
+  fare_held_until, fare_held_source, fare_held_ref,
+  agent_note,
   ${SEGMENT_COLUMNS}
 `
 

@@ -126,64 +126,18 @@ export async function unlockStage(
   return { error: null }
 }
 
-/**
- * Record the fare the client agreed to and open the payment stage.
+/*
+ * `createPayLink` vivia aqui e saiu com o BO-02. Recebia um valor escrito à mão
+ * num formulário e abria a fase de pagamento com ele — sem confirmar que o
+ * cliente tinha escolhido uma opção e sem olhar para os passageiros. É
+ * exactamente o link contra um preço velho que o BO-02 manda impedir.
  *
- * The amount is entered by hand because the admin sources fares manually.
- * Stored in MINOR UNITS to match WeePay's `amount BIGINT` (manual §8.4), so
- * the adapter can pass it straight through without a rounding step.
+ * O ecrã que a chamava (`components/admin/pay-link-form.tsx`) já tinha deixado
+ * de ser montado, mas a action continuava exportada: a porta ficava aberta a
+ * quem soubesse o nome. O link nasce agora num só sítio, no fim de
+ * `savePcPassengers` (`actions/pc.ts:450`), depois de o servidor confirmar a
+ * opção escolhida e o conjunto completo de passageiros.
  */
-export async function createPayLink(
-  formData: FormData
-): Promise<CaseActionState> {
-  const { t } = getI18n()
-  const caseId = field(formData, "caseId")
-  const rawAmount = field(formData, "amount").replace(",", ".")
-  const currency = (field(formData, "currency") || "CVE").toUpperCase()
-  const description = field(formData, "description")
-
-  if (!caseId) return { error: t("errors.invalidCase") }
-
-  const major = Number(rawAmount)
-  if (!Number.isFinite(major) || major <= 0) {
-    return { error: t("errors.invalidAmount") }
-  }
-  if (currency.length !== 3) return { error: t("errors.invalidCurrency") }
-
-  const amount = Math.round(major * 100)
-
-  const supabase = createClient()
-
-  const { error } = await supabase.from("case_payments").insert({
-    case_id: caseId,
-    amount,
-    currency,
-    description: description || null,
-    status: "STARTED",
-    // Idempotency key shape follows the WeePay manual (§10.2); the adapter
-    // will forward it so a retried initiate() never double-charges.
-    idempotency_key: `case_${caseId}_${Date.now()}`,
-  })
-
-  if (error) {
-    console.error("[cases] createPayLink failed:", error)
-    return { error: t("errors.payRequestFailed") }
-  }
-
-  const unlock = new FormData()
-  unlock.set("caseId", caseId)
-  unlock.set("stage", "3")
-  const unlocked = await unlockStage(unlock)
-
-  // "Already generated" is fine here — the payment row is what matters.
-  if (unlocked.error && !unlocked.error.includes("já tinha sido")) {
-    return unlocked
-  }
-
-  revalidatePath("/admin")
-  revalidatePath(`/admin/casos/${caseId}`)
-  return { error: null }
-}
 
 /*
  * `markPaymentReceived` vivia aqui e foi removida na altura em que a máquina de

@@ -72,6 +72,51 @@ function code(value: unknown, max: number): string | null {
   return v ? v.toUpperCase() : null
 }
 
+/**
+ * FB-03 · uma contagem de bagagem.
+ *
+ * Nulo e zero são coisas diferentes e é por isso que o nulo sobrevive: zero é
+ * "esta tarifa não inclui mala", e nulo é "ainda não foi respondido". O ecrã do
+ * cliente mostra os dois de forma diferente, e transformar um no outro aqui
+ * faria uma tarifa por preencher parecer uma tarifa sem bagagem.
+ *
+ * O teto é o da restrição da coluna (migração 0012): acima dele o Postgres
+ * recusaria a linha inteira e o vendedor perdia tudo o que estava a escrever.
+ */
+/**
+ * FB-04 · os três campos da retenção, ou os três a nulo.
+ *
+ * O `datetime-local` do compositor devolve hora local sem fuso; a coluna é
+ * `timestamptz`. A hora escrita é a de Cabo Verde (é onde a equipa está e é o
+ * fuso do resto deste back-office), por isso é carimbada com `-01:00` em vez de
+ * ser entregue ambígua ao Postgres, que a leria como UTC e adiantaria a
+ * retenção uma hora.
+ */
+function heldFields(draft: OfferDraft): Record<string, string | null> {
+  const at = moment(draft.fare_held_until)
+  const source =
+    draft.fare_held_source === "amadeus" || draft.fare_held_source === "manual"
+      ? draft.fare_held_source
+      : null
+
+  if (!at || !source) {
+    return { fare_held_until: null, fare_held_source: null, fare_held_ref: null }
+  }
+
+  return {
+    fare_held_until: `${at.slice(0, 16)}:00-01:00`,
+    fare_held_source: source,
+    fare_held_ref: text(draft.fare_held_ref, 40),
+  }
+}
+
+function count(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n) || n < 0) return null
+  return Math.min(n, 9)
+}
+
 export interface SegmentDraft {
   direction: OfferDirection
   carrier_code?: string
@@ -93,8 +138,15 @@ export interface OfferDraft {
   is_cheapest?: boolean
   is_fastest?: boolean
   fare_name?: string
-  baggage_cabin?: string
-  baggage_hold?: string
+  /* FB-03 · a bagagem é uma contagem. As colunas de texto que estas substituem
+     não estão aqui de propósito: o compositor deixou de as escrever, e um campo
+     que já não se escreve não pertence ao contrato de gravação. */
+  baggage_cabin_count?: number | null
+  baggage_hold_count?: number | null
+  /* PC-B · "não reembolsável" e "horas confirmadas", os dois campos que a
+     proposta reduzida acrescenta. Ver a migração 0012, parte 4. */
+  non_refundable?: boolean
+  times_confirmed?: boolean
   change_policy?: string
   refund_policy?: string
   seat_policy?: string
@@ -108,7 +160,11 @@ export interface OfferDraft {
   lock_fee?: number
   lock_fee_enabled?: boolean
   cost_total?: number
-  valid_until?: string
+  /* FB-04 · a retenção da companhia. `valid_until` saiu do contrato: a validade
+     comercial deriva de `published_at` e não de nada que alguém escreva. */
+  fare_held_until?: string
+  fare_held_source?: "amadeus" | "manual" | null
+  fare_held_ref?: string
   agent_note?: string
   segments?: SegmentDraft[]
 }
@@ -231,11 +287,41 @@ export async function addOffer(caseId: string): Promise<ProposalActionState> {
     return { error: t("errors.offerCreateFailed") }
   }
 
-  // Um trecho de ida em branco, porque uma oferta sem nenhum é um ecrã vazio
-  // com um botão — e toda a gente vai carregar nesse botão a seguir.
-  await supabase
-    .from("case_offer_segments")
-    .insert({ offer_id: offer.id, direction: "ida", position: 0 })
+  /*
+   * FB-01 · o trecho nasce com o que o cliente já disse.
+   *
+   * Havia aqui um trecho de ida em branco, porque uma oferta sem nenhum é um
+   * ecrã vazio com um botão — e toda a gente ia carregar nesse botão a seguir.
+   * Agora nasce com a rota e a cabina do pedido: origem, destino e classe são
+   * três campos que o cliente já preencheu, e reescrevê-los à mão era a parte
+   * da cotação em que se perdia tempo a copiar o que estava ao lado.
+   *
+   * As horas ficam vazias de propósito. A data que o cliente pediu não é a hora
+   * de um voo, e pré-preencher "06 set, 00:00" seria dar por respondido o campo
+   * que mais importa acertar.
+   */
+  const { data: seed } = await supabase
+    .from("booking_cases")
+    .select("trip_request:trip_requests (origin, destination, cabin_class)")
+    .eq("id", caseId)
+    .maybeSingle()
+
+  const embedded = (seed as Record<string, unknown> | null)?.trip_request
+  const trip = (Array.isArray(embedded) ? embedded[0] : embedded) as
+    | { origin: string | null; destination: string | null; cabin_class: string | null }
+    | null
+    | undefined
+
+  await supabase.from("case_offer_segments").insert({
+    offer_id: offer.id,
+    direction: "ida",
+    position: 0,
+    origin: code(trip?.origin, 3),
+    destination: code(trip?.destination, 3),
+    cabin: CABINS.includes(trip?.cabin_class as Cabin)
+      ? trip?.cabin_class
+      : "economy",
+  })
 
   touch(caseId)
   return OK
@@ -388,8 +474,10 @@ export async function saveOffer(
       is_cheapest: flag(draft.is_cheapest),
       is_fastest: flag(draft.is_fastest),
       fare_name: text(draft.fare_name, 120),
-      baggage_cabin: text(draft.baggage_cabin, 160),
-      baggage_hold: text(draft.baggage_hold, 160),
+      baggage_cabin_count: count(draft.baggage_cabin_count),
+      baggage_hold_count: count(draft.baggage_hold_count),
+      non_refundable: flag(draft.non_refundable),
+      times_confirmed: draft.times_confirmed !== false,
       change_policy: text(draft.change_policy, 240),
       refund_policy: text(draft.refund_policy, 240),
       seat_policy: text(draft.seat_policy, 240),
@@ -402,7 +490,16 @@ export async function saveOffer(
       lock_fee: money(draft.lock_fee),
       lock_fee_enabled: flag(draft.lock_fee_enabled),
       cost_total: money(draft.cost_total),
-      valid_until: moment(draft.valid_until),
+      /*
+       * FB-04 · a retenção, ou nada.
+       *
+       * Os três campos são gravados em conjunto porque a base os verifica em
+       * conjunto: instante sem origem é recusado pela restrição
+       * `case_offers_fare_held_pair_check`, e com razão — um instante sozinho é
+       * alguém a afirmar uma retenção sem dizer quem a deu. Sem instante, os
+       * três vão a nulo, e a oferta volta a ser preço seguro por nós.
+       */
+      ...heldFields(draft),
       agent_note: text(draft.agent_note, 2000),
     })
     .eq("id", offerId)
@@ -443,6 +540,98 @@ export async function saveOffer(
       .insert(rows)
     if (segError) {
       console.error("[proposals] segment insert failed:", segError)
+      return { error: t("errors.offerSavedSegmentsNot") }
+    }
+  }
+
+  touch(caseId)
+  return OK
+}
+
+// --- PC-B · o construtor de bilhete, na emissão ------------------------------
+
+/** O que o construtor de bilhete escreve, e nada mais. */
+export interface TicketDetailsDraft {
+  fare_name?: string
+  change_policy?: string
+  refund_policy?: string
+  seat_policy?: string
+  documents?: string
+  segments?: {
+    id: string
+    equipment?: string
+    booking_class?: string
+    terminal_from?: string
+    terminal_to?: string
+  }[]
+}
+
+/**
+ * Guarda os detalhes de bilhete da opção escolhida.
+ *
+ * Existe separada de `saveOffer` por uma razão que é a metade escondida do
+ * PC-B: `saveOffer` recusa escrever numa proposta publicada, e com razão — uma
+ * proposta publicada é imutável, é essa a promessa que o cliente vê. Mas o
+ * bilhete emite-se *depois* de publicar, e é aí que alguém precisa de escrever
+ * o equipamento, a classe de reserva e os terminais.
+ *
+ * O que esta função pode tocar é fechado à mão, campo a campo. Nenhum deles
+ * aparece no cartão que o cliente já leu: preços, horas, rota e bagagem ficam
+ * fora do alcance daqui, e é isso que mantém a imutabilidade que interessa.
+ *
+ * Os trechos são actualizados por id, um a um — não apagados e reinseridos como
+ * em `saveOffer`. Apagar e reinserir um trecho de uma proposta publicada
+ * mudaria os ids que o resto do caso já referencia.
+ */
+export async function saveTicketDetails(
+  caseId: string,
+  offerId: string,
+  draft: TicketDetailsDraft
+): Promise<ProposalActionState> {
+  const { t } = getI18n()
+  const view = await getProposal(caseId)
+  if (!view) return { error: t("errors.caseHasNoProposal") }
+
+  /* Só a opção que o cliente escolheu, e só depois de a ter escolhido: não há
+     bilhete a construir para uma opção que ninguém aceitou. */
+  if (view.proposal.selected_offer_id !== offerId) {
+    return { error: t("errors.offerNotSelected") }
+  }
+
+  const supabase = createClient()
+
+  const { data: updated, error } = await supabase
+    .from("case_offers")
+    .update({
+      fare_name: text(draft.fare_name, 120),
+      change_policy: text(draft.change_policy, 240),
+      refund_policy: text(draft.refund_policy, 240),
+      seat_policy: text(draft.seat_policy, 240),
+      documents: text(draft.documents, 400),
+    })
+    .eq("id", offerId)
+    .eq("proposal_id", view.proposal.id)
+    .select("id")
+
+  if (error || !updated || updated.length === 0) {
+    console.error("[proposals] saveTicketDetails failed:", error)
+    return { error: t("errors.offerSaveFailed") }
+  }
+
+  for (const segment of draft.segments ?? []) {
+    const { error: segError } = await supabase
+      .from("case_offer_segments")
+      .update({
+        equipment: text(segment.equipment, 80),
+        booking_class: code(segment.booking_class, 2),
+        terminal_from: text(segment.terminal_from, 40),
+        terminal_to: text(segment.terminal_to, 40),
+      })
+      .eq("id", segment.id)
+      .eq("offer_id", offerId)
+
+    if (segError) {
+      console.error("[proposals] ticket segment update failed:", segError)
       return { error: t("errors.offerSavedSegmentsNot") }
     }
   }

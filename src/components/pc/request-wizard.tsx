@@ -26,9 +26,11 @@ import { submitPcRequest } from "@/actions/pc"
 import {
   CABINS,
   CURRENCIES,
+  MAX_BAGGAGE,
   MAX_LEGS,
   MIN_LEGS,
   TRIPS,
+  baggageLabel,
   type CabinKind,
   type TripKind,
 } from "@/lib/pc/catalog"
@@ -42,6 +44,7 @@ import {
 } from "@/lib/countries"
 import { CABIN_LABEL, daysBetween, fmtDate, paxFull, todayISO } from "@/lib/pc/format"
 import {
+  IcBag,
   IcChevron,
   IcMail,
   IcNext,
@@ -106,6 +109,9 @@ export function RequestWizard({
   const [children, setChildren] = useState(0)
   const [infSeat, setInfSeat] = useState(0)
   const [infLap, setInfLap] = useState(0)
+  /* VIP-10 · malas de porão. Zero é o valor por omissão e significa "não pediu
+     nenhuma" — é uma resposta, não uma ausência de resposta. */
+  const [baggage, setBaggage] = useState(0)
   const [origin, setOrigin] = useState<string | null>(null)
   const [destination, setDestination] = useState<string | null>(null)
   const [depart, setDepart] = useState("")
@@ -174,6 +180,9 @@ export function RequestWizard({
           if (typeof d.children === "number") setChildren(d.children)
           if (typeof d.infSeat === "number") setInfSeat(d.infSeat)
           if (typeof d.infLap === "number") setInfLap(d.infLap)
+          if (typeof d.baggage === "number") {
+            setBaggage(Math.min(Math.max(d.baggage, 0), MAX_BAGGAGE))
+          }
           if (d.origin) setOrigin(d.origin)
           if (d.destination) setDestination(d.destination)
           if (d.depart) setDepart(d.depart)
@@ -225,7 +234,7 @@ export function RequestWizard({
 
   useEffect(() => {
     const draft = {
-      trip, cabin, adults, children, infSeat, infLap,
+      trip, cabin, adults, children, infSeat, infLap, baggage,
       origin, destination, depart, ret, legs,
       name, phone, email, country,
     }
@@ -234,7 +243,7 @@ export function RequestWizard({
     } catch {
       /* modo privado sem quota — o formulário continua a funcionar */
     }
-  }, [trip, cabin, adults, children, infSeat, infLap, origin, destination,
+  }, [trip, cabin, adults, children, infSeat, infLap, baggage, origin, destination,
       depart, ret, legs, name, phone, email, country])
 
   /*
@@ -401,6 +410,7 @@ export function RequestWizard({
         children,
         infantsInSeat: infSeat,
         infantsOnLap: infLap,
+        baggageHold: baggage,
         origin,
         destination,
         departDate: trip === "multi" ? undefined : depart,
@@ -506,6 +516,7 @@ export function RequestWizard({
                   key={key}
                   className="opt"
                   type="button"
+                  role="menuitemradio"
                   aria-checked={key === trip}
                   onClick={() => {
                     setTrip(key)
@@ -621,6 +632,7 @@ export function RequestWizard({
                   key={key}
                   className="opt"
                   type="button"
+                  role="menuitemradio"
                   aria-checked={key === cabin}
                   onClick={() => {
                     setCabin(key)
@@ -631,6 +643,38 @@ export function RequestWizard({
                     <IcTick />
                   </span>
                   <span className="tx">{CABINS[key]}</span>
+                </button>
+              ))}
+            </Selector>
+
+            {/* VIP-10 · bagagem.
+                Perguntada aqui e não mais tarde porque muda o preço da tarifa
+                que se vai procurar: cotar sem saber se há mala de porão é cotar
+                a coisa errada e voltar a cotar depois. Vai para o contrato de
+                campos e pré-preenche a proposta. */}
+            <Selector
+              id="baggage"
+              open={openPop === "baggage"}
+              onToggle={setOpenPop}
+              icon={<IcBag size={17} />}
+              label={baggageLabel(baggage)}
+            >
+              {Array.from({ length: MAX_BAGGAGE + 1 }, (_, n) => (
+                <button
+                  key={n}
+                  className="opt"
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={n === baggage}
+                  onClick={() => {
+                    setBaggage(n)
+                    setOpenPop(null)
+                  }}
+                >
+                  <span className="ck">
+                    <IcTick />
+                  </span>
+                  <span className="tx">{baggageLabel(n)}</span>
                 </button>
               ))}
             </Selector>
@@ -1010,7 +1054,11 @@ function Selector({
           <IcChevron />
         </span>
       </button>
-      <div className="pop">{children}</div>
+      {/* `menu` é o que faz o `aria-checked` das opções significar
+          alguma coisa: num `button` sem papel, um leitor de ecrã ignora-o. */}
+      <div className="pop" role="menu">
+        {children}
+      </div>
     </div>
   )
 }
@@ -1062,7 +1110,7 @@ function CountrySelect({
         <span>{dial}</span>
         <IcChevron />
       </button>
-      <div className="pop scroll">
+      <div className="pop scroll" role="menu">
         <div style={{ padding: "6px 8px" }}>
           <input
             className="ccsearch"
@@ -1082,6 +1130,7 @@ function CountrySelect({
             key={entry.iso}
             className="opt"
             type="button"
+            role="menuitemradio"
             aria-checked={entry.iso === value}
             onClick={() => {
               onPick(entry.iso)

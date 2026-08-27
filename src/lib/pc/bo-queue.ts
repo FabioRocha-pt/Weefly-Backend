@@ -14,7 +14,12 @@
  */
 
 import { createAdminClient } from "@/utils/supabase/admin"
-import { offerTotal, type PaxCounts } from "@/lib/proposal-math"
+import {
+  customerDeadline,
+  offerTotal,
+  type Offer,
+  type PaxCounts,
+} from "@/lib/proposal-math"
 import { CABIN_FROM_DB, TRIP_FROM_DB } from "@/lib/pc/catalog"
 import { countryOfDial } from "@/lib/countries"
 import type { PaymentStatus } from "@/lib/case-status"
@@ -150,7 +155,7 @@ const QUEUE_COLUMNS = `
   proposals:case_proposals (
     id, status, published_at, selected_offer_id, selected_at,
     offers:case_offers!proposal_id (
-      id, position, include_in_proposal, valid_until,
+      id, position, include_in_proposal, fare_held_until, fare_held_source,
       price_adult, price_child, price_infant, taxes_total, service_fee,
       lock_fee, lock_fee_enabled
     )
@@ -320,12 +325,20 @@ export async function loadBoQueue(
       (selected ? offerTotal(selected as never, pax) : null) ??
       null
 
-    const validities = offers
-      .map((o) => o.valid_until as string | null)
-      .filter(Boolean) as string[]
-    const offerValidUntil = validities.length
-      ? validities.reduce((a, b) => (a < b ? a : b))
-      : null
+    /*
+     * FB-04 · o prazo da proposta, como o cliente o vê.
+     *
+     * Era o mínimo dos `valid_until` escritos à mão em cada oferta. Passou a ser
+     * o mesmo cálculo que o ecrã do cliente faz — a janela a contar de
+     * `published_at`, encurtada por uma retenção da companhia que caia antes.
+     * Um só sítio a decidir, senão o balde "propostas a expirar" e o relógio do
+     * cliente contavam coisas diferentes.
+     */
+    const deadline = customerDeadline(
+      offers as unknown as Offer[],
+      (proposal?.published_at as string | null) ?? null
+    )
+    const offerValidUntil = deadline ? new Date(deadline).toISOString() : null
 
     const state = deriveState(
       String(raw.stage),
@@ -503,6 +516,8 @@ export interface BoCaseDetail {
     children: number
     infantsInSeat: number
     infantsOnLap: number
+    /** VIP-10 · malas de porão pedidas, para a ficha as mostrar a quem cota. */
+    baggageHold: number
     legs: { position: number; origin: string; destination: string; date: string }[]
     consentAt: string | null
     consentIp: string | null
@@ -572,7 +587,8 @@ export async function loadBoCase(caseId: string): Promise<BoCaseDetail | null> {
        fare_basis, nvb, nva, endorsements,
        trip_request:trip_requests (
          id, trip_type, cabin_class, adults, children, infants,
-         infants_in_seat, infants_on_lap, intake, consent_ip, consent_agent,
+         infants_in_seat, infants_on_lap, baggage_hold,
+         intake, consent_ip, consent_agent,
          original_depart_date, original_return_date, dates_changed_at,
          dates_changed_by_email, dates_change_reason,
          lead:leads (consent_at),
@@ -606,6 +622,7 @@ export async function loadBoCase(caseId: string): Promise<BoCaseDetail | null> {
       children: Number(trip.children ?? 0),
       infantsInSeat: Number(trip.infants_in_seat ?? 0),
       infantsOnLap: Number(trip.infants_on_lap ?? trip.infants ?? 0),
+      baggageHold: Number(trip.baggage_hold ?? 0),
       legs: ((trip.legs ?? []) as Record<string, any>[])
         .map((l) => ({
           position: Number(l.position),

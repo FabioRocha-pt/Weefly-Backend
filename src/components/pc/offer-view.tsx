@@ -13,16 +13,17 @@
  * back-office.
  */
 
-import type { Offer, OfferSegment } from "@/lib/proposal-math"
+import type { Offer, OfferSegment, PriceNature } from "@/lib/proposal-math"
 import {
   dayOffset,
   formatDuration,
   layoverMinutes,
   legMinutes,
+  priceNature,
   timeOf,
 } from "@/lib/proposal-math"
 import type { PcState } from "@/lib/pc/state"
-import { carrierName } from "@/lib/pc/catalog"
+import { baggageLabel, carrierName } from "@/lib/pc/catalog"
 import { cityOf, money, paxFull } from "@/lib/pc/format"
 import { TermIcon } from "@/components/pc/bits"
 
@@ -73,22 +74,66 @@ export function offerStopsSummary(
   return outbound ? "1 stop out, non-stop back" : "Non-stop out, 1 stop back"
 }
 
-/** As condições da tarifa, na ordem e com os ícones do desenho. */
+/**
+ * As condições da tarifa, na ordem e com os ícones do desenho.
+ *
+ * FB-03 · a bagagem vem da contagem. O texto livre só é lido quando a contagem
+ * não existe, e isso só acontece em ofertas anteriores à migração 0012 que a
+ * conversão não conseguiu ler — nas novas, o campo ou tem número ou está por
+ * responder, e por responder não aparece ao cliente.
+ *
+ * Zero aparece, e aparece marcado: "No checked bag" é a informação que faz
+ * alguém escolher outra opção, e escondê-la faria a tarifa mais barata parecer
+ * simplesmente a mais barata.
+ */
 export function offerTerms(offer: Offer): { ic: string; txt: string; no?: boolean }[] {
   const terms: { ic: string; txt: string; no?: boolean }[] = []
-  if (offer.baggage_cabin) terms.push({ ic: "cabin", txt: `Cabin bag ${offer.baggage_cabin}` })
+
+  const cabin = bagTerm(offer.baggage_cabin_count, offer.baggage_cabin, "cabin")
+  if (cabin) terms.push({ ic: cabin.no ? "no" : "cabin", ...cabin })
+
   terms.push({ ic: "person", txt: "Personal item 1 · small backpack" })
-  if (offer.baggage_hold) terms.push({ ic: "hold", txt: `Checked ${offer.baggage_hold}` })
+
+  const hold = bagTerm(offer.baggage_hold_count, offer.baggage_hold, "hold")
+  if (hold) terms.push({ ic: hold.no ? "no" : "hold", ...hold })
+
+  /*
+   * PC-B · "não reembolsável" vem do campo, não de uma expressão regular.
+   *
+   * Isto lia `refund_policy` e decidia se a tarifa era reembolsável procurando
+   * "não reembols|non-refund|nao reembols" no meio da frase. Uma tarifa passava
+   * a reembolsável no ecrã do cliente por causa de uma palavra escrita de outra
+   * maneira, ou numa quarta língua.
+   */
+  if (offer.non_refundable) {
+    terms.push({ ic: "no", txt: "Non-refundable", no: true })
+  }
+  /* A letra pequena, quando existe, aparece a seguir e sem julgar nada. */
   if (offer.refund_policy) {
-    const noRefund = /não reembols|non-refund|nao reembols/i.test(offer.refund_policy)
-    terms.push({
-      ic: noRefund ? "no" : "clock",
-      txt: offer.refund_policy,
-      no: noRefund,
-    })
+    terms.push({ ic: "clock", txt: offer.refund_policy })
   }
   if (offer.change_policy) terms.push({ ic: "clock", txt: offer.change_policy })
   return terms
+}
+
+/**
+ * Uma linha de bagagem, da contagem ou do texto antigo.
+ *
+ * Devolve null quando não há resposta nenhuma — nem contagem nem texto. Uma
+ * tarifa por preencher não diz nada ao cliente em vez de dizer zero, porque
+ * zero é uma afirmação e ninguém a fez.
+ */
+function bagTerm(
+  count: number | null,
+  legacy: string | null,
+  kind: "cabin" | "hold"
+): { txt: string; no?: boolean } | null {
+  if (count === null) {
+    if (!legacy) return null
+    const label = kind === "cabin" ? "Cabin bag" : "Checked"
+    return { txt: `${label} ${legacy}` }
+  }
+  return { txt: baggageLabel(count, kind), no: count === 0 }
 }
 
 function legLabel(
@@ -158,15 +203,21 @@ export function LegStrip({
 /**
  * O cartão de uma opção.
  *
- * "Price guaranteed" só aparece quando existe `valid_until`: é a data que o
- * vendedor extraiu do Amadeus, e sem ela a garantia seria uma frase sem nada
- * atrás. É a mesma regra que o back-office aplica ao marcar a natureza do preço.
+ * FB-04 · a natureza do preço vem de `priceNature`, e são três e não duas.
+ *
+ * Dizia "Price guaranteed" sempre que `valid_until` existisse — e `valid_until`
+ * é uma data que o vendedor escreve à mão. Não havia tarifa retida em lado
+ * nenhum: a aplicação prometia ao cliente uma garantia que ninguém tinha dado.
+ * Agora "garantido" exige uma retenção real da companhia, com instante e origem
+ * (ver `fare_held_until`, migração 0012). Sem ela o preço está **seguro por nós**
+ * enquanto a proposta vale, e passa a **indicativo** quando ela cai.
  */
 export function OfferCard({
   offer,
   total,
   currency,
   request,
+  publishedAt,
   pending,
   onChoose,
 }: {
@@ -174,10 +225,13 @@ export function OfferCard({
   total: number
   currency: string
   request: PcState["request"]
+  /** Quando a proposta foi enviada — a origem da janela de validade. */
+  publishedAt: string | null
   pending: boolean
   onChoose: () => void
 }) {
-  const guaranteed = Boolean(offer.valid_until)
+  const nature = priceNature(offer, publishedAt)
+  const guaranteed = nature === "guaranteed"
   const legs = legsOfOffer(offer)
   const multi = request.trip === "multi"
   const category = offer.is_recommended
@@ -199,8 +253,8 @@ export function OfferCard({
     <article className="prop">
       <div className="prop-band">
         <span className="cat">{category}</span>
-        <span className={`nat ${guaranteed ? "guar" : "ind"}`}>
-          {guaranteed ? "Price guaranteed" : "Subject to reconfirmation"}
+        <span className={`nat ${NATURE_CLASS[nature]}`}>
+          {NATURE_LABEL[nature]}
         </span>
       </div>
 
@@ -269,4 +323,23 @@ export function OfferCard({
       </div>
     </article>
   )
+}
+
+/**
+ * FB-04 · as três naturezas, escritas como o cliente as lê.
+ *
+ * "Held by WeeFly" é deliberadamente diferente de "Price guaranteed": a
+ * primeira é uma promessa comercial nossa, que podemos cumprir; a segunda é da
+ * companhia, e só ela a pode dar. Chamar às duas a mesma coisa era o erro.
+ */
+const NATURE_LABEL: Record<PriceNature, string> = {
+  guaranteed: "Price guaranteed",
+  held: "Price held by WeeFly",
+  indicative: "Subject to reconfirmation",
+}
+
+const NATURE_CLASS: Record<PriceNature, string> = {
+  guaranteed: "guar",
+  held: "held",
+  indicative: "ind",
 }

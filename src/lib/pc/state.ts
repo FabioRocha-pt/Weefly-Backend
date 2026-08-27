@@ -13,7 +13,12 @@
 import { createAdminClient } from "@/utils/supabase/admin"
 import { markLinkOpened } from "@/lib/booking-cases"
 import { getPublishedProposal } from "@/lib/proposals"
-import { offerTotal, type Offer, type PaxCounts } from "@/lib/proposal-math"
+import {
+  offerTotal,
+  proposalExpired,
+  type Offer,
+  type PaxCounts,
+} from "@/lib/proposal-math"
 import {
   CABIN_FROM_DB,
   TRIP_FROM_DB,
@@ -65,6 +70,8 @@ export interface PcRequestView {
   children: number
   infantsInSeat: number
   infantsOnLap: number
+  /** VIP-10 · malas de porão pedidas no passo 1. */
+  baggageHold: number
   currency: string
   agentSlug: string | null
   legs: PcLegView[]
@@ -220,6 +227,9 @@ export async function loadPcState(token: string): Promise<PcLookup> {
        com assento é o palpite conservador: conta um lugar a mais, não a menos. */
     infantsInSeat: Number(trip.infants_in_seat ?? trip.infants ?? 0),
     infantsOnLap: Number(trip.infants_on_lap ?? 0),
+    /* VIP-10 · zero nos pedidos anteriores à migração 0012, que é o mesmo que
+       o seletor mostra a quem não lhe toca. */
+    baggageHold: Number(trip.baggage_hold ?? 0),
     currency: String(trip.currency ?? "EUR"),
     agentSlug: (trip.agent_slug as string | null) ?? null,
     legs: ((trip.legs ?? []) as Record<string, unknown>[])
@@ -374,6 +384,25 @@ export function screenFor(state: PcState): PcScreen {
 
   // Comprovativo entregue, à espera de quem valida.
   if (p && p.proof_status === "recebido") return "p7b"
+
+  /*
+   * FB-04 · a janela da proposta caiu e o cliente ainda não escolheu.
+   *
+   * Vem DEPOIS de "já escolheu" de propósito: quem escolheu está a caminho do
+   * pagamento, e esse prazo é outro (48 h, `expires_at`). Mandá-lo para o ecrã
+   * de expirado a meio de preencher passaportes seria deitar fora trabalho que
+   * ele já fez por causa de um relógio que já não é o dele.
+   *
+   * Sem escolha feita é diferente: os preços deixaram de valer e mostrar
+   * "escolha uma opção" seria oferecer valores que já não se cumprem.
+   */
+  if (
+    !state.selectedOfferId &&
+    state.offers.length > 0 &&
+    proposalExpired(state.proposalPublishedAt)
+  ) {
+    return "p8"
+  }
 
   if (state.selectedOfferId) {
     /* Escolheu a opção. Falta saber se falta preencher passaportes: enquanto

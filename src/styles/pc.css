@@ -278,6 +278,9 @@ label.fl .req{color:var(--ember);margin-left:2px}
 .prop-band .cat{font-size:11px;letter-spacing:.11em;text-transform:uppercase;font-weight:800}
 .prop-band .nat{margin-left:auto;font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;border-radius:6px;padding:4px 8px}
 .nat.guar{background:rgba(62,190,148,.2);color:#7EE2BC}
+/* FB-04 · "seguro por nós" é o caso normal e tem cor própria: verde seria dizer
+   que a companhia garantiu, cinzento seria dizer que não vale nada. */
+.nat.held{background:rgba(233,167,58,.18);color:#F0C983}
 .nat.ind{background:rgba(255,255,255,.14);color:#C6D0DC}
 .prop-price{padding:14px 16px;border-bottom:1px solid var(--line-soft);display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
 .prop-price .tot{font-size:29px;font-weight:600;letter-spacing:-.02em;line-height:1;font-family:var(--font-plex-mono),'IBM Plex Mono',monospace}

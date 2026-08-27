@@ -45,11 +45,15 @@ button.who[aria-expanded="true"]{border-color:var(--line);background:var(--panel
 .who-head span{font-size:11.5px;color:var(--muted)}
 .who-role{align-self:flex-start;margin-top:5px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .who-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:9px 10px;font-size:13px;font-weight:600;color:var(--txt-2);text-decoration:none;cursor:pointer}
-.who-item:hover:not(:disabled){background:var(--raise);color:var(--txt)}
-.who-item:disabled{color:var(--muted);cursor:default}
-.who-item .soon{margin-left:auto;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.who-item:hover{background:var(--raise);color:var(--txt)}
 .who-item.danger{color:var(--ember)}
 .who-item.danger:hover{background:rgba(233,84,32,.12)}
+
+/* BO-01 · o ecrã das Definições, para onde o menu do avatar aponta. */
+.set-list{margin:0;display:flex;flex-direction:column;gap:11px}
+.set-list>div{display:flex;align-items:baseline;gap:14px}
+.set-list dt{flex:0 0 96px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.set-list dd{margin:0;font-size:13.5px;font-weight:600;color:var(--txt)}
 
 /* ── BO-03 · o indicador de tempo real ────────────────────────────────────── */
 .live{display:flex;align-items:center;gap:9px;padding:9px 22px 0;flex-wrap:wrap}

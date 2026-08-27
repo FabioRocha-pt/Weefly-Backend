@@ -21,8 +21,10 @@ import { elapsedSince } from "@/lib/case-status"
 import { formatMoney } from "@/lib/proposal-math"
 import { BoPaymentPanel } from "@/components/bo/payment-panel"
 import { BoIssuancePanel } from "@/components/bo/issuance-panel"
+import { BoTicketBuilder } from "@/components/bo/ticket-builder"
 import { BoNoteForm } from "@/components/bo/note-form"
 import { BoDatesPanel } from "@/components/bo/dates-panel"
+import { BoWhatsappLink } from "@/components/bo/whatsapp-link"
 import { countryName, flagOf } from "@/lib/countries"
 
 type TabId =
@@ -150,16 +152,11 @@ export function BoCaseView({
             <Link className="btn btn-sm" href={`/pc/${row.token}`} target="_blank">
               Ver como cliente
             </Link>
-            <a
-              className="btn btn-sm"
-              href={`https://wa.me/${row.clientPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
-                `Olá ${row.clientName.split(" ")[0]}, sobre o pedido ${row.reference}:`
-              )}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              WhatsApp
-            </a>
+            <BoWhatsappLink
+              phone={row.clientPhone}
+              name={row.clientName}
+              reference={row.reference}
+            />
           </div>
         </div>
 
@@ -226,6 +223,17 @@ export function BoCaseView({
                 mono
               />
               <Kv k="Classe" v={detail.trip.cabinLabel} />
+              {/* VIP-10 · o que o cliente pediu em malas. Aqui e no contador da
+                  oferta, para que quem cota não tenha de adivinhar. */}
+              <Kv
+                k="Bagagem de porão"
+                v={
+                  detail.trip.baggageHold === 0
+                    ? "Não pediu"
+                    : `${detail.trip.baggageHold} mala${detail.trip.baggageHold === 1 ? "" : "s"}`
+                }
+                mono
+              />
               {detail.trip.legs.length > 0 && (
                 <>
                   {detail.trip.legs.map((leg) => (
@@ -364,7 +372,13 @@ export function BoCaseView({
                               .join(" · ")}
                           </div>
                         </div>
-                        {offer.valid_until && (
+                        {/* FB-04 · "garantido" aqui dizia o mesmo que dizia ao
+                            cliente, e pela mesma razão errada: `valid_until` é
+                            uma data escrita à mão. Agora só aparece quando há
+                            retenção registada, e diz de onde ela veio — porque
+                            uma retenção manual depende de alguém a ter
+                            confirmado, e uma do Amadeus não. */}
+                        {offer.fare_held_until && offer.fare_held_source && (
                           <span
                             className="flag"
                             aria-pressed="true"
@@ -374,7 +388,8 @@ export function BoCaseView({
                               borderColor: "var(--line)",
                             }}
                           >
-                            garantido até {offer.valid_until.slice(11, 16)}
+                            retida ({offer.fare_held_source}) até{" "}
+                            {dt(offer.fare_held_until)}
                           </span>
                         )}
                         {proposal.proposal.selected_offer_id === offer.id && (
@@ -498,14 +513,28 @@ export function BoCaseView({
 
       {/* ── EMISSÃO ── */}
       {tab === "t-emi" && (
-        <BoIssuancePanel
-          caseId={row.caseId}
-          payment={payment}
-          passengers={passengers}
-          issuance={detail.issuance}
-          amount={row.amount}
-          currency={row.currency}
-        />
+        <div className="tabpane" style={{ display: "grid", gap: 14 }}>
+          <BoIssuancePanel
+            caseId={row.caseId}
+            payment={payment}
+            passengers={passengers}
+            issuance={detail.issuance}
+            amount={row.amount}
+            currency={row.currency}
+          />
+          {/* PC-B · a outra metade do compositor. O construtor de bilhete
+              completo continua alcançável — está aqui, no momento em que os
+              campos que ele tem fazem falta. */}
+          <BoTicketBuilder
+            caseId={row.caseId}
+            offer={
+              proposal?.offers.find(
+                (o) => o.id === proposal.proposal.selected_offer_id
+              ) ?? null
+            }
+            issued={Boolean(detail.issuance.issuedAt)}
+          />
+        </div>
       )}
 
       {/* ── COMUNICAÇÕES ── */}

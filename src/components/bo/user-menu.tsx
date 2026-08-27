@@ -92,23 +92,19 @@ export function BoUserMenu({
           </Link>
 
           {/*
-            Os três lugares reservados que o pedido pede para deixar espaço:
-            preferências de avisos, idioma e o desempenho do próprio vendedor.
-            Ficam visíveis e desativados em vez de escondidos — é o que evita
-            que alguém os peça outra vez por não saber que estão a caminho.
+            Os três lugares reservados que estavam aqui — avisos, idioma e
+            desempenho — passaram a viver dentro das Definições. Eram três
+            entradas desativadas num menu de cinco: quem o abria via mais coisas
+            que não fazem nada do que coisas que fazem.
           */}
-          <button className="who-item" type="button" role="menuitem" disabled>
-            Preferências de avisos
-            <span className="soon">em breve</span>
-          </button>
-          <button className="who-item" type="button" role="menuitem" disabled>
-            Idioma do back-office
-            <span className="soon">em breve</span>
-          </button>
-          <button className="who-item" type="button" role="menuitem" disabled>
-            O meu desempenho
-            <span className="soon">em breve</span>
-          </button>
+          <Link
+            className="who-item"
+            role="menuitem"
+            href="/admin/price-checker/definicoes"
+            onClick={() => setOpen(false)}
+          >
+            Definições
+          </Link>
 
           <form action={signOut}>
             <button className="who-item danger" type="submit" role="menuitem">

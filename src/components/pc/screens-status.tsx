@@ -25,7 +25,13 @@ import {
   whenLabel,
   CABIN_LABEL,
 } from "@/lib/pc/format"
-import { METHOD_LABEL, PROOF_REVIEW_HOURS, type PayMethodId } from "@/lib/pc/catalog"
+import {
+  METHOD_LABEL,
+  PROOF_REVIEW_HOURS,
+  baggageLabel,
+  type PayMethodId,
+} from "@/lib/pc/catalog"
+import { priceNature } from "@/lib/proposal-math"
 import {
   IcBigCheck,
   IcCancelled,
@@ -170,7 +176,10 @@ export function ScreenP4a({ state }: { state: PcState }) {
 
 export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOptions: () => void }) {
   const count = state.offers.length
-  const guaranteed = state.offers.some((o) => o.valid_until)
+  /* FB-04 · só é "garantido" o que a companhia está mesmo a segurar. */
+  const guaranteed = state.offers.some(
+    (o) => priceNature(o, state.proposalPublishedAt) === "guaranteed"
+  )
 
   return (
     <main className="shell view">
@@ -200,7 +209,7 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
           <p>
             We also sent {count === 1 ? "it" : "them"} by WhatsApp and email.
             {guaranteed
-              ? " One of them has a guaranteed price for a limited time."
+              ? " One of them has a fare the airline is holding for a limited time."
               : " Prices are reconfirmed with the airline before issuing."}
           </p>
         </div>
@@ -577,7 +586,15 @@ export function ScreenP9({ state }: { state: PcState }) {
             rows={[
               ["Online check-in opens", "48 h before"],
               ["At the airport", `3 h before · ${state.request.origin}`],
-              ["Baggage included", offer?.baggage_hold ?? "See your ticket"],
+              [
+                "Baggage included",
+                /* FB-03 · da contagem. O texto antigo continua a servir as
+                   ofertas anteriores à migração 0012; sem nenhum dos dois, a
+                   linha manda ler o bilhete em vez de afirmar um número. */
+                offer?.baggage_hold_count != null
+                  ? baggageLabel(offer.baggage_hold_count)
+                  : (offer?.baggage_hold ?? "See your ticket"),
+              ],
               ["Documents", "Passport valid 6 months beyond the return"],
             ]}
           />

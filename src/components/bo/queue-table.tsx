@@ -234,7 +234,13 @@ function deadlineNote(row: BoQueueRow): string {
   }
 
   if (row.offerValidUntil) {
-    return `proposta válida até ${row.offerValidUntil.slice(11, 16)}`
+    /* FB-04 · o prazo é agora um instante em UTC e já não a hora de parede que
+       o vendedor escrevia. Cortar a string mostrava a hora de Greenwich a quem
+       está em Cabo Verde — uma hora a mais, sempre. */
+    return `proposta válida até ${new Date(row.offerValidUntil).toLocaleString(
+      "pt-PT",
+      { hour: "2-digit", minute: "2-digit", timeZone: "Atlantic/Cape_Verde" }
+    )}`
   }
 
   return row.waiting === "us" ? "à espera de nós" : "à espera do cliente"

@@ -41,8 +41,30 @@ export interface Offer {
   is_cheapest: boolean
   is_fastest: boolean
   fare_name: string | null
+  /*
+   * FB-03 · a bagagem, em contagem.
+   *
+   * `baggage_cabin` e `baggage_hold` são as colunas de texto que estas
+   * substituem. Ficam no tipo porque ficam na base (ver a migração 0012): são a
+   * única cópia do peso que alguma vez foi escrito, e continuam a ser lidas
+   * quando uma oferta antiga não tem contagem. Ninguém as escreve.
+   */
+  baggage_cabin_count: number | null
+  baggage_hold_count: number | null
+  /** @deprecated Só leitura, e só para ofertas anteriores à migração 0012. */
   baggage_cabin: string | null
+  /** @deprecated Só leitura, e só para ofertas anteriores à migração 0012. */
   baggage_hold: string | null
+  /**
+   * PC-B · não reembolsável, como campo.
+   *
+   * O ecrã do cliente decidia isto correndo uma expressão regular sobre
+   * `refund_policy`, em três línguas. `refund_policy` continua a existir para a
+   * letra pequena; a decisão passou a ser esta.
+   */
+  non_refundable: boolean
+  /** PC-06a · as horas já foram confirmadas por uma pessoa? Ver migração 0012. */
+  times_confirmed: boolean
   change_policy: string | null
   refund_policy: string | null
   seat_policy: string | null
@@ -54,7 +76,22 @@ export interface Offer {
   service_fee: number
   lock_fee: number
   lock_fee_enabled: boolean
+  /**
+   * A validade **comercial** da proposta: o prazo que a WeeFly dá ao cliente
+   * para decidir. Escrita à mão pelo vendedor. Não é, e nunca foi, prova de que
+   * a tarifa está retida — ver `fare_held_until`.
+   */
   valid_until: string | null
+  /**
+   * FB-04 · o instante até ao qual a companhia segura o lugar e o preço.
+   *
+   * Só isto autoriza a palavra "garantido" no ecrã do cliente. Vem do `option
+   * time` do Amadeus, ou de uma retenção que o vendedor confirmou com a
+   * companhia e registou. Nulo é o caso normal.
+   */
+  fare_held_until: string | null
+  fare_held_source: "amadeus" | "manual" | null
+  fare_held_ref: string | null
   agent_note: string | null
   segments: OfferSegment[]
 }
@@ -294,11 +331,96 @@ export function offerTravelMinutes(offer: Offer): number | null {
   return back === null ? out : out + back
 }
 
-/** A validade que o relógio do cliente conta: a primeira a cair. */
-export function earliestValidity(offers: Offer[]): string | null {
-  const dates = offers.map((o) => o.valid_until).filter(Boolean) as string[]
-  if (dates.length === 0) return null
-  return dates.reduce((a, b) => (a < b ? a : b))
+// ── FB-04 · o preço garantido e o preço segurado ─────────────────────────────
+
+/**
+ * Quanto tempo a proposta vale, contado de quando foi enviada.
+ *
+ * O backlog é explícito: uma hora **a partir do momento em que a proposta
+ * financeira é enviada**, e não do fim da pesquisa. A diferença importa porque
+ * era a segunda que se media — o vendedor escrevia uma data à mão em cada
+ * oferta, e essa data começava a contar de nada em particular.
+ *
+ * Um número aqui e em mais lado nenhum: o contador do cliente, a decisão de
+ * expirar e o texto do ecrã leem-no todos deste sítio.
+ */
+export const PROPOSAL_VALIDITY_HOURS = 1
+
+/**
+ * O instante em que a proposta deixa de valer.
+ *
+ * Deriva de `published_at`, que é gravado pelo servidor no momento da
+ * publicação (ver `publishProposal`) — não de nada que alguém escreva. É isso
+ * que torna a promessa de uma hora verificável em vez de declarada.
+ */
+export function proposalValidUntil(publishedAt: string | null): number | null {
+  if (!publishedAt) return null
+  const at = Date.parse(publishedAt)
+  if (!Number.isFinite(at)) return null
+  return at + PROPOSAL_VALIDITY_HOURS * 3600_000
+}
+
+export function proposalExpired(
+  publishedAt: string | null,
+  now: number = Date.now()
+): boolean {
+  const deadline = proposalValidUntil(publishedAt)
+  return deadline !== null && now >= deadline
+}
+
+/**
+ * A natureza do preço de uma oferta, que é o que decide o que o cliente lê.
+ *
+ *   `guaranteed`  — a companhia está a segurar o lugar e o preço, e há um
+ *                   instante dado por ela até quando. É o único caso em que a
+ *                   palavra "garantido" pode aparecer no ecrã.
+ *   `held`        — a WeeFly segura o preço comercialmente durante a janela da
+ *                   proposta. É uma promessa nossa, não da companhia.
+ *   `indicative`  — a proposta já passou da janela: o valor tem de ser
+ *                   reconfirmado antes de valer alguma coisa.
+ *
+ * Antes disto, `guaranteed` era `Boolean(offer.valid_until)` — uma data escrita
+ * à mão pelo vendedor. A aplicação prometia ao cliente uma tarifa retida sem
+ * que existisse retenção nenhuma, que é exactamente o que o backlog fecha a
+ * proibir: nunca um contador ao lado de um preço que não está seguro.
+ */
+export type PriceNature = "guaranteed" | "held" | "indicative"
+
+export function priceNature(
+  offer: Offer,
+  publishedAt: string | null,
+  now: number = Date.now()
+): PriceNature {
+  const held = fareHeldUntil(offer)
+  if (held !== null && held > now) return "guaranteed"
+  return proposalExpired(publishedAt, now) ? "indicative" : "held"
+}
+
+/** O instante da retenção da companhia, ou null quando não há nenhuma. */
+export function fareHeldUntil(offer: Offer): number | null {
+  if (!offer.fare_held_until || !offer.fare_held_source) return null
+  const at = Date.parse(offer.fare_held_until)
+  return Number.isFinite(at) ? at : null
+}
+
+/**
+ * O relógio que o cliente vê: o mais cedo entre a janela da proposta e a
+ * retenção mais curta que exista.
+ *
+ * Uma retenção da companhia que caia antes do fim da janela manda, porque é a
+ * primeira coisa que se perde. Uma que caia depois não estica a janela — a
+ * proposta continua a valer uma hora.
+ */
+export function customerDeadline(
+  offers: Offer[],
+  publishedAt: string | null
+): number | null {
+  const window = proposalValidUntil(publishedAt)
+  const holds = offers.map(fareHeldUntil).filter((v): v is number => v !== null)
+  const candidates = [window, ...holds].filter(
+    (v): v is number => v !== null
+  )
+  return candidates.length ? Math.min(...candidates) : null
 }
 
 /** Fuso de Cabo Verde: UTC−1 o ano inteiro, sem horário de verão. */
@@ -458,6 +580,30 @@ export function offerBlockers(
   if (pax.children > 0 && offer.price_child <= 0) {
     problems.push({ key: "blockers.childFare" })
   }
+
+  /*
+   * PC-B · "uma proposta não pode ser publicada sem preço e taxas".
+   *
+   * O preço já era travado pelo `zeroPrice`; as taxas não eram travadas por
+   * nada. Uma proposta sem taxas não é uma proposta mais barata — é uma
+   * proposta a que falta uma parte do que o cliente vai pagar, e a diferença
+   * aparece no momento de cobrar.
+   *
+   * Isto trava taxas a zero, e trava mesmo. `taxes_total` é `not null default
+   * 0`, o que quer dizer que não há como distinguir "escrevi zero" de "não
+   * respondi" — e entre deixar passar as duas ou travar as duas, travar é o
+   * lado certo em que errar: uma tarifa aérea com zero de taxas não existe na
+   * prática, nem nos voos domésticos de Cabo Verde, que têm taxa de aeroporto.
+   *
+   * Se algum dia existir uma tarifa genuinamente sem taxas, o que isto pede é
+   * uma coluna que saiba dizer "respondido" — não um `if` mais frouxo.
+   */
+  if (offerTotal(offer, pax) > 0 && offer.taxes_total <= 0) {
+    problems.push({ key: "blockers.noTaxes" })
+  }
+
+  /* PC-06a · horas pré-preenchidas por reconhecer. */
+  if (!offer.times_confirmed) problems.push({ key: "blockers.timesToConfirm" })
 
   return problems
 }

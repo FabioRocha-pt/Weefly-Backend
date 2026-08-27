@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation"
 
 import { choosePcOffer } from "@/actions/pc"
 import type { PcState } from "@/lib/pc/state"
-import { earliestValidity, validityInstant } from "@/lib/proposal-math"
+import { customerDeadline, priceNature } from "@/lib/proposal-math"
 import { CABIN_LABEL, cityOf, countdown, fmtDate, fmtRange, paxFull, paxTotalOf } from "@/lib/pc/format"
 import { OfferCard } from "@/components/pc/offer-view"
 import { IcWa } from "@/components/pc/bits"
@@ -26,9 +26,18 @@ export function ScreenP5({ state }: { state: PcState }) {
   const [choosing, setChoosing] = useState<string | null>(null)
 
   const offers = state.offers
-  const validity = earliestValidity(offers)
-  const instant = validityInstant(validity)
+  /*
+   * FB-04 · o relógio conta a janela da proposta, que nasce de `published_at` —
+   * o instante em que ela foi enviada, gravado pelo servidor. Contava a data
+   * que o vendedor escrevia à mão em cada oferta, que não começava a contar de
+   * nada em particular e não tornava a promessa de uma hora verificável.
+   */
+  const instant = customerDeadline(offers, state.proposalPublishedAt)
   const clock = useCountdown(instant)
+  /* Se alguma oferta tem retenção real, é dela que a frase fala. */
+  const anyGuaranteed = offers.some(
+    (o) => priceNature(o, state.proposalPublishedAt) === "guaranteed"
+  )
 
   const dates =
     state.request.trip === "multi"
@@ -62,10 +71,13 @@ export function ScreenP5({ state }: { state: PcState }) {
           <span className="cl mono">{clock ?? "expired"}</span>
           <p>
             <b>
-              The {offers.length > 1 ? "first " : ""}option has a guaranteed price
-              until {formatValidClock(validity)}.
+              {anyGuaranteed
+                ? `The fare is guaranteed by the airline until ${clockAt(instant)}.`
+                : `We are holding these prices until ${clockAt(instant)}.`}
             </b>{" "}
-            After that we have to reconfirm the amount with the airline.
+            {anyGuaranteed
+              ? "After that we have to reconfirm the amount with the airline."
+              : "This is our own hold, not the airline's — after it we reconfirm the amount before issuing."}
           </p>
         </div>
       )}
@@ -78,6 +90,7 @@ export function ScreenP5({ state }: { state: PcState }) {
             total={state.totals[offer.id] ?? 0}
             currency={state.quoteCurrency}
             request={state.request}
+            publishedAt={state.proposalPublishedAt}
             pending={pending && choosing === offer.id}
             onChoose={() => {
               setChoosing(offer.id)
@@ -127,7 +140,17 @@ function useCountdown(target: number | null): string | null {
   return text
 }
 
-/** "15:59" a partir da hora de parede que o vendedor escreveu. */
-function formatValidClock(value: string | null): string {
-  return value?.slice(11, 16) ?? "—"
+/**
+ * "15:59", na hora de Cabo Verde.
+ *
+ * O prazo é agora um instante e não uma hora de parede escrita à mão, por isso
+ * o fuso tem de ser dito: sem ele, quem abre o link em Boston lia a hora de
+ * Boston para um prazo que é nosso.
+ */
+function clockAt(instant: number): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Atlantic/Cape_Verde",
+  }).format(new Date(instant))
 }

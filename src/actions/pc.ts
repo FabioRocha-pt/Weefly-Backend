@@ -70,6 +70,11 @@ const requestSchema = z
     children: z.coerce.number().int().min(0).max(8),
     infantsInSeat: z.coerce.number().int().min(0).max(4),
     infantsOnLap: z.coerce.number().int().min(0).max(9),
+    /* VIP-10 · malas de porão. `default(0)` e não obrigatório porque os pedidos
+       que chegam do chat e do bot ainda não perguntam isto — e zero é o que o
+       formulário mostra a quem não mexe no seletor. O teto é o da coluna, não o
+       do seletor: subir `MAX_BAGGAGE` não pode passar a ser inválido aqui. */
+    baggageHold: z.coerce.number().int().min(0).max(9).default(0),
     origin: iata.nullable().optional(),
     destination: iata.nullable().optional(),
     departDate: isoDate.optional(),
@@ -243,6 +248,7 @@ export async function submitPcRequest(
     children: v.children,
     infantsInSeat: v.infantsInSeat,
     infantsOnLap: v.infantsOnLap,
+    baggageHold: v.baggageHold,
     origin: v.origin ?? null,
     destination: v.destination ?? null,
     departDate: v.departDate ?? v.legs[0]?.date ?? "",

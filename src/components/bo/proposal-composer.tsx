@@ -1,5 +1,31 @@
 "use client"
 
+/**
+ * PC-B · o compositor de propostas, reduzido ao que faz decidir.
+ *
+ * Era `components/admin/offer-composer.tsx`, 2058 linhas, e era o último resto
+ * da geração antiga do back-office: o resto já vivia em `components/bo/`, e
+ * este ficheiro era o único consumidor vivo daquela pasta. Mudar-se para cá
+ * fechou-a.
+ *
+ * O que o compositor pedia era um formulário de emissão de bilhete a fazer-se
+ * passar por um formulário de proposta. Trinta campos para responder a um
+ * cliente que quer saber três coisas: a que horas parte, quanto custa e quantas
+ * malas leva. Tudo o que serve para *emitir* e não para *escolher* passou para
+ * `components/bo/ticket-builder.tsx`, no separador da Emissão — o nome da
+ * tarifa, o equipamento, a classe de reserva, os terminais e as políticas.
+ *
+ * O que ficou é a lista do backlog: rota e datas (pré-preenchidas do pedido,
+ * FB-01), horas de partida e chegada (PC-06a, com a marca *a confirmar*),
+ * tempo de voo e escalas (calculados), bagagem em contadores (FB-03), não
+ * reembolsável, preço e taxas (PC-06b), nome da proposta, etiquetas e a
+ * companhia escolhida do catálogo (PC-12).
+ *
+ * A gravação automática (BO-05) e a validação de datas (BO-07) vivem aqui
+ * dentro e não se mexeram. Eram a razão pela qual partir este ficheiro não era
+ * um copiar-colar.
+ */
+
 import { useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -55,6 +81,20 @@ import {
   stopsLabel,
   timeOf,
 } from "@/lib/proposal-math"
+import {
+  Check2,
+  CountField,
+  Field,
+  Flag,
+  IconButton,
+  Input,
+  MoneyInput,
+  PriceRow,
+  Section,
+  inputClass,
+  useAirportNames,
+} from "@/components/bo/composer-bits"
+import { CARRIERS } from "@/lib/pc/catalog"
 import { useT } from "@/i18n/provider"
 import type { Translator } from "@/i18n/translate"
 
@@ -63,10 +103,33 @@ const CURRENCIES = ["CVE", "EUR", "USD"]
 /** A ordem em que as cabinas aparecem no seletor de cada trecho. */
 const CABINS: Cabin[] = ["economy", "premium_economy", "business", "first"]
 
+/**
+ * PC-12 · as companhias do catálogo, por ordem alfabética de código.
+ *
+ * O catálogo é o mesmo que o ecrã do cliente usa para escrever o nome da
+ * companhia — `carrierName` em `lib/pc/catalog`. Um só sítio: o dia em que
+ * alguém acrescentar uma companhia, ela aparece no seletor e no cartão do
+ * cliente no mesmo gesto.
+ */
+const CARRIER_CODES: string[] = Object.keys(CARRIERS).sort()
+
 // --- Estado local ------------------------------------------------------------
 // Os montantes vivem como texto enquanto se escreve: "1 84" não é um número mas
 // é um estado legítimo de um campo a meio de ser preenchido. A conversão para
 // unidades menores acontece no cálculo e ao gravar, nunca a cada tecla.
+//
+// PC-B · alguns destes campos já não aparecem em lado nenhum deste ecrã.
+//
+// `fare_name`, as políticas de alteração, reembolso e lugar, os documentos, e
+// nos trechos o equipamento, a classe de reserva e os terminais passaram para o
+// construtor de bilhete, na emissão (`components/bo/ticket-builder.tsx`). O
+// estado continua a carregá-los porque `saveOffer` grava a oferta inteira e
+// substitui os trechos em bloco: um campo que o estado não trouxesse seria um
+// campo apagado à primeira gravação automática.
+//
+// Não há aqui risco de as duas metades se pisarem. O construtor de bilhete só
+// existe depois de a proposta estar publicada, e uma proposta publicada tranca
+// este compositor — `editableProposal` recusa qualquer escrita.
 
 interface SegmentState {
   key: string
@@ -91,8 +154,15 @@ interface OfferState {
   is_cheapest: boolean
   is_fastest: boolean
   fare_name: string
-  baggage_cabin: string
-  baggage_hold: string
+  /* FB-03 · contagens, não texto. `null` é "por responder" e é diferente de 0,
+     que é "não inclui" — ver o comentário em `count()`, em actions/proposals. */
+  baggage_cabin_count: number | null
+  baggage_hold_count: number | null
+  /* PC-B · "não reembolsável" como campo. O ecrã do cliente decidia-o com uma
+     expressão regular sobre `refund_policy`, em três línguas. */
+  non_refundable: boolean
+  /* PC-06a · as horas foram pré-preenchidas e ainda ninguém olhou para elas. */
+  times_confirmed: boolean
   change_policy: string
   refund_policy: string
   seat_policy: string
@@ -105,7 +175,12 @@ interface OfferState {
   lock_fee: string
   lock_fee_enabled: boolean
   cost_total: string
-  valid_until: string
+  /* FB-04 · a retenção da companhia, que é o que autoriza dizer "garantido".
+     `valid_until` saiu do compositor: a validade comercial passou a derivar de
+     `published_at` (uma hora), e deixou de ser algo que alguém escreve. */
+  fare_held_until: string
+  fare_held_source: "amadeus" | "manual" | null
+  fare_held_ref: string
   agent_note: string
   segments: SegmentState[]
 }
@@ -161,8 +236,13 @@ function fromAdminOffer(offer: AdminOffer): OfferState {
     is_cheapest: offer.is_cheapest,
     is_fastest: offer.is_fastest,
     fare_name: offer.fare_name ?? "",
-    baggage_cabin: offer.baggage_cabin ?? "",
-    baggage_hold: offer.baggage_hold ?? "",
+    /* Ofertas anteriores à migração 0012 podem ter contagem nula e texto
+       escrito. A migração já converteu o que começava por um número; o resto
+       fica por responder, e é o vendedor que responde numa passagem. */
+    baggage_cabin_count: offer.baggage_cabin_count,
+    baggage_hold_count: offer.baggage_hold_count,
+    non_refundable: offer.non_refundable,
+    times_confirmed: offer.times_confirmed,
     change_policy: offer.change_policy ?? "",
     refund_policy: offer.refund_policy ?? "",
     seat_policy: offer.seat_policy ?? "",
@@ -175,7 +255,9 @@ function fromAdminOffer(offer: AdminOffer): OfferState {
     lock_fee: formatAmountPlain(offer.lock_fee),
     lock_fee_enabled: offer.lock_fee_enabled,
     cost_total: formatAmountPlain(offer.cost_total),
-    valid_until: localMoment(offer.valid_until),
+    fare_held_until: localMoment(offer.fare_held_until),
+    fare_held_source: offer.fare_held_source,
+    fare_held_ref: offer.fare_held_ref ?? "",
     agent_note: offer.agent_note ?? "",
     segments: [...offer.segments]
       .sort((a, b) => a.position - b.position)
@@ -204,8 +286,10 @@ function draftOf(state: OfferState): OfferDraft {
     is_cheapest: state.is_cheapest,
     is_fastest: state.is_fastest,
     fare_name: state.fare_name,
-    baggage_cabin: state.baggage_cabin,
-    baggage_hold: state.baggage_hold,
+    baggage_cabin_count: state.baggage_cabin_count,
+    baggage_hold_count: state.baggage_hold_count,
+    non_refundable: state.non_refundable,
+    times_confirmed: state.times_confirmed,
     change_policy: state.change_policy,
     refund_policy: state.refund_policy,
     seat_policy: state.seat_policy,
@@ -218,7 +302,9 @@ function draftOf(state: OfferState): OfferDraft {
     lock_fee: parseMoney(state.lock_fee),
     lock_fee_enabled: state.lock_fee_enabled,
     cost_total: parseMoney(state.cost_total),
-    valid_until: state.valid_until,
+    fare_held_until: state.fare_held_until,
+    fare_held_source: state.fare_held_source,
+    fare_held_ref: state.fare_held_ref,
     agent_note: state.agent_note,
     segments: state.segments.map(
       ({ key: _key, ...rest }): SegmentDraft => rest
@@ -237,8 +323,14 @@ function asOffer(state: OfferState, position: number): Offer {
     is_cheapest: state.is_cheapest,
     is_fastest: state.is_fastest,
     fare_name: state.fare_name || null,
-    baggage_cabin: state.baggage_cabin || null,
-    baggage_hold: state.baggage_hold || null,
+    baggage_cabin_count: state.baggage_cabin_count,
+    baggage_hold_count: state.baggage_hold_count,
+    /* As colunas de texto já não são escritas; a pré-visualização não as tem
+       porque o que ela mostra é o que o cliente vai ver. */
+    baggage_cabin: null,
+    baggage_hold: null,
+    non_refundable: state.non_refundable,
+    times_confirmed: state.times_confirmed,
     change_policy: state.change_policy || null,
     refund_policy: state.refund_policy || null,
     seat_policy: state.seat_policy || null,
@@ -250,7 +342,11 @@ function asOffer(state: OfferState, position: number): Offer {
     service_fee: parseMoney(state.service_fee),
     lock_fee: parseMoney(state.lock_fee),
     lock_fee_enabled: state.lock_fee_enabled,
-    valid_until: state.valid_until || null,
+    /* A validade comercial já não é escrita aqui — deriva de `published_at`. */
+    valid_until: null,
+    fare_held_until: state.fare_held_until || null,
+    fare_held_source: state.fare_held_source,
+    fare_held_ref: state.fare_held_ref || null,
     agent_note: state.agent_note || null,
     segments: state.segments.map(
       (s, i): OfferSegment => ({
@@ -293,13 +389,15 @@ function emptySegment(direction: OfferDirection): SegmentState {
 
 // --- Compositor --------------------------------------------------------------
 
-export function OfferComposer({
+export function BoProposalComposer({
   caseId,
   token,
   proposal,
   offers: serverOffers,
   pax,
   requested,
+  requestedBaggage,
+  requestedRoute,
   brief,
 }: {
   caseId: string
@@ -309,6 +407,17 @@ export function OfferComposer({
   pax: PaxCounts
   /** BO-07 · as datas que o cliente pediu, para as validar contra a oferta. */
   requested: RequestedDates
+  /** VIP-10 · malas de porão pedidas, para o contador da oferta as mostrar. */
+  requestedBaggage: number
+  /**
+   * FB-01 · a rota que o cliente pediu.
+   *
+   * Serve para marcar os campos que ainda têm o valor dele. O pedido é
+   * explícito: um valor pré-preenchido tem de se distinguir de um que o agente
+   * escreveu, senão quem abre a proposta a meio não sabe o que já foi
+   * verificado por uma pessoa.
+   */
+  requestedRoute: { origin: string | null; destination: string | null }
   /** A coluna do pedido do cliente, renderizada no servidor. */
   brief: React.ReactNode
 }) {
@@ -520,6 +629,8 @@ export function OfferComposer({
               index={index}
               pax={pax}
               requested={requested}
+              requestedBaggage={requestedBaggage}
+              requestedRoute={requestedRoute}
               currency={proposal.currency}
               disabled={published || pending}
               locked={published}
@@ -617,6 +728,8 @@ function OpenOffer({
   index,
   pax,
   requested,
+  requestedBaggage,
+  requestedRoute,
   currency,
   disabled,
   locked,
@@ -631,6 +744,8 @@ function OpenOffer({
   index: number
   pax: PaxCounts
   requested: RequestedDates
+  requestedBaggage: number
+  requestedRoute: { origin: string | null; destination: string | null }
   currency: string
   disabled: boolean
   locked: boolean
@@ -724,6 +839,31 @@ function OpenOffer({
         >
           <DateChecks offer={preview} pax={pax} requested={requested} t={t} />
 
+          {/*
+            PC-06a · as horas vieram de uma pesquisa e ninguém olhou para elas.
+
+            O pré-preenchimento poupa a escrita toda e é isso que o torna útil.
+            O que ele não pode fazer é publicar uma hora de partida que não
+            existe: a pesquisa devolve o que devolve, e entre a pesquisa e a
+            proposta pode ter mudado. Um clique a reconhecer, e não um
+            formulário a repetir — obrigar a reescrever anulava o ganho.
+          */}
+          {!offer.times_confirmed && (
+            <div className="mb-3 flex flex-wrap items-center gap-2.5 rounded-[9px] border border-adm-warn/40 bg-adm-warn/[.14] p-2.5 text-xs leading-relaxed text-[#F0C983]">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 flex-1">
+                {t("admin.composerTimesToConfirm")}
+              </span>
+              <button
+                type="button"
+                onClick={() => onPatch({ times_confirmed: true })}
+                className="shrink-0 rounded-lg border border-adm-warn/50 bg-adm-panel-2 px-2.5 py-1.5 text-[11.5px] font-bold text-[#F0C983] transition-colors hover:bg-adm-raise"
+              >
+                {t("admin.composerTimesConfirmCta")}
+              </button>
+            </div>
+          )}
+
           <div className="mb-3 flex gap-1.5">
             {(["ida", "volta"] as const).map((d) => (
               <button
@@ -797,18 +937,40 @@ function OpenOffer({
                 </div>
 
                 <div className="grid grid-cols-12 gap-2.5">
-                  <Field label={t("admin.composerCarrier")} span={2}>
-                    <Input
-                      mono
-                      maxLength={3}
+                  {/* PC-12 · a companhia deixa de ser texto livre.
+                      Escrevia-se o código à mão e o cartão do cliente mostrava
+                      o que lá estivesse: "VR", "vr", "TAP" no campo do código.
+                      Agora escolhe-se do catálogo, e o nome que o cliente lê é
+                      o do catálogo. Quando houver logótipos (PC-12, Sprint 2) é
+                      por este código que eles são procurados — e o próprio
+                      pedido manda que a falta de logótipo caia no código, que é
+                      exactamente o que se vê aqui. */}
+                  <Field label={t("admin.composerCarrier")} span={4}>
+                    <select
                       value={segment.carrier_code}
-                      onChange={(v) =>
+                      onChange={(e) =>
                         onPatchSegment(segment.key, {
-                          carrier_code: v.toUpperCase(),
+                          carrier_code: e.target.value,
                         })
                       }
-                      placeholder="VR"
-                    />
+                      className={inputClass}
+                    >
+                      <option value="">{t("admin.composerCarrierPick")}</option>
+                      {CARRIER_CODES.map((code) => (
+                        <option key={code} value={code}>
+                          {code} · {CARRIERS[code].name}
+                        </option>
+                      ))}
+                      {/* Uma companhia fora do catálogo não bloqueia a proposta:
+                          fica listada como está até alguém a acrescentar. */}
+                      {segment.carrier_code &&
+                        !CARRIERS[segment.carrier_code] && (
+                          <option value={segment.carrier_code}>
+                            {segment.carrier_code} ·{" "}
+                            {t("admin.composerCarrierUnknown")}
+                          </option>
+                        )}
+                    </select>
                   </Field>
                   <Field label={t("admin.composerFlightNo")} span={2}>
                     <Input
@@ -819,28 +981,6 @@ function OpenOffer({
                         onPatchSegment(segment.key, { flight_number: v })
                       }
                       placeholder="231"
-                    />
-                  </Field>
-                  <Field label={t("admin.composerEquipment")} span={4}>
-                    <Input
-                      value={segment.equipment}
-                      onChange={(v) =>
-                        onPatchSegment(segment.key, { equipment: v })
-                      }
-                      placeholder="Airbus A320neo"
-                    />
-                  </Field>
-                  <Field label={t("admin.composerBookingClass")} span={2}>
-                    <Input
-                      mono
-                      maxLength={2}
-                      value={segment.booking_class}
-                      onChange={(v) =>
-                        onPatchSegment(segment.key, {
-                          booking_class: v.toUpperCase(),
-                        })
-                      }
-                      placeholder="T"
                     />
                   </Field>
                   <Field label={t("admin.composerCabin")} span={2}>
@@ -861,7 +1001,22 @@ function OpenOffer({
                     </select>
                   </Field>
 
-                  <Field label={t("admin.composerOrigin")} span={3}>
+                  {/* FB-01 · a marca aparece enquanto o campo ainda tem o valor
+                      que o cliente deu, e some assim que alguém lhe toca. É
+                      isso que a distingue de um rótulo decorativo: diz o que é
+                      verdade agora, não o que era verdade quando a oferta
+                      nasceu. Só no primeiro trecho — a origem do segundo é uma
+                      escala, e a escala é escolha de quem cota. */}
+                  <Field
+                    label={t("admin.composerOrigin")}
+                    span={3}
+                    prefilled={
+                      i === 0 &&
+                      leg === "ida" &&
+                      Boolean(segment.origin) &&
+                      segment.origin === requestedRoute.origin
+                    }
+                  >
                     <Input
                       mono
                       maxLength={3}
@@ -874,7 +1029,11 @@ function OpenOffer({
                       placeholder="RAI"
                     />
                   </Field>
-                  <Field label={t("admin.composerDeparture")} span={3}>
+                  <Field
+                    label={t("admin.composerDeparture")}
+                    span={3}
+                    prefilled={!offer.times_confirmed}
+                  >
                     <Input
                       type="datetime-local"
                       value={segment.depart_at}
@@ -883,7 +1042,16 @@ function OpenOffer({
                       }
                     />
                   </Field>
-                  <Field label={t("admin.composerDestination")} span={3}>
+                  <Field
+                    label={t("admin.composerDestination")}
+                    span={3}
+                    prefilled={
+                      i === segments.length - 1 &&
+                      leg === "ida" &&
+                      Boolean(segment.destination) &&
+                      segment.destination === requestedRoute.destination
+                    }
+                  >
                     <Input
                       mono
                       maxLength={3}
@@ -896,7 +1064,11 @@ function OpenOffer({
                       placeholder="SID"
                     />
                   </Field>
-                  <Field label={t("admin.composerArrival")} span={3}>
+                  <Field
+                    label={t("admin.composerArrival")}
+                    span={3}
+                    prefilled={!offer.times_confirmed}
+                  >
                     <Input
                       type="datetime-local"
                       value={segment.arrive_at}
@@ -906,24 +1078,9 @@ function OpenOffer({
                     />
                   </Field>
 
-                  <Field label={t("admin.composerTerminalFrom")} span={6}>
-                    <Input
-                      value={segment.terminal_from}
-                      onChange={(v) =>
-                        onPatchSegment(segment.key, { terminal_from: v })
-                      }
-                      placeholder="1"
-                    />
-                  </Field>
-                  <Field label={t("admin.composerTerminalTo")} span={6}>
-                    <Input
-                      value={segment.terminal_to}
-                      onChange={(v) =>
-                        onPatchSegment(segment.key, { terminal_to: v })
-                      }
-                      placeholder={t("admin.phTerminal")}
-                    />
-                  </Field>
+                  {/* Terminais, equipamento e classe de reserva saíram para o
+                      construtor de bilhete: nenhum deles muda a escolha de quem
+                      lê a proposta, e todos são precisos na emissão. */}
 
                   <div className="col-span-12">
                     <div className="flex flex-wrap gap-4 rounded-lg bg-adm-muted/[.14] px-2.5 py-2 text-xs text-adm-txt-2">
@@ -976,57 +1133,51 @@ function OpenOffer({
           </button>
         </Section>
 
-        {/* condições */}
+        {/*
+          PC-B · as condições, reduzidas ao que o cliente precisa para decidir.
+
+          Saíram daqui o nome da tarifa, as políticas de alteração e de lugar e
+          os documentos. Não desapareceram: vivem no construtor de bilhete, na
+          emissão, que é o momento em que alguém precisa deles. O que ficou é o
+          que muda uma escolha — quantas malas leva e se pode desistir.
+        */}
         <Section title={t("admin.composerConditions")}>
           <div className="grid grid-cols-12 gap-2.5">
-            <Field label={t("admin.composerFareName")} span={4}>
-              <Input
-                value={offer.fare_name}
-                onChange={(v) => onPatch({ fare_name: v })}
-                placeholder="Economy Smart"
-              />
-            </Field>
+            {/* FB-03 · contadores em vez de texto livre.
+                "1 peça, 8 kg", "uma mala", "8kg" e "sim" eram todos respostas
+                válidas ao mesmo campo, e nenhuma delas se compara com outra —
+                que é a única coisa que o ecrã do cliente faz com este valor. */}
             <Field label={t("admin.composerBaggageCabin")} span={4}>
-              <Input
-                value={offer.baggage_cabin}
-                onChange={(v) => onPatch({ baggage_cabin: v })}
-                placeholder={t("admin.phBaggageCabin")}
+              <CountField
+                value={offer.baggage_cabin_count}
+                onChange={(v) => onPatch({ baggage_cabin_count: v })}
               />
             </Field>
             <Field label={t("admin.composerBaggageHold")} span={4}>
-              <Input
-                value={offer.baggage_hold}
-                onChange={(v) => onPatch({ baggage_hold: v })}
-                placeholder={t("admin.phBaggageHold")}
+              <CountField
+                value={offer.baggage_hold_count}
+                onChange={(v) => onPatch({ baggage_hold_count: v })}
+                /* VIP-10 · o que o cliente pediu, ao lado do que a tarifa dá.
+                   Uma proposta com menos bagagem do que a pedida não é um erro
+                   — é uma tarifa mais barata — mas tem de ser uma escolha. */
+                requested={requestedBaggage}
               />
             </Field>
-            <Field label={t("admin.composerChange")} span={4}>
-              <Input
-                value={offer.change_policy}
-                onChange={(v) => onPatch({ change_policy: v })}
-                placeholder={t("admin.phChange")}
-              />
-            </Field>
+            {/* PC-B · "não reembolsável" passa a caixa.
+                Era uma frase em texto livre, e o cartão do cliente decidia se a
+                tarifa era reembolsável correndo uma expressão regular sobre ela
+                — em três línguas. Uma palavra mal escrita tornava reembolsável
+                uma tarifa que não é. A letra pequena continua a caber no
+                construtor de bilhete; a decisão é esta caixa. */}
             <Field label={t("admin.composerRefund")} span={4}>
-              <Input
-                value={offer.refund_policy}
-                onChange={(v) => onPatch({ refund_policy: v })}
-                placeholder={t("admin.phRefund")}
-              />
-            </Field>
-            <Field label={t("admin.composerSeat")} span={4}>
-              <Input
-                value={offer.seat_policy}
-                onChange={(v) => onPatch({ seat_policy: v })}
-                placeholder={t("admin.phSeat")}
-              />
-            </Field>
-            <Field label={t("admin.composerDocuments")} span={12}>
-              <Input
-                value={offer.documents}
-                onChange={(v) => onPatch({ documents: v })}
-                placeholder={t("admin.phDocuments")}
-              />
+              <div className="flex h-[38px] items-center">
+                <Check2
+                  label={t("admin.composerNonRefundable")}
+                  checked={offer.non_refundable}
+                  onChange={(v) => onPatch({ non_refundable: v })}
+                  disabled={disabled}
+                />
+              </div>
             </Field>
           </div>
         </Section>
@@ -1149,17 +1300,63 @@ function OpenOffer({
               </div>
             </Field>
             <Field
-              label={t("admin.composerValidUntil")}
+              label={t("admin.composerHeldUntil")}
               span={4}
-              hint={t("admin.composerValidUntilNote")}
+              hint={t("admin.composerHeldUntilNote")}
             >
               <Input
                 type="datetime-local"
-                value={offer.valid_until}
-                onChange={(v) => onPatch({ valid_until: v })}
+                value={offer.fare_held_until}
+                onChange={(v) => onPatch({ fare_held_until: v })}
               />
             </Field>
           </div>
+
+          {/*
+            FB-04 · a retenção da companhia.
+            Só isto autoriza a palavra "garantido" no ecrã do cliente. O campo
+            que estava aqui — "válido até" — era a validade comercial escrita à
+            mão, e era ela que fazia a aplicação prometer uma tarifa retida sem
+            que existisse retenção nenhuma. A validade comercial passou a ser
+            automática: uma hora a contar de quando a proposta é enviada.
+
+            Origem e referência só aparecem depois de haver instante, porque
+            sozinhas não afirmam nada — e a base recusa um sem o outro.
+          */}
+          {offer.fare_held_until && (
+            <div className="mt-2.5 grid grid-cols-12 gap-2.5">
+              <Field label={t("admin.composerHeldSource")} span={4}>
+                <select
+                  value={offer.fare_held_source ?? ""}
+                  onChange={(e) =>
+                    onPatch({
+                      fare_held_source: (e.target.value || null) as
+                        | "amadeus"
+                        | "manual"
+                        | null,
+                    })
+                  }
+                  className={inputClass}
+                >
+                  <option value="">{t("admin.composerHeldSourcePick")}</option>
+                  <option value="amadeus">Amadeus (option time)</option>
+                  <option value="manual">{t("admin.composerHeldManual")}</option>
+                </select>
+              </Field>
+              <Field
+                label={t("admin.composerHeldRef")}
+                span={8}
+                hint={t("admin.composerHeldRefNote")}
+              >
+                <Input
+                  value={offer.fare_held_ref}
+                  onChange={(v) => onPatch({ fare_held_ref: v })}
+                  mono
+                  placeholder="ABC123"
+                />
+              </Field>
+            </div>
+          )}
         </Section>
 
         {/* nota */}
@@ -1183,50 +1380,6 @@ function OpenOffer({
       </fieldset>
     </article>
   )
-}
-
-/**
- * FE-01 · os códigos IATA desta oferta, virados em nomes de cidade.
- *
- * O mesmo endpoint que o formulário do cliente usa — `/api/airports` — e é
- * essa a razão de ser deste pedaço: o catálogo é um só, servido de um só sítio,
- * e o back-office lê-o pela mesma porta que o cliente e que o futuro bot do
- * WhatsApp. O vendedor escreve "SID" copiado do Amadeus e vê "Sal" debaixo do
- * campo; se escrever um código que não existe, vê que não existe antes de o
- * cliente ver.
- */
-function useAirportNames(codes: string[]): Record<string, string | null> {
-  const [names, setNames] = useState<Record<string, string | null>>({})
-  const wanted = codes
-    .filter((c) => /^[A-Za-z]{3}$/.test(c))
-    .map((c) => c.toUpperCase())
-  const key = Array.from(new Set(wanted)).sort().join(",")
-
-  useEffect(() => {
-    if (!key) return
-    const controller = new AbortController()
-
-    fetch(`/api/airports?iata=${encodeURIComponent(key)}`, {
-      signal: controller.signal,
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => {
-        if (!json?.results) return
-        const found: Record<string, string | null> = {}
-        for (const code of key.split(",")) found[code] = null
-        for (const place of json.results as { iata: string; city: string; name: string }[]) {
-          found[place.iata] = place.city || place.name
-        }
-        setNames((current) => ({ ...current, ...found }))
-      })
-      .catch(() => {
-        /* sem catálogo o campo continua a valer pelo código */
-      })
-
-    return () => controller.abort()
-  }, [key])
-
-  return names
 }
 
 /**
@@ -1835,224 +1988,3 @@ function CopyLink({ token, t }: { token: string; t: Translator }) {
   )
 }
 
-// --- Peças de formulário -----------------------------------------------------
-
-const inputClass =
-  "w-full rounded-lg border border-adm-line bg-adm-panel px-2.5 py-2 text-[13px] text-adm-txt outline-none transition-colors placeholder:text-[#5D6B82] focus:border-[#46587A] disabled:opacity-50"
-
-const SPANS: Record<number, string> = {
-  2: "col-span-6 sm:col-span-2",
-  3: "col-span-6 sm:col-span-3",
-  4: "col-span-12 sm:col-span-4",
-  6: "col-span-12 sm:col-span-6",
-  12: "col-span-12",
-}
-
-function Field({
-  label,
-  span,
-  hint,
-  children,
-}: {
-  label: string
-  span: number
-  hint?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-1.5", SPANS[span])}>
-      <label className="text-[10px] font-bold uppercase tracking-[.07em] text-adm-muted">
-        {label}
-      </label>
-      {children}
-      {hint && <span className="text-[10.5px] text-adm-muted">{hint}</span>}
-    </div>
-  )
-}
-
-function Input({
-  value,
-  onChange,
-  mono,
-  ...rest
-}: {
-  value: string
-  onChange: (value: string) => void
-  mono?: boolean
-} & Omit<
-  React.InputHTMLAttributes<HTMLInputElement>,
-  "value" | "onChange"
->) {
-  return (
-    <input
-      {...rest}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={cn(inputClass, mono && "font-mono")}
-    />
-  )
-}
-
-/** Normaliza no blur: quem escreve "545" fica com "545,00" e vê o que gravou. */
-function MoneyInput({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string
-  onChange: (value: string) => void
-  disabled?: boolean
-}) {
-  return (
-    <input
-      inputMode="decimal"
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={() => onChange(formatAmountPlain(parseMoney(value)))}
-      className={cn(inputClass, "text-right font-mono")}
-    />
-  )
-}
-
-function PriceRow({
-  label,
-  hint,
-  qty,
-  value,
-  onChange,
-  tone,
-}: {
-  label: string
-  hint: string
-  qty: string
-  value: string
-  onChange: (value: string) => void
-  tone?: "fee"
-}) {
-  return (
-    <div
-      className={cn(
-        "grid grid-cols-[1fr_96px_128px] items-center gap-2.5 border-b border-adm-line-soft px-3 py-2.5",
-        tone === "fee" && "bg-adm-ember/[.06]"
-      )}
-    >
-      <div>
-        <span className="text-[13px] font-semibold text-adm-txt">{label}</span>
-        <small className="block text-[11px] font-medium text-adm-muted">
-          {hint}
-        </small>
-      </div>
-      <div className="text-center font-mono text-xs text-adm-muted">{qty}</div>
-      <MoneyInput value={value} onChange={onChange} />
-    </div>
-  )
-}
-
-function Section({
-  title,
-  aside,
-  children,
-}: {
-  title: string
-  aside?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <section>
-      <div className="mb-2.5 flex items-center gap-2.5">
-        <h3 className="text-[11px] font-extrabold uppercase tracking-[.11em] text-adm-muted">
-          {title}
-        </h3>
-        <span className="h-px flex-1 bg-adm-line-soft" />
-        {aside && (
-          <span className="text-[11px] text-adm-muted">{aside}</span>
-        )}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function Flag({
-  label,
-  on,
-  tone,
-  disabled,
-  onClick,
-}: {
-  label: string
-  on: boolean
-  tone?: "ok"
-  disabled?: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "rounded-[7px] border px-2.5 py-1.5 text-[11px] font-bold transition-colors disabled:opacity-50",
-        !on && "border-adm-line bg-adm-panel-2 text-adm-muted hover:text-adm-txt-2",
-        on && tone === "ok" && "border-adm-ok/40 bg-adm-ok/[.14] text-adm-ok",
-        on && tone !== "ok" && "border-adm-txt bg-adm-txt text-adm-panel"
-      )}
-    >
-      {label}
-    </button>
-  )
-}
-
-function IconButton({
-  title,
-  onClick,
-  disabled,
-  className,
-  children,
-}: {
-  title: string
-  onClick: () => void
-  disabled?: boolean
-  className?: string
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-label={title}
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "rounded-[9px] border border-adm-line bg-adm-panel-2 p-1.5 text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt disabled:opacity-40",
-        className
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
-function Check2({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string
-  checked: boolean
-  onChange: (value: boolean) => void
-}) {
-  return (
-    <label className="flex items-center gap-2.5 text-[13px] text-adm-txt-2">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-[15px] w-[15px] accent-adm-ember"
-      />
-      {label}
-    </label>
-  )
-}

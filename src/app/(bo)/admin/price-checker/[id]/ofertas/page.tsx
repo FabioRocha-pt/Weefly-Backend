@@ -8,7 +8,8 @@ import {
   paxOf,
   type ProposalFailure,
 } from "@/lib/proposals"
-import { OfferComposer } from "@/components/admin/offer-composer"
+import { BoProposalComposer } from "@/components/bo/proposal-composer"
+import { BoWhatsappLink } from "@/components/bo/whatsapp-link"
 import { getDictionary, getI18n } from "@/i18n/server"
 import { DEFAULT_LOCALE } from "@/i18n/config"
 import { I18nProvider } from "@/i18n/provider"
@@ -62,14 +63,38 @@ export default async function BoCaseOffersPage({
   return (
     <I18nProvider locale={locale} dictionary={dictionary} fallback={fallback}>
       <div className="page">
-        <nav className="crumb">
-          <Link href="/admin/price-checker">Price Checker</Link>
-          {" · "}
-          <Link href={`/admin/price-checker/${params.id}`}>
-            {bookingCase.trip_request?.reference ?? "Caso"}
-          </Link>
-          {" · Propostas"}
-        </nav>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <nav className="crumb">
+            <Link href="/admin/price-checker">Price Checker</Link>
+            {" · "}
+            <Link href={`/admin/price-checker/${params.id}`}>
+              {bookingCase.trip_request?.reference ?? "Caso"}
+            </Link>
+            {" · Propostas"}
+          </nav>
+          {/* FB-05 · o contacto com o cliente também aqui. Compor uma proposta é
+              onde as perguntas aparecem — datas que não batem certo, bagagem,
+              um nome mal escrito — e era o ecrã de onde se tinha de sair para
+              perguntar. */}
+          {bookingCase.trip_request && (
+            <div style={{ marginLeft: "auto" }}>
+              <BoWhatsappLink
+                phone={`${bookingCase.trip_request.lead?.phone_prefix ?? ""} ${
+                  bookingCase.trip_request.lead?.phone ?? ""
+                }`}
+                name={bookingCase.trip_request.lead?.full_name}
+                reference={bookingCase.trip_request.reference}
+              />
+            </div>
+          )}
+        </div>
 
         {/* `composer-scope`: ver o fim de styles/bo-pc.css — devolve aos campos
             do compositor os tamanhos que o CSS global deste layout lhes tirava. */}
@@ -81,7 +106,7 @@ export default async function BoCaseOffersPage({
               </p>
             </div>
           ) : (
-            <OfferComposer
+            <BoProposalComposer
               caseId={bookingCase.id}
               token={bookingCase.token}
               proposal={result.view.proposal}
@@ -93,6 +118,16 @@ export default async function BoCaseOffersPage({
               requested={{
                 departDate: bookingCase.trip_request?.depart_date ?? null,
                 returnDate: bookingCase.trip_request?.return_date ?? null,
+              }}
+              /* VIP-10 · o que o cliente pediu em malas de porão, ao lado do
+                 contador da oferta. Pedidos anteriores à migração 0012 não têm
+                 o campo e ficam a zero, que é o que já se via. */
+              requestedBaggage={bookingCase.trip_request?.baggage_hold ?? 0}
+              /* FB-01 · a rota do pedido, para marcar os campos que ainda a
+                 têm. Ver o comentário na propriedade. */
+              requestedRoute={{
+                origin: bookingCase.trip_request?.origin ?? null,
+                destination: bookingCase.trip_request?.destination ?? null,
               }}
               brief={<ClientBrief bookingCase={bookingCase} />}
             />
@@ -183,6 +218,15 @@ function ClientBrief({ bookingCase }: { bookingCase: BookingCaseRow }) {
             <Kv
               label={t("admin.briefClass")}
               value={t("cabins." + trip.cabin_class)}
+            />
+            {/* VIP-10 · a bagagem pedida entra no resumo do pedido, que é onde
+                quem cota olha antes de escrever a oferta. */}
+            <Kv
+              label={t("admin.briefBaggage")}
+              value={
+                trip.baggage_hold > 0 ? String(trip.baggage_hold) : t("admin.briefBaggageNone")
+              }
+              mono={trip.baggage_hold > 0}
             />
             <Kv
               label={t("admin.briefChannel")}
