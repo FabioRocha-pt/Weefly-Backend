@@ -128,7 +128,15 @@ export function PcTopbar({
 
 /** A barra de três passos, só na fase do pedido. */
 export function PcStepper({ step }: { step: 1 | 2 | 3 }) {
-  const labels = ["1 · Trip", "2 · Contact", "3 · Request sent"]
+  /*
+   * FE-05 · o terceiro passo passa a ser a revisão, não o "pedido enviado".
+   *
+   * O rótulo antigo prometia um passo que não existia: o pedido saía no fim do
+   * segundo, e o terceiro era o ecrã de confirmação já do outro lado. Agora há
+   * mesmo um terceiro — o resumo que se lê antes de enviar — e o pedido só é
+   * criado depois de alguém carregar em "confirmar".
+   */
+  const labels = ["1 · Trip", "2 · Contact", "3 · Review"]
   return (
     <div className="shell">
       <nav className="steps" aria-label="Progress">

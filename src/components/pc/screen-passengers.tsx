@@ -174,6 +174,27 @@ export function ScreenP7({ state }: { state: PcState }) {
   const allErrors = rows.map(errorsFor)
   const complete = allErrors.every((e) => Object.keys(e).length === 0)
 
+  /*
+   * BO-11 · a lista de campos por preencher, com o endereço de cada um.
+   *
+   * Derivada de `allErrors`, que é a mesma validação que pinta os campos de
+   * vermelho — não uma segunda regra. Cada linha diz de que passageiro é, porque
+   * "Passport number" repetido três vezes não distingue nada.
+   */
+  const missing = allErrors.flatMap((errors, index) =>
+    Object.entries(errors).map(([field, message]) => ({
+      target: `pax${index}-${field}`,
+      label: `P${index + 1} ${rows[index].surname || KIND_TITLE[rows[index].kind]} · ${message}`,
+    }))
+  )
+
+  /** Leva ao campo: desloca até ele e deixa-o marcado, como já estava. */
+  const jumpTo = (target: string) => {
+    document
+      .getElementById(target)
+      ?.scrollIntoView({ block: "center", behavior: "smooth" })
+  }
+
   const patch = (index: number, key: keyof PaxRow, value: string) =>
     setRows((current) =>
       current.map((row, i) => (i === index ? { ...row, [key]: value } : row))
@@ -250,6 +271,45 @@ export function ScreenP7({ state }: { state: PcState }) {
           </b>
         </p>
 
+        {/*
+          BO-11 · what is missing, listed at the top, each item jumping to its
+          field. With three passengers and nine fields each there are 27 boxes,
+          and "something is missing below" leaves the search to the person
+          reading it. The list is derived from the same validation that colours
+          the fields, so it shrinks as they are filled in.
+        */}
+        {showErrors && !complete && (
+          <div className="notice" role="alert" style={{ marginTop: 10 }}>
+            <b>
+              {missing.length === 1
+                ? "1 field still to fill in"
+                : `${missing.length} fields still to fill in`}
+            </b>
+            <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+              {missing.map((item) => (
+                <li key={item.target}>
+                  <button
+                    type="button"
+                    onClick={() => jumpTo(item.target)}
+                    style={{
+                      border: 0,
+                      background: "none",
+                      font: "inherit",
+                      padding: 0,
+                      color: "inherit",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div>
           {rows.map((row, index) => {
             const errors = allErrors[index]
@@ -278,6 +338,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                         cls="c4"
                         label="Title"
                         error={showErrors ? errors.title : undefined}
+                      id={`pax${index}-title`}
                       >
                         <select
                           value={row.title}
@@ -300,6 +361,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                       label="Given names"
                       hint="All of them, in passport order"
                       error={showErrors ? errors.given : undefined}
+                      id={`pax${index}-given`}
                     >
                       <input
                         placeholder="As in the passport"
@@ -312,6 +374,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                       cls="c6"
                       label="Surnames"
                       error={showErrors ? errors.surname : undefined}
+                      id={`pax${index}-surname`}
                     >
                       <input
                         placeholder="As in the passport"
@@ -331,6 +394,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                             : "Under 2 on the travel date"
                       }
                       error={showErrors ? errors.dob : undefined}
+                      id={`pax${index}-dob`}
                     >
                       <input
                         type="date"
@@ -340,7 +404,8 @@ export function ScreenP7({ state }: { state: PcState }) {
                       />
                     </Field>
 
-                    <Field cls="c6" label="Sex" error={showErrors ? errors.sex : undefined}>
+                    <Field cls="c6" label="Sex" error={showErrors ? errors.sex : undefined}
+                      id={`pax${index}-sex`}>
                       <select
                         value={row.sex}
                         onChange={(event) => patch(index, "sex", event.target.value)}
@@ -360,6 +425,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                       cls="c6"
                       label="Nationality"
                       error={showErrors ? errors.nationality : undefined}
+                      id={`pax${index}-nationality`}
                     >
                       <select
                         value={row.nationality}
@@ -378,6 +444,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                       cls="c6"
                       label="Passport number"
                       error={showErrors ? errors.passportNumber : undefined}
+                      id={`pax${index}-passportNumber`}
                     >
                       <input
                         className="mono"
@@ -395,6 +462,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                       label="Valid until"
                       hint="6 months beyond the return date"
                       error={showErrors ? errors.passportExpiry : undefined}
+                      id={`pax${index}-passportExpiry`}
                     >
                       <input
                         type="date"
@@ -410,6 +478,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                       cls="c6"
                       label="Issuing country"
                       error={showErrors ? errors.issuingCountry : undefined}
+                      id={`pax${index}-issuingCountry`}
                     >
                       <select
                         value={row.issuingCountry}
@@ -483,16 +552,19 @@ function Field({
   label,
   hint,
   error,
+  id,
   children,
 }: {
   cls: string
   label: string
   hint?: string
   error?: string
+  /** BO-11 · o alvo a que um item da lista de erros salta. */
+  id?: string
   children: React.ReactNode
 }) {
   return (
-    <div className={`ff ${cls}${error ? " bad" : ""}`}>
+    <div id={id} className={`ff ${cls}${error ? " bad" : ""}`}>
       <label>
         {label}
         <span className="req">*</span>

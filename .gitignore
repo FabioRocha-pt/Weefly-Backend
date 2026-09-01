@@ -15,7 +15,16 @@
 
 # misc
 .DS_Store
+
+# Chaves de acesso ao servidor. O `*.pem` já cá estava; o `*.ppk` é o mesmo
+# material noutro formato (PuTTY), e é o que chega quando alguém trabalha em
+# Windows. Uma chave privada dentro de um repositório é uma chave publicada.
 *.pem
+*.ppk
+*.key
+
+# Logs do PM2 — ver ecosystem.config.js
+/logs
 
 # debug
 npm-debug.log*

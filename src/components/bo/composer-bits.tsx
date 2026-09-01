@@ -92,16 +92,23 @@ export function MoneyInput({
   value,
   onChange,
   disabled,
+  id,
+  invalid,
 }: {
   value: string
   onChange: (value: string) => void
   disabled?: boolean
+  /** BO-11 · o alvo a que um item da lista de erros salta. */
+  id?: string
+  invalid?: boolean
 }) {
   return (
     <input
+      id={id}
       inputMode="decimal"
       value={value}
       disabled={disabled}
+      aria-invalid={invalid || undefined}
       onChange={(e) => onChange(e.target.value)}
       onBlur={() => onChange(formatAmountPlain(parseMoney(value)))}
       className={cn(inputClass, "text-right font-mono")}
@@ -204,6 +211,8 @@ export function PriceRow({
   value,
   onChange,
   tone,
+  id,
+  invalid,
 }: {
   label: string
   hint: string
@@ -211,6 +220,9 @@ export function PriceRow({
   value: string
   onChange: (value: string) => void
   tone?: "fee"
+  /** BO-11 · o alvo do item "preço por passageiro em falta". */
+  id?: string
+  invalid?: boolean
 }) {
   return (
     <div
@@ -226,7 +238,7 @@ export function PriceRow({
         </small>
       </div>
       <div className="text-center font-mono text-xs text-adm-muted">{qty}</div>
-      <MoneyInput value={value} onChange={onChange} />
+      <MoneyInput value={value} onChange={onChange} id={id} invalid={invalid} />
     </div>
   )
 }
@@ -235,13 +247,16 @@ export function Section({
   title,
   aside,
   children,
+  id,
 }: {
   title: string
   aside?: React.ReactNode
   children: React.ReactNode
+  /** BO-11 · o alvo dos erros que são da secção inteira e não de um campo. */
+  id?: string
 }) {
   return (
-    <section>
+    <section id={id}>
       <div className="mb-2.5 flex items-center gap-2.5">
         <h3 className="text-[11px] font-extrabold uppercase tracking-[.11em] text-adm-muted">
           {title}

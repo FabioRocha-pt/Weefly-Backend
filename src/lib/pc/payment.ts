@@ -123,29 +123,14 @@ export async function listProofs(paymentId: string): Promise<PaymentProof[]> {
   return (data ?? []) as PaymentProof[]
 }
 
-/**
- * URL assinado para o back-office abrir um comprovativo.
+/*
+ * X-01 · `signedProofUrl` saiu daqui.
  *
- * Gerado a cada abertura e válido por 10 minutos: o suficiente para clicar e
- * ver, pouco para reencaminhar por engano.
+ * O back-office deixou de abrir comprovativos por URL assinado. Passa por
+ * `/api/bo/proof/{id}`, que verifica a sessão a cada pedido e transmite o
+ * ficheiro do bucket privado — sem gerar nenhum endereço que continue a abrir o
+ * documento depois de a página fechar.
  */
-export async function signedProofUrl(
-  storagePath: string,
-  seconds = 600
-): Promise<string | null> {
-  const admin = createAdminClient()
-  if (!admin) return null
-
-  const { data, error } = await admin.storage
-    .from(PROOF_BUCKET)
-    .createSignedUrl(storagePath, seconds)
-
-  if (error) {
-    console.error("[pc/payment] URL assinado falhou:", error.message)
-    return null
-  }
-  return data?.signedUrl ?? null
-}
 
 // ── criação, a partir da escolha da opção ────────────────────────────────────
 

@@ -242,11 +242,24 @@ export function OfferCard({
         ? "Fastest"
         : offer.name || "Option"
 
+  /*
+   * BO-13 · duas linhas e o total, e é esta a mudança.
+   *
+   * Dizia "Fare X + Taxes Y", e nenhum dos dois números era o que o cliente
+   * queria saber. As taxas passaram a estar dentro do preço da companhia (não há
+   * campo de taxas na proposta) e o que sobra é a distinção que ele precisa de
+   * ver: o que custa a viagem, e o que a WeeFly cobra por a tratar.
+   *
+   * As duas linhas existem para que ninguém tenha de perguntar porque é que o
+   * total é 586 e não 566.
+   */
   const fare =
     offer.price_adult * request.adults +
     offer.price_child * request.children +
     offer.price_infant * (request.infantsInSeat + request.infantsOnLap) +
-    offer.service_fee +
+    /* Propostas anteriores ao BO-13 têm as taxas numa coluna à parte. Somam-se
+       aqui, na linha da tarifa, que é onde elas sempre pertenceram. */
+    offer.taxes_total +
     (offer.lock_fee_enabled ? offer.lock_fee : 0)
 
   return (
@@ -262,8 +275,8 @@ export function OfferCard({
         <div>
           <div className="tot">{money(total, currency)}</div>
           <div className="brk">
-            Fare <b>{money(fare, currency)}</b> + Taxes{" "}
-            <b>{money(offer.taxes_total, currency)}</b>
+            Price <b>{money(fare, currency)}</b> + WeeFly service{" "}
+            <b>{money(offer.service_fee, currency)}</b>
           </div>
         </div>
         <div className="paxn">

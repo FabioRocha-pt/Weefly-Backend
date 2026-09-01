@@ -21,7 +21,6 @@ import {
   boConfirmPayment,
   boExpirePayment,
   boExtendDeadline,
-  boProofUrl,
   boRejectProof,
   boReopenPayment,
 } from "@/actions/bo-price-checker"
@@ -141,13 +140,6 @@ export function BoPaymentPanel({
     })
   }
 
-  async function openProof(proof: PaymentProof) {
-    setError(null)
-    const result = await boProofUrl(proof.storage_path)
-    if (result.ok) window.open(result.url, "_blank", "noopener")
-    else setError(result.error)
-  }
-
   return (
     <div className="cols two tabpane">
       <aside className="panel sticky">
@@ -261,13 +253,27 @@ export function BoPaymentPanel({
                           : "à espera de validação"}
                     </span>
                   </span>
-                  <button
+                  {/*
+                    X-01 · uma âncora, e não um botão que chama uma ação.
+
+                    O botão pedia o URL assinado ao servidor e só depois fazia
+                    `window.open` — e um `window.open` depois de um `await` já
+                    não pertence ao clique do utilizador, pelo que o browser o
+                    bloqueia como pop-up. O comprovativo não abria, e não havia
+                    erro nenhum a dizer porquê.
+
+                    Um `href` abre no próprio gesto. A rota do outro lado
+                    verifica a sessão, serve do bucket privado com o tipo certo
+                    e devolve o nome original do ficheiro.
+                  */}
+                  <a
                     className="btn btn-sm"
-                    type="button"
-                    onClick={() => openProof(proof)}
+                    href={`/api/bo/proof/${proof.id}`}
+                    target="_blank"
+                    rel="noreferrer"
                   >
                     Abrir
-                  </button>
+                  </a>
                 </div>
               ))
             )}

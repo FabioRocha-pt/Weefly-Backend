@@ -183,15 +183,46 @@ export function parseMoney(input: string): number {
 // --- Totais -----------------------------------------------------------------
 
 /**
+ * BO-13 · o serviço WeeFly, pré-preenchido.
+ *
+ * Vinte na moeda do caso, em unidades menores. É **por reserva** e não por
+ * passageiro — sempre foi, `service_fee` sempre foi um total — e o que mudou é a
+ * omissão: uma oferta nova nascia a zero e alguém tinha de se lembrar. O número
+ * vive aqui e na omissão da coluna (migração 0013), e em mais lado nenhum.
+ */
+export const WEEFLY_SERVICE_DEFAULT = 2000
+
+/**
+ * BO-13 · a primeira das duas linhas que o cliente vê: "Preço".
+ *
+ * O preço por passageiro passa a ser **o preço final da companhia, taxas já
+ * incluídas** — o campo de taxas de aeroporto saiu do formulário. `taxes_total`
+ * continua a somar aqui porque as propostas anteriores a esta mudança têm as
+ * taxas escritas à parte, e dobrá-las no preço unitário exigiria dividi-las pelo
+ * número de passageiros: um valor que ninguém escreveu.
+ *
+ * Para uma oferta nova a soma é preço × passageiros e mais nada. Para uma antiga
+ * é preço × passageiros + taxas. Nos dois casos é a tarifa completa, que é o que
+ * a linha diz — e em nenhum dos dois o total muda.
+ */
+export function offerFareTotal(offer: Offer, pax: PaxCounts): number {
+  return (
+    offer.price_adult * pax.adults +
+    offer.price_child * pax.children +
+    offer.price_infant * pax.infants +
+    offer.taxes_total
+  )
+}
+
+/**
+ * O total: a tarifa mais o serviço WeeFly.
+ *
  * Bebés não pagam lugar em nenhum dos exemplos, mas pagam taxa em muitas rotas
  * africanas, por isso têm linha própria em vez de serem ignorados.
  */
 export function offerTotal(offer: Offer, pax: PaxCounts): number {
   return (
-    offer.price_adult * pax.adults +
-    offer.price_child * pax.children +
-    offer.price_infant * pax.infants +
-    offer.taxes_total +
+    offerFareTotal(offer, pax) +
     offer.service_fee +
     (offer.lock_fee_enabled ? offer.lock_fee : 0)
   )
@@ -582,25 +613,18 @@ export function offerBlockers(
   }
 
   /*
-   * PC-B · "uma proposta não pode ser publicada sem preço e taxas".
+   * BO-13 · o bloqueio das taxas caiu, e caiu por deixar de ter objecto.
    *
-   * O preço já era travado pelo `zeroPrice`; as taxas não eram travadas por
-   * nada. Uma proposta sem taxas não é uma proposta mais barata — é uma
-   * proposta a que falta uma parte do que o cliente vai pagar, e a diferença
-   * aparece no momento de cobrar.
+   * Existia porque as taxas eram uma linha própria e uma proposta sem elas
+   * escondia parte do que o cliente ia pagar. Agora o preço por passageiro é o
+   * preço final da companhia com as taxas dentro: não há campo de taxas para
+   * ficar por preencher, e exigir um valor numa coluna que o formulário já não
+   * mostra travaria toda e qualquer proposta nova.
    *
-   * Isto trava taxas a zero, e trava mesmo. `taxes_total` é `not null default
-   * 0`, o que quer dizer que não há como distinguir "escrevi zero" de "não
-   * respondi" — e entre deixar passar as duas ou travar as duas, travar é o
-   * lado certo em que errar: uma tarifa aérea com zero de taxas não existe na
-   * prática, nem nos voos domésticos de Cabo Verde, que têm taxa de aeroporto.
-   *
-   * Se algum dia existir uma tarifa genuinamente sem taxas, o que isto pede é
-   * uma coluna que saiba dizer "respondido" — não um `if` mais frouxo.
+   * O que continua travado é o que o backlog manda travar: "uma proposta não
+   * pode ser publicada com preço por passageiro vazio ou a zero" — é o
+   * `zeroPrice` e o `adultFare`, acima.
    */
-  if (offerTotal(offer, pax) > 0 && offer.taxes_total <= 0) {
-    problems.push({ key: "blockers.noTaxes" })
-  }
 
   /* PC-06a · horas pré-preenchidas por reconhecer. */
   if (!offer.times_confirmed) problems.push({ key: "blockers.timesToConfirm" })

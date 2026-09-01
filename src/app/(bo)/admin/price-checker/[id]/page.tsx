@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation"
 
-import { getBoAccess } from "@/lib/bo-access"
+import { getBoAccess, listBoSellers } from "@/lib/bo-access"
 import { loadBoCase } from "@/lib/pc/bo-queue"
 import { getPcPayment, listProofs } from "@/lib/pc/payment"
 import { getPublishedProposal } from "@/lib/proposals"
 import { listCaseEvents } from "@/lib/case-events"
+import { listCaseNotifications } from "@/lib/notifications"
+import { listPassengerSeats } from "@/lib/issuance"
+import { listTicketDocuments } from "@/lib/tickets/store"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { BoCaseView } from "@/components/bo/case-view"
 import type { CasePassenger } from "@/lib/case-status"
@@ -34,10 +37,27 @@ export default async function BoCasePage({
 
   const admin = createAdminClient()
 
-  const [payment, proposal, events, passengers] = await Promise.all([
+  const [
+    payment,
+    proposal,
+    events,
+    notifications,
+    sellers,
+    seats,
+    documents,
+    passengers,
+  ] = await Promise.all([
     getPcPayment(params.id),
     getPublishedProposal(params.id),
     listCaseEvents(params.id),
+    /* NT-06 · o registo de entrega, que a aba Comunicações mostra. */
+    listCaseNotifications(params.id),
+    /* BO-14 · os vendedores que existem no sistema, para o seletor. */
+    listBoSellers(),
+    /* EM-01 · os lugares por passageiro e por voo. */
+    listPassengerSeats(params.id),
+    /* EM-03 · o PDF já existe? Decide entre "gerar" e "reenviar". */
+    listTicketDocuments(params.id),
     admin
       ? admin
           .from("case_passengers")
@@ -64,6 +84,10 @@ export default async function BoCasePage({
       proposal={proposal}
       passengers={passengers}
       events={events}
+      notifications={notifications}
+      sellers={sellers}
+      seats={seats}
+      hasTicketDocument={documents.some((d) => d.passenger_id === null)}
       initialTab={requestedTab}
       viewer={{ label: access.identity.label, email: access.identity.email }}
     />

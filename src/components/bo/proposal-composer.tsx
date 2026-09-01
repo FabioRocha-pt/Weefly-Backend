@@ -73,6 +73,7 @@ import {
   dayOffset,
   blockerText,
   offerBlockers,
+  offerFareTotal,
   offerTotal,
   offerWarnings,
   type RequestedDates,
@@ -94,6 +95,8 @@ import {
   inputClass,
   useAirportNames,
 } from "@/components/bo/composer-bits"
+import { BoAirportField } from "@/components/bo/airport-field"
+import { BoErrorList } from "@/components/bo/error-list"
 import { CARRIERS } from "@/lib/pc/catalog"
 import { useT } from "@/i18n/provider"
 import type { Translator } from "@/i18n/translate"
@@ -367,6 +370,31 @@ function asOffer(state: OfferState, position: number): Offer {
       })
     ),
   }
+}
+
+/**
+ * BO-11 · onde vive cada erro.
+ *
+ * O prefixo do `id` do elemento; o sufixo é o id da oferta, porque o compositor
+ * tem várias abertas ao mesmo tempo e dois campos com o mesmo `id` fazem o
+ * `getElementById` escolher o primeiro — que seria sempre a oferta errada.
+ *
+ * O que não tem campo próprio aponta para a secção que o contém: um itinerário
+ * incompleto não é um campo, são cinco, e mandar para o primeiro deles seria
+ * uma escolha arbitrária que dava a entender que os outros estavam bem.
+ */
+const BLOCKER_TARGET: Record<string, string> = {
+  "blockers.name": "offer-name",
+  "blockers.noOutbound": "offer-itinerary",
+  "blockers.incomplete": "offer-itinerary",
+  "blockers.backwards": "offer-itinerary",
+  "blockers.outOfOrder": "offer-itinerary",
+  "blockers.departureMismatch": "offer-itinerary",
+  "blockers.returnMismatch": "offer-itinerary",
+  "blockers.timesToConfirm": "offer-itinerary",
+  "blockers.zeroPrice": "offer-price-adult",
+  "blockers.adultFare": "offer-price-adult",
+  "blockers.childFare": "offer-price-child",
 }
 
 function emptySegment(direction: OfferDirection): SegmentState {
@@ -770,6 +798,20 @@ function OpenOffer({
     offer.segments.flatMap((seg) => [seg.origin, seg.destination])
   )
 
+  /*
+   * BO-11 · o que falta a esta oferta, com o campo de cada coisa.
+   *
+   * Deriva de `offerBlockers`, a mesma função que trava a publicação e que
+   * corre outra vez no servidor. Aqui não é uma segunda regra: é a mesma lista,
+   * com um endereço colado a cada linha. Actualiza-se enquanto se escreve
+   * porque nasce do estado, não de uma tentativa de gravar.
+   */
+  const problems = offerBlockers(preview, pax, requested)
+  const errors = problems.map((problem) => ({
+    target: `${BLOCKER_TARGET[problem.key] ?? "itinerary"}-${offer.id}`,
+    label: blockerText(problem, t),
+  }))
+
   function addSegment() {
     onPatch({ segments: [...offer.segments, emptySegment(leg)] })
   }
@@ -782,8 +824,10 @@ function OpenOffer({
     <article className="rounded-xl border border-[#46587A] bg-adm-panel shadow-[0_0_0_1px_rgba(70,88,122,.5)]">
       <header className="flex flex-wrap items-center gap-2.5 border-b border-adm-line-soft p-3.5">
         <input
+          id={`offer-name-${offer.id}`}
           value={offer.name}
           disabled={disabled}
+          aria-invalid={!offer.name.trim() || undefined}
           onChange={(e) => onPatch({ name: e.target.value })}
           placeholder={t("admin.composerOfferName")}
           className="min-w-[210px] flex-1 rounded-lg border border-adm-line bg-adm-panel-2 px-2.5 py-1.5 text-sm font-bold text-adm-txt outline-none transition-colors placeholder:font-normal placeholder:text-adm-muted focus:border-[#46587A] disabled:opacity-60"
@@ -829,15 +873,31 @@ function OpenOffer({
       </header>
 
       <fieldset disabled={disabled} className="space-y-5 p-3.5 disabled:opacity-70">
+        {/*
+          BO-11 · a lista, em cima e antes de tudo.
+
+          Não substitui os avisos que já estavam junto aos campos — substitui a
+          descoberta. Um formulário com trinta campos em três colunas não se lê
+          à procura do que falta, e era isso que o painel de publicação obrigava
+          a fazer: dizia "falta preencher" e deixava a busca para quem o lesse.
+        */}
+        {!locked && (
+          <BoErrorList
+            title={t("admin.errorListTitle", { count: errors.length })}
+            errors={errors}
+          />
+        )}
+
         {/* itinerário */}
         <Section
+          id={`offer-itinerary-${offer.id}`}
           title={t("admin.composerItinerary")}
           aside={t("admin.composerLegsSummary", {
             out: t("admin.composerSegments", { count: legs.ida.length }),
             back: t("admin.composerSegments", { count: legs.volta.length }),
           })}
         >
-          <DateChecks offer={preview} pax={pax} requested={requested} t={t} />
+          <DateChecks offer={preview} t={t} />
 
           {/*
             PC-06a · as horas vieram de uma pesquisa e ninguém olhou para elas.
@@ -1007,6 +1067,10 @@ function OpenOffer({
                       verdade agora, não o que era verdade quando a oferta
                       nasceu. Só no primeiro trecho — a origem do segundo é uma
                       escala, e a escala é escolha de quem cota. */}
+                  {/* BO-10 · o mesmo catálogo do formulário do cliente, pela
+                      mesma porta (`/api/airports`). Escrever estreita as
+                      opções, casa por código, cidade e país, e o campo só
+                      aceita uma entrada escolhida. */}
                   <Field
                     label={t("admin.composerOrigin")}
                     span={3}
@@ -1017,15 +1081,12 @@ function OpenOffer({
                       segment.origin === requestedRoute.origin
                     }
                   >
-                    <Input
-                      mono
-                      maxLength={3}
+                    <BoAirportField
                       value={segment.origin}
-                      onChange={(v) =>
-                        onPatchSegment(segment.key, {
-                          origin: v.toUpperCase(),
-                        })
+                      onChange={(iata) =>
+                        onPatchSegment(segment.key, { origin: iata })
                       }
+                      disabled={disabled}
                       placeholder="RAI"
                     />
                   </Field>
@@ -1052,15 +1113,12 @@ function OpenOffer({
                       segment.destination === requestedRoute.destination
                     }
                   >
-                    <Input
-                      mono
-                      maxLength={3}
+                    <BoAirportField
                       value={segment.destination}
-                      onChange={(v) =>
-                        onPatchSegment(segment.key, {
-                          destination: v.toUpperCase(),
-                        })
+                      onChange={(iata) =>
+                        onPatchSegment(segment.key, { destination: iata })
                       }
+                      disabled={disabled}
                       placeholder="SID"
                     />
                   </Field>
@@ -1196,6 +1254,8 @@ function OpenOffer({
         >
           <div className="overflow-hidden rounded-[10px] border border-adm-line bg-adm-panel-2">
             <PriceRow
+              id={`offer-price-adult-${offer.id}`}
+              invalid={parseMoney(offer.price_adult) <= 0 && pax.adults > 0}
               label={t("admin.composerRowAdult")}
               hint={t("admin.composerRowAdultNote")}
               qty={`× ${pax.adults}`}
@@ -1204,6 +1264,8 @@ function OpenOffer({
             />
             {pax.children > 0 && (
               <PriceRow
+                id={`offer-price-child-${offer.id}`}
+                invalid={parseMoney(offer.price_child) <= 0}
                 label={t("admin.composerRowChild")}
                 hint={t("admin.composerRowChildNote")}
                 qty={`× ${pax.children}`}
@@ -1220,19 +1282,23 @@ function OpenOffer({
                 onChange={(v) => onPatch({ price_infant: v })}
               />
             )}
-            <PriceRow
-              label={t("admin.composerRowTaxes")}
-              hint={t("admin.composerRowTaxesNote", {
-                count: pax.adults + pax.children + pax.infants,
-              })}
-              qty="total"
-              value={offer.taxes_total}
-              onChange={(v) => onPatch({ taxes_total: v })}
-            />
+            {/*
+              BO-13 · a linha das taxas de aeroporto saiu daqui.
+
+              "O preço por passageiro é o preço final da companhia, taxas já
+              incluídas." Era o campo que obrigava quem cota a separar duas
+              coisas que a companhia lhe dá juntas — e a separação não servia a
+              ninguém: o cliente somava as duas na cabeça para saber o que ia
+              pagar, e o vendedor tinha uma linha a mais para se enganar.
+
+              A coluna `taxes_total` fica na base e continua a contar para o
+              total das propostas antigas (ver `offerFareTotal`). O que
+              desaparece é o campo.
+            */}
             <PriceRow
               label={t("admin.composerRowService")}
               hint={t("admin.composerRowServiceNote")}
-              qty="total"
+              qty={t("admin.composerPerBooking")}
               value={offer.service_fee}
               onChange={(v) => onPatch({ service_fee: v })}
               tone="fee"
@@ -1390,49 +1456,23 @@ function OpenOffer({
  * no servidor ao publicar (`publishProposal`) — esta é a versão rápida, para
  * quem está a escrever ver o erro no momento em que o comete.
  */
-function DateChecks({
-  offer,
-  pax,
-  requested,
-  t,
-}: {
-  offer: Offer
-  pax: PaxCounts
-  requested: RequestedDates
-  t: Translator
-}) {
-  /* Só os problemas de datas: o nome em falta e o preço a zero têm o seu lugar
-     no painel de publicação, e repeti-los aqui era ruído a cada tecla. */
-  const dateKeys = [
-    "blockers.backwards",
-    "blockers.outOfOrder",
-    "blockers.departureMismatch",
-    "blockers.returnMismatch",
-  ]
-  const problems = offerBlockers(offer, pax, requested).filter((b) =>
-    dateKeys.includes(b.key)
-  )
+function DateChecks({ offer, t }: { offer: Offer; t: Translator }) {
+  /*
+   * BO-11 · os bloqueios saíram daqui.
+   *
+   * Estavam nesta caixa **e** no painel de publicação, e agora estão também na
+   * lista do topo, que é a que leva ao campo. Três sítios a dizer a mesma coisa
+   * é ruído a cada tecla, e o que se perde no ruído é o aviso que não é
+   * bloqueio nenhum — o que fica aqui.
+   */
   const warnings = offerWarnings(offer)
-
-  if (problems.length === 0 && warnings.length === 0) return null
+  if (warnings.length === 0) return null
 
   return (
-    <div className="mb-3 space-y-1.5">
-      {problems.length > 0 && (
-        <div className="flex items-start gap-2 rounded-[9px] bg-adm-ember/[.14] p-2.5 text-xs leading-relaxed text-adm-ember">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>
-            {problems.map((b) => blockerText(b, t)).join(" · ")}
-          </span>
-        </div>
-      )}
-      {warnings.length > 0 && (
-        <div className="rounded-[9px] bg-adm-warn/[.14] p-2.5 text-xs leading-relaxed text-[#F0C983]">
-          {t("blockers.warnings", {
-            items: warnings.map((w) => blockerText(w, t)).join(" · "),
-          })}
-        </div>
-      )}
+    <div className="mb-3 rounded-[9px] bg-adm-warn/[.14] p-2.5 text-xs leading-relaxed text-[#F0C983]">
+      {t("blockers.warnings", {
+        items: warnings.map((w) => blockerText(w, t)).join(" · "),
+      })}
     </div>
   )
 }
@@ -1624,20 +1664,49 @@ function ClientPreview({
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-2.5 border-t border-dashed border-[#DFE5EC] px-3.5 py-3">
-                <div>
-                  <span className="block text-[9px] font-bold uppercase tracking-[.08em] text-[#64748B]">
-                    {t("proposal.totalFor", {
-                      count: pax.adults + pax.children + pax.infants,
-                    })}
-                  </span>
-                  <span className="font-mono text-xl font-semibold leading-tight tracking-tight">
-                    {formatMoney(offerTotal(offer, pax), currency)}
+              {/*
+                BO-13 · as duas linhas que o cliente vê, e o total.
+
+                "Preço 566 € + serviço WeeFly 20 € = 586 €". Estão aqui pela
+                mesma razão por que estão no ecrã dele: para que ninguém tenha
+                de perguntar porque é que o total é 586 e não 566. A
+                pré-visualização não seria pré-visualização nenhuma se mostrasse
+                o total sozinho.
+              */}
+              <div className="border-t border-dashed border-[#DFE5EC] px-3.5 py-3">
+                <div className="mb-2 space-y-1">
+                  <div className="flex items-baseline justify-between text-[11px] text-[#3A4557]">
+                    <span>
+                      {t("proposal.priceLine", {
+                        count: pax.adults + pax.children + pax.infants,
+                      })}
+                    </span>
+                    <span className="font-mono font-semibold">
+                      {formatMoney(offerFareTotal(offer, pax), currency)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between text-[11px] text-[#3A4557]">
+                    <span>{t("proposal.serviceLine")}</span>
+                    <span className="font-mono font-semibold">
+                      {formatMoney(offer.service_fee, currency)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 border-t border-[#DFE5EC] pt-2.5">
+                  <div>
+                    <span className="block text-[9px] font-bold uppercase tracking-[.08em] text-[#64748B]">
+                      {t("proposal.totalFor", {
+                        count: pax.adults + pax.children + pax.infants,
+                      })}
+                    </span>
+                    <span className="font-mono text-xl font-semibold leading-tight tracking-tight">
+                      {formatMoney(offerTotal(offer, pax), currency)}
+                    </span>
+                  </div>
+                  <span className="ml-auto rounded-lg bg-[#EE5128] px-3 py-2.5 text-[11.5px] font-bold text-white">
+                    {t("admin.previewChoose")}
                   </span>
                 </div>
-                <span className="ml-auto rounded-lg bg-[#EE5128] px-3 py-2.5 text-[11.5px] font-bold text-white">
-                  {t("admin.previewChoose")}
-                </span>
               </div>
             </div>
           )}
@@ -1736,6 +1805,8 @@ function PublishPanel({
     )
   )
   const [message, setMessage] = useState(proposal.opening_message ?? "")
+  /* NT-04 · o que mudou, obrigatório de R2 em diante. Ver `publishProposal`. */
+  const [changeNote, setChangeNote] = useState("")
   const [notifyClient, setNotifyClient] = useState(true)
   const [notifyTeam, setNotifyTeam] = useState(true)
   const [warning, setWarning] = useState<string | null>(null)
@@ -1777,6 +1848,7 @@ function PublishPanel({
         openingMessage: message,
         notifyClient,
         notifyTeam,
+        changeNote,
       })
       if (result.error) onError(result.error)
       else {
@@ -1886,6 +1958,31 @@ function PublishPanel({
           ))
         )}
 
+        {/*
+          NT-04 · "uma revisão — R2 em diante — avisa com o que mudou".
+
+          Só aparece a partir da segunda revisão, porque em R1 não há nada com
+          que comparar. É obrigatório e o servidor recusa sem ele: um cliente
+          que recebe a segunda versão de uma proposta e não vê o que mudou tem
+          de comparar dois emails linha a linha, e não vai fazer isso.
+        */}
+        {proposal.revision > 1 && (
+          <div className="mt-3.5">
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[.07em] text-adm-muted">
+              {t("admin.publishChangeNote", { revision: proposal.revision })}
+            </label>
+            <textarea
+              value={changeNote}
+              onChange={(e) => setChangeNote(e.target.value)}
+              placeholder={t("admin.publishChangeNotePlaceholder")}
+              className={cn(inputClass, "min-h-[56px] resize-y leading-relaxed")}
+            />
+            <p className="mt-1 text-[10.5px] text-adm-muted">
+              {t("admin.publishChangeNoteHint")}
+            </p>
+          </div>
+        )}
+
         <div className="mt-3.5">
           <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[.07em] text-adm-muted">
             {t("admin.publishMessage")}
@@ -1948,7 +2045,11 @@ function PublishPanel({
             type="button"
             onClick={publish}
             disabled={
-              publishing || pending || going.length === 0 || blockers.length > 0
+              publishing ||
+              pending ||
+              going.length === 0 ||
+              blockers.length > 0 ||
+              (proposal.revision > 1 && changeNote.trim().length < 8)
             }
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-adm-ember px-4 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-adm-ember-dark disabled:opacity-50"
           >

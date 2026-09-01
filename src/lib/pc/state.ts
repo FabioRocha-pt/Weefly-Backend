@@ -12,6 +12,8 @@
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import { markLinkOpened } from "@/lib/booking-cases"
+import { listPassengerSeats } from "@/lib/issuance"
+import { listTicketDocuments } from "@/lib/tickets/store"
 import { getPublishedProposal } from "@/lib/proposals"
 import {
   offerTotal,
@@ -103,6 +105,17 @@ export interface PcContactView {
 export interface PcIssuedView {
   pnr: string | null
   issuedAt: string | null
+  /**
+   * FE-07 · já existe PDF gerado para descarregar?
+   *
+   * O ecrã do bilhete tem de saber a diferença entre "emitido" e "emitido e com
+   * documento". São dois instantes distintos — a geração pode falhar e o
+   * back-office tem um botão para a repetir — e um botão de download que
+   * responde 404 é pior do que uma frase a dizer que o PDF está a caminho.
+   */
+  documentReady: boolean
+  /** Os passageiros que têm PDF individual, além do combinado. */
+  documentsByPassenger: string[]
 }
 
 export interface PcLinkRow {
@@ -145,6 +158,8 @@ export interface PcState {
   selectedAt: string | null
   proposalPublishedAt: string | null
   passengers: CasePassenger[]
+  /** FE-07 · o lugar de cada passageiro em cada voo, para o bilhete no ecrã. */
+  seats: { passenger_id: string; segment_id: string; seat: string | null }[]
   payment: PcPayment | null
   proofs: PaymentProof[]
   expiry: { expired: boolean; cause: "client_never_paid" | "review_overdue" | null }
@@ -325,6 +340,18 @@ export async function loadPcState(token: string): Promise<PcLookup> {
 
   const proofs = payment ? await listProofs(payment.id) : []
 
+  /*
+   * FE-07 · os lugares e os documentos, só depois de emitido.
+   *
+   * Duas leituras que não fazem sentido nenhum antes disso — não há lugares
+   * atribuídos nem PDF nenhum — e que em todos os outros ecrãs seriam duas idas
+   * à base de dados por cada abertura do link para não devolver nada.
+   */
+  const issuedNow = stage === "emitido" || Boolean(row.pnr)
+  const [seatRows, documents] = issuedNow
+    ? await Promise.all([listPassengerSeats(caseId), listTicketDocuments(caseId)])
+    : [[], []]
+
   const state: PcState = {
     token,
     caseId,
@@ -342,12 +369,17 @@ export async function loadPcState(token: string): Promise<PcLookup> {
     selectedAt,
     proposalPublishedAt: published?.proposal.published_at ?? null,
     passengers,
+    seats: seatRows,
     payment,
     proofs,
     expiry,
     issued: {
       pnr: (row.pnr as string | null) ?? null,
       issuedAt: (row.issued_at as string | null) ?? null,
+      documentReady: documents.some((d) => d.passenger_id === null),
+      documentsByPassenger: documents
+        .map((d) => d.passenger_id)
+        .filter((id): id is string => Boolean(id)),
     },
     cancelled,
   }

@@ -3,7 +3,6 @@
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
-import { Resend } from "resend"
 
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
@@ -28,6 +27,10 @@ import {
   buildProposalPublishedEmail,
   buildProposalTeamEmail,
 } from "@/lib/emails/proposal-published"
+import {
+  sendProposalPublishedEmail,
+  sendProposalTeamEmail,
+} from "@/lib/emails/send"
 import type { CaseStage } from "@/lib/case-status"
 import { getI18n, getTranslator, localeForClient } from "@/i18n/server"
 
@@ -288,40 +291,90 @@ export async function addOffer(caseId: string): Promise<ProposalActionState> {
   }
 
   /*
-   * FB-01 · o trecho nasce com o que o cliente já disse.
+   * FB-01 e BO-12 · o trecho nasce com o que o cliente já disse.
    *
    * Havia aqui um trecho de ida em branco, porque uma oferta sem nenhum é um
    * ecrã vazio com um botão — e toda a gente ia carregar nesse botão a seguir.
-   * Agora nasce com a rota e a cabina do pedido: origem, destino e classe são
-   * três campos que o cliente já preencheu, e reescrevê-los à mão era a parte
-   * da cotação em que se perdia tempo a copiar o que estava ao lado.
+   * Agora nasce com a rota, a cabina **e as datas** do pedido.
    *
-   * As horas ficam vazias de propósito. A data que o cliente pediu não é a hora
-   * de um voo, e pré-preencher "06 set, 00:00" seria dar por respondido o campo
-   * que mais importa acertar.
+   * As datas são a mudança do BO-12: "a ida e a volta vêm pré-preenchidas do
+   * pedido, marcadas como vindas do cliente, e editáveis". Chegam como
+   * `YYYY-MM-DDT00:00`, porque o campo é um `datetime-local` e não aceita uma
+   * data sem hora.
+   *
+   * A meia-noite não é uma hora de voo, e o argumento contra pré-preencher isto
+   * era exactamente esse: dar por respondido o campo que mais importa acertar. O
+   * que o desarma é o `times_confirmed = false` — a oferta nasce marcada como
+   * "horas por confirmar", os campos aparecem com a etiqueta *do pedido* e o
+   * painel de publicação recusa publicar enquanto ninguém carregar em
+   * "confirmo". A data poupa-se; a hora continua a ter de ser escrita por uma
+   * pessoa.
    */
   const { data: seed } = await supabase
     .from("booking_cases")
-    .select("trip_request:trip_requests (origin, destination, cabin_class)")
+    .select(
+      "trip_request:trip_requests (origin, destination, cabin_class, trip_type, depart_date, return_date)"
+    )
     .eq("id", caseId)
     .maybeSingle()
 
   const embedded = (seed as Record<string, unknown> | null)?.trip_request
   const trip = (Array.isArray(embedded) ? embedded[0] : embedded) as
-    | { origin: string | null; destination: string | null; cabin_class: string | null }
+    | {
+        origin: string | null
+        destination: string | null
+        cabin_class: string | null
+        trip_type: string | null
+        depart_date: string | null
+        return_date: string | null
+      }
     | null
     | undefined
 
-  await supabase.from("case_offer_segments").insert({
-    offer_id: offer.id,
-    direction: "ida",
-    position: 0,
-    origin: code(trip?.origin, 3),
-    destination: code(trip?.destination, 3),
-    cabin: CABINS.includes(trip?.cabin_class as Cabin)
-      ? trip?.cabin_class
-      : "economy",
-  })
+  const cabin = CABINS.includes(trip?.cabin_class as Cabin)
+    ? (trip?.cabin_class as Cabin)
+    : "economy"
+
+  /** "2026-09-14" → "2026-09-14T00:00", que é o que a coluna sem fuso guarda. */
+  const atMidnight = (date: string | null | undefined): string | null =>
+    date ? `${date.slice(0, 10)}T00:00` : null
+
+  const segments: Record<string, unknown>[] = [
+    {
+      offer_id: offer.id,
+      direction: "ida",
+      position: 0,
+      origin: code(trip?.origin, 3),
+      destination: code(trip?.destination, 3),
+      cabin,
+      depart_at: atMidnight(trip?.depart_date),
+    },
+  ]
+
+  /* A volta só quando o cliente pediu uma. Um trecho de volta numa viagem só de
+     ida seria um campo em branco a pedir para ser preenchido por engano. */
+  if (trip?.return_date) {
+    segments.push({
+      offer_id: offer.id,
+      direction: "volta",
+      position: 0,
+      origin: code(trip?.destination, 3),
+      destination: code(trip?.origin, 3),
+      cabin,
+      depart_at: atMidnight(trip.return_date),
+    })
+  }
+
+  await supabase.from("case_offer_segments").insert(segments)
+
+  /* As datas vieram do pedido e as horas são meia-noite: ninguém olhou para
+     elas ainda. É isto que acende o aviso do compositor e trava a publicação. */
+  if (trip?.depart_date) {
+    await supabase
+      .from("case_offers")
+      .update({ times_confirmed: false })
+      .eq("id", offer.id)
+  }
 
   touch(caseId)
   return OK
@@ -647,15 +700,9 @@ function baseUrl(): string {
   return host.replace(/\/$/, "")
 }
 
-const TEAM_FALLBACK = ["info@weefly.africa", "info@weefly.cv"]
-
-function teamRecipients(): string[] {
-  const configured = (process.env.CONCIERGE_TEAM_EMAIL ?? "")
-    .split(",")
-    .map((a) => a.trim())
-    .filter(Boolean)
-  return configured.length > 0 ? configured : TEAM_FALLBACK
-}
+/* Os endereços da equipa vivem agora em `lib/notifications.ts`, que é por onde
+   todos os envios passam. Havia duas cópias da mesma lista, e duas listas iguais
+   são duas listas que divergem. */
 
 /**
  * Publica a proposta: é este gesto, e só este, que faz o link 2 existir.
@@ -671,6 +718,15 @@ export async function publishProposal(
     openingMessage?: string
     notifyClient?: boolean
     notifyTeam?: boolean
+    /**
+     * NT-04 · o que mudou desde a revisão anterior.
+     *
+     * "Uma revisão — R2 em diante — avisa com o que mudou." A frase é escrita
+     * por quem fez a mudança, e é obrigatória a partir de R2: um cliente que
+     * recebe a segunda versão de uma proposta e não vê o que mudou tem de
+     * comparar dois emails linha a linha.
+     */
+    changeNote?: string
   }
 ): Promise<ProposalActionState & { warning?: string }> {
   const { t } = getI18n()
@@ -723,6 +779,12 @@ export async function publishProposal(
   })
   if (faults.length > 0) {
     return { error: t("blockers.missing", { faults: faults.join(" · ") }) }
+  }
+
+  /* NT-04 · a partir da segunda revisão, o que mudou é obrigatório. */
+  const changeNote = text(input.changeNote, 500)
+  if (view.proposal.revision > 1 && !changeNote) {
+    return { error: t("errors.revisionNeedsChangeNote") }
   }
 
   await Promise.all(
@@ -785,6 +847,7 @@ export async function publishProposal(
     notifyClient: input.notifyClient !== false,
     notifyTeam: input.notifyTeam !== false,
     agentName: user.email ?? null,
+    changeNote,
   })
 
   touch(caseId)
@@ -792,11 +855,16 @@ export async function publishProposal(
 }
 
 /**
- * Envio best-effort.
+ * NT-03 · o aviso da publicação, com o link 2.
  *
  * A publicação já está gravada quando isto corre, e assim tem de ser: se o
  * Resend estiver em baixo, o vendedor copia o link e manda-o pelo WhatsApp. O
  * que não pode acontecer é a proposta ficar por publicar porque um email falhou.
+ *
+ * O que mudou no Sprint 2 é o caminho: nada é entregue ao Resend a partir daqui.
+ * O HTML continua a ser construído em `emails/proposal-published.ts` e o envio
+ * passa por `notify()`, que regista, repete, marca o caso quando desiste e
+ * recusa o segundo aviso da mesma revisão (NT-04, NT-06).
  */
 async function notifyPublication(input: {
   bookingCase: BookingCaseRow
@@ -808,6 +876,8 @@ async function notifyPublication(input: {
   notifyClient: boolean
   notifyTeam: boolean
   agentName: string | null
+  /** NT-04 · o que mudou desde a revisão anterior, quando há uma. */
+  changeNote: string | null
 }): Promise<string | undefined> {
   const { t } = getI18n()
   const { bookingCase } = input
@@ -817,11 +887,8 @@ async function notifyPublication(input: {
 
   /*
    * Um endereço, sempre o mesmo: /pc/{token}, o link que o cliente já tem desde
-   * que fez o pedido. Antes havia dois — a conversa em /c/{token} e o comparador
-   * em /p/{token}/proposta — e o email escolhia entre eles conforme o canal de
-   * entrada. Os dois percursos deixaram de existir, e a escolha também: o ecrã
-   * do /pc é derivado do estado do caso, por isso o mesmo link mostra a proposta
-   * a quem a tem para ver e o ecrã de espera a quem ainda não.
+   * que fez o pedido. É o link 2 do backlog — opaco, sem nome nem referência no
+   * caminho, e o mesmo que dá acesso à proposta, aos passaportes e ao bilhete.
    */
   const link = `${baseUrl()}/pc/${bookingCase.token}`
 
@@ -844,16 +911,11 @@ async function notifyPublication(input: {
     openingMessage: input.openingMessage,
     link,
     revision: input.revision,
+    changeNote: input.changeNote,
   }
 
-  const from =
-    process.env.CONCIERGE_FROM_EMAIL ??
-    "WeeFly Concierge <onboarding@resend.dev>"
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  const team = teamRecipients()
   const clientEmail = trip?.lead?.email ?? null
-
-  const sends: Promise<unknown>[] = []
+  const failures: string[] = []
 
   if (input.notifyClient && clientEmail) {
     /*
@@ -864,16 +926,17 @@ async function notifyPublication(input: {
      * ficou guardada no lead quando ele nos escreveu — ver a migração 0008.
      */
     const mail = buildProposalPublishedEmail(payload, clientT, clientLocale)
-    sends.push(
-      resend.emails.send({
-        from,
-        to: clientEmail,
-        subject: mail.subject,
-        html: mail.html,
-        text: mail.text,
-        replyTo: team[0],
-      })
-    )
+    const sent = await sendProposalPublishedEmail({
+      caseId: bookingCase.id,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      revision: input.revision,
+      changeNote: input.changeNote,
+    })
+    /* Um duplicado não é uma falha: quer dizer que o cliente já foi avisado
+       desta revisão, que é exactamente o que se queria. */
+    if (!sent.ok && sent.status !== "duplicate") failures.push(sent.reason)
   }
 
   if (input.notifyTeam) {
@@ -883,27 +946,19 @@ async function notifyPublication(input: {
       agentName: input.agentName,
       costs: input.costs,
     })
-    sends.push(
-      resend.emails.send({
-        from,
-        to: team,
-        subject: mail.subject,
-        html: mail.html,
-        text: mail.text,
-        ...(clientEmail ? { replyTo: clientEmail } : {}),
-      })
-    )
+    const sent = await sendProposalTeamEmail({
+      caseId: bookingCase.id,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      revision: input.revision,
+      replyTo: clientEmail,
+    })
+    if (!sent.ok && sent.status !== "duplicate") failures.push(sent.reason)
   }
 
-  const results = await Promise.allSettled(sends)
-  const failed = results.filter(
-    (r) =>
-      r.status === "rejected" ||
-      (r.value as { error?: unknown } | undefined)?.error
-  )
-
-  if (failed.length > 0) {
-    console.error("[proposals] envio da proposta falhou:", failed)
+  if (failures.length > 0) {
+    console.error("[proposals] envio da proposta falhou:", failures)
     return t("notices.publishedEmailFailed")
   }
 

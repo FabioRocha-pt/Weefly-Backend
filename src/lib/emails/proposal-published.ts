@@ -55,6 +55,14 @@ export interface ProposalEmailData {
   /** URL completo do link 2. */
   link: string
   revision: number
+  /**
+   * NT-04 · o que mudou nesta revisão, escrito por quem a fez.
+   *
+   * Nulo em R1, onde não há nada com que comparar. A partir de R2 é obrigatório
+   * — ver `publishProposal` — porque um cliente que recebe a segunda versão de
+   * uma proposta e não vê o que mudou tem de comparar dois emails linha a linha.
+   */
+  changeNote?: string | null
 }
 
 function paxLine(pax: PaxCounts, t: Translator): string {
@@ -185,6 +193,14 @@ export function buildProposalPublishedEmail(
               ${t("email.proposalHello", { name: `<strong style="color:${INK};">${name}</strong>`, intro: escapeHtml(intro) })}
             </p>
             ${
+              /* NT-04 · o que mudou vem antes da mensagem de abertura e antes
+                 dos cartões: é a primeira pergunta de quem já viu a versão
+                 anterior, e enterrá-la debaixo dos preços era escondê-la. */
+              data.revision > 1 && data.changeNote
+                ? `<p style="margin:0 0 16px;background:#FFF6ED;border-left:3px solid ${EMBER_RED};border-radius:0 10px 10px 0;padding:14px 16px;font-size:14px;line-height:1.6;color:${INK};">${escapeHtml(t("email.proposalChanges", { changes: data.changeNote }))}</p>`
+                : ""
+            }
+            ${
               data.openingMessage
                 ? `<p style="margin:0 0 20px;background:${SURFACE_ALT};border-left:3px solid ${EMBER_RED};border-radius:0 10px 10px 0;padding:14px 16px;font-size:14px;line-height:1.6;color:${INK};">${escapeHtml(data.openingMessage)}</p>`
                 : ""
@@ -230,6 +246,9 @@ export function buildProposalPublishedEmail(
     t("email.proposalTextHello", { name: data.clientName }),
     "",
     intro,
+    data.revision > 1 && data.changeNote
+      ? `\n${t("email.proposalChanges", { changes: data.changeNote })}`
+      : "",
     data.openingMessage ? `\n${data.openingMessage}` : "",
     "",
     ...data.offers.flatMap((offer) => {

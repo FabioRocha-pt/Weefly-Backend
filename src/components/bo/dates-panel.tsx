@@ -1,19 +1,24 @@
 "use client"
 
 /**
- * BO-04 · a rota e as datas do pedido.
+ * BO-04r · a rota e as datas do pedido.
  *
- * Duas regras, e o desenho deste painel é as duas:
+ * Substitui o comportamento do Sprint 1. Duas regras, e o desenho deste painel
+ * é as duas:
  *
  *   · **a origem e o destino não se editam.** Uma rota diferente é um pedido
  *     diferente, e não existe aqui nem campo nem botão para os mudar. Aparecem
  *     como o cliente os escreveu, e é tudo;
- *   · **as datas mudam por uma ação com nome.** Não por um campo que se escreve
- *     em silêncio: "Propor novas datas" pede um motivo, avisa o cliente, deixa o
- *     pedido original visível e assina quem o fez. Mudar as datas de alguém sem
- *     conversa registada é exatamente o que esta regra existe para impedir — e é
- *     também por isso que este item depende do chat interno (NEW-01), que ainda
- *     não existe: até lá, o motivo escrito aqui é o registo que há.
+ *   · **as datas chegam sugeridas, não trancadas.** Vinham em campos
+ *     desativados atrás de um botão chamado "Propor novas datas", e o teste ao
+ *     Sprint 1 mostrou o que isso custa: para corrigir um dia, era preciso
+ *     descobrir que o botão existia. Agora escrevem-se directamente — e no
+ *     momento em que uma delas muda, aparece o campo do motivo e o botão de
+ *     gravar fica bloqueado até ele estar escrito.
+ *
+ * O motivo não é burocracia: é a frase que vai no email ao cliente, e é o único
+ * registo de que a mudança foi conversada. As datas de alguém não se mudam em
+ * silêncio.
  */
 
 import { useState, useTransition } from "react"
@@ -26,6 +31,11 @@ const dmy = (iso: string | null | undefined): string => {
   const [y, m, d] = iso.slice(0, 10).split("-")
   return y && m && d ? `${d}/${m}/${y}` : iso
 }
+
+const day = (iso: string | null | undefined): string => iso?.slice(0, 10) ?? ""
+
+/** O comprimento mínimo do motivo. O mesmo do servidor — ver `datesSchema`. */
+const REASON_MIN = 12
 
 export function BoDatesPanel({
   caseId,
@@ -59,14 +69,32 @@ export function BoDatesPanel({
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [open, setOpen] = useState(false)
-  const [depart, setDepart] = useState(departDate?.slice(0, 10) ?? "")
-  const [ret, setRet] = useState(returnDate?.slice(0, 10) ?? "")
+  const [depart, setDepart] = useState(day(departDate))
+  const [ret, setRet] = useState(day(returnDate))
   const [reason, setReason] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   const changed = Boolean(original.changedAt && original.departDate)
+
+  /*
+   * O que faz aparecer o motivo: uma data diferente da que está gravada.
+   *
+   * Comparado contra o que veio do servidor e não contra o valor inicial do
+   * estado, para que voltar atrás — corrigir o engano de digitação — feche o
+   * campo outra vez em vez de o deixar aberto a pedir uma justificação para uma
+   * mudança que já não existe.
+   */
+  const dirty = depart !== day(departDate) || (roundTrip && ret !== day(returnDate))
+  const reasonMissing = dirty && reason.trim().length < REASON_MIN
+  const invalidRange = Boolean(roundTrip && ret && depart && ret < depart)
+
+  function reset() {
+    setDepart(day(departDate))
+    setRet(day(returnDate))
+    setReason("")
+    setError(null)
+  }
 
   function submit() {
     setError(null)
@@ -81,7 +109,6 @@ export function BoDatesPanel({
       if (result.ok) {
         setNotice(result.notice ?? "Datas atualizadas.")
         setReason("")
-        setOpen(false)
         router.refresh()
       } else {
         setError(result.error)
@@ -94,7 +121,7 @@ export function BoDatesPanel({
       <div className="panel-h">
         <h3>Rota e datas</h3>
         <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-          vem do pedido do cliente
+          as datas vêm do pedido e são editáveis
         </span>
       </div>
       <div className="panel-b">
@@ -108,12 +135,37 @@ export function BoDatesPanel({
             <input className="mono" value={destination} readOnly disabled />
           </div>
           <div className="f s3">
-            <label>Ida</label>
-            <input className="mono" value={dmy(departDate)} readOnly disabled />
+            <label>
+              Ida{" "}
+              {depart !== day(departDate) && (
+                <span style={{ color: "var(--warn)", fontWeight: 700 }}>· alterada</span>
+              )}
+            </label>
+            <input
+              type="date"
+              value={depart}
+              disabled={locked || pending}
+              onChange={(event) => setDepart(event.target.value)}
+            />
+            <span className="hint">pedido: {dmy(departDate)}</span>
           </div>
           <div className="f s3">
-            <label>Volta</label>
-            <input className="mono" value={dmy(returnDate)} readOnly disabled />
+            <label>
+              Volta{" "}
+              {roundTrip && ret !== day(returnDate) && (
+                <span style={{ color: "var(--warn)", fontWeight: 700 }}>· alterada</span>
+              )}
+            </label>
+            <input
+              type="date"
+              value={ret}
+              min={depart || undefined}
+              disabled={locked || pending || !roundTrip}
+              onChange={(event) => setRet(event.target.value)}
+            />
+            <span className="hint">
+              {roundTrip ? `pedido: ${dmy(returnDate)}` : "viagem só de ida"}
+            </span>
           </div>
         </div>
 
@@ -151,45 +203,29 @@ export function BoDatesPanel({
           </div>
         )}
 
-        {locked ? (
+        {locked && (
           <p className="note bad" style={{ marginTop: 11 }}>
             {lockedReason}
           </p>
-        ) : !open ? (
-          <div style={{ marginTop: 12 }}>
-            <button className="btn btn-sm" type="button" onClick={() => setOpen(true)}>
-              Propor novas datas
-            </button>
-            <span
-              style={{ marginLeft: 9, fontSize: 11, color: "var(--muted)" }}
-            >
-              só quando as datas pedidas não têm lugar
-            </span>
-          </div>
-        ) : (
-          <div style={{ marginTop: 13, borderTop: "1px solid var(--line-soft)", paddingTop: 13 }}>
+        )}
+
+        {/*
+          O motivo aparece porque uma data mudou, e desaparece se ela voltar ao
+          que era. É esta a diferença entre o campo obrigatório e um campo que
+          está sempre lá a ser ignorado: ele só existe quando há de facto uma
+          decisão para justificar.
+        */}
+        {!locked && dirty && (
+          <div
+            style={{
+              marginTop: 13,
+              borderTop: "1px solid var(--line-soft)",
+              paddingTop: 13,
+            }}
+          >
             <div className="fgrid">
-              <div className="f s4">
-                <label>Nova ida</label>
-                <input
-                  type="date"
-                  value={depart}
-                  onChange={(event) => setDepart(event.target.value)}
-                />
-              </div>
-              {roundTrip && (
-                <div className="f s4">
-                  <label>Nova volta</label>
-                  <input
-                    type="date"
-                    min={depart || undefined}
-                    value={ret}
-                    onChange={(event) => setRet(event.target.value)}
-                  />
-                </div>
-              )}
               <div className="f s12">
-                <label>Motivo · obrigatório</label>
+                <label>Motivo · obrigatório para gravar</label>
                 <textarea
                   placeholder="O que aconteceu, na frase que o cliente vai ler. Ex.: não há lugares em classe económica no dia 14; a primeira data com lugar é 16."
                   value={reason}
@@ -202,6 +238,12 @@ export function BoDatesPanel({
               </div>
             </div>
 
+            {invalidRange && (
+              <div className="note bad" style={{ marginTop: 10 }}>
+                A volta não pode ser antes da ida.
+              </div>
+            )}
+
             {error && (
               <div className="note bad" style={{ marginTop: 10 }}>
                 {error}
@@ -212,24 +254,30 @@ export function BoDatesPanel({
               <button
                 className="btn btn-sm btn-primary"
                 type="button"
-                disabled={pending || !depart || reason.trim().length < 12}
+                disabled={pending || !depart || reasonMissing || invalidRange}
                 onClick={submit}
               >
-                {pending ? "A gravar…" : "Propor e avisar o cliente"}
+                {pending ? "A gravar…" : "Gravar datas e avisar o cliente"}
               </button>
               <button
                 className="btn btn-sm"
                 type="button"
                 disabled={pending}
-                onClick={() => {
-                  setOpen(false)
-                  setError(null)
-                  setDepart(departDate?.slice(0, 10) ?? "")
-                  setRet(returnDate?.slice(0, 10) ?? "")
-                }}
+                onClick={reset}
               >
-                Cancelar
+                Repor as datas do pedido
               </button>
+              {reasonMissing && (
+                <span
+                  style={{
+                    alignSelf: "center",
+                    fontSize: 11,
+                    color: "var(--warn)",
+                  }}
+                >
+                  Escreva o motivo para poder gravar.
+                </span>
+              )}
             </div>
           </div>
         )}

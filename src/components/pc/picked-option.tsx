@@ -52,8 +52,11 @@ export function PickedOption({
     priceNature(offer, state.proposalPublishedAt) === "guaranteed"
   const heldUntil = fareHeldUntil(offer)
   const total = state.totals[offer.id] ?? payment?.amount ?? 0
-  const taxes = offer.taxes_total
-  const fare = Math.max(0, total - taxes)
+  /* BO-13 · as mesmas duas linhas do cartão da opção: preço e serviço WeeFly.
+     O que aqui aparecia era "X + Y in taxes", e as taxas deixaram de ser uma
+     linha — estão dentro do preço da companhia. */
+  const service = offer.service_fee
+  const fare = Math.max(0, total - service)
 
   return (
     <>
@@ -83,7 +86,7 @@ export function PickedOption({
           <div className="amt">{money(total, state.quoteCurrency)}</div>
           <div className="mt">
             {money(fare, state.quoteCurrency)} +{" "}
-            {money(taxes, state.quoteCurrency)} in taxes
+            {money(service, state.quoteCurrency)} WeeFly service
           </div>
         </div>
       </div>

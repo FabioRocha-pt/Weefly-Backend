@@ -104,6 +104,15 @@ const requestSchema = z
        um pedido chega a esta função por fetch tão facilmente como por clique. */
     phone: z.string().trim().min(4, "Telefone"),
     email: z.string().trim().email(),
+    /*
+     * FE-05 · o campo livre do ecrã de revisão.
+     *
+     * "Não chegar de noite", "viajo com a minha mãe em cadeira de rodas", "tenho
+     * de estar em Lisboa antes das 14h". Nenhum campo estruturado apanha isto, e
+     * é isto que faz a cotação certa à primeira. Mil caracteres é um parágrafo
+     * escrito com vontade; acima disso é conversa, e conversa tem o WhatsApp.
+     */
+    specialRequests: z.string().trim().max(1000).optional(),
     consent: z.literal(true),
     locale: z.enum(["pt", "en", "fr"]).default("en"),
     currency: z.string().refine((v) => CURRENCIES.includes(v), "Moeda"),
@@ -259,6 +268,7 @@ export async function submitPcRequest(
     country: v.country,
     phone: v.phone,
     email: v.email,
+    specialRequests: v.specialRequests?.trim() || null,
     consent: true,
     locale: v.locale,
     currency: v.currency,
@@ -275,6 +285,15 @@ export async function submitPcRequest(
     }
   }
 
+  /*
+   * NT-01 e NT-02, por esta ordem e os dois independentes.
+   *
+   * O do cliente primeiro porque é o que ele está à espera de ver na caixa de
+   * correio enquanto ainda tem o ecrã aberto. O da equipa a seguir. Nenhum
+   * espera pelo outro nem o desfaz: são duas linhas em `case_notifications`, e
+   * quem falhar falha sozinho.
+   */
+  await notifyRequestReceived(created.caseId)
   await notifyTeamNewRequest(created.caseId)
 
   revalidatePath("/admin/price-checker")
@@ -336,6 +355,10 @@ export async function choosePcOffer(
     actorKind: "client",
     payload: { offerId, amount },
   })
+
+  const offerName = offer.name || carrierName(offer.segments[0]?.carrier_code)
+  await notifyClientState(state.caseId, "offer_selected", offerName)
+  await notifyAgent(state.caseId, "offer_selected", offerName)
 
   revalidatePath(`/pc/${token}`)
   revalidatePath("/admin/price-checker")
@@ -500,6 +523,23 @@ export async function savePcPassengers(
     }
   }
 
+  /*
+   * NT-04 · "instruções de pagamento enviadas" é aqui, e só aqui.
+   *
+   * É este o instante em que o pagamento passa a ser uma coisa que o cliente
+   * pode fazer: a opção está escolhida, os passaportes estão completos e o
+   * valor a cobrar acabou de nascer. Mandá-lo mais cedo era mandar alguém pagar
+   * num ecrã que ainda lhe pedia passaportes.
+   */
+  await notifyClientState(state.caseId, "payment_instructions")
+  await notifyAgent(
+    state.caseId,
+    "passengers_submitted",
+    `${parsed.data.length} passageiro(s) · ${parsed.data
+      .map((p) => `${p.surname}/${p.given}`.toUpperCase())
+      .join(", ")}`
+  )
+
   revalidatePath(`/pc/${token}`)
   revalidatePath(`/admin/price-checker/${state.caseId}`)
 
@@ -598,6 +638,11 @@ export async function uploadPcProof(
   }
 
   await notifyTeam(state.caseId, { proof: true })
+  await notifyAgent(
+    state.caseId,
+    "proof_uploaded",
+    `${file.name} · a validar dentro de ${PROOF_REVIEW_HOURS}h`
+  )
 
   revalidatePath(`/pc/${token}`)
   revalidatePath("/admin/price-checker")
@@ -700,6 +745,12 @@ export async function cancelPcRequest(
     actorKind: "client",
   })
 
+  await notifyAgent(
+    state.caseId,
+    "request_cancelled",
+    reason.trim() || "Sem motivo indicado"
+  )
+
   revalidatePath(`/pc/${token}`)
   revalidatePath("/admin/price-checker")
 
@@ -756,9 +807,57 @@ async function notifyTeam(caseId: string, options: { proof?: boolean } = {}): Pr
  */
 async function notifyTeamNewRequest(caseId: string): Promise<void> {
   try {
-    const { sendPcRequestReceivedEmail } = await import("@/lib/emails/send")
-    await sendPcRequestReceivedEmail(caseId)
+    const { sendNewRequestAlert } = await import("@/lib/emails/send")
+    await sendNewRequestAlert(caseId)
   } catch (err) {
     console.error("[pc] aviso de pedido novo falhou:", err)
+  }
+}
+
+/** NT-01 · a confirmação a quem submeteu, com referência e prazo de resposta. */
+async function notifyRequestReceived(caseId: string): Promise<void> {
+  try {
+    const { sendRequestReceivedEmail } = await import("@/lib/emails/send")
+    await sendRequestReceivedEmail(caseId)
+  } catch (err) {
+    console.error("[pc] confirmação ao cliente falhou:", err)
+  }
+}
+
+/**
+ * NT-05 · o agente dono do caso, avisado do que o cliente acabou de fazer.
+ *
+ * Best-effort como todos os avisos, e por uma razão que aqui é mais forte que
+ * nas outras: o que o cliente fez já está gravado, e uma falha no aviso não
+ * pode devolver-lhe um erro sobre uma coisa que correu bem.
+ */
+async function notifyAgent(
+  caseId: string,
+  action: "offer_selected" | "passengers_submitted" | "proof_uploaded" | "request_cancelled",
+  detail?: string
+): Promise<void> {
+  try {
+    const { notifyAgentOfClientAction } = await import("@/lib/emails/send")
+    await notifyAgentOfClientAction({ caseId, action, detail })
+  } catch (err) {
+    console.error("[pc] aviso ao agente falhou:", err)
+  }
+}
+
+/** NT-04 · o cliente, a cada mudança de estado que ele provocou. */
+async function notifyClientState(
+  caseId: string,
+  event: "offer_selected" | "payment_instructions",
+  offerName?: string
+): Promise<void> {
+  try {
+    const mails = await import("@/lib/emails/send")
+    if (event === "offer_selected") {
+      await mails.sendOfferChosenEmail(caseId, offerName ?? "")
+    } else {
+      await mails.sendPaymentInstructionsEmail(caseId)
+    }
+  } catch (err) {
+    console.error("[pc] aviso ao cliente falhou:", err)
   }
 }

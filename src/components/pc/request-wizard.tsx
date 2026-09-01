@@ -42,7 +42,14 @@ import {
   searchCountries,
   toE164,
 } from "@/lib/countries"
-import { CABIN_LABEL, daysBetween, fmtDate, paxFull, todayISO } from "@/lib/pc/format"
+import {
+  CABIN_LABEL,
+  TRIP_LABEL,
+  daysBetween,
+  fmtDate,
+  paxFull,
+  todayISO,
+} from "@/lib/pc/format"
 import {
   IcBag,
   IcChevron,
@@ -100,7 +107,8 @@ export function RequestWizard({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
-  const [step, setStep] = useState<1 | 2>(1)
+  /* FE-05 · três passos: viagem, contacto e a revisão antes de submeter. */
+  const [step, setStep] = useState<1 | 2 | 3>(1)
 
   // ── P1 ────────────────────────────────────────────────────────────────────
   const [trip, setTrip] = useState<TripKind>("round")
@@ -133,6 +141,16 @@ export function RequestWizard({
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
   const [consent, setConsent] = useState(false)
+
+  /*
+   * FE-05 · o campo dos pedidos especiais.
+   *
+   * "Não chegar de noite", "viajo com a minha mãe que anda de cadeira de
+   * rodas", "tenho de estar em Lisboa antes das 14h". Nenhum formulário
+   * estruturado apanha isto, e é isto que faz a cotação certa à primeira — daí
+   * ser texto livre e não uma lista de caixas.
+   */
+  const [special, setSpecial] = useState("")
 
   // ── preferências do link ──────────────────────────────────────────────────
   const [lang, setLang] = useState<PcLang>(initialLang)
@@ -376,8 +394,15 @@ export function RequestWizard({
     window.scrollTo(0, 0)
   }
 
-  // ── P2 → submeter ─────────────────────────────────────────────────────────
-  function submit() {
+  /**
+   * FE-05 · P2 → revisão.
+   *
+   * O que antes submetia passa a levar ao resumo. A validação é a mesma e corre
+   * aqui, no fim do passo do contacto: chegar ao ecrã de revisão com um email
+   * inválido seria pedir a alguém que confirmasse uma coisa que não se pode
+   * enviar.
+   */
+  function review() {
     const nextBad: Record<string, boolean> = {}
     const nextErr: Record<string, string> = {}
     const cleanName = name.trim().replace(/\s+/g, " ")
@@ -399,6 +424,22 @@ export function RequestWizard({
         ?.scrollIntoView({ block: "center", behavior: "smooth" })
       return
     }
+
+    setServerError(null)
+    setStep(3)
+    window.scrollTo(0, 0)
+  }
+
+  /**
+   * FE-05 · a submissão, depois da confirmação explícita.
+   *
+   * "O pedido só é criado depois da confirmação explícita." É por isso que esta
+   * função não valida nada: quem chega aqui já passou pelo `review`, e o que
+   * falta é o gesto — não outra verificação.
+   */
+  function submit() {
+    const cleanName = name.trim().replace(/\s+/g, " ")
+    const e164 = toE164(dialCode, phone)
 
     setServerError(null)
 
@@ -428,6 +469,9 @@ export function RequestWizard({
         country,
         phone: e164!,
         email: email.trim(),
+        /* FE-05 · vazio vira ausente: a maioria não escreve nada, e uma string
+           vazia guardada é um campo que parece respondido. */
+        specialRequests: special.trim() || undefined,
         consent: true,
         locale: lang.toLowerCase() as "pt" | "en" | "fr",
         currency,
@@ -502,7 +546,7 @@ export function RequestWizard({
         </section>
 
         <div className="card">
-          <div className="selbar">
+          <div className="selbar" id="pcTripBar">
             {/* tipo de viagem */}
             <Selector
               id="trip"
@@ -1011,16 +1055,232 @@ export function RequestWizard({
             <button
               className="btn btn-primary"
               type="button"
-              disabled={pending}
-              onClick={submit}
+              onClick={review}
             >
-              {pending ? "Sending…" : "Send request"}
+              Review my request
             </button>
           </div>
         </div>
         <div className="spacer" />
       </main>
+
+      {/*
+        ═══ P3 · FE-05 · the review, before anything is created ═══
+
+        The whole point of this screen is the last line of the requirement: the
+        request is only created after an explicit confirmation. Everything above
+        the button is correctable, and correcting one line does not lose the
+        rest — going back to a step keeps the state, because the two other
+        screens were never unmounted, only hidden.
+      */}
+      <main className="shell view" hidden={step !== 3}>
+        <section className="hero">
+          <span className="eyebrow">Step 3 of 3 · review</span>
+          <h1>
+            Is this <em>the trip you want</em>?
+          </h1>
+          <p>
+            Nothing has been sent yet. Check each line, change what needs
+            changing, and confirm at the bottom.
+          </p>
+        </section>
+
+        <div className="card">
+          <ReviewRow
+            label="Trip type"
+            value={TRIP_LABEL[trip]}
+            onEdit={() => goToStep(1)}
+          />
+          <ReviewRow
+            label="Route"
+            value={
+              trip === "multi"
+                ? legs
+                    .filter((l) => l.origin && l.destination)
+                    .map(
+                      (l, i) =>
+                        `Flight ${i + 1}: ${cityName(l.origin)} → ${cityName(l.destination)}`
+                    )
+                    .join(" · ")
+                : `${cityName(origin)} → ${cityName(destination)}`
+            }
+            onEdit={() => goToStep(1, trip === "multi" ? "o0" : "origin")}
+          />
+          <ReviewRow
+            label="Dates"
+            value={
+              trip === "multi"
+                ? legs.map((l) => fmtDate(l.date)).filter(Boolean).join(" · ")
+                : trip === "round" && ret
+                  ? `${fmtDate(depart)} — ${fmtDate(ret)}`
+                  : fmtDate(depart)
+            }
+            onEdit={() => goToStep(1, trip === "multi" ? "dt0" : "dep")}
+          />
+          <ReviewRow
+            label="Passengers"
+            value={paxFull(paxMix)}
+            onEdit={() => goToStep(1, "pcTripBar")}
+          />
+          <ReviewRow
+            label="Cabin"
+            value={CABIN_LABEL[cabin]}
+            onEdit={() => goToStep(1, "pcTripBar")}
+          />
+          <ReviewRow
+            label="Checked bags"
+            value={
+              baggage === 0
+                ? "None requested"
+                : `${baggage} per passenger`
+            }
+            onEdit={() => goToStep(1, "pcTripBar")}
+          />
+          <ReviewRow
+            label="Name"
+            value={name.trim().replace(/\s+/g, " ")}
+            onEdit={() => goToStep(2, "fullname")}
+          />
+          <ReviewRow
+            label="Phone"
+            value={toE164(dialCode, phone) ?? `${dialCode} ${phone}`}
+            onEdit={() => goToStep(2, "phone")}
+          />
+          <ReviewRow
+            label="Email"
+            value={email.trim()}
+            onEdit={() => goToStep(2, "email")}
+          />
+
+          {/*
+            The free-text field. This is where "don't arrive at night",
+            "travelling with my mother who needs a wheelchair" and "I must be in
+            Lisbon before 2 pm" go — none of which any structured field catches,
+            and all of which change the quote.
+          */}
+          <div className="f" style={{ marginTop: 18 }}>
+            <label className="fl" htmlFor="special">
+              Anything we should know?{" "}
+              <span className="walabel">· optional, but it helps</span>
+            </label>
+            <textarea
+              id="special"
+              rows={4}
+              maxLength={1000}
+              placeholder="Don't arrive at night · travelling with my mother, who uses a wheelchair · I must be in Lisbon before 2 pm · we'd rather not connect in Dakar"
+              value={special}
+              onChange={(event) => setSpecial(event.target.value)}
+              style={{
+                width: "100%",
+                resize: "vertical",
+                font: "inherit",
+                padding: "12px 14px",
+                borderRadius: 12,
+                border: "1px solid var(--line, #DFE5EC)",
+                background: "#fff",
+                color: "inherit",
+              }}
+            />
+            <span className="hint">
+              Our team reads this before quoting. {1000 - special.length}{" "}
+              characters left.
+            </span>
+          </div>
+
+          {serverError && (
+            <span className="err" style={{ marginTop: 10, display: "block" }}>
+              {serverError}
+            </span>
+          )}
+
+          <div className="actions">
+            <button
+              className="btn btn-ghost"
+              type="button"
+              aria-label="Back"
+              onClick={() => goToStep(2)}
+            >
+              <IcBack />
+            </button>
+            <button
+              className="btn btn-primary"
+              type="button"
+              disabled={pending}
+              onClick={submit}
+            >
+              {pending ? "Sending…" : "Confirm and send request"}
+            </button>
+          </div>
+          <p className="subnote" style={{ marginTop: 10 }}>
+            No commitment and no payment. We reply with your options within a
+            couple of working hours.
+          </p>
+        </div>
+        <div className="spacer" />
+      </main>
     </>
+  )
+
+  /**
+   * FE-05 · "qualquer linha pode ser corrigida sem perder o resto".
+   *
+   * Voltar a um passo não desmonta nada: os três ecrãs existem sempre e é o
+   * `hidden` que os esconde, por isso o estado sobrevive. O `id` opcional leva
+   * o foco ao campo daquela linha — corrigir a data e ter de a procurar no
+   * formulário inteiro seria metade da correção.
+   */
+  function goToStep(next: 1 | 2, focus?: string) {
+    setStep(next)
+    window.scrollTo(0, 0)
+    if (!focus) return
+    window.setTimeout(() => {
+      const element = document.getElementById(focus)
+      element?.scrollIntoView({ block: "center", behavior: "smooth" })
+      if (element instanceof HTMLInputElement) element.focus({ preventScroll: true })
+    }, 60)
+  }
+}
+
+/** Uma linha do resumo: o que foi pedido, e um atalho para o corrigir. */
+function ReviewRow({
+  label,
+  value,
+  onEdit,
+}: {
+  label: string
+  value: string
+  onEdit: () => void
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "baseline",
+        gap: 12,
+        padding: "11px 0",
+        borderBottom: "1px solid var(--line-soft, #EDF1F5)",
+      }}
+    >
+      <span style={{ minWidth: 104, fontSize: 12, opacity: 0.62 }}>{label}</span>
+      <span style={{ flex: 1, fontWeight: 600 }}>{value || "—"}</span>
+      <button
+        type="button"
+        onClick={onEdit}
+        style={{
+          border: 0,
+          background: "none",
+          font: "inherit",
+          fontSize: 12.5,
+          fontWeight: 600,
+          color: "#EE5128",
+          cursor: "pointer",
+          textDecoration: "underline",
+          textUnderlineOffset: 3,
+        }}
+      >
+        Change
+      </button>
+    </div>
   )
 }
 

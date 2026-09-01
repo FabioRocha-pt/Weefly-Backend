@@ -373,3 +373,33 @@ textarea{min-height:70px;resize:vertical;line-height:1.5}
 .composer-scope h1, .composer-scope h2, .composer-scope h3 {
   font-size: inherit; font-weight: inherit; letter-spacing: inherit
 }
+
+/* ── BO-11 · campos com erro, e o realce de quem clicou na lista ─────────────
+   O destaque é `aria-invalid` e não uma classe: o atributo já é o que os
+   leitores de ecrã anunciam, e usar duas coisas para dizer a mesma — uma para
+   a vista, outra para quem não vê — é como elas divergem.
+
+   `.bo-flash` dura o tempo de o olho encontrar o campo depois de a página se
+   deslocar até ele, e mais nada. Ver `focusField` em components/bo/error-list. */
+[aria-invalid="true"],
+.composer-scope [aria-invalid="true"] {
+  border-color: var(--ember) !important;
+  background: rgba(238, 81, 40, .07);
+}
+[aria-invalid="true"]:focus,
+.composer-scope [aria-invalid="true"]:focus {
+  outline: 2px solid rgba(238, 81, 40, .45);
+  outline-offset: 1px;
+}
+
+.bo-flash {
+  animation: bo-flash 1.6s ease-out;
+  border-radius: 10px;
+}
+@keyframes bo-flash {
+  0%, 40% { box-shadow: 0 0 0 3px rgba(238, 81, 40, .45); }
+  100% { box-shadow: 0 0 0 3px rgba(238, 81, 40, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bo-flash { animation: none; box-shadow: 0 0 0 3px rgba(238, 81, 40, .45); }
+}

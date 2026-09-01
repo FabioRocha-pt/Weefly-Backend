@@ -12,39 +12,27 @@ import { useState } from "react"
 import Link from "next/link"
 
 import type { BoCaseDetail } from "@/lib/pc/bo-queue"
-import { BO_STATE_CLASS, BO_STATE_LABEL } from "@/lib/pc/bo-queue"
 import type { PaymentProof, PcPayment } from "@/lib/pc/payment"
 import type { PublicProposalView } from "@/lib/proposals"
 import type { CaseEvent } from "@/lib/case-events"
+import type { CaseNotification } from "@/lib/notifications"
 import type { CasePassenger } from "@/lib/case-status"
-import { elapsedSince } from "@/lib/case-status"
-import { formatMoney } from "@/lib/proposal-math"
+import { formatMoney, offerTotal } from "@/lib/proposal-math"
 import { BoPaymentPanel } from "@/components/bo/payment-panel"
 import { BoIssuancePanel } from "@/components/bo/issuance-panel"
 import { BoTicketBuilder } from "@/components/bo/ticket-builder"
 import { BoNoteForm } from "@/components/bo/note-form"
 import { BoDatesPanel } from "@/components/bo/dates-panel"
-import { BoWhatsappLink } from "@/components/bo/whatsapp-link"
-import { countryName, flagOf } from "@/lib/countries"
+import { BoFreezePanel } from "@/components/bo/freeze-panel"
+import {
+  BO_TABS,
+  BoCaseHeader,
+  marketName,
+  type BoSellerOption,
+  type BoTabId,
+} from "@/components/bo/case-header"
 
-type TabId =
-  | "t-pedido"
-  | "t-propostas"
-  | "t-pax"
-  | "t-pag"
-  | "t-emi"
-  | "t-com"
-  | "t-log"
-
-const TABS: { id: TabId; label: string }[] = [
-  { id: "t-pedido", label: "Pedido" },
-  { id: "t-propostas", label: "Propostas" },
-  { id: "t-pax", label: "Passageiros" },
-  { id: "t-pag", label: "Pagamento" },
-  { id: "t-emi", label: "Emissão" },
-  { id: "t-com", label: "Comunicações" },
-  { id: "t-log", label: "Registo" },
-]
+type TabId = BoTabId
 
 /** A aba onde está o trabalho, para este estado. */
 function defaultTab(detail: BoCaseDetail): TabId {
@@ -75,10 +63,6 @@ const dt = (iso: string | null | undefined, withTime = true): string => {
   })
 }
 
-/** O mercado do caso, escrito como uma pessoa o lê. */
-const marketName = (iso: string) =>
-  iso ? `${flagOf(iso)} ${countryName(iso, "pt")}` : "—"
-
 export function BoCaseView({
   detail,
   payment,
@@ -86,6 +70,10 @@ export function BoCaseView({
   proposal,
   passengers,
   events,
+  notifications,
+  sellers,
+  seats,
+  hasTicketDocument,
   initialTab,
   viewer,
 }: {
@@ -95,11 +83,19 @@ export function BoCaseView({
   proposal: PublicProposalView | null
   passengers: CasePassenger[]
   events: CaseEvent[]
+  /** EM-01 · os lugares por passageiro e por voo já gravados. */
+  seats: { passenger_id: string; segment_id: string; seat: string | null }[]
+  /** EM-03 · já existe PDF guardado para este caso? */
+  hasTicketDocument: boolean
+  /** NT-06 · o registo de entrega, que a aba Comunicações mostra. */
+  notifications: CaseNotification[]
+  /** BO-14 · os vendedores que existem no sistema. */
+  sellers: BoSellerOption[]
   initialTab?: string
   viewer: { label: string; email: string }
 }) {
   const [tab, setTab] = useState<TabId>(
-    TABS.some((t) => t.id === initialTab)
+    BO_TABS.some((t) => t.id === initialTab)
       ? (initialTab as TabId)
       : defaultTab(detail)
   )
@@ -108,84 +104,20 @@ export function BoCaseView({
 
   return (
     <>
-      <section className="casebar">
-        <div className="case-top">
-          <div>
-            <p className="crumb">
-              <Link href="/admin/price-checker">Price Checker</Link> ·{" "}
-              <Link href={`/admin/price-checker?tab=tudo`}>Casos</Link>
-            </p>
-            <h2 className="case">
-              {row.clientName} <span className="token mono">{row.reference}</span>{" "}
-              <span className={`state ${BO_STATE_CLASS[row.state]}`}>
-                <span className={`dot ${row.waiting === "bad" ? "bad" : row.waiting}`} />
-                {BO_STATE_LABEL[row.state]}
-              </span>
-            </h2>
-            <div className="case-meta">
-              <div className="cm">
-                <span className="cm-k">Entrada</span>
-                {detail.trip.intake === "price_checker" ? "Link" : detail.trip.intake} ·{" "}
-                <span className="mono">
-                  {row.agentSlug ? `agent=${row.agentSlug}` : "sem agente"}
-                </span>
-              </div>
-              <div className="cm">
-                <span className="cm-k">Mercado e moeda</span>
-                {marketName(row.market)} · <span className="mono">{row.currency}</span> ·{" "}
-                <span className="mono">lang={row.locale}</span>
-              </div>
-              <div className="cm">
-                <span className="cm-k">Vendedor</span>
-                {detail.ownerEmail ?? "sem dono"}
-              </div>
-              <div className="cm">
-                <span className="cm-k">Submetido</span>
-                {dt(row.submittedAt)} ·{" "}
-                <span style={{ color: "var(--warn)" }}>
-                  há {elapsedSince(row.submittedAt)}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="case-actions">
-            <Link className="btn btn-sm" href={`/pc/${row.token}`} target="_blank">
-              Ver como cliente
-            </Link>
-            <BoWhatsappLink
-              phone={row.clientPhone}
-              name={row.clientName}
-              reference={row.reference}
-            />
-          </div>
-        </div>
-
-        <div className="tabs" role="tablist">
-          {TABS.map((entry) => {
-            const count =
-              entry.id === "t-propostas"
-                ? proposal?.offers.length
-                : entry.id === "t-pax"
-                  ? passengers.length
-                  : entry.id === "t-com" || entry.id === "t-log"
-                    ? events.length
-                    : undefined
-            return (
-              <button
-                key={entry.id}
-                className="tab"
-                role="tab"
-                type="button"
-                aria-selected={tab === entry.id}
-                onClick={() => setTab(entry.id)}
-              >
-                {entry.label}
-                {count ? <span className="n">{count}</span> : null}
-              </button>
-            )
-          })}
-        </div>
-      </section>
+      {/* BO-08 · o cabeçalho é o mesmo componente que o compositor desenha, e é
+          por isso que ele deixou de desaparecer ao entrar lá. */}
+      <BoCaseHeader
+        detail={detail}
+        sellers={sellers}
+        active={tab}
+        counts={{
+          "t-propostas": proposal?.offers.length,
+          "t-pax": passengers.length,
+          "t-com": notifications.length,
+          "t-log": events.length,
+        }}
+        onSelect={setTab}
+      />
 
       {/* ── PEDIDO ── */}
       {tab === "t-pedido" && (
@@ -245,6 +177,25 @@ export function BoCaseView({
                     />
                   ))}
                 </>
+              )}
+
+              {/*
+                FE-05 · os pedidos especiais, na coluna esquerda e debaixo do
+                resumo — que é onde o backlog os põe, e é onde quem cota olha
+                antes de escrever a proposta.
+
+                É aqui que aparece "não chegar de noite", "viajo com a minha mãe
+                em cadeira de rodas" e "tenho de estar em Lisboa antes das 14h".
+                Nenhum campo estruturado apanha isto, e é isto que faz a cotação
+                certa à primeira.
+              */}
+              {detail.trip.specialRequests && (
+                <div className="note warn" style={{ marginTop: 13 }}>
+                  <b>Pedidos especiais do cliente</b>
+                  <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>
+                    {detail.trip.specialRequests}
+                  </p>
+                </div>
               )}
             </div>
           </aside>
@@ -334,6 +285,16 @@ export function BoCaseView({
               <Kv k="Passageiros" v={row.paxLabel} />
               <Kv k="Classe" v={detail.trip.cabinLabel} />
               <Kv k="Moeda" v={row.currency} mono />
+              {/* FE-05 · também aqui: compor a proposta é o momento em que os
+                  pedidos especiais mudam o que se escreve. */}
+              {detail.trip.specialRequests && (
+                <div className="note warn" style={{ marginTop: 12 }}>
+                  <b>Pedidos especiais</b>
+                  <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>
+                    {detail.trip.specialRequests}
+                  </p>
+                </div>
+              )}
               {detail.notes[0] && <p className="quote">“{detail.notes[0].body}”</p>}
             </div>
           </aside>
@@ -397,14 +358,19 @@ export function BoCaseView({
                             escolhida
                           </span>
                         )}
+                        {/* BO-13 · o mesmo total que o cliente vê, calculado
+                            pela mesma função. Estava escrito à mão aqui, e uma
+                            segunda cópia da aritmética do preço é uma cópia que
+                            diverge — foi por isso que a linha de serviço deixou
+                            de aparecer nesta coluna no dia em que mudou. */}
                         <div className="pv mono">
                           {formatMoney(
-                            offer.price_adult * detail.trip.adults +
-                              offer.price_child * detail.trip.children +
-                              offer.price_infant *
-                                (detail.trip.infantsInSeat + detail.trip.infantsOnLap) +
-                              offer.taxes_total +
-                              offer.service_fee,
+                            offerTotal(offer, {
+                              adults: detail.trip.adults,
+                              children: detail.trip.children,
+                              infants:
+                                detail.trip.infantsInSeat + detail.trip.infantsOnLap,
+                            }),
                             proposal.proposal.currency
                           )}
                         </div>
@@ -419,11 +385,14 @@ export function BoCaseView({
                 )}
 
                 <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+                  {/* BO-09 · "Compor propostas" passa a "Criar proposta". Uma
+                      proposta com várias opções continua a ser uma proposta, e
+                      o plural fazia crer que se enviavam várias. */}
                   <Link
                     className="btn btn-sm btn-primary"
                     href={`/admin/price-checker/${row.caseId}/ofertas`}
                   >
-                    {proposal ? "Editar propostas" : "Compor propostas"}
+                    {proposal ? "Editar proposta" : "Criar proposta"}
                   </Link>
                   <Link className="btn btn-sm" href={`/pc/${row.token}`} target="_blank">
                     Ver como o cliente vê
@@ -431,6 +400,20 @@ export function BoCaseView({
                 </div>
               </div>
             </div>
+
+            {/* BO-15 · o voo escolhido congela na fase de pagamento, e o estado
+                congelado é visível — não apenas imposto. */}
+            <BoFreezePanel
+              caseId={row.caseId}
+              frozen={Boolean(payment) && Boolean(proposal?.proposal.selected_offer_id)}
+              paid={Boolean(payment?.admin_confirmed) || payment?.status === "COMPLETED"}
+              issued={Boolean(detail.issuance.issuedAt)}
+              offerName={
+                proposal?.offers.find(
+                  (o) => o.id === proposal.proposal.selected_offer_id
+                )?.name ?? null
+              }
+            />
           </main>
         </div>
       )}
@@ -518,9 +501,18 @@ export function BoCaseView({
             caseId={row.caseId}
             payment={payment}
             passengers={passengers}
+            /* EM-01 · os trechos da opção escolhida, para haver um lugar por
+               passageiro em cada voo em vez de "ida" e "volta". */
+            segments={
+              proposal?.offers.find(
+                (o) => o.id === proposal.proposal.selected_offer_id
+              )?.segments ?? []
+            }
+            savedSeats={seats}
             issuance={detail.issuance}
             amount={row.amount}
             currency={row.currency}
+            hasDocument={hasTicketDocument}
           />
           {/* PC-B · a outra metade do compositor. O construtor de bilhete
               completo continua alcançável — está aqui, no momento em que os
@@ -552,9 +544,39 @@ export function BoCaseView({
             </div>
           </aside>
           <main className="stack">
+            {/*
+              NT-06 · o registo de entrega, que é o ponto todo do item.
+
+              "Cada envio fica registado no caso com o seu estado de entrega:
+              queued · sent · delivered · bounced." Sem isto o email sai e
+              ninguém sabe se chegou — e a equipa descobre que não chegou pelo
+              cliente a telefonar a perguntar pela proposta.
+            */}
             <div className="panel">
               <div className="panel-h">
-                <h3>O que o sistema enviou e recebeu</h3>
+                <h3>Avisos enviados</h3>
+                <span
+                  style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}
+                >
+                  {notifications.length} envio{notifications.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="panel-b">
+                {notifications.length === 0 ? (
+                  <p className="note">
+                    Ainda não saiu nenhum aviso deste caso.
+                  </p>
+                ) : (
+                  notifications.map((entry) => (
+                    <NotificationRow key={entry.id} entry={entry} />
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="panel-h">
+                <h3>O que o cliente fez</h3>
               </div>
               <div className="panel-b">
                 <div className="log">
@@ -569,6 +591,7 @@ export function BoCaseView({
                         "payment_confirmed",
                         "proof_rejected",
                         "tickets_issued",
+                        "client_notified",
                       ].includes(event.kind)
                     )
                     .map((event) => (
@@ -631,6 +654,99 @@ function Kv({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
     <div className="kv">
       <span className="kv-k">{k}</span>
       <span className={`kv-v${mono ? " mono" : ""}`}>{v}</span>
+    </div>
+  )
+}
+
+/**
+ * NT-06 · uma linha do registo de entrega.
+ *
+ * O estado é a informação: `sent` diz que o fornecedor aceitou, `delivered` que
+ * o servidor do destinatário aceitou, `bounced` que recusou de vez. São três
+ * coisas diferentes e só a segunda responde a "chegou?".
+ */
+const DELIVERY_LABEL: Record<string, string> = {
+  queued: "na fila",
+  sent: "enviado",
+  delivered: "entregue",
+  bounced: "devolvido",
+  failed: "falhou",
+  skipped: "não enviado",
+}
+
+const DELIVERY_TONE: Record<string, string> = {
+  queued: "var(--muted)",
+  sent: "var(--blue)",
+  delivered: "var(--ok)",
+  bounced: "var(--ember)",
+  failed: "var(--ember)",
+  skipped: "var(--muted)",
+}
+
+const NOTIFICATION_KIND: Record<string, string> = {
+  request_received: "Pedido recebido",
+  team_new_request: "Pedido novo (equipa)",
+  proposal_published: "Proposta publicada",
+  team_proposal_published: "Proposta publicada (equipa)",
+  offer_selected: "Escolha registada",
+  payment_instructions: "Instruções de pagamento",
+  payment_confirmed: "Pagamento confirmado",
+  tickets_issued: "Bilhetes emitidos",
+  dates_proposed: "Novas datas propostas",
+  manual: "Aviso escrito pela equipa",
+  team_proof_uploaded: "Comprovativo recebido (equipa)",
+  team_payment_declared: "Cliente diz que pagou (equipa)",
+  agent_offer_selected: "Cliente escolheu (agente)",
+  agent_passengers_submitted: "Passaportes submetidos (agente)",
+  agent_proof_uploaded: "Comprovativo enviado (agente)",
+  agent_request_cancelled: "Pedido cancelado (agente)",
+}
+
+function NotificationRow({ entry }: { entry: CaseNotification }) {
+  const when = entry.delivered_at ?? entry.sent_at ?? entry.created_at
+  return (
+    <div
+      className="note"
+      style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}
+    >
+      <span style={{ flex: 1 }}>
+        <b>{NOTIFICATION_KIND[entry.kind] ?? entry.kind}</b>
+        {" · "}
+        <span className="mono" style={{ fontSize: 11 }}>
+          {entry.channel}
+        </span>
+        <br />
+        <span style={{ color: "var(--muted)", fontSize: 11.5 }}>
+          {entry.recipient} · {dt(when)}
+          {entry.subject ? ` · ${entry.subject}` : ""}
+        </span>
+        {entry.body && (
+          <>
+            <br />
+            <span style={{ fontSize: 11.5, whiteSpace: "pre-wrap" }}>
+              “{entry.body.slice(0, 300)}”
+            </span>
+          </>
+        )}
+        {entry.last_error && (
+          <>
+            <br />
+            <span style={{ color: "var(--ember)", fontSize: 11 }}>
+              {entry.last_error}
+            </span>
+          </>
+        )}
+      </span>
+      <span
+        className="st state"
+        style={{
+          color: DELIVERY_TONE[entry.status] ?? "var(--muted)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {DELIVERY_LABEL[entry.status] ?? entry.status}
+        {entry.attempts > 1 ? ` · ${entry.attempts}×` : ""}
+      </span>
     </div>
   )
 }

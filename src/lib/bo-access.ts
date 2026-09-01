@@ -115,6 +115,53 @@ export async function boIdentity(): Promise<BoIdentity | null> {
   return access.ok ? access.identity : null
 }
 
+export interface BoSeller {
+  email: string
+  label: string
+  role: "admin" | "manager"
+}
+
+/**
+ * BO-14 · os vendedores, lidos de quem existe no sistema.
+ *
+ * "O seletor de vendedor lê dos utilizadores que existem no sistema, nunca de
+ * uma lista escrita no código. Acrescentar um utilizador faz com que ele
+ * apareça sem um deploy."
+ *
+ * A lista é a `bo_allowlist` e não `auth.users`, e a diferença é deliberada:
+ * a allowlist é quem tem direito a estar aqui, escrita antes de a conta existir.
+ * Um vendedor a quem se atribui um caso na segunda-feira pode só fazer o
+ * primeiro login na quarta, e o caso não pode ficar sem dono por causa disso.
+ *
+ * Hoje devolve duas contas de administração e o Dominik (migração 0013). A
+ * gestão de perfis e permissões é do Sprint 3 — até lá, o que separa um
+ * vendedor de um administrador é a coluna `role`, e mais nada.
+ */
+export async function listBoSellers(): Promise<BoSeller[]> {
+  const admin = createAdminClient()
+  if (!admin) return []
+
+  const { data, error } = await admin
+    .from("bo_allowlist")
+    .select("email, label, role")
+    .eq("active", true)
+    .order("label", { ascending: true, nullsFirst: false })
+
+  if (error) {
+    console.error("[bo] lista de vendedores falhou:", error.message)
+    return []
+  }
+
+  return (data ?? []).map((row) => {
+    const entry = row as { email: string; label: string | null; role: "admin" | "manager" }
+    return {
+      email: entry.email,
+      label: entry.label ?? entry.email,
+      role: entry.role,
+    }
+  })
+}
+
 /** As iniciais que o topbar mostra no avatar. */
 export function boInitials(identity: BoIdentity): string {
   const source = identity.label || identity.email

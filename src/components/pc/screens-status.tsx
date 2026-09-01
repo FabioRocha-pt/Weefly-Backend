@@ -136,6 +136,27 @@ export function ScreenP4a({ state }: { state: PcState }) {
         </p>
       </section>
 
+      {/*
+        FE-06 · o resumo do pedido vem antes do tracker.
+
+        A ordem estava ao contrário, e o raciocínio do backlog é o de quem
+        volta ao link dias depois: primeiro quer confirmar *"é esta a viagem
+        que pedi?"* e só depois *"em que ponto está?"*. Ver a mesma troca nos
+        restantes ecrãs de estado.
+      */}
+      <div className="card">
+        <div className="sechead">
+          <h3>Your request</h3>
+          <span className="rt">{whenLabel(state.request.createdAt)}</span>
+        </div>
+        <div className="sumroute">
+          <RouteSummary request={state.request} />
+        </div>
+        <div className="sumrows">
+          <SummaryRows request={state.request} />
+        </div>
+      </div>
+
       <div className="card">
         <div className="sechead">
           <h3>Request status</h3>
@@ -151,19 +172,6 @@ export function ScreenP4a({ state }: { state: PcState }) {
           <b>come back to this link any time</b> to check whether the answer is
           ready.
         </p>
-      </div>
-
-      <div className="card">
-        <div className="sechead">
-          <h3>Your request</h3>
-          <span className="rt">{whenLabel(state.request.createdAt)}</span>
-        </div>
-        <div className="sumroute">
-          <RouteSummary request={state.request} />
-        </div>
-        <div className="sumrows">
-          <SummaryRows request={state.request} />
-        </div>
       </div>
 
       <ContactCard state={state} showCancel />
@@ -222,18 +230,7 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
         </button>
       </div>
 
-      <div className="card">
-        <div className="sechead">
-          <h3>Request status</h3>
-          <span className="rt">
-            {state.proposalPublishedAt
-              ? `updated at ${clockOf(state.proposalPublishedAt)}`
-              : "—"}
-          </span>
-        </div>
-        <Track state={state} />
-      </div>
-
+      {/* FE-06 · o resumo primeiro, o tracker a seguir. */}
       <div className="card">
         <div className="sechead">
           <h3>Your request</h3>
@@ -244,6 +241,18 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
         <div className="sumrows">
           <SummaryRows request={state.request} />
         </div>
+      </div>
+
+      <div className="card">
+        <div className="sechead">
+          <h3>Request status</h3>
+          <span className="rt">
+            {state.proposalPublishedAt
+              ? `updated at ${clockOf(state.proposalPublishedAt)}`
+              : "—"}
+          </span>
+        </div>
+        <Track state={state} />
       </div>
       <div className="spacer" />
     </main>
@@ -310,6 +319,20 @@ export function ScreenP7b({ state }: { state: PcState }) {
             <span>Request</span>
             <b>{state.request.reference}</b>
           </div>
+        </div>
+      </div>
+
+      {/* FE-06 · o resumo do pedido antes do tracker, em todos os estados. */}
+      <div className="card">
+        <div className="sechead">
+          <h3>Your request</h3>
+          <span className="rt">{whenLabel(state.request.createdAt)}</span>
+        </div>
+        <div className="sumroute">
+          <RouteSummary request={state.request} />
+        </div>
+        <div className="sumrows">
+          <SummaryRows request={state.request} />
         </div>
       </div>
 
@@ -519,22 +542,53 @@ export function ScreenP9({ state }: { state: PcState }) {
         </div>
       </div>
 
+      {/*
+        FE-07 · the ticket lives in the link, not only in the email.
+
+        These were buttons that popped a toast saying an agent would send the
+        PDF by hand. Now they are links to a route that streams the document
+        that was generated at issuance — the very same file the customer got
+        attached, with the same document number. Available for as long as the
+        link is, which is the point: an inbox from six months ago is not where
+        anyone looks from an airport queue.
+      */}
       <div className="card tight">
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={() => toast("Your agent sends the ticket PDFs by email and WhatsApp")}
-        >
-          <IcDownload />
-          Download all tickets
-        </button>
-        <p className="subnote" id="dlSub">
-          One PDF with all{" "}
-          {state.passengers.length === 1
-            ? "the ticket"
-            : `${state.passengers.length} tickets`}{" "}
-          and the travel guide.
-        </p>
+        {state.issued.documentReady ? (
+          <>
+            <a
+              className="btn btn-primary"
+              href={`/api/pc/${state.token}/ticket`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <IcDownload />
+              Download all tickets
+            </a>
+            <p className="subnote" id="dlSub">
+              One PDF with all{" "}
+              {state.passengers.length === 1
+                ? "the ticket"
+                : `${state.passengers.length} tickets`}
+              .
+            </p>
+            <div style={{ marginTop: 10 }}>
+              <a
+                className="btn btn-ghost btn-sm"
+                style={{ width: "100%" }}
+                href={`/api/pc/${state.token}/ticket?guide=1`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                How to read your ticket · 1 page
+              </a>
+            </div>
+          </>
+        ) : (
+          <p className="notice">
+            Your tickets are issued and we are preparing the PDF. It appears here
+            within a few minutes — and we email it to you as soon as it is ready.
+          </p>
+        )}
       </div>
 
       <div className="card">
@@ -551,27 +605,83 @@ export function ScreenP9({ state }: { state: PcState }) {
               {`${p.last_name}/${p.first_name}`.toUpperCase()}
               <span className="no">{p.ticket_number ?? "—"}</span>
             </span>
-            <button
-              className="dl"
-              type="button"
-              onClick={() =>
-                toast(
-                  `Ticket for ${p.first_name.split(" ")[0]} — your agent sends the PDF`
-                )
-              }
-            >
-              PDF
-            </button>
+            {state.issued.documentReady ? (
+              <a
+                className="dl"
+                /* Com um passageiro só não há PDF individual: seria o mesmo
+                   ficheiro com outro nome. O link vai para o combinado. */
+                href={
+                  state.issued.documentsByPassenger.includes(p.id)
+                    ? `/api/pc/${state.token}/ticket?pax=${p.id}`
+                    : `/api/pc/${state.token}/ticket`
+                }
+                target="_blank"
+                rel="noreferrer"
+              >
+                PDF
+              </a>
+            ) : (
+              <span className="dl" style={{ opacity: 0.45 }}>
+                PDF
+              </span>
+            )}
           </div>
         ))}
       </div>
 
+      {/*
+        FE-07 · "the same content rendered on screen, readable without
+        downloading". This is that: flight by flight, with each passenger's tag,
+        ticket number and seat on that flight — the same three things the PDF
+        repeats inside every flight, for the same reason.
+      */}
       {offer && (
         <div className="card">
           <div className="sechead">
-            <h3>Your flights</h3>
+            <h3>Your ticket, on screen</h3>
+            <span className="rt mono">{state.issued.pnr ?? "—"}</span>
           </div>
-          <div className="sumrows">
+          {[...offer.segments]
+            .sort(
+              (a, b) =>
+                (a.direction === b.direction ? 0 : a.direction === "ida" ? -1 : 1) ||
+                a.position - b.position
+            )
+            .map((segment) => (
+              <div className="tkseg" key={segment.id} style={{ marginTop: 12 }}>
+                <div className="sechead" style={{ marginBottom: 6 }}>
+                  <h3 style={{ fontSize: 13 }}>
+                    {[segment.carrier_code, segment.flight_number]
+                      .filter(Boolean)
+                      .join(" ")}{" "}
+                    · {segment.origin} → {segment.destination}
+                  </h3>
+                  <span className="rt mono">
+                    {segment.depart_at?.slice(11, 16) ?? "--:--"} →{" "}
+                    {segment.arrive_at?.slice(11, 16) ?? "--:--"}
+                  </span>
+                </div>
+                {state.passengers.map((p, i) => (
+                  <div className="tk" key={`${segment.id}-${p.id}`}>
+                    <span
+                      className={`paxtag${p.passenger_type === "adult" ? "" : " child"}`}
+                    >
+                      P{i + 1}
+                    </span>
+                    <span className="nm">
+                      {`${p.last_name}/${p.first_name}`.toUpperCase()}
+                      <span className="no">{p.ticket_number ?? "—"}</span>
+                    </span>
+                    <span className="mono" style={{ fontSize: 12.5 }}>
+                      {state.seats.find(
+                        (s) => s.passenger_id === p.id && s.segment_id === segment.id
+                      )?.seat ?? "seat at check-in"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          <div className="sumrows" style={{ marginTop: 14 }}>
             <Rows rows={itineraryRows(state)} />
           </div>
         </div>

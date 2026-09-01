@@ -1,15 +1,15 @@
-import Link from "next/link"
 import { notFound } from "next/navigation"
 
-import { getBoAccess } from "@/lib/bo-access"
+import { getBoAccess, listBoSellers } from "@/lib/bo-access"
 import { getCase, type BookingCaseRow } from "@/lib/booking-cases"
+import { loadBoCase } from "@/lib/pc/bo-queue"
 import {
   ensureProposalForRender,
   paxOf,
   type ProposalFailure,
 } from "@/lib/proposals"
 import { BoProposalComposer } from "@/components/bo/proposal-composer"
-import { BoWhatsappLink } from "@/components/bo/whatsapp-link"
+import { BoCaseHeader } from "@/components/bo/case-header"
 import { getDictionary, getI18n } from "@/i18n/server"
 import { DEFAULT_LOCALE } from "@/i18n/config"
 import { I18nProvider } from "@/i18n/provider"
@@ -21,9 +21,18 @@ import { I18nProvider } from "@/i18n/provider"
  * daqui limitava-se a apontar para lá — dois back-offices para o mesmo caso, e
  * o único sítio onde se compunha uma proposta era o que ia desaparecer.
  *
- * O compositor em si não mudou: é o mesmo componente, com o mesmo dicionário.
- * O que mudou é quem guarda a porta — passa a ser a allowlist do BO, como o
- * resto deste back-office, e não `platform_staff`.
+ * BO-08 · o cabeçalho do caso passa a estar aqui.
+ *
+ * Entrar neste ecrã fazia o cabeçalho e as abas desaparecerem: ficava uma
+ * migalha de pão e três colunas de formulário, e quem estava a escrever um
+ * preço perdia de vista a referência, o estado, o mercado, o vendedor e há
+ * quanto tempo o cliente espera. A barra viva (`BoLiveUpdates`) sempre esteve
+ * no layout e continua; o que faltava era o cabeçalho — e ele faltava porque
+ * vivia dentro do componente da ficha, que é outra rota.
+ *
+ * `BoCaseHeader` é agora o mesmo componente nos dois sítios. Aqui vai sem
+ * `onSelect`, o que faz as abas serem links para a ficha, com o indicador em
+ * "Propostas" — que é onde a pessoa está.
  */
 
 export const dynamic = "force-dynamic"
@@ -49,7 +58,11 @@ export default async function BoCaseOffersPage({
   const fallback =
     locale === DEFAULT_LOCALE ? undefined : getDictionary(DEFAULT_LOCALE)
 
-  const bookingCase = await getCase(params.id)
+  const [bookingCase, detail, sellers] = await Promise.all([
+    getCase(params.id),
+    loadBoCase(params.id),
+    listBoSellers(),
+  ])
   if (!bookingCase) notFound()
 
   /* A moeda da proposta nasce da moeda em que o cliente pediu a cotação. Sem
@@ -62,43 +75,28 @@ export default async function BoCaseOffersPage({
 
   return (
     <I18nProvider locale={locale} dictionary={dictionary} fallback={fallback}>
-      <div className="page">
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <nav className="crumb">
-            <Link href="/admin/price-checker">Price Checker</Link>
-            {" · "}
-            <Link href={`/admin/price-checker/${params.id}`}>
-              {bookingCase.trip_request?.reference ?? "Caso"}
-            </Link>
-            {" · Propostas"}
-          </nav>
-          {/* FB-05 · o contacto com o cliente também aqui. Compor uma proposta é
-              onde as perguntas aparecem — datas que não batem certo, bagagem,
-              um nome mal escrito — e era o ecrã de onde se tinha de sair para
-              perguntar. */}
-          {bookingCase.trip_request && (
-            <div style={{ marginLeft: "auto" }}>
-              <BoWhatsappLink
-                phone={`${bookingCase.trip_request.lead?.phone_prefix ?? ""} ${
-                  bookingCase.trip_request.lead?.phone ?? ""
-                }`}
-                name={bookingCase.trip_request.lead?.full_name}
-                reference={bookingCase.trip_request.reference}
-              />
-            </div>
-          )}
-        </div>
+      {/*
+        O cabeçalho fica fora de `.page` de propósito: a `.casebar` tem o seu
+        próprio fundo e a sua própria linha inferior, e desenhá-la dentro do
+        contentor com margens da página cortava-a a meio.
 
+        O contacto por WhatsApp (FB-05) vem dentro do cabeçalho, ao lado de "Ver
+        como cliente" — é o mesmo botão que a ficha tem, e agora está nos dois
+        ecrãs por só existir um sítio onde ele é escrito.
+      */}
+      {detail && (
+        <BoCaseHeader
+          detail={detail}
+          sellers={sellers}
+          active="t-propostas"
+          counts={{ "t-propostas": result.ok ? result.view.offers.length : 0 }}
+        />
+      )}
+
+      <div className="page">
         {/* `composer-scope`: ver o fim de styles/bo-pc.css — devolve aos campos
             do compositor os tamanhos que o CSS global deste layout lhes tirava. */}
-        <div className="composer-scope" style={{ marginTop: 14 }}>
+        <div className="composer-scope">
           {!result.ok ? (
             <div className="rounded-xl border border-adm-line bg-adm-panel p-8 text-center">
               <p className="text-[13px] text-adm-muted">

@@ -518,6 +518,8 @@ export interface BoCaseDetail {
     infantsOnLap: number
     /** VIP-10 · malas de porão pedidas, para a ficha as mostrar a quem cota. */
     baggageHold: number
+    /** FE-05 · o que nenhum campo estruturado apanha, escrito pelo cliente. */
+    specialRequests: string | null
     legs: { position: number; origin: string; destination: string; date: string }[]
     consentAt: string | null
     consentIp: string | null
@@ -538,6 +540,10 @@ export interface BoCaseDetail {
     datesChangeReason: string | null
   }
   ownerEmail: string | null
+  /** BO-14 · o vendedor atribuído, da lista de acessos do sistema. */
+  seller: { email: string | null; label: string | null }
+  /** NT-06 · a última falha de entrega ao cliente que ninguém deu por tratada. */
+  notifyAlert: { at: string | null; reason: string | null }
   notes: { id: string; body: string; author_email: string | null; created_at: string }[]
   issuance: {
     pnr: string | null
@@ -584,10 +590,11 @@ export async function loadBoCase(caseId: string): Promise<BoCaseDetail | null> {
     .from("booking_cases")
     .select(
       `created_by, pnr, issued_at, issuing_carrier, consolidator, cost_real,
-       fare_basis, nvb, nva, endorsements,
+       fare_basis, nvb, nva, endorsements, ticket_document_number,
+       seller_email, seller_label, notify_alert_at, notify_alert_reason,
        trip_request:trip_requests (
          id, trip_type, cabin_class, adults, children, infants,
-         infants_in_seat, infants_on_lap, baggage_hold,
+         infants_in_seat, infants_on_lap, baggage_hold, special_requests,
          intake, consent_ip, consent_agent,
          original_depart_date, original_return_date, dates_changed_at,
          dates_changed_by_email, dates_change_reason,
@@ -623,6 +630,9 @@ export async function loadBoCase(caseId: string): Promise<BoCaseDetail | null> {
       infantsInSeat: Number(trip.infants_in_seat ?? 0),
       infantsOnLap: Number(trip.infants_on_lap ?? trip.infants ?? 0),
       baggageHold: Number(trip.baggage_hold ?? 0),
+      /* FE-05 · o texto livre do ecrã de revisão. Aparece na coluna esquerda
+         da ficha, debaixo do resumo do pedido — que é onde quem cota olha. */
+      specialRequests: (trip.special_requests as string | null) ?? null,
       legs: ((trip.legs ?? []) as Record<string, any>[])
         .map((l) => ({
           position: Number(l.position),
@@ -642,6 +652,17 @@ export async function loadBoCase(caseId: string): Promise<BoCaseDetail | null> {
       datesChangeReason: (trip.dates_change_reason as string | null) ?? null,
     },
     ownerEmail,
+    /* BO-14 · o vendedor do caso, atribuído da lista de acessos. Distinto do
+       dono (`created_by`): reclamar um caso é um gesto, atribuí-lo é outro. */
+    seller: {
+      email: (record.seller_email as string | null) ?? null,
+      label: (record.seller_label as string | null) ?? null,
+    },
+    /* NT-06 · a falha de entrega que ninguém tratou ainda. */
+    notifyAlert: {
+      at: (record.notify_alert_at as string | null) ?? null,
+      reason: (record.notify_alert_reason as string | null) ?? null,
+    },
     notes: ((trip.notes ?? []) as Record<string, any>[])
       .map((n) => ({
         id: String(n.id),

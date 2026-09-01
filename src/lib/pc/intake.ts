@@ -51,6 +51,13 @@ export interface PcIntake {
   country: string
   phone: string
   email: string
+  /**
+   * FE-05 · o que nenhum campo estruturado apanha.
+   *
+   * Nulo quando o cliente não escreveu nada, e é diferente de vazio: o ecrã de
+   * revisão mostra o campo a toda a gente, e a maioria não lhe toca.
+   */
+  specialRequests: string | null
   consent: boolean
   locale: string
   currency: string
@@ -296,6 +303,9 @@ export async function createPriceCheckerCase(
         /* VIP-10 · o que o cliente pediu, para pré-preencher a proposta. */
         baggage_hold: input.baggageHold,
         cabin_class: CABIN_TO_DB[input.cabin],
+        /* FE-05 · vai para a coluna esquerda da ficha do caso, debaixo do
+           resumo do pedido — que é onde quem cota olha antes de escrever. */
+        special_requests: input.specialRequests,
         currency: input.currency,
         agent_slug: input.agentSlug,
         intake: "price_checker",

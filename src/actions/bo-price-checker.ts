@@ -22,7 +22,6 @@ import {
   getPcPayment,
   rejectProof,
   reopenPayment,
-  signedProofUrl,
 } from "@/lib/pc/payment"
 import { PROOF_REVIEW_HOURS, type PayMethodId } from "@/lib/pc/catalog"
 
@@ -226,23 +225,15 @@ export async function boReopenPayment(
     : { ok: false, error: "Não foi possível reabrir o pagamento." }
 }
 
-/**
- * URL assinado para abrir um comprovativo.
+/*
+ * X-01 · `boProofUrl` saiu daqui.
  *
- * Gerado a pedido e não posto no HTML: um URL assinado dentro de uma página é um
- * URL que fica no histórico do browser e no cache do CDN.
+ * Devolvia um URL assinado que o painel abria com `window.open` depois de um
+ * `await` — e o browser bloqueava-o como pop-up, que era a razão por que o
+ * comprovativo não abria. O ficheiro passa a ser servido por
+ * `/api/bo/proof/{id}`, uma rota autenticada que o `<a>` do painel abre no
+ * próprio clique. Ver o comentário no topo dessa rota.
  */
-export async function boProofUrl(
-  storagePath: string
-): Promise<BoResultWith<{ url: string }>> {
-  const identity = await boIdentity()
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
-
-  const url = await signedProofUrl(storagePath)
-  return url
-    ? { ok: true, url }
-    : { ok: false, error: "Não foi possível abrir o comprovativo." }
-}
 
 // ── o caso ───────────────────────────────────────────────────────────────────
 
@@ -361,16 +352,39 @@ const issueSchema = z.object({
     .array(
       z.object({
         passengerId: z.string().uuid(),
+        /*
+         * EM-01 · "prefixo de 3 dígitos da companhia mais 10 dígitos".
+         *
+         * São treze dígitos, e a divisão não é decorativa: os três primeiros
+         * identificam a companhia emissora (047 é a TAP, 696 a Cabo Verde
+         * Airlines) e os dez seguintes são o documento. O ecrã pré-preenche o
+         * prefixo a partir da companhia escolhida; aqui só se verifica a forma,
+         * porque um consolidador pode emitir com o prefixo de outra companhia e
+         * recusá-lo seria recusar uma emissão legítima.
+         */
         ticketNumber: z
           .string()
           .trim()
-          .transform((v) => v.replace(/\s+/g, ""))
-          .refine((v) => /^\d{13}$/.test(v), "Cada bilhete tem 13 dígitos."),
+          .transform((v) => v.replace(/[\s-]+/g, ""))
+          .refine(
+            (v) => /^\d{3}\d{10}$/.test(v),
+            "Cada bilhete são 3 dígitos de companhia + 10 do documento."
+          ),
         seatOutbound: z.string().trim().max(6).optional(),
         seatInbound: z.string().trim().max(6).optional(),
       })
     )
     .min(1),
+  /** EM-01 · um lugar por passageiro **por voo**. Ver `lib/issuance.ts`. */
+  seats: z
+    .array(
+      z.object({
+        passengerId: z.string().uuid(),
+        segmentId: z.string().uuid(),
+        seat: z.string().trim().max(6),
+      })
+    )
+    .default([]),
 })
 
 /**
@@ -437,12 +451,18 @@ export async function boIssueTickets(
       .from("case_passengers")
       .update({
         ticket_number: ticket.ticketNumber,
+        /* As colunas antigas continuam escritas com o primeiro lugar de cada
+           sentido: são as que a página do cliente e a ficha já leem. Os lugares
+           por voo ficam na tabela nova, logo abaixo. */
         seat_outbound: ticket.seatOutbound || null,
         seat_inbound: ticket.seatInbound || null,
       })
       .eq("id", ticket.passengerId)
       .eq("case_id", v.caseId)
   }
+
+  const { savePassengerSeats } = await import("@/lib/issuance")
+  await savePassengerSeats(v.caseId, v.seats)
 
   await logCaseEvent({
     caseId: v.caseId,
@@ -455,10 +475,543 @@ export async function boIssueTickets(
     payload: { pnr: v.pnr, tickets: numbers },
   })
 
+  /*
+   * EM-02 e EM-03 · o PDF nasce aqui, no mesmo gesto que emite.
+   *
+   * Gerado uma vez e guardado: o reenvio a partir do back-office usa o
+   * documento que já existe, com o mesmo número. Um segundo PDF com uma hora
+   * diferente deixaria de ser prova de nada.
+   *
+   * Se a geração falhar, a emissão fica na mesma — o PNR e os bilhetes já estão
+   * gravados, e o cliente já tem lugar no avião. O que a mensagem diz é que o
+   * documento falta, e o botão de reenviar volta a tentar.
+   */
+  const { generateTicketDocuments } = await import("@/lib/tickets/generate")
+  const documents = await generateTicketDocuments({
+    caseId: v.caseId,
+    generatedBy: identity.userId,
+  })
+
+  let delivered = false
+  if (documents.ok) {
+    const { sendTicketsIssuedEmail } = await import("@/lib/emails/send")
+    /* EM-03 e EM-04 · o bilhete combinado e o guia de uma página, os dois em
+       anexo. Os individuais ficam no link: quatro anexos num email é um email
+       que não passa em metade dos filtros. */
+    const attachments = documents.files
+      .filter((file) => file.kind === "combined" || file.kind === "guide")
+      .map((file) => ({ filename: file.fileName, content: file.bytes }))
+
+    const sent = await sendTicketsIssuedEmail({
+      caseId: v.caseId,
+      attachments,
+    })
+    delivered = sent.ok
+  }
+
   touch(v.caseId)
-  return { ok: true, notice: `Emitido. PNR ${v.pnr}.` }
+
+  return {
+    ok: true,
+    notice: [
+      `Emitido. PNR ${v.pnr}.`,
+      documents.ok
+        ? `Bilhete ${documents.documentNumber} gerado.`
+        : `O PDF não foi gerado (${documents.reason}) — use "Gerar de novo" na aba da Emissão.`,
+      documents.ok
+        ? delivered
+          ? "O cliente recebeu o email com o PDF em anexo."
+          : "O email ao cliente não saiu — veja a aba Comunicações."
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
+  }
 }
 
+/**
+ * EM-03 · reenviar o bilhete **sem regenerar**.
+ *
+ * O critério é explícito: "reenviável a partir do back-office sem regenerar,
+ * mantendo o mesmo número de documento". É por isso que esta função lê o
+ * documento do armazenamento em vez de o voltar a compor — um bilhete reenviado
+ * tem de ser byte a byte o mesmo que o cliente já tem.
+ */
+export async function boResendTickets(caseId: string): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const { loadTicketDocument } = await import("@/lib/tickets/store")
+  const combined = await loadTicketDocument(caseId, null)
+
+  if (!combined) {
+    return {
+      ok: false,
+      error:
+        "Este caso ainda não tem bilhete gerado. Use “Gerar bilhete” antes de reenviar.",
+    }
+  }
+
+  /* O guia é composto na hora: não tem dados de ninguém e é o mesmo para toda
+     a gente, por isso não vive no armazenamento (ver `generateTicketDocuments`).
+     O bilhete, esse, vem do disco tal como foi gerado. */
+  const { renderTicketGuidePdf } = await import("@/lib/tickets/pdf")
+  const { sendTicketsIssuedEmail } = await import("@/lib/emails/send")
+
+  const sent = await sendTicketsIssuedEmail({
+    caseId,
+    attachments: [
+      { filename: combined.fileName, content: combined.bytes },
+      {
+        filename: "WeeFly-como-ler-o-bilhete.pdf",
+        content: Buffer.from(await renderTicketGuidePdf()),
+      },
+    ],
+  })
+
+  await logCaseEvent({
+    caseId,
+    kind: "tickets_resent",
+    title: "Bilhete reenviado ao cliente",
+    detail: `${combined.documentNumber} · por ${identity.email}`,
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+  })
+
+  touch(caseId)
+
+  return sent.ok
+    ? {
+        ok: true,
+        notice: `Bilhete ${combined.documentNumber} reenviado — o mesmo documento, sem regenerar.`,
+      }
+    : { ok: false, error: `O reenvio falhou: ${sent.reason}` }
+}
+
+/**
+ * EM-02 · gerar (ou voltar a gerar) o PDF do bilhete.
+ *
+ * Existe para o caso em que a geração falhou no momento da emissão — o PNR ficou
+ * gravado e o documento não. Volta a compor e substitui o que lá estiver,
+ * mantendo o número de documento, que deriva do PNR e da referência.
+ */
+export async function boGenerateTickets(caseId: string): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const { generateTicketDocuments } = await import("@/lib/tickets/generate")
+  const result = await generateTicketDocuments({
+    caseId,
+    generatedBy: identity.userId,
+  })
+
+  touch(caseId)
+
+  return result.ok
+    ? { ok: true, notice: `Bilhete ${result.documentNumber} gerado.` }
+    : { ok: false, error: `Não foi possível gerar o bilhete: ${result.reason}` }
+}
+
+
+// ── BO-14 · o vendedor do caso ───────────────────────────────────────────────
+
+const sellerSchema = z.object({
+  caseId: z.string().uuid(),
+  /* Vazio é uma resposta: "tirar o dono". Um caso sem vendedor volta a
+     "novos sem dono" na fila, que é onde alguém o vai buscar. */
+  email: z.string().trim().email().or(z.literal("")),
+})
+
+/**
+ * BO-14 · atribuir o caso a um vendedor.
+ *
+ * A lista vem de `bo_allowlist` (ver `listBoSellers`) e o email é validado
+ * contra ela aqui: um seletor no browser é uma cortesia, e esta função é um
+ * endpoint. Guarda-se o email e a etiqueta — o email porque é o identificador,
+ * a etiqueta porque o histórico tem de continuar legível depois de a conta sair.
+ */
+export async function boSetSeller(
+  input: z.input<typeof sellerSchema>
+): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const parsed = sellerSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: "Vendedor inválido." }
+
+  const admin = createAdminClient()
+  if (!admin) return { ok: false, error: "Serviço indisponível." }
+
+  const { listBoSellers } = await import("@/lib/bo-access")
+  const sellers = await listBoSellers()
+  const chosen = parsed.data.email
+    ? sellers.find(
+        (s) => s.email.toLowerCase() === parsed.data.email.toLowerCase()
+      )
+    : null
+
+  if (parsed.data.email && !chosen) {
+    return { ok: false, error: "Esse vendedor não está na lista de acessos." }
+  }
+
+  const { error } = await admin
+    .from("booking_cases")
+    .update({
+      seller_email: chosen?.email ?? null,
+      seller_label: chosen?.label ?? null,
+      seller_set_at: chosen ? new Date().toISOString() : null,
+      seller_set_by: chosen ? identity.userId : null,
+    })
+    .eq("id", parsed.data.caseId)
+
+  if (error) {
+    console.error("[bo/pc] vendedor não gravado:", error.message)
+    return { ok: false, error: "Não foi possível gravar o vendedor." }
+  }
+
+  await logCaseEvent({
+    caseId: parsed.data.caseId,
+    kind: "seller_assigned",
+    title: chosen ? "Vendedor atribuído" : "Vendedor removido",
+    detail: chosen ? `${chosen.label} (${chosen.email})` : "o caso ficou sem dono",
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+  })
+
+  touch(parsed.data.caseId)
+  return {
+    ok: true,
+    notice: chosen ? `Caso atribuído a ${chosen.label}.` : "Caso sem vendedor.",
+  }
+}
+
+// ── NT-07 · avisar o cliente, escrito à mão ──────────────────────────────────
+
+const noticeSchema = z.object({
+  caseId: z.string().uuid(),
+  message: z
+    .string()
+    .trim()
+    .min(10, "Escreva a mensagem — é o cliente que a vai ler.")
+    .max(2000),
+  email: z.boolean().default(true),
+  whatsapp: z.boolean().default(true),
+})
+
+/**
+ * NT-07 · a mudança de horário que a companhia comunicou, ou o que for.
+ *
+ * O sistema não inventa estas mensagens (decisão Q5 do backlog): uma pessoa
+ * decide o que passar e como o dizer. O que ele faz é entregá-las, guardá-las
+ * com autor e hora, e pô-las no link do cliente.
+ */
+export async function boNotifyClient(
+  input: z.input<typeof noticeSchema>
+): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const parsed = noticeSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+  const v = parsed.data
+
+  if (!v.email && !v.whatsapp) {
+    return { ok: false, error: "Escolha pelo menos um canal." }
+  }
+
+  const { sendManualClientNotice } = await import("@/lib/emails/send")
+  const outcome = await sendManualClientNotice({
+    caseId: v.caseId,
+    message: v.message,
+    channels: { email: v.email, whatsapp: v.whatsapp },
+    actorId: identity.userId,
+    actorEmail: identity.email,
+  })
+
+  await logCaseEvent({
+    caseId: v.caseId,
+    kind: "client_notified",
+    title: "Cliente avisado pela equipa",
+    detail: `${v.message.slice(0, 240)} · por ${identity.email}`,
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+    payload: { channels: { email: v.email, whatsapp: v.whatsapp } },
+  })
+
+  touch(v.caseId)
+
+  /*
+   * O que aconteceu em cada canal, dito à letra.
+   *
+   * Um "enviado" que na verdade quer dizer "o email saiu e o WhatsApp não está
+   * configurado" mandaria o agente embora convencido de que o cliente foi
+   * avisado pelos dois. Cada canal responde por si.
+   */
+  const parts: string[] = []
+  if (v.email) {
+    parts.push(outcome.email?.ok ? "email enviado" : `email não saiu (${outcome.email?.reason ?? "erro"})`)
+  }
+  if (v.whatsapp) {
+    parts.push(
+      outcome.whatsapp?.ok
+        ? "WhatsApp enviado"
+        : `WhatsApp não saiu (${outcome.whatsapp?.reason ?? "erro"})`
+    )
+  }
+
+  const anySent = Boolean(outcome.email?.ok || outcome.whatsapp?.ok)
+  return anySent
+    ? { ok: true, notice: `Aviso registado no caso · ${parts.join(" · ")}.` }
+    : { ok: false, error: `Nada foi entregue · ${parts.join(" · ")}.` }
+}
+
+// ── NT-06 · a bandeira de entrega ────────────────────────────────────────────
+
+/** Baixa a bandeira depois de alguém tratar do assunto (telefonema, outro email). */
+export async function boClearNotifyFlag(caseId: string): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const { clearNotifyFlag } = await import("@/lib/notifications")
+  await clearNotifyFlag(caseId)
+
+  await logCaseEvent({
+    caseId,
+    kind: "notify_flag_cleared",
+    title: "Falha de entrega dada como tratada",
+    detail: `por ${identity.email}`,
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+  })
+
+  touch(caseId)
+  return { ok: true, notice: "Bandeira de entrega baixada." }
+}
+
+// ── LNK-08 · revogar e voltar a gerar o link do cliente ──────────────────────
+
+/**
+ * O link do cliente é substituído por outro, e o caso fica onde está.
+ *
+ * O critério do NT-03 pede isto à letra: "um administrador pode revogá-lo e
+ * voltar a gerá-lo, mantendo o caso e o histórico". Serve para o caso em que o
+ * endereço foi para a pessoa errada — um email reencaminhado, um telemóvel
+ * perdido — e a partir daí quem o tiver deixa de ver os passaportes de alguém.
+ *
+ * O antigo fica em `case_token_history`, e não abre nada: nenhuma leitura o
+ * procura. Fica para responder à pergunta que se faz a seguir a uma revogação,
+ * que é sempre "desde quando é que o outro deixou de servir?".
+ */
+export async function boRotateClientLink(
+  caseId: string,
+  reason: string
+): Promise<BoResultWith<{ token: string }>> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (identity.role !== "admin") {
+    return { ok: false, error: "Só um administrador pode revogar o link." }
+  }
+
+  const admin = createAdminClient()
+  if (!admin) return { ok: false, error: "Serviço indisponível." }
+
+  const { data: existing } = await admin
+    .from("booking_cases")
+    .select("token")
+    .eq("id", caseId)
+    .maybeSingle()
+
+  if (!existing) return { ok: false, error: "Caso não encontrado." }
+
+  const { mintToken } = await import("@/lib/booking-cases")
+  const token = mintToken()
+
+  const { error } = await admin
+    .from("booking_cases")
+    .update({ token })
+    .eq("id", caseId)
+
+  if (error) {
+    console.error("[bo/pc] rotação do link falhou:", error.message)
+    return { ok: false, error: "Não foi possível gerar um link novo." }
+  }
+
+  await admin.from("case_token_history").insert({
+    case_id: caseId,
+    old_token: (existing as { token: string }).token,
+    reason: reason.trim() || null,
+    revoked_by: identity.userId,
+    revoked_by_email: identity.email,
+  })
+
+  await logCaseEvent({
+    caseId,
+    kind: "link_rotated",
+    title: "Link do cliente revogado e gerado de novo",
+    detail: [reason.trim(), `por ${identity.email}`].filter(Boolean).join(" · "),
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+  })
+
+  touch(caseId)
+  return {
+    ok: true,
+    token,
+    notice: "Link novo gerado. O antigo deixou de abrir — envie o novo ao cliente.",
+  }
+}
+
+// ── BO-15 · a opção congelada na fase de pagamento ───────────────────────────
+
+const unfreezeSchema = z.object({
+  caseId: z.string().uuid(),
+  reason: z
+    .string()
+    .trim()
+    .min(12, "Escreva porque o voo escolhido volta atrás — o cliente vai ler."),
+})
+
+/**
+ * BO-15 · voltar um passo, explicitamente.
+ *
+ * "Uma vez chegado à fase de pagamento, o voo escolhido não pode ser editado.
+ * Mudá-lo obriga a voltar um passo de forma explícita, o que cria uma revisão e
+ * avisa o cliente."
+ *
+ * É esse passo. O que ele faz, por esta ordem:
+ *
+ *   1. desfaz a escolha — o caso volta a ter opções por escolher;
+ *   2. fecha a janela de pagamento que estava aberta, porque ela cobrava um
+ *      valor de uma opção que já não está escolhida;
+ *   3. abre uma revisão na proposta (R1 → R2), o que a devolve a rascunho e
+ *      volta a deixar o compositor escrever;
+ *   4. avisa o cliente, com o motivo que o agente escreveu.
+ *
+ * O que ele recusa: fazer isto depois de o dinheiro entrar. A partir daí não é
+ * uma revisão, é um reembolso — e um reembolso não se faz com um botão que diz
+ * "voltar atrás".
+ */
+export async function boUnfreezeFlight(
+  input: z.input<typeof unfreezeSchema>
+): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const parsed = unfreezeSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+  const v = parsed.data
+
+  const admin = createAdminClient()
+  if (!admin) return { ok: false, error: "Serviço indisponível." }
+
+  const { data: bookingCase } = await admin
+    .from("booking_cases")
+    .select("id, stage, pnr")
+    .eq("id", v.caseId)
+    .maybeSingle()
+
+  if (!bookingCase) return { ok: false, error: "Caso não encontrado." }
+
+  const record = bookingCase as { stage: string; pnr: string | null }
+  if (record.stage === "emitido" || record.pnr) {
+    return {
+      ok: false,
+      error: "Este caso já está emitido. Mudar de voo é uma reemissão.",
+    }
+  }
+
+  const payment = await getPcPayment(v.caseId)
+  if (payment?.admin_confirmed || payment?.status === "COMPLETED") {
+    return {
+      ok: false,
+      error:
+        "O cliente já pagou este voo. Mudá-lo passa por um reembolso, não por voltar um passo.",
+    }
+  }
+
+  // 1 · a escolha desfaz-se.
+  const { data: proposal } = await admin
+    .from("case_proposals")
+    .select("id, status, revision")
+    .eq("case_id", v.caseId)
+    .maybeSingle()
+
+  await admin
+    .from("case_proposals")
+    .update({ selected_offer_id: null, selected_at: null })
+    .eq("case_id", v.caseId)
+
+  // 2 · a janela de pagamento fecha-se: cobrava uma opção que já não existe.
+  if (payment && payment.status !== "EXPIRED" && payment.status !== "CANCELLED") {
+    await expireNow({
+      caseId: v.caseId,
+      paymentId: payment.id,
+      actorId: identity.userId,
+      actorEmail: identity.email,
+    })
+  }
+
+  // 3 · a proposta volta a rascunho, numa revisão nova.
+  let revision: number | null = null
+  const draft = proposal as { id: string; status: string; revision: number } | null
+  if (draft) {
+    revision = draft.status === "publicada" ? draft.revision + 1 : draft.revision
+    await admin
+      .from("case_proposals")
+      .update({ status: "rascunho", revision })
+      .eq("id", draft.id)
+  }
+
+  await admin
+    .from("booking_cases")
+    .update({ stage: "proposta_enviada" })
+    .eq("id", v.caseId)
+    .not("stage", "in", '("emitido","cancelado")')
+
+  await logCaseEvent({
+    caseId: v.caseId,
+    kind: "flight_unfrozen",
+    title: "Voltou um passo: o voo escolhido foi descongelado",
+    detail: [v.reason, revision ? `revisão R${revision}` : "", `por ${identity.email}`]
+      .filter(Boolean)
+      .join(" · "),
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+    payload: { revision },
+  })
+
+  // 4 · o cliente é avisado, com a frase que o agente escreveu.
+  const { sendManualClientNotice } = await import("@/lib/emails/send")
+  await sendManualClientNotice({
+    caseId: v.caseId,
+    message: v.reason,
+    channels: { email: true, whatsapp: true },
+    actorId: identity.userId,
+    actorEmail: identity.email,
+  })
+
+  touch(v.caseId)
+  return {
+    ok: true,
+    notice: [
+      "O voo deixou de estar congelado e a escolha do cliente foi desfeita.",
+      revision ? `A proposta está em rascunho como R${revision}.` : "",
+      "O cliente foi avisado.",
+    ]
+      .filter(Boolean)
+      .join(" "),
+  }
+}
 
 // ── BO-04 · as datas do pedido ───────────────────────────────────────────────
 
@@ -656,7 +1209,8 @@ async function notifyClientDates(
 ): Promise<boolean> {
   try {
     const { sendDatesProposedEmail } = await import("@/lib/emails/send")
-    return await sendDatesProposedEmail(caseId, change)
+    const outcome = await sendDatesProposedEmail(caseId, change)
+    return outcome.ok
   } catch (err) {
     console.error("[bo/pc] aviso de datas falhou:", err)
     return false

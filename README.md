@@ -140,7 +140,20 @@ CONCIERGE_FROM_EMAIL="WeeFly Concierge <concierge@weefly.africa>"
 CONCIERGE_TEAM_EMAIL=info@weefly.africa,info@weefly.cv
 NEXT_PUBLIC_SITE_URL=https://<domínio>
 CONCIERGE_DIAGNOSE_TOKEN=<string aleatória>
+
+# NT-06 · o estado de entrega de cada aviso. Sem isto o registo pára em
+# "enviado", que só quer dizer que o Resend aceitou — não que chegou.
+RESEND_WEBHOOK_SECRET=whsec_...
+
+# NT-02/03/07 · WhatsApp, opcional. Sem estas, os avisos saem só por email e
+# o registo diz porquê; ver docs/sprint2-notificacoes.md.
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_ACCESS_TOKEN=
+WHATSAPP_TEAM_NUMBER=
 ```
+
+O que fazer no painel do Resend e no DNS para os emails chegarem mesmo à caixa
+de entrada está em [`docs/sprint2-notificacoes.md`](docs/sprint2-notificacoes.md).
 
 Reiniciar a app depois de mexer. Next.js lê `process.env` no arranque; alterar
 variáveis com o processo a correr não muda nada.
