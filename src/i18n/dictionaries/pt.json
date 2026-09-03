@@ -539,7 +539,17 @@
     "composerPerBooking": "por reserva",
     "publishChangeNote": "O que mudou na revisão R{revision}",
     "publishChangeNotePlaceholder": "O voo da ida passou das 14:20 para as 08:40 e o preço baixou 40 €.",
-    "publishChangeNoteHint": "Obrigatório a partir da R2. Vai no email ao cliente, antes das opções."
+    "publishChangeNoteHint": "Obrigatório a partir da R2. Vai no email ao cliente, antes das opções.",
+    "composerDateChangeTitle": "Esta opção parte num dia diferente do que o cliente pediu.",
+    "composerDateMovedOut": "ida {from} → {to}",
+    "composerDateMovedBack": "volta {from} → {to}",
+    "composerDateChangeHelp": "Se a mudança é deliberada — uma tarifa melhor, um voo com lugar — escreva o motivo e confirme. O pedido original do cliente fica intacto no histórico, e ele é avisado da mudança e da razão.",
+    "composerDateChangePlaceholder": "O que aconteceu, na frase que o cliente vai ler. Ex.: no dia 14 não há lugares em económica; a 15 há, e fica 60 € mais barato.",
+    "composerDateChangeCta": "Confirmar alteração de data",
+    "composerDateChangeNeedsReason": "Escreva o motivo para poder confirmar.",
+    "composerDateChangeDone": "Alteração de data confirmada:",
+    "composerDateChangeUndo": "Voltar às datas pedidas",
+    "publishedRevisionRemoved": "Os preços publicados ficam trancados. Para alterar uma proposta já enviada, fale com o cliente e abra um pedido novo — a revisão em ecrã volta no Sprint 5, com uma forma clara de cancelar."
   },
   "validation": {
     "nameMin": "Nome deve ter pelo menos 2 caracteres",
@@ -584,7 +594,8 @@
     "passengersMin": "Indique pelo menos um passageiro",
     "iataOrigin": "Código IATA de origem inválido",
     "iataDestination": "Código IATA de destino inválido",
-    "departDateInvalid": "Data de partida inválida"
+    "departDateInvalid": "Data de partida inválida",
+    "birthDateTooOld": "Confirme o ano de nascimento — essa data tem mais de 120 anos."
   },
   "passwordStrength": {
     "weak": "Fraca",
@@ -758,7 +769,9 @@
     "noClientEmailForWeepay": "O caso não tem email do cliente, e a WeePay exige um para abrir o pagamento.",
     "statusApplyFailed": "Não foi possível aplicar o estado.",
     "unavailable": "Indisponível.",
-    "revisionNeedsChangeNote": "Escreva o que mudou nesta revisão — é o que o cliente vai ler no email."
+    "revisionNeedsChangeNote": "Escreva o que mudou nesta revisão — é o que o cliente vai ler no email.",
+    "publishNeedsOwner": "Este caso não tem dono. Reclame-o antes de publicar — uma proposta tem de ter alguém que responda por ela.",
+    "publishNotOwner": "Este caso é de outro agente. Só o dono, ou um administrador, pode publicar a proposta."
   },
   "onboarding": {
     "step1": "Conta",

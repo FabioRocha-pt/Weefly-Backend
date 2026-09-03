@@ -201,7 +201,52 @@ export const TermIcon = ({ kind }: { kind: string }) => (
 )
 
 /** Os ícones dos métodos de pagamento. */
+/*
+ * C-33 · os cinco métodos novos, e os antigos que ficam.
+ *
+ * Os antigos continuam aqui porque os casos anteriores ao Sprint 3 têm o método
+ * antigo gravado, e um ecrã de histórico que os mostre sem ícone fica com um
+ * quadrado vazio. `MethodIcon` devolve `null` para o que não conhece — é por
+ * isso que acrescentar as chaves novas não é decorativo: sem elas, as cinco
+ * vias que o cliente escolhe apareciam todas com o espaço do ícone em branco.
+ */
 const METHOD_PATHS: Record<string, JSX.Element> = {
+  /* Cartão — Stripe. O mesmo desenho do antigo `card`: é o que ele é. */
+  stripe: (
+    <>
+      <rect x="2" y="4" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M2 7.6h14" stroke="currentColor" strokeWidth="1.5" />
+    </>
+  ),
+  /* Vinti4/24 — o terminal, que é como se paga em Cabo Verde. */
+  vinti4: (
+    <>
+      <rect x="4" y="2.5" width="10" height="13" rx="1.6" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M6.4 5.4h5.2M6.4 8h5.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 12.4h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
+  /* Revolut — a transferência instantânea, uma seta a sair. */
+  revolut: (
+    <>
+      <circle cx="9" cy="9" r="6.4" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M6.6 9h4.8M9.4 6.8L11.6 9l-2.2 2.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  /* Instapay — a referência, um documento com um número. */
+  instapay: (
+    <>
+      <rect x="3" y="3" width="12" height="12" rx="1.6" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M5.8 7.2h6.4M5.8 10.4h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
+  /* PayPal — as duas setas sobrepostas do símbolo, simplificadas. */
+  paypal: (
+    <>
+      <path d="M5.4 14.4l1.8-9.8h3.4a2.7 2.7 0 010 5.4H7.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 14.4l.6-3.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
   transfer: (
     <>
       <path d="M2.5 7L9 3l6.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />

@@ -7,24 +7,24 @@ import { buildTravelRequestNotificationEmail } from "@/lib/emails/travel-request
 import { markEmailOutcome, saveTravelRequest } from "@/lib/concierge-intake"
 import { bindTripRequestToCase } from "@/lib/booking-cases"
 import { getI18n } from "@/i18n/server"
+import { senderAddress, teamRecipients } from "@/lib/notifications"
 
 // Resend uses the Node runtime; keep this off the edge so nodemailer-style
 // SDKs and env secrets behave predictably.
 export const runtime = "nodejs"
 
-const FROM_EMAIL =
-  process.env.CONCIERGE_FROM_EMAIL ?? "WeeFly Concierge <onboarding@resend.dev>"
-
-/** Concierge inbox(es) that receive every online request. */
-const DEFAULT_TEAM_EMAILS = ["info@weefly.africa", "info@weefly.cv"]
-
-/** Comma-separated override, e.g. CONCIERGE_TEAM_EMAIL="a@x.cv, b@x.cv". */
-const TEAM_EMAILS = (process.env.CONCIERGE_TEAM_EMAIL ?? "")
-  .split(",")
-  .map((address) => address.trim())
-  .filter(Boolean)
-
-const teamRecipients = TEAM_EMAILS.length > 0 ? TEAM_EMAILS : DEFAULT_TEAM_EMAILS
+/*
+ * C-03a · o remetente e os destinatários vêm de `lib/notifications`.
+ *
+ * Este ficheiro tinha a sua própria cópia das duas regras, e a do remetente era
+ * `process.env.CONCIERGE_FROM_EMAIL` tal e qual — dois endereços separados por
+ * vírgula em produção, um `validation_error` do fornecedor, e o lead a não
+ * chegar a ninguém. A terceira cópia da mesma regra é a que ninguém se lembra
+ * de corrigir, por isso deixou de existir.
+ *
+ * O pedido continua a não passar por `notify()`: aqui ainda não há caso a que
+ * pendurar o registo — ele nasce a seguir, do lead que esta rota grava.
+ */
 
 /**
  * WeeFly Concierge — Central Intake (browser channel).
@@ -126,10 +126,13 @@ export async function POST(request: Request) {
 
   // The two sends are independent: a bounced client confirmation must never
   // cost the team its lead, and vice-versa.
+  const from = senderAddress()
+  const team = teamRecipients()
+
   const [teamResult, clientResult] = await Promise.allSettled([
     resend.emails.send({
-      from: FROM_EMAIL,
-      to: teamRecipients,
+      from,
+      to: team,
       subject: notification.subject,
       html: notification.html,
       text: notification.text,
@@ -137,12 +140,14 @@ export async function POST(request: Request) {
       replyTo: data.email,
     }),
     resend.emails.send({
-      from: FROM_EMAIL,
+      from,
       to: data.email,
       subject: confirmation.subject,
       html: confirmation.html,
       text: confirmation.text,
-      replyTo: teamRecipients[0],
+      /* As duas caixas da equipa, e não só a primeira: uma resposta do cliente
+         tem de chegar a quem estiver a olhar. */
+      replyTo: team,
     }),
   ])
 

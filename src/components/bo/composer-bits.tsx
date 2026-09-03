@@ -39,7 +39,7 @@ export function Field({
   span: number
   hint?: string
   /**
-   * FB-01 · veio do pedido do cliente e não foi escrito por quem cota.
+   * FB-01 / C-28 · veio do pedido do cliente e não foi escrito por quem cota.
    *
    * O pedido diz que os valores pré-preenchidos têm de se distinguir dos que o
    * agente escreveu. Sem isso, quem abre uma proposta a meio não sabe o que já
@@ -52,8 +52,21 @@ export function Field({
     <div className={cn("flex min-w-0 flex-col gap-1.5", SPANS[span])}>
       <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.07em] text-adm-muted">
         {label}
+        {/*
+          C-28 · amarelo, com ponto de exclamação e explicação ao passar o rato.
+
+          Era uma etiqueta cinzenta a dizer "do pedido". Cinzento é a cor do que
+          está bem neste ecrã — o mesmo tom das dicas e das etiquetas — pelo que
+          a marca do que **falta verificar** lia-se como decoração. O critério
+          pede amarelo e um ponto de exclamação, e é a escolha certa: amarelo é
+          a única cor que aqui significa "olha para isto".
+        */}
         {prefilled && (
-          <span className="rounded-[4px] bg-adm-muted/[.18] px-1 py-px text-[8.5px] font-extrabold tracking-[.06em] text-adm-txt-2">
+          <span
+            title="Este valor veio do pedido do cliente e ainda não foi confirmado por ninguém. Confirme-o ou corrija-o antes de publicar."
+            className="flex items-center gap-1 rounded-[4px] border border-adm-warn/45 bg-adm-warn/[.16] px-1 py-px text-[8.5px] font-extrabold tracking-[.06em] text-[#F0C983]"
+          >
+            <span aria-hidden="true">!</span>
             do pedido
           </span>
         )}

@@ -34,7 +34,13 @@ import { useRouter } from "next/navigation"
 import type { BoCaseDetail } from "@/lib/pc/bo-queue"
 import { BO_STATE_CLASS, BO_STATE_LABEL } from "@/lib/pc/bo-queue"
 import { elapsedSince } from "@/lib/case-status"
-import { boClearNotifyFlag, boNotifyClient, boSetSeller } from "@/actions/bo-price-checker"
+import {
+  boClearNotifyFlag,
+  boCloseCase,
+  boNotifyClient,
+  boReopenCase,
+  boSetSeller,
+} from "@/actions/bo-price-checker"
 import { BoWhatsappLink } from "@/components/bo/whatsapp-link"
 import { countryName, flagOf } from "@/lib/countries"
 
@@ -234,6 +240,55 @@ export function BoCaseHeader({
               onClick={() => setNoticeOpen((open) => !open)}
             >
               Avisar cliente
+            </button>
+          )}
+
+          {/*
+            C-04 · concluir o caso e passar ao seguinte.
+
+            Aparece depois de emitido, que é a única altura em que fechar
+            significa "acabou" — antes disso fechar seria cancelar, e é outra
+            coisa. Reabrir é de administrador, e a reversão fica no registo.
+          */}
+          {row.state === "emitido" && (
+            <button
+              className="btn btn-sm"
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const result = await boCloseCase(row.caseId)
+                  if (result.ok) {
+                    setNotice(result.notice ?? null)
+                    router.refresh()
+                  } else {
+                    setError(result.error)
+                  }
+                })
+              }
+            >
+              {pending ? "A fechar…" : "Fechar caso"}
+            </button>
+          )}
+
+          {row.state === "fechado" && (
+            <button
+              className="btn btn-sm"
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const result = await boReopenCase(row.caseId)
+                  if (result.ok) {
+                    setNotice(result.notice ?? null)
+                    router.refresh()
+                  } else {
+                    setError(result.error)
+                  }
+                })
+              }
+            >
+              {pending ? "A reabrir…" : "Reabrir caso"}
             </button>
           )}
         </div>

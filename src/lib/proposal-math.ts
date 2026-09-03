@@ -65,6 +65,14 @@ export interface Offer {
   non_refundable: boolean
   /** PC-06a · as horas já foram confirmadas por uma pessoa? Ver migração 0012. */
   times_confirmed: boolean
+  /**
+   * C-24 · alguém assumiu que esta oferta parte num dia diferente do pedido.
+   *
+   * Sem isto uma data diferente tranca a publicação e não há por onde sair — a
+   * única porta reescrevia o pedido do cliente. Ver a migração 0014.
+   */
+  date_change_confirmed: boolean
+  date_change_reason: string | null
   change_policy: string | null
   refund_policy: string | null
   seat_policy: string | null
@@ -587,20 +595,36 @@ export function offerBlockers(
 
   /*
    * 3 · contra o pedido: a ida parte no dia que o cliente pediu, e a volta no
-   *     dia que ele pediu para voltar. Uma oferta noutras datas não é uma
-   *     oferta melhor, é outra viagem — e mudar as datas do cliente tem uma
-   *     porta própria, com motivo e aviso (BO-04, "Propor novas datas").
+   *     dia que ele pediu para voltar.
+   *
+   * C-24 · isto era um bloqueio definitivo, e foi o item mais grave do teste.
+   *
+   * A regra continua a valer — uma data que ninguém pediu é uma viagem
+   * diferente e não pode sair por distracção. O que mudou é a saída. Era
+   * reescrever o pedido do cliente por "Propor novas datas": mudava as datas
+   * dele, exigia motivo, e mandava uma proposta publicada de volta a rascunho
+   * numa revisão nova. Quem encontrasse uma tarifa melhor no dia seguinte não
+   * tinha como a oferecer, e o backlog é explícito quanto ao custo disso — "não
+   * se pode oferecer uma opção mais barata ou melhor por causa de uma
+   * validação".
+   *
+   * Agora a mudança pertence à oferta. Um gesto explícito na oferta, com
+   * motivo, assume-a; o pedido original fica intacto no histórico, que é onde o
+   * cliente o reconhece. Sem esse gesto continua a travar: a diferença entre
+   * uma pergunta e uma parede é haver resposta, não deixar de perguntar.
    */
-  if (requested?.departDate && ida.length > 0) {
-    const out = legDate(ida)
-    if (out && out !== requested.departDate.slice(0, 10)) {
-      problems.push({ key: "blockers.departureMismatch" })
+  if (!offer.date_change_confirmed) {
+    if (requested?.departDate && ida.length > 0) {
+      const out = legDate(ida)
+      if (out && out !== requested.departDate.slice(0, 10)) {
+        problems.push({ key: "blockers.departureMismatch" })
+      }
     }
-  }
-  if (requested?.returnDate && volta.length > 0) {
-    const back = legDate(volta)
-    if (back && back !== requested.returnDate.slice(0, 10)) {
-      problems.push({ key: "blockers.returnMismatch" })
+    if (requested?.returnDate && volta.length > 0) {
+      const back = legDate(volta)
+      if (back && back !== requested.returnDate.slice(0, 10)) {
+        problems.push({ key: "blockers.returnMismatch" })
+      }
     }
   }
 
@@ -630,6 +654,43 @@ export function offerBlockers(
   if (!offer.times_confirmed) problems.push({ key: "blockers.timesToConfirm" })
 
   return problems
+}
+
+/**
+ * C-24 · esta oferta parte num dia diferente do que o cliente pediu?
+ *
+ * Separada de `offerBlockers` porque responde a outra pergunta. O bloqueio diz
+ * "não podes publicar"; isto diz "há aqui uma decisão para alguém tomar", e é
+ * verdade tanto antes como depois de ela ser tomada — o ecrã tem de continuar a
+ * mostrar que a data foi mudada de propósito, e por quem, depois de confirmada.
+ */
+export function offerDateChange(
+  offer: Offer,
+  requested?: { departDate: string | null; returnDate: string | null } | null
+): { depart: string | null; return: string | null; any: boolean } {
+  const { ida, volta } = legsOf(offer)
+
+  const changedDepart =
+    requested?.departDate && ida.length > 0
+      ? (() => {
+          const out = legDate(ida)
+          return out && out !== requested.departDate!.slice(0, 10) ? out : null
+        })()
+      : null
+
+  const changedReturn =
+    requested?.returnDate && volta.length > 0
+      ? (() => {
+          const back = legDate(volta)
+          return back && back !== requested.returnDate!.slice(0, 10) ? back : null
+        })()
+      : null
+
+  return {
+    depart: changedDepart,
+    return: changedReturn,
+    any: Boolean(changedDepart || changedReturn),
+  }
 }
 
 /**

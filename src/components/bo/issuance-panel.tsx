@@ -35,6 +35,7 @@ import { formatAmountPlain, formatMoney, parseMoney } from "@/lib/proposal-math"
 import { CARRIERS } from "@/lib/pc/catalog"
 import { CarrierMark } from "@/components/bo/carrier-mark"
 import { BoErrorList, focusField, type BoFieldError } from "@/components/bo/error-list"
+import { FALLBACK_AIRLINES, airlineName } from "@/lib/airlines-catalog"
 
 interface TicketRow {
   passengerId: string
@@ -45,7 +46,9 @@ interface TicketRow {
 const seatKey = (passengerId: string, segmentId: string) =>
   `${passengerId}::${segmentId}`
 
-const CARRIER_CODES = Object.keys(CARRIERS).sort()
+/* C-10 · as 31 do backlog, na ordem de prioridade dele. Eram as dez de
+   `CARRIERS`, por código — o que punha a AF antes da VR. */
+const CARRIER_CODES = FALLBACK_AIRLINES.map((a) => a.iata)
 
 export function BoIssuancePanel({
   caseId,
@@ -88,7 +91,23 @@ export function BoIssuancePanel({
   const issued = Boolean(issuance.issuedAt)
 
   const [pnr, setPnr] = useState(issuance.pnr ?? "")
-  const [carrier, setCarrier] = useState(issuance.issuingCarrier ?? "")
+  /*
+   * C-26 · a companhia da proposta é o valor de partida.
+   *
+   * `issuance.issuingCarrier` é o que já foi gravado neste ecrã; quando está
+   * vazio — o caso normal na primeira emissão — herda-se a companhia do
+   * primeiro trecho da opção que o cliente escolheu. Não é um valor confirmado,
+   * e a dica debaixo do campo di-lo: é a resposta certa em vez de um campo em
+   * branco a obrigar a ir procurá-la noutro separador.
+   */
+  const proposedCarrier =
+    [...segments]
+      .sort((a, b) => a.position - b.position)
+      .find((s) => s.carrier_code)?.carrier_code ?? ""
+
+  const [carrier, setCarrier] = useState(
+    issuance.issuingCarrier ?? proposedCarrier
+  )
   const [consolidator, setConsolidator] = useState(issuance.consolidator ?? "")
   const [costReal, setCostReal] = useState(
     issuance.costReal ? formatAmountPlain(issuance.costReal) : ""
@@ -336,8 +355,21 @@ export function BoIssuancePanel({
               </div>
               <div className="f s3">
                 <label>Companhia emissora</label>
-                {/* PC-12 · do catálogo, e não texto livre. É por este código que
-                    o logótipo é procurado e de onde vem o prefixo dos bilhetes. */}
+                {/*
+                  C-26 · vem da proposta, sem ser reescolhida.
+
+                  "A companhia escolhida na proposta aparece no ecrã de emissão
+                  sem ser reescolhida." Antes começava vazia, num «Escolher…», e
+                  quem emitia tinha de ir ver a oferta noutro separador para
+                  saber qual das trinta e uma escolher — com o custo óbvio de
+                  escolher a errada.
+                  O logótipo em cima é a confirmação visual de que é a certa.
+                */}
+                {carrier && (
+                  <div style={{ marginBottom: 6 }}>
+                    <CarrierMark code={carrier} />
+                  </div>
+                )}
                 <select
                   id="em-carrier"
                   value={carrier}
@@ -347,13 +379,20 @@ export function BoIssuancePanel({
                   <option value="">Escolher…</option>
                   {CARRIER_CODES.map((code) => (
                     <option key={code} value={code}>
-                      {code} · {CARRIERS[code].name} · {CARRIERS[code].prefix}
+                      {/* C-10 · o nome das 31 vem do catálogo novo; o prefixo do
+                          bilhete só existe para as dez antigas, e é omitido em
+                          vez de escrever `undefined`. */}
+                      {code} · {airlineName(code)}
+                      {CARRIERS[code] ? ` · ${CARRIERS[code].prefix}` : ""}
                     </option>
                   ))}
-                  {carrier && !CARRIERS[carrier] && (
+                  {carrier && !CARRIER_CODES.includes(carrier) && (
                     <option value={carrier}>{carrier} · fora do catálogo</option>
                   )}
                 </select>
+                {!issuance.issuingCarrier && carrier && (
+                  <span className="hint">da proposta · confirme antes de emitir</span>
+                )}
               </div>
               <div className="f s3">
                 <label>Consolidador</label>

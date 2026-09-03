@@ -52,3 +52,6 @@ next-env.d.ts
 graphify-out/
 graphify.exe
 graphify
+# O pacote de logotipos vem descompactado para public/airlines e src/data.
+# O .zip fica de fora: os ficheiros uteis estao versionados, o arquivo nao.
+airline-logos-iata.zip

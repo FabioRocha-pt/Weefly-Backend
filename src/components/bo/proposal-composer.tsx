@@ -73,6 +73,7 @@ import {
   dayOffset,
   blockerText,
   offerBlockers,
+  offerDateChange,
   offerFareTotal,
   offerTotal,
   offerWarnings,
@@ -98,6 +99,8 @@ import {
 import { BoAirportField } from "@/components/bo/airport-field"
 import { BoErrorList } from "@/components/bo/error-list"
 import { CARRIERS } from "@/lib/pc/catalog"
+import { FALLBACK_AIRLINES, airlineName } from "@/lib/airlines-catalog"
+import { CarrierMark } from "@/components/bo/carrier-mark"
 import { useT } from "@/i18n/provider"
 import type { Translator } from "@/i18n/translate"
 
@@ -107,14 +110,27 @@ const CURRENCIES = ["CVE", "EUR", "USD"]
 const CABINS: Cabin[] = ["economy", "premium_economy", "business", "first"]
 
 /**
- * PC-12 · as companhias do catálogo, por ordem alfabética de código.
+ * C-10 · as 31 companhias do backlog, na ordem que ele lhes dá.
  *
- * O catálogo é o mesmo que o ecrã do cliente usa para escrever o nome da
- * companhia — `carrierName` em `lib/pc/catalog`. Um só sítio: o dia em que
- * alguém acrescentar uma companhia, ela aparece no seletor e no cartão do
- * cliente no mesmo gesto.
+ * Eram as dez de `CARRIERS`, ordenadas por código — o que punha a `AF` antes da
+ * `VR` num back-office cabo-verdiano. A ordem passa a ser a prioridade escrita
+ * no backlog: primeiro as que a WeeFly vende todos os dias (`VR`, `TP`, `AT`…),
+ * depois as grandes, depois as regionais. Dentro de cada grupo, por nome.
+ *
+ * A lista vem de `airlines-catalog`, que lê do ficheiro e serve de recurso à
+ * tabela `airlines` (migração 0017) — acrescentar a trigésima segunda é um
+ * `insert`, que é o critério.
  */
-const CARRIER_CODES: string[] = Object.keys(CARRIERS).sort()
+const CARRIER_CODES: string[] = FALLBACK_AIRLINES.map((a) => a.iata)
+
+/*
+ * PC-12 · `CARRIERS` continua a existir, e só para o que a tabela não tem.
+ *
+ * Guarda o prefixo do bilhete e o hub de dez companhias — dados de emissão que
+ * as outras vinte e uma não têm preenchidos, e inventá-los seria escrever
+ * números de bilhete que ninguém confirmou. O nome e a ordem do seletor vêm
+ * agora de `airlines-catalog`; isto fica para quem emite.
+ */
 
 // --- Estado local ------------------------------------------------------------
 // Os montantes vivem como texto enquanto se escreve: "1 84" não é um número mas
@@ -166,6 +182,9 @@ interface OfferState {
   non_refundable: boolean
   /* PC-06a · as horas foram pré-preenchidas e ainda ninguém olhou para elas. */
   times_confirmed: boolean
+  /* C-24 · a data desta oferta é diferente da pedida, e alguém a assumiu. */
+  date_change_confirmed: boolean
+  date_change_reason: string
   change_policy: string
   refund_policy: string
   seat_policy: string
@@ -246,6 +265,8 @@ function fromAdminOffer(offer: AdminOffer): OfferState {
     baggage_hold_count: offer.baggage_hold_count,
     non_refundable: offer.non_refundable,
     times_confirmed: offer.times_confirmed,
+    date_change_confirmed: offer.date_change_confirmed,
+    date_change_reason: offer.date_change_reason ?? "",
     change_policy: offer.change_policy ?? "",
     refund_policy: offer.refund_policy ?? "",
     seat_policy: offer.seat_policy ?? "",
@@ -293,6 +314,8 @@ function draftOf(state: OfferState): OfferDraft {
     baggage_hold_count: state.baggage_hold_count,
     non_refundable: state.non_refundable,
     times_confirmed: state.times_confirmed,
+    date_change_confirmed: state.date_change_confirmed,
+    date_change_reason: state.date_change_reason,
     change_policy: state.change_policy,
     refund_policy: state.refund_policy,
     seat_policy: state.seat_policy,
@@ -334,6 +357,8 @@ function asOffer(state: OfferState, position: number): Offer {
     baggage_hold: null,
     non_refundable: state.non_refundable,
     times_confirmed: state.times_confirmed,
+    date_change_confirmed: state.date_change_confirmed,
+    date_change_reason: state.date_change_reason || null,
     change_policy: state.change_policy || null,
     refund_policy: state.refund_policy || null,
     seat_policy: state.seat_policy || null,
@@ -924,6 +949,27 @@ function OpenOffer({
             </div>
           )}
 
+          {/*
+            C-24 · o sítio próprio para confirmar que a data mudou de propósito.
+
+            Era isto que não existia. Uma oferta noutro dia travava a publicação
+            e a única saída reescrevia o pedido do cliente — pelo que quem
+            encontrasse uma tarifa melhor no dia seguinte não a podia oferecer.
+            O bloco aparece porque uma data mudou, e desaparece se ela voltar ao
+            dia pedido: é uma decisão a tomar, não um campo permanente a ignorar.
+
+            O motivo é obrigatório porque é a frase que o cliente vai ler. O
+            pedido original dele não é tocado por este caminho — fica intacto, e
+            é isso que o mantém reconhecível no histórico.
+          */}
+          <DateChangeConfirm
+            offer={offer}
+            preview={preview}
+            requested={requested}
+            onPatch={onPatch}
+            t={t}
+          />
+
           <div className="mb-3 flex gap-1.5">
             {(["ida", "volta"] as const).map((d) => (
               <button
@@ -1006,6 +1052,14 @@ function OpenOffer({
                       pedido manda que a falta de logótipo caia no código, que é
                       exactamente o que se vê aqui. */}
                   <Field label={t("admin.composerCarrier")} span={4}>
+                    {/* C-10 · o logótipo ao lado do seletor, para quem compõe
+                        ver que escolheu a companhia certa sem ler a sigla. Uma
+                        sem ficheiro mostra o código — nunca um espaço vazio. */}
+                    {segment.carrier_code && (
+                      <div className="mb-1.5">
+                        <CarrierMark code={segment.carrier_code} />
+                      </div>
+                    )}
                     <select
                       value={segment.carrier_code}
                       onChange={(e) =>
@@ -1018,7 +1072,10 @@ function OpenOffer({
                       <option value="">{t("admin.composerCarrierPick")}</option>
                       {CARRIER_CODES.map((code) => (
                         <option key={code} value={code}>
-                          {code} · {CARRIERS[code].name}
+                          {/* C-10 · o nome vem do catálogo das 31, não das dez
+                              de `CARRIERS` — que devolvia `undefined.name` e
+                              rebentava o render para as vinte e uma novas. */}
+                          {code} · {airlineName(code)}
                         </option>
                       ))}
                       {/* Uma companhia fora do catálogo não bloqueia a proposta:
@@ -1032,17 +1089,19 @@ function OpenOffer({
                         )}
                     </select>
                   </Field>
-                  <Field label={t("admin.composerFlightNo")} span={2}>
-                    <Input
-                      mono
-                      maxLength={6}
-                      value={segment.flight_number}
-                      onChange={(v) =>
-                        onPatchSegment(segment.key, { flight_number: v })
-                      }
-                      placeholder="231"
-                    />
-                  </Field>
+                  {/*
+                    C-27 · o número de voo saiu da proposta.
+
+                    "Não é preciso para o cliente decidir." Quem compara duas
+                    opções olha para a companhia, para as horas, para as escalas
+                    e para o preço — o TP1553 não muda nada nessa decisão, e é
+                    mais um campo a preencher em cada trecho de cada oferta.
+
+                    **Continua no ecrã de emissão e no bilhete**, que é onde ele
+                    é obrigatório. A coluna `flight_number` não é tocada: o que
+                    desaparece é o campo aqui, e as ofertas que já o têm escrito
+                    mantêm-no — ver `draftOf`, que continua a gravá-lo.
+                  */}
                   <Field label={t("admin.composerCabin")} span={2}>
                     <select
                       value={segment.cabin}
@@ -1477,6 +1536,125 @@ function DateChecks({ offer, t }: { offer: Offer; t: Translator }) {
   )
 }
 
+/**
+ * C-24 · a justificação e o botão que desbloqueiam a data diferente.
+ *
+ * Três estados, e a ordem importa:
+ *
+ *   · a data é a pedida → não aparece nada. Não há decisão nenhuma para tomar;
+ *   · a data mudou e ninguém a assumiu → o campo do motivo e **Confirmar
+ *     alteração de data**. A publicação continua travada, e o aviso diz que é
+ *     esta a maneira de a destravar — que é a metade que faltava;
+ *   · a data mudou e está assumida → uma linha a dizê-lo, com o motivo e com
+ *     como voltar atrás. Um estado assumido tem de ser visível, senão a
+ *     validação parece ter-se desligado sozinha.
+ */
+function DateChangeConfirm({
+  offer,
+  preview,
+  requested,
+  onPatch,
+  t,
+}: {
+  offer: OfferState
+  preview: Offer
+  requested: RequestedDates
+  onPatch: (patch: Partial<OfferState>) => void
+  t: Translator
+}) {
+  const change = offerDateChange(preview, requested)
+
+  /* Confirmada mas já sem nada de diferente: a data voltou ao pedido e a
+     confirmação não tem objecto. Limpa-se sozinha em vez de ficar a autorizar
+     uma mudança que não existe. */
+  useEffect(() => {
+    if (!change.any && offer.date_change_confirmed) {
+      onPatch({ date_change_confirmed: false, date_change_reason: "" })
+    }
+  }, [change.any, offer.date_change_confirmed, onPatch])
+
+  if (!change.any) return null
+
+  const dmy = (iso: string | null) => {
+    if (!iso) return "—"
+    const [y, m, d] = iso.slice(0, 10).split("-")
+    return y && m && d ? `${d}/${m}/${y}` : iso
+  }
+
+  const moved = [
+    change.depart
+      ? t("admin.composerDateMovedOut", {
+          from: dmy(requested.departDate),
+          to: dmy(change.depart),
+        })
+      : null,
+    change.return
+      ? t("admin.composerDateMovedBack", {
+          from: dmy(requested.returnDate),
+          to: dmy(change.return),
+        })
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+
+  if (offer.date_change_confirmed) {
+    return (
+      <div className="mb-3 rounded-[9px] border border-adm-ok/40 bg-adm-ok/[.10] p-2.5 text-xs leading-relaxed text-adm-txt-2">
+        <b className="text-adm-txt">{t("admin.composerDateChangeDone")}</b> {moved}
+        {offer.date_change_reason ? ` — “${offer.date_change_reason}”` : ""}
+        <button
+          type="button"
+          onClick={() =>
+            onPatch({ date_change_confirmed: false, date_change_reason: "" })
+          }
+          className="ml-2 rounded-lg border border-adm-line bg-adm-panel-2 px-2 py-1 text-[11px] font-bold text-adm-muted transition-colors hover:text-adm-txt"
+        >
+          {t("admin.composerDateChangeUndo")}
+        </button>
+      </div>
+    )
+  }
+
+  const reason = offer.date_change_reason.trim()
+  const tooShort = reason.length < 12
+
+  return (
+    <div className="mb-3 rounded-[9px] border border-adm-warn/40 bg-adm-warn/[.14] p-2.5 text-xs leading-relaxed text-[#F0C983]">
+      <div className="mb-2 flex items-start gap-2.5">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span className="min-w-0 flex-1">
+          <b>{t("admin.composerDateChangeTitle")}</b> {moved}
+          <br />
+          {t("admin.composerDateChangeHelp")}
+        </span>
+      </div>
+
+      <textarea
+        value={offer.date_change_reason}
+        onChange={(event) => onPatch({ date_change_reason: event.target.value })}
+        placeholder={t("admin.composerDateChangePlaceholder")}
+        rows={2}
+        className="w-full resize-y rounded-lg border border-adm-line bg-adm-panel-2 px-2.5 py-2 text-[12.5px] text-adm-txt outline-none placeholder:text-adm-muted focus:border-[#46587A]"
+      />
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={tooShort}
+          onClick={() => onPatch({ date_change_confirmed: true })}
+          className="rounded-lg border border-adm-warn/50 bg-adm-panel-2 px-2.5 py-1.5 text-[11.5px] font-bold text-[#F0C983] transition-colors hover:bg-adm-raise disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {t("admin.composerDateChangeCta")}
+        </button>
+        {tooShort && (
+          <span className="text-[11px]">{t("admin.composerDateChangeNeedsReason")}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // --- Oferta fechada ----------------------------------------------------------
 
 function CollapsedOffer({
@@ -1887,16 +2065,26 @@ function PublishPanel({
             </p>
           )}
           <CopyLink token={token} t={t} />
-          <button
-            type="button"
-            onClick={onRevision}
-            disabled={pending}
-            className="w-full rounded-lg border border-adm-line bg-adm-panel-2 px-4 py-2.5 text-[13px] font-semibold text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt disabled:opacity-60"
-          >
-            {t("admin.publishedNewRevision", { next: proposal.revision + 1 })}
-          </button>
+          {/*
+            C-30 · o botão "Nova revisão" foi removido.
+
+            "O conceito está certo, a implementação prende o utilizador." Abrir
+            uma revisão desbloqueia a edição **e esconde os preços ao cliente**
+            enquanto ela estiver aberta — e não havia forma de voltar atrás: o
+            agente ficava num estado intermédio, com a proposta invisível do
+            outro lado, sem saber como sair dele.
+
+            O que fica: a numeração das revisões não é tocada no modelo de
+            dados (`case_proposals.revision` continua igual, e o `publishProposal`
+            continua a exigir a nota de alteração de R2 em diante), e as
+            propostas publicadas continuam trancadas como hoje. O que desaparece
+            é a única porta que levava ao estado sem saída.
+
+            Volta no Sprint 5, com uma acção de cancelar e uma explicação clara
+            do estado — que é o que faltava.
+          */}
           <p className="text-[11px] leading-relaxed text-adm-muted">
-            {t("admin.publishedRevisionHint")}
+            {t("admin.publishedRevisionRemoved")}
           </p>
         </div>
       </section>

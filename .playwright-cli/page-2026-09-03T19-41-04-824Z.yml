@@ -1,0 +1,55 @@
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e2]: Loading WeeFly PRO…
+  - generic [ref=f6e13]:
+    - navigation [ref=f6e14]:
+      - generic [ref=f6e16]:
+        - link "WeeFly PRO" [ref=f6e17] [cursor=pointer]:
+          - /url: /inicio
+          - img "WeeFly" [ref=f6e18]
+          - generic [ref=f6e25]: PRO
+        - generic [ref=f6e26]:
+          - link "How it works" [ref=f6e27] [cursor=pointer]:
+            - /url: /como-funciona
+          - link "Services" [ref=f6e28] [cursor=pointer]:
+            - /url: /servicos
+          - link "Commissions" [ref=f6e29] [cursor=pointer]:
+            - /url: /comissoes
+          - link "Help" [ref=f6e30] [cursor=pointer]:
+            - /url: /ajuda
+        - generic [ref=f6e31]:
+          - button "English" [ref=f6e33] [cursor=pointer]: EN
+          - link "Sign in" [ref=f6e37] [cursor=pointer]:
+            - /url: /login
+          - link [ref=f6e38] [cursor=pointer]:
+            - /url: /registro
+            - button "Create account" [ref=f6e39]
+    - main [ref=f6e40]:
+      - generic [ref=f6e42]:
+        - generic [ref=f6e43]:
+          - generic [ref=f6e44]: Sign in
+          - generic [ref=f6e45]: Welcome back to WeeFlyPro.
+        - generic [ref=f6e46]:
+          - generic [ref=f6e47]:
+            - generic [ref=f6e48]:
+              - text: Email
+              - textbox "Email" [ref=f6e49]:
+                - /placeholder: name@company.cv
+            - generic [ref=f6e50]:
+              - text: Password
+              - generic [ref=f6e51]:
+                - textbox "Password" [ref=f6e52]:
+                  - /placeholder: ••••••••••
+                - button "Show" [ref=f6e53] [cursor=pointer]
+            - generic [ref=f6e54]:
+              - generic [ref=f6e55]:
+                - checkbox "Keep me signed in" [ref=f6e56] [cursor=pointer]
+                - checkbox
+                - generic [ref=f6e57] [cursor=pointer]: Keep me signed in
+              - link "I forgot my password" [ref=f6e58] [cursor=pointer]:
+                - /url: /recuperar-password
+            - button "Sign in" [ref=f6e59] [cursor=pointer]
+          - paragraph [ref=f6e61]:
+            - text: Don't have an account yet?
+            - link "Create account" [ref=f6e62] [cursor=pointer]:
+              - /url: /registro
+  - alert [ref=f6e63]

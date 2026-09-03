@@ -1,0 +1,410 @@
+- generic [active] [ref=e1]:
+  - heading "Sprint 3 · estado das correcções" [level=1] [ref=e2]
+  - paragraph [ref=e3]: Resposta ao Corrections Backlog v3.2 — as 33 correcções numeradas que o teste de 3 de Setembro levantou. Inclui o estado do servidor e o que falta configurar nele.
+  - paragraph [ref=e4]: Documento WeeFly Concierge · estado de execução · 4.ª revisão · Data 3 de Setembro de 2026 · Para Ivandro Ribeiro · Feito 24 de 33 · Por fazer 9
+  - generic [ref=e5]:
+    - heading "O essencial em três linhas" [level=3] [ref=e6]
+    - paragraph [ref=e7]: O Group A está fechado — os oito itens que quebravam o ciclo comercial, faltando só as credenciais do WhatsApp, que não são código. Onze dos vinte e quatro foram confirmados no browser contra a base de dados real, não apenas compilados.
+    - paragraph [ref=e8]: A base de dados e o DNS estão em dia — as quatro migrações aplicadas, e o SPF, o DKIM e o DMARC já estavam configurados desde Agosto (fui verificar os registos). O que falta no servidor são três variáveis de ambiente, não infraestrutura.
+    - paragraph [ref=e9]: "Os logótipos chegaram e estão instalados — as 31 companhias, com logótipo no back-office e dentro do PDF do bilhete. Restam duas coisas à espera de ti: a resposta ao contador «3» do C-23 e as chaves do WhatsApp."
+  - generic [ref=e10]:
+    - heading "Um defeito que a campainha revelou, e que vale a pena saberes" [level=3] [ref=e11]
+    - paragraph [ref=e12]: "Ao ligar a campainha do C-14 e olhar para os dados reais, apareceu isto: 292 dos 372 acontecimentos do sistema — 79% — eram a mesma linha repetida, «prazo de pagamento expirado», para um único caso, uma vez por hora."
+    - paragraph [ref=e13]: "A causa: aquele pagamento ficou num estado que a matriz de transições não deixa mover para «expirado». Como o estado nunca mudava, a verificação que devia travar a repetição nunca disparava, e cada passagem do processo automático escrevia outra linha. Está corrigido, e a campainha passou também a colapsar repetições: mostra «expirou ×36» numa linha em vez de trinta e seis iguais."
+    - paragraph [ref=e14]: Registo-o porque é a segunda vez neste sprint que um defeito só aparece quando alguém olha para o ecrã — o outro foi a mistura de línguas do C-22. Sem a campainha construída e testada com dados verdadeiros, ela teria nascido inútil e o próximo teste teria registado «a campainha está cheia de lixo».
+  - heading "Group A · o ciclo comercial" [level=2] [ref=e15]
+  - table [ref=e16]:
+    - rowgroup [ref=e17]:
+      - row [ref=e18]:
+        - columnheader "ID" [ref=e19]
+        - columnheader "Estado" [ref=e20]
+        - columnheader "O que ficou feito" [ref=e21]
+    - rowgroup [ref=e22]:
+      - row [ref=e23]:
+        - cell "C-03a" [ref=e24]
+        - cell "Feito · verificado" [ref=e25]
+        - cell [ref=e26]:
+          - text: "A causa estava confirmada nos dados: todas as notificações de 3 de Setembro voltaram"
+          - code [ref=e27]: bounced
+          - text: com
+          - code [ref=e28]: validation_error
+          - text: ", porque o campo"
+          - code [ref=e29]: from
+          - text: "levava dois endereços. Três ficheiros diferentes construíam o remetente por sua conta — incluindo a rota que envia o lead. Agora é um só, protegido: uma variável mal escrita custa uma linha de log, não o ciclo comercial em silêncio. A segunda caixa passou para o reply-to."
+      - row [ref=e30]:
+        - cell "C-03b" [ref=e31]
+        - cell "Por fazer · precisa de chaves" [ref=e32]
+        - cell [ref=e33]:
+          - text: Faltam
+          - code [ref=e34]: WHATSAPP_PHONE_NUMBER_ID
+          - text: e
+          - code [ref=e35]: WHATSAPP_ACCESS_TOKEN
+          - text: ", de quem tiver a conta Meta Business. O adaptador está pronto e os dois canais são independentes — sem chaves o WhatsApp fica"
+          - code [ref=e36]: skipped
+          - text: com a razão escrita e o email sai igual. Mas havia um segundo problema, e este era código. Metade dos clientes na base não tem o número em formato internacional gravado — o indicativo e o número estão lá em separado e são perfeitamente utilizáveis (
+          - code [ref=e37]: "+238"
+          - text: +
+          - code [ref=e38]: "9592388"
+          - text: "), mas o campo que o WhatsApp usa está vazio, e o aviso saía «sem destinatário». Com as chaves postas, metade dos clientes continuaria a não receber nada — e a causa seria procurada na Meta, onde não estava. Corrigido: o número passa a ser calculado quando o campo falta."
+      - row [ref=e39]:
+        - cell "C-01" [ref=e40]
+        - cell "Feito · verificado" [ref=e41]
+        - 'cell "O compositor não abre num caso sem dono; no lugar dele aparece Reclamar e cotar com o tempo de espera calculado. Confirmado num caso real: reclamar gravou o agente, a hora, e o registo ficou com «esteve 6d 18h sem dono». Publicar exige ser o dono ou administrador. Dois cliques simultâneos: ganha quem chega primeiro à base de dados." [ref=e42]'
+      - row [ref=e43]:
+        - cell "C-02" [ref=e44]
+        - cell "Feito · verificado" [ref=e45]
+        - cell [ref=e46]:
+          - text: "Nota importante: o comprovativo abre contra os dados reais — os seis existentes descarregam, com o tipo certo. Não consegui reproduzir a falha que viste, e a rota já estava correcta desde o Sprint 2. Corrigi três defeitos reais desse caminho: um nome gravado em mojibake ("
+          - code [ref=e47]: FormulÃ¡rio…
+          - text: ), o tamanho vindo do registo em vez do ficheiro, e o nome cortado a meio de uma sequência de escape. E os erros passaram a ser uma página legível em vez de código num separador em branco — se voltar a falhar, o próximo teste diz a causa.
+      - row [ref=e48]:
+        - cell "C-24" [ref=e49]
+        - cell "Feito · verificado" [ref=e50]
+        - 'cell "O item mais grave, e a causa era exactamente a que descreveste: uma validação recusava qualquer oferta que não partisse no dia pedido, e a única saída reescrevia o pedido do cliente e mandava a proposta de volta a rascunho. Agora a alteração vive na oferta: um bloco de justificação e um botão Confirmar alteração de data. Verificado a mover a ida de 17 para 18/09 — o bloqueio desapareceu e o pedido original do cliente ficou intacto, que era o critério." [ref=e51]'
+      - row [ref=e52]:
+        - cell "C-04" [ref=e53]
+        - cell "Feito · verificado" [ref=e54]
+        - cell "Fechar caso depois de emitido; sai das filas de trabalho e continua em «Tudo». Reversível por administrador, com registo. Confirmado num caso emitido." [ref=e55]
+      - row [ref=e56]:
+        - cell "C-05" [ref=e57]
+        - cell "Feito · verificado" [ref=e58]
+        - 'cell "A causa era estrutural: o estado do link era uma coluna gravada com cinco caminhos diferentes a escrevê-la. Passou a ser derivado do estado do caso, e quando os dois discordam isso aparece em vez de ser resolvido em silêncio. Não existia nenhuma data de última abertura — agora existe, e conta os acessos." [ref=e59]'
+      - row [ref=e60]:
+        - cell "C-33" [ref=e61]
+        - cell "Feito · parcial" [ref=e62]
+        - cell [ref=e63]:
+          - text: A via escolhida em cima, só os campos daquela via, valor, prazo e envio ao cliente; a validação do comprovativo por baixo. Os seis métodos antigos deram lugar aos cinco decididos, sem transferência bancária. Os casos antigos não foram migrados de propósito —
+          - code [ref=e64]: transfer
+          - text: não é nenhum dos cinco novos, e reescrevê-lo inventava um método que aquele cliente nunca escolheu. Isto desbloqueia também o
+          - code [ref=e65]: PC-10
+          - text: ".Verificado só em parte: vi no browser o painel do pagamento já liquidado e a etiqueta do método antigo. O formulário editável — onde o agente cola o link — não pude confirmar porque os três pagamentos que existem na base estão todos"
+          - code [ref=e66]: COMPLETED
+          - text: . Fica para o teu próximo teste com um caso a pagar.
+  - heading "Group B · dados errados ou incompletos" [level=2] [ref=e67]
+  - table [ref=e68]:
+    - rowgroup [ref=e69]:
+      - row [ref=e70]:
+        - columnheader "ID" [ref=e71]
+        - columnheader "Estado" [ref=e72]
+        - columnheader "O que ficou feito" [ref=e73]
+    - rowgroup [ref=e74]:
+      - row [ref=e75]:
+        - cell "C-06" [ref=e76]
+        - cell "Feito" [ref=e77]
+        - cell "A data futura já era recusada; faltava a outra ponta. Limite de 120 anos, e — o que mais importa — o tipo de passageiro passou a contar à data da viagem, não à da marcação. Quem faz 12 anos entre as duas viaja como adulto, e calcular a partir de hoje dava o número certo hoje e o errado no aeroporto. O alerta cobre também a fronteira dos 2 anos." [ref=e78]
+      - row [ref=e79]:
+        - cell "C-07" [ref=e80]
+        - cell "Feito · já existia" [ref=e81]
+        - cell [ref=e82]:
+          - text: "Verificado contra os critérios: casa por código, cidade e país, mostra"
+          - code [ref=e83]: RAK — Marraquexe
+          - text: ", só aceita entradas escolhidas e reutiliza o dataset do lado do cliente. O construtor de bilhete não tem campos de aeroporto para converter."
+      - row [ref=e84]:
+        - cell "C-08" [ref=e85]
+        - cell "Feito · verificado" [ref=e86]
+        - 'cell "O campo de taxas já tinha saído. O furo era outro e específico: as propostas geradas pela pesquisa nasciam com o serviço a zero, enquanto as feitas à mão nasciam a 20 — a mesma regra a dar dois números conforme o caminho. Confirmado no ecrã: duas linhas e o total." [ref=e87]'
+      - row [ref=e88]:
+        - cell "C-09" [ref=e89]
+        - cell "Feito · já existia" [ref=e90]
+        - cell "Datas pré-preenchidas do pedido, marcadas como vindas do cliente e editáveis." [ref=e91]
+      - row [ref=e92]:
+        - cell "C-10" [ref=e93]
+        - cell "Feito" [ref=e94]
+        - cell [ref=e95]:
+          - text: Os 31 logótipos chegaram, com checksums a bater e os códigos exactamente os do backlog. As companhias passaram de dez escritas no código para uma tabela — acrescentar a trigésima segunda é um
+          - code [ref=e96]: insert
+          - text: ", que é o critério. A ordem do seletor passou a ser a prioridade que o backlog dá (primeiro a VR e a TP, não a AF por ser alfabética). A queda para a sigla decide-se antes de renderizar, e não por uma imagem que falha: assim não pisca numa lista de dez ofertas."
+      - row [ref=e97]:
+        - cell "C-12" [ref=e98]
+        - cell "Feito · já existia" [ref=e99]
+        - 'cell "Verificado: margem em valor e percentagem, vermelha a zero ou negativa, e o custo existe apenas na consulta de administração — o caminho do cliente não o lê, logo não há por onde escapar." [ref=e100]'
+      - row [ref=e101]:
+        - cell "C-26" [ref=e102]
+        - cell "Feito" [ref=e103]
+        - cell [ref=e104]:
+          - text: "A companhia da proposta passou a ser o valor de partida no ecrã de emissão — antes começava vazia, e quem emitia tinha de ir ver a oferta noutro separador para saber qual das 31 escolher, com o risco óbvio. O gerador de PDF não embutia imagem nenhuma; agora embute, e os 31 logótipos foram testados um a um. Evitei a armadilha das fontes de outra maneira: os ficheiros vivem em"
+          - code [ref=e105]: public/
+          - text: ", que o Next copia para o deployment por contrato — não depende do rastreio que fez o"
+          - code [ref=e106]: .ttf
+          - text: "desaparecer. A alternativa era quase 900 KB de imagens em base64 dentro de um ficheiro de código. Fica em falta: mostrar a companhia operadora separada da comercial quando diferem. Não existe campo para a operadora, e inventá-lo a meio deste sprint era pior do que dizer que falta."
+      - row [ref=e107]:
+        - cell "C-27" [ref=e108]
+        - cell "Feito" [ref=e109]
+        - 'cell "O número de voo saiu da proposta. Isso abriu um buraco que tive de tapar: a emissão apenas o mostrava, nunca o pedia — sem campo em lado nenhum, o bilhete sairia sem número de voo. Passou para o construtor de bilhete, onde já vivem o equipamento, a classe e os terminais." [ref=e110]'
+      - row [ref=e111]:
+        - cell "C-29" [ref=e112]
+        - cell "Por fazer" [ref=e113]
+        - cell "Hoje a bagagem é por oferta, não por voo. Precisa de migração e toca no compositor, no ecrã do cliente e no bilhete. É o item substancial que falta do Group B e não depende de ninguém." [ref=e114]
+  - heading "Group C · interface e usabilidade" [level=2] [ref=e115]
+  - table [ref=e116]:
+    - rowgroup [ref=e117]:
+      - row [ref=e118]:
+        - columnheader "ID" [ref=e119]
+        - columnheader "Estado" [ref=e120]
+        - columnheader "O que ficou feito" [ref=e121]
+    - rowgroup [ref=e122]:
+      - row [ref=e123]:
+        - cell "C-13" [ref=e124]
+        - cell "Feito · verificado" [ref=e125]
+        - 'cell "«Pagamentos» e «Emissões» fora da barra de topo. Filtravam de facto, mas do lado de quem clica não acontecia nada visível — a tua leitura estava certa. Os baldes continuam onde se veem a funcionar: os separadores da fila." [ref=e126]'
+      - row [ref=e127]:
+        - cell "C-14" [ref=e128]
+        - cell "Feito · verificado" [ref=e129]
+        - 'cell "A campainha era um botão sem contador, sem lista e sem acção. Agora tem contador real, lista do mais recente para o mais antigo, cada entrada com o que aconteceu / que caso / quando / quem, e lido/não lido por utilizador. Marca como visto ao abrir, não ao clicar numa entrada — caso contrário o contador nunca desceria. Confirmado no browser: contador a 5, a lista com os quatro avanços reais do cliente mais a linha colapsada «expirou ×36», e o contador a cair para zero com as marcas gravadas." [ref=e130]'
+      - row [ref=e131]:
+        - cell "C-15" [ref=e132]
+        - cell "Por fazer" [ref=e133]
+        - cell "Mudanças de campo com valor antigo → novo na aba Comunicações." [ref=e134]
+      - row [ref=e135]:
+        - cell "C-16" [ref=e136]
+        - cell "Por fazer" [ref=e137]
+        - cell "O auto-save que interrompe a escrita. É o item com maior efeito no dia a dia de quem usa a plataforma." [ref=e138]
+      - row [ref=e139]:
+        - cell "C-17" [ref=e140]
+        - cell "Parcial" [ref=e141]
+        - cell "A lista de erros já existe no compositor e no ecrã de emissão. Falta no formulário de passageiros." [ref=e142]
+      - row [ref=e143]:
+        - cell "C-18" [ref=e144]
+        - cell "Feito" [ref=e145]
+        - cell "Já não havia «Compor proposta» em lado nenhum." [ref=e146]
+      - row [ref=e147]:
+        - cell "C-19" [ref=e148]
+        - cell "Por fazer" [ref=e149]
+        - cell "Sobreposição no campo de hora entre 360 e 1920 px. Testo eu, não preciso de nada." [ref=e150]
+      - row [ref=e151]:
+        - cell "C-20" [ref=e152]
+        - cell "Feito" [ref=e153]
+        - 'cell "Sem referência a Pro nem a Admin: saiu do topbar, do menu da conta e das definições. A permissão continua na base de dados e continua a decidir o que se pode fazer — o que sai é a etiqueta." [ref=e154]'
+      - row [ref=e155]:
+        - cell "C-21" [ref=e156]
+        - cell "Feito" [ref=e157]
+        - 'cell "O seletor mostra o Dominik e mais ninguém. As duas contas de administração deixam de ser atribuíveis mas continuam a entrar — eram a única porta de acesso, e desactivá-las trancava a equipa fora. Um caso já atribuído a uma delas continua a mostrá-la: não se reescreve histórico." [ref=e158]'
+      - row [ref=e159]:
+        - cell "C-22" [ref=e160]
+        - cell "Feito · verificado" [ref=e161]
+        - 'cell "Isto só apareceu ao olhar para o ecrã. O compositor renderizava em inglês dentro de um back-office português: «Fechar caso» e «ESTADO DOS LINKS» ao lado de «CLIENT''S REQUEST» e «Publish and notify client». Seguia o idioma do browser de quem atende. Fixado em português — o seletor PT/EN do back-office é Sprint 4." [ref=e162]'
+      - row [ref=e163]:
+        - cell "C-23" [ref=e164]
+        - cell "Travado · precisa de ti" [ref=e165]
+        - cell "O próprio backlog manda confirmar contigo em que ecrã aparece o contador «3» antes de começar. É a pergunta que preciso de te fazer." [ref=e166]
+      - row [ref=e167]:
+        - cell "C-25" [ref=e168]
+        - cell "Por fazer" [ref=e169]
+        - cell "Mensagens prontas por fase, para WhatsApp e email." [ref=e170]
+      - row [ref=e171]:
+        - cell "C-28" [ref=e172]
+        - cell "Feito" [ref=e173]
+        - cell "A marca existia mas era cinzenta — a mesma cor de tudo o que está bem naquele ecrã, pelo que se lia como decoração. Agora é amarela, com ponto de exclamação e explicação ao passar o rato." [ref=e174]
+      - row [ref=e175]:
+        - cell "C-30" [ref=e176]
+        - cell "Feito · verificado" [ref=e177]
+        - cell "O botão de nova revisão foi removido. A numeração fica intacta no modelo de dados e as propostas publicadas continuam trancadas. Volta no Sprint 5 com uma acção de cancelar." [ref=e178]
+      - row [ref=e179]:
+        - cell "C-31" [ref=e180]
+        - cell "Por fazer" [ref=e181]
+        - cell "As notas na conversa, com autor e separação entre interno e o que o cliente vê. As colunas já vão na migração 0016." [ref=e182]
+      - row [ref=e183]:
+        - cell "C-32" [ref=e184]
+        - cell "Feito" [ref=e185]
+        - cell "Dos sete avanços que o critério lista, seis já eram registados. Faltava exactamente «escolheu o método de pagamento» — a coluna era gravada e mais nada acontecia. E é o avanço que cria trabalho para nós, porque a partir dali alguém tem de arranjar o link daquela via." [ref=e186]
+  - heading "O que é preciso para fechar o resto" [level=2] [ref=e187]
+  - generic [ref=e188]:
+    - heading "Base de dados · feito (0014 a 0017)" [level=3] [ref=e189]
+    - paragraph [ref=e190]:
+      - text: As quatro migrações do sprint —
+      - code [ref=e191]: "0014"
+      - text: a
+      - code [ref=e192]: "0017"
+      - text: — estão aplicadas e verificadas por sonda directa. A tabela das companhias tem as 31 activas. Não há nada pendente na base de dados.
+  - generic [ref=e193]:
+    - heading "1 · Configurar o servidor de produção" [level=3] [ref=e194]
+    - paragraph [ref=e195]: "O C-03a está corrigido em código, mas o servidor continua com o valor errado — e enquanto não mudar, cada notificação continua a voltar devolvida:"
+    - list [ref=e196]:
+      - listitem [ref=e197]:
+        - code [ref=e198]: CONCIERGE_FROM_EMAIL
+        - text: — um endereço, não dois
+      - listitem [ref=e199]:
+        - code [ref=e200]: RESEND_WEBHOOK_SECRET
+        - text: — sem ela o estado nunca passa de «enviado» para «entregue»
+      - listitem [ref=e201]:
+        - code [ref=e202]: WHATSAPP_PHONE_NUMBER_ID
+        - text: e
+        - code [ref=e203]: WHATSAPP_ACCESS_TOKEN
+        - text: — C-03b
+      - listitem [ref=e204]:
+        - text: SPF, DKIM e DMARC em
+        - code [ref=e205]: weefly.africa
+    - paragraph [ref=e206]:
+      - code [ref=e207]: /api/concierge/diagnose
+      - text: lista o que falta, com a causa escrita.
+  - generic [ref=e208]:
+    - heading "2 · Duas coisas que faltam, de duas pessoas diferentes" [level=3] [ref=e209]
+    - list [ref=e210]:
+      - listitem [ref=e211]: C-23 · para o Ivandro — em que ecrã aparece o contador «3»? O backlog manda confirmar antes de começar, e é a única pergunta de desenho que trava trabalho.
+      - listitem [ref=e212]: C-22 · a apresentação do Dominik — o critério é "seguir a linguagem usada na apresentação do Dominik", e não a tenho. A mistura de línguas, que era o defeito visível e o que o teste apanhou, já está corrigida; o que falta é afinar o vocabulário por esse documento.
+  - heading "O servidor · o que já está e o que falta" [level=2] [ref=e213]
+  - paragraph [ref=e214]:
+    - text: "A equipa do Sarin entregou a máquina configurada:"
+    - generic [ref=e215]:
+      - text: EC2 com Node 20, PM2 7.0.4, NGINX, IP fixo
+      - code [ref=e216]: 52.30.78.0
+      - text: e SSL activo em
+      - code [ref=e217]: concierge.weefly.africa
+    - text: ". As chaves PEM e PPK chegaram e estão guardadas fora do controlo de versões. Custo estimado: cerca de 45 USD por mês."
+  - paragraph [ref=e218]:
+    - text: O que falta é a configuração da aplicação dentro dessa máquina. O passo a passo completo está em
+    - code [ref=e219]: docs/deploy-ec2.md
+    - text: ; o que se segue é o que não pode ser esquecido.
+  - generic [ref=e220]:
+    - heading "Limite de upload · verificado, não precisa de nada" [level=3] [ref=e221]
+    - paragraph [ref=e222]: "Estava a avisar que o NGINX aceita 1 MB por omissão e que isso recusaria comprovativos com 413. Fui ver o painel: está em 128 MB, muito acima dos 8 MB que a aplicação aceita. Não há nada a mudar."
+    - paragraph [ref=e223]:
+      - text: "O que fica por confirmar é outro número: a emissão gera três PDF no mesmo pedido, e um timeout de proxy curto corta-a a meio. Se a emissão falhar sem explicação, é aí que se olha — em «Additional nginx directives», com"
+      - code [ref=e224]: proxy_read_timeout 60s;
+      - text: .
+  - generic [ref=e225]:
+    - heading [level=3] [ref=e226]:
+      - text: As variáveis, em
+      - code [ref=e227]: .env.production
+    - paragraph [ref=e228]:
+      - text: Na raiz da aplicação, com
+      - code [ref=e229]: chmod 600
+      - text: "— tem a chave de serviço da base de dados:"
+    - list [ref=e230]:
+      - listitem [ref=e231]:
+        - code [ref=e232]: CONCIERGE_FROM_EMAIL
+        - text: — um endereço. É a correcção do C-03a, e a razão por que nada foi entregue no teste de 3 de Setembro.
+      - listitem [ref=e233]:
+        - code [ref=e234]: NEXT_PUBLIC_SITE_URL=https://concierge.weefly.africa
+        - text: — é o endereço que vai dentro de cada email e forma o link do cliente. Um valor errado aqui manda todos os clientes para um sítio que não existe, e os emails saem na mesma.
+      - listitem [ref=e235]:
+        - code [ref=e236]: RESEND_WEBHOOK_SECRET
+        - text: — sem ela o estado de entrega nunca passa de «enviado» para «entregue».
+      - listitem [ref=e237]:
+        - code [ref=e238]: WHATSAPP_PHONE_NUMBER_ID
+        - text: e
+        - code [ref=e239]: WHATSAPP_ACCESS_TOKEN
+        - text: — fecham o C-03b.
+    - paragraph [ref=e240]:
+      - generic [ref=e241]:
+        - text: Falta o
+        - code [ref=e242]: CONCIERGE_DIAGNOSE_TOKEN
+        - text: .
+      - text: Sem ele, a rota de diagnóstico responde 404 em produção — e é precisamente a ferramenta que diz se a configuração de email está certa. Qualquer segredo longo serve.
+    - paragraph [ref=e243]:
+      - text: "E há duas variáveis a retirar:"
+      - code [ref=e244]: BO_PASSWORD_FAPI_ROCHA
+      - text: e
+      - code [ref=e245]: BO_PASSWORD_GOCGO2008
+      - text: . Nada no código as lê — são o registo de um utilitário local. São duas passwords de administração num painel, sem servirem para nada.
+  - generic [ref=e246]:
+    - heading "Enquanto o endereço for provisório · uma coisa é permanente" [level=3] [ref=e247]
+    - paragraph [ref=e248]:
+      - text: A plataforma está a servir em
+      - code [ref=e249]: weefly.duckdns.org
+      - text: "para testes, o que é sensato. Duas consequências:"
+    - list [ref=e250]:
+      - listitem [ref=e251]:
+        - text: O webhook do Resend tem de apontar para
+        - code [ref=e252]: https://weefly.duckdns.org/api/webhooks/resend
+        - text: enquanto for esse o endereço. Se ficar no domínio final, o estado de entrega pára em «enviado» e nunca chega a «entregue».
+      - listitem [ref=e253]:
+        - text: O PDF do bilhete leva o endereço lá dentro. Um bilhete emitido agora carrega um link
+        - code [ref=e254]: duckdns
+        - text: dentro do ficheiro, para sempre — e um PDF é uma coisa que o cliente guarda. Quando o endereço mudar, os bilhetes já enviados apontam para um sítio que pode deixar de responder.
+    - paragraph [ref=e255]: Testar à vontade. Emitir bilhetes a clientes reais, só depois de o endereço ser o definitivo.
+  - generic [ref=e256]:
+    - heading "DNS · SPF, DKIM e DMARC já estão feitos" [level=3] [ref=e257]
+    - paragraph [ref=e258]: "Eu vinha a listar isto como pendente. Fui verificar os registos reais e está tudo lá, desde Agosto:"
+    - list [ref=e259]:
+      - listitem [ref=e260]:
+        - text: DKIM — a chave em
+        - code [ref=e261]: resend._domainkey.weefly.africa
+        - text: ;
+      - listitem [ref=e262]:
+        - text: SPF —
+        - code [ref=e263]: v=spf1 include:amazonses.com ~all
+        - text: em
+        - code [ref=e264]: send.weefly.africa
+        - text: ", mais o MX de retorno para a Amazon;"
+      - listitem [ref=e265]:
+        - text: DMARC —
+        - code [ref=e266]: v=DMARC1; p=reject; adkim=r; aspf=r
+        - text: .
+    - paragraph [ref=e267]: "Não há nada a configurar. Peço desculpa por ter mantido isto na lista: a informação estava nas nossas próprias notas e eu devia tê-la confirmado antes de a pedir."
+    - paragraph [ref=e268]:
+      - text: Duas observações que valem por si. A política DMARC é
+      - code [ref=e269]: p=reject
+      - text: ", a mais estrita que existe — um email cujo remetente não esteja alinhado não vai para spam, é recusado. É por isso que o campo do remetente ter dois endereços (o C-03a) era tão grave, e é a razão de a protecção que lá pusemos valer a pena. E os relatórios DMARC vão para"
+      - code [ref=e270]: dmarc_rua@onsecureserver.net
+      - text: ", um endereço de terceiros: ninguém da WeeFly os está a ler."
+  - generic [ref=e271]:
+    - heading "Responder ao Sarin" [level=3] [ref=e272]
+    - paragraph [ref=e273]: Ele pede o IP público do escritório para restringir o acesso SSH. Neste momento a porta 22 está aberta a todos os endereços da internet — foi deliberado para a instalação, mas não deve ficar assim. É o pedido dele e é o mais urgente da lista dele.
+    - paragraph [ref=e274]: "Vale a pena confirmar ao mesmo tempo onde ficam as cópias de segurança da base de dados e quem tem acesso à consola AWS: nada disso está documentado do nosso lado."
+  - heading "Depois de estar no ar" [level=3] [ref=e275]
+  - paragraph [ref=e276]:
+    - text: A verificação em sete passos está no fim de
+    - code [ref=e277]: docs/deploy-ec2.md
+    - text: . O atalho para saber se a configuração de email ficou certa é abrir
+    - code [ref=e278]: /api/concierge/diagnose
+    - text: ": ele lista o que falta com a causa escrita, e passou a apanhar precisamente o erro do C-03a."
+  - heading "Os 9 que faltam · o que cada um precisa" [level=2] [ref=e279]
+  - paragraph [ref=e280]: Dos nove, só dois estão à espera de alguém. Os outros sete não dependem de ninguém — mas quatro deles têm uma decisão por tomar, e prefiro dizê-la a adivinhá-la em silêncio.
+  - table [ref=e281]:
+    - rowgroup [ref=e282]:
+      - row [ref=e283]:
+        - columnheader "ID" [ref=e284]
+        - columnheader "Depende de" [ref=e285]
+        - columnheader "O que falta saber, ou nada" [ref=e286]
+    - rowgroup [ref=e287]:
+      - row [ref=e288]:
+        - cell "C-03b" [ref=e289]
+        - cell "Chaves Meta" [ref=e290]
+        - cell "As duas variáveis. A parte de código já está feita." [ref=e291]
+      - row [ref=e292]:
+        - cell "C-23" [ref=e293]
+        - cell "Ivandro" [ref=e294]
+        - cell "Em que ecrã aparece o contador «3». O backlog manda confirmar primeiro." [ref=e295]
+      - row [ref=e296]:
+        - cell "C-15" [ref=e297]
+        - cell "Uma decisão minha" [ref=e298]
+        - 'cell "«As alterações de campo aparecem com o valor antigo e o novo» — mas quais campos? Instrumentar todos enche a aba de ruído. Vou pelos que têm consequência comercial: datas, preços, vendedor, valor a cobrar e método. Se quiseres outros, diz." [ref=e299]'
+      - row [ref=e300]:
+        - cell "C-17" [ref=e301]
+        - cell "Uma decisão minha" [ref=e302]
+        - cell "O critério diz «o formulário da proposta, o dos passageiros e o de emissão». A proposta e a emissão já têm a lista. O «formulário dos passageiros» só existe do lado do cliente — no back-office os passageiros são só de leitura. É esse que vou fazer." [ref=e303]
+      - row [ref=e304]:
+        - cell "C-19" [ref=e305]
+        - cell "Nada" [ref=e306]
+        - 'cell "Não sei qual dos campos de hora se sobrepõe, mas isso descubro eu: varro os tamanhos de 360 a 1920 px no browser e encontro-o." [ref=e307]'
+      - row [ref=e308]:
+        - cell "C-25" [ref=e309]
+        - cell "Melhor com a apresentação" [ref=e310]
+        - cell "O backlog dá o exemplo escrito, que basta para construir. Sai melhor com a apresentação do Dominik à mão, pelo tom." [ref=e311]
+      - row [ref=e312]:
+        - cell "C-16" [ref=e313]
+        - cell "Nada" [ref=e314]
+        - cell "Seis critérios, todos claros. É o que tem mais efeito no dia a dia de quem usa a plataforma." [ref=e315]
+      - row [ref=e316]:
+        - cell "C-29" [ref=e317]
+        - cell "Nada" [ref=e318]
+        - 'cell "Especificado ao detalhe: um bloco por voo, mala de cabina, item pessoal e porão em peças × kg, com contadores. Precisa de migração." [ref=e319]'
+      - row [ref=e320]:
+        - cell "C-31" [ref=e321]
+        - cell "Nada" [ref=e322]
+        - cell "As colunas já foram criadas com a migração 0016." [ref=e323]
+  - heading "Duas coisas que encontrei e que não estavam na lista" [level=2] [ref=e324]
+  - paragraph [ref=e325]: Hidratação quebrada no back-office. O bloco de estilos das fontes emite aspas escapadas no servidor e cruas no cliente, o que faz o React desistir e redesenhar toda a raiz no browser. Não é do Sprint 3, mas é real e degrada todos os ecrãs do back-office. Vale um item no Sprint 4.
+  - paragraph [ref=e326]: O grafo do projeto estava desactualizado e cobria apenas a camada de autenticação — nenhum dos ecrãs do Concierge. Foi reconstruído, e as migrações passaram a entrar nele.
+  - heading "Nota sobre o método" [level=2] [ref=e327]
+  - paragraph [ref=e328]: "Onze itens estão marcados «verificado» porque foram abertos no browser e confirmados contra a base de dados real, não apenas compilados. Essa distinção é deliberada: o C-02 é o exemplo de porque importa — o código estava correcto desde o Sprint 2 e a falha que viste tinha outra causa. Os restantes dez compilam e passam as verificações automáticas, mas ainda não foram clicados."
+  - paragraph [ref=e329]:
+    - text: Ficaram três casos de teste com dados alterados durante a verificação (
+    - code [ref=e330]: WF-2608-0052
+    - text: reclamado,
+    - code [ref=e331]: WF-2609-0055
+    - text: fechado,
+    - code [ref=e332]: WF-2609-0056
+    - text: com a ida movida). Todos reversíveis.
+  - paragraph [ref=e333]: WeeFly Concierge · estado de execução do Sprint 3 · 3 de Setembro de 2026 · 24 de 33 correcções feitas · 11 confirmadas no browser · 11 por fazer · 3 à espera de decisão ou de ficheiros · migrações 0014, 0015 e 0016 aplicadas.

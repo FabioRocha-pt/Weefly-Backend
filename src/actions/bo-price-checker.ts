@@ -14,16 +14,26 @@ import { z } from "zod"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { boIdentity } from "@/lib/bo-access"
 import { logCaseEvent } from "@/lib/case-events"
+import { markAlertsRead } from "@/lib/bo-alerts"
+import { elapsedSince } from "@/lib/case-status"
 import { parseMoney } from "@/lib/proposal-math"
 import {
   confirmPaymentByAdmin,
   expireNow,
   extendReviewDeadline,
   getPcPayment,
+  markInstructionsSent,
   rejectProof,
   reopenPayment,
+  savePayInstructions,
 } from "@/lib/pc/payment"
-import { PROOF_REVIEW_HOURS, type PayMethodId } from "@/lib/pc/catalog"
+import { sendPaymentInstructionsEmail } from "@/lib/emails/send"
+import {
+  METHOD_LABEL_PT,
+  PROOF_REVIEW_HOURS,
+  payMethod,
+  type PayMethodId,
+} from "@/lib/pc/catalog"
 
 export type BoResult = { ok: true; notice?: string } | { ok: false; error: string }
 
@@ -237,7 +247,26 @@ export async function boReopenPayment(
 
 // ── o caso ───────────────────────────────────────────────────────────────────
 
-/** Reclamar o caso: passa a ter dono, e sai de "novos sem dono". */
+/**
+ * Reclamar o caso: passa a ter dono, e sai de "novos sem dono".
+ *
+ * C-01 · três coisas que faltavam.
+ *
+ * A primeira é o tempo de espera. `created_by` já dizia de quem é o caso, mas
+ * não quando passou a ser — e sem isso não há resposta para "quanto tempo
+ * esteve à espera sem ninguém", que é o critério e a única medida honesta da
+ * fila. Fica em `claimed_at` (migração 0014) e no registo, em texto.
+ *
+ * A segunda é não roubar. Reclamar um caso que já tem dono passava por cima
+ * dele em silêncio: dois agentes no mesmo caso é exactamente o que o C-01
+ * existe para acabar, e trocar de dono a meio produz a mesma confusão pelo
+ * caminho oposto. Quem precisa de mudar o responsável muda o **vendedor**, que
+ * é um gesto com nome próprio e um seletor próprio (BO-14).
+ *
+ * A terceira é a corrida. O `eq("created_by", null)` no update é o que decide
+ * entre dois cliques simultâneos: ganha quem chegar primeiro à base de dados, e
+ * o segundo recebe uma frase em vez de um caso que acha que é dele.
+ */
 export async function boClaimCase(caseId: string): Promise<BoResult> {
   const identity = await boIdentity()
   if (!identity) return { ok: false, error: NOT_ALLOWED }
@@ -247,37 +276,340 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
 
   const { data: bookingCase } = await admin
     .from("booking_cases")
-    .select("id, created_by, trip_request_id")
+    .select("id, created_by, trip_request_id, created_at")
     .eq("id", caseId)
     .maybeSingle()
 
   if (!bookingCase) return { ok: false, error: "Caso não encontrado." }
 
-  await admin
-    .from("booking_cases")
-    .update({ created_by: identity.userId })
-    .eq("id", caseId)
+  const record = bookingCase as {
+    created_by: string | null
+    trip_request_id: string | null
+    created_at: string
+  }
 
-  if ((bookingCase as { trip_request_id: string | null }).trip_request_id) {
+  if (record.created_by && record.created_by !== identity.userId) {
+    return {
+      ok: false,
+      error:
+        "Este caso já tem dono. Para o passar a outra pessoa, mude o vendedor no cabeçalho.",
+    }
+  }
+
+  if (record.created_by === identity.userId) {
+    return { ok: true, notice: "O caso já é seu." }
+  }
+
+  const now = new Date()
+
+  const { data: claimed } = await admin
+    .from("booking_cases")
+    .update({
+      created_by: identity.userId,
+      claimed_at: now.toISOString(),
+      claimed_by_email: identity.email,
+    })
+    .eq("id", caseId)
+    /* A corrida decide-se aqui, e não numa leitura anterior. */
+    .is("created_by", null)
+    .select("id")
+
+  if (!claimed || claimed.length === 0) {
+    return {
+      ok: false,
+      error: "Outra pessoa reclamou este caso primeiro. Recarregue a página.",
+    }
+  }
+
+  if (record.trip_request_id) {
     await admin
       .from("trip_requests")
       .update({ status: "em_tratamento" })
-      .eq("id", (bookingCase as { trip_request_id: string }).trip_request_id)
+      .eq("id", record.trip_request_id)
       .eq("status", "novo")
   }
+
+  /* Quanto tempo o caso esteve na fila sem ninguém. É este número que diz se a
+     fila está a ser trabalhada ou só a ser olhada. */
+  const waited = elapsedSince(record.created_at, now.getTime())
 
   await logCaseEvent({
     caseId,
     kind: "case_claimed",
     title: "Caso reclamado",
-    detail: identity.label,
+    detail: `${identity.label} · esteve ${waited} sem dono`,
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+    payload: { claimedAt: now.toISOString(), unclaimedFor: waited },
+  })
+
+  touch(caseId)
+  return { ok: true, notice: `Caso reclamado. Esteve ${waited} sem dono.` }
+}
+
+// ── C-14 · a campainha ───────────────────────────────────────────────────────
+
+/**
+ * Marca alertas como vistos por quem está a olhar.
+ *
+ * Chamada quando a campainha abre. Não devolve nada de útil de propósito: o
+ * contador vem do servidor no render seguinte (o `BoLiveUpdates` já força um
+ * `router.refresh()`), e devolver o número novo daqui criava uma segunda fonte
+ * de verdade para o mesmo valor.
+ */
+export async function boMarkAlertsRead(eventIds: string[]): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  /* Um limite, porque isto vem do browser: a campainha carrega 40 e não há
+     razão para aceitar mais do que isso de uma vez. */
+  const ids = eventIds
+    .filter((id) => /^[0-9a-f-]{36}$/i.test(id))
+    .slice(0, 60)
+
+  await markAlertsRead(identity.userId, ids)
+  revalidatePath("/admin/price-checker")
+  return { ok: true }
+}
+
+// ── C-33 · as instruções de pagamento ────────────────────────────────────────
+
+const instructionsSchema = z.object({
+  caseId: z.string().uuid(),
+  paymentId: z.string().uuid(),
+  method: z.enum(["stripe", "vinti4", "revolut", "instapay", "paypal"]),
+  link: z.string().trim().max(600).optional(),
+  reference: z.string().trim().max(200).optional(),
+  /** `YYYY-MM-DDTHH:mm` do `datetime-local`, ou vazio. */
+  dueAt: z.string().trim().max(40).optional(),
+  /** Enviar ao cliente no mesmo gesto, ou só gravar. */
+  send: z.boolean().optional(),
+})
+
+/**
+ * C-33 · guardar o que o agente forneceu, e mandá-lo ao cliente.
+ *
+ * A verificação de que há alguma coisa para enviar é por método e não genérica:
+ * um Stripe sem link é um botão que não leva a nenhum lado, e um Instapay sem
+ * referência é uma mensagem que pede ao cliente para pagar sem lhe dizer para
+ * onde. O Vinti4 aceita qualquer dos dois — é a SISP que dá as duas vias.
+ */
+export async function boSavePayInstructions(
+  input: z.input<typeof instructionsSchema>
+): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const parsed = instructionsSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+  const v = parsed.data
+
+  const method = payMethod(v.method)
+  if (!method) return { ok: false, error: "Método desconhecido." }
+
+  const link = v.link?.trim() || null
+  const reference = v.reference?.trim() || null
+
+  if (method.supply === "link" && !link) {
+    return { ok: false, error: `Falta o ${method.fieldPt.toLowerCase()}.` }
+  }
+  if (method.supply === "reference" && !reference) {
+    return { ok: false, error: `Falta a ${method.fieldPt.toLowerCase()}.` }
+  }
+  if (method.supply === "either" && !link && !reference) {
+    return { ok: false, error: `Escreva a referência ou o link do ${method.fieldPt}.` }
+  }
+
+  const payment = await getPcPayment(v.caseId)
+  if (!payment || payment.id !== v.paymentId) {
+    return { ok: false, error: "Pagamento não encontrado." }
+  }
+  if (payment.admin_confirmed || payment.status === "COMPLETED") {
+    return { ok: false, error: "Este pagamento já está confirmado." }
+  }
+
+  const dueAt = v.dueAt ? new Date(v.dueAt).toISOString() : null
+
+  const saved = await savePayInstructions({
+    caseId: v.caseId,
+    paymentId: v.paymentId,
+    method: v.method,
+    link,
+    reference,
+    dueAt,
+    actorEmail: identity.email,
+  })
+
+  if (!saved.ok) return { ok: false, error: "Não foi possível gravar." }
+
+  await logCaseEvent({
+    caseId: v.caseId,
+    kind: "pay_instructions_saved",
+    title: "Instruções de pagamento gravadas",
+    detail: `${METHOD_LABEL_PT[v.method]} · ${link ?? reference} · por ${identity.label}`,
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+  })
+
+  if (!v.send) {
+    touch(v.caseId)
+    return { ok: true, notice: "Instruções gravadas. Ainda não foram enviadas." }
+  }
+
+  /* A impressão digital do que vai sair: o mesmo conteúdo duas vezes é um
+     aviso só, um conteúdo diferente é uma notícia nova. Ver o `dedupeSuffix`. */
+  const outcome = await sendPaymentInstructionsEmail(
+    v.caseId,
+    `${v.method}:${link ?? reference}`
+  )
+
+  if (outcome.ok) {
+    await markInstructionsSent({
+      paymentId: v.paymentId,
+      actorEmail: identity.email,
+    })
+  }
+
+  touch(v.caseId)
+
+  if (outcome.ok) {
+    return { ok: true, notice: "Instruções gravadas e enviadas ao cliente." }
+  }
+
+  if (outcome.status === "duplicate") {
+    return {
+      ok: true,
+      notice: "Instruções gravadas. Estas já tinham sido enviadas ao cliente.",
+    }
+  }
+
+  return {
+    ok: true,
+    notice: `Instruções gravadas, mas o aviso não saiu: ${outcome.reason}. Envie o link por WhatsApp.`,
+  }
+}
+
+/**
+ * C-04 · concluir o caso depois de o bilhete estar emitido.
+ *
+ * Não havia forma de o fazer, e por isso um caso emitido ficava nas filas de
+ * trabalho para sempre. Uma fila que nunca esvazia deixa de ser lida — e a fila
+ * é o único ecrã que diz o que falta fazer.
+ *
+ * `closed_at` e não uma etapa nova: 'emitido' é um facto sobre o bilhete e
+ * 'fechado' é um facto sobre o trabalho. São independentes, e um caso emitido
+ * pode legitimamente continuar aberto enquanto alguém trata de uma bagagem.
+ *
+ * Só depois de emitido, de propósito. Fechar um caso que não chegou a emitir é
+ * outra coisa — é cancelar — e tem outro vocabulário, outro aviso ao cliente e
+ * outra leitura nos números do mês. Os estados finais completos são Sprint 4.
+ */
+export async function boCloseCase(caseId: string): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const admin = createAdminClient()
+  if (!admin) return { ok: false, error: "Serviço indisponível." }
+
+  const { data: raw } = await admin
+    .from("booking_cases")
+    .select("id, stage, pnr, issued_at, closed_at")
+    .eq("id", caseId)
+    .maybeSingle()
+
+  if (!raw) return { ok: false, error: "Caso não encontrado." }
+
+  const record = raw as {
+    stage: string
+    pnr: string | null
+    issued_at: string | null
+    closed_at: string | null
+  }
+
+  if (record.closed_at) return { ok: true, notice: "O caso já está fechado." }
+
+  const issued = record.stage === "emitido" || Boolean(record.pnr) || Boolean(record.issued_at)
+  if (!issued) {
+    return {
+      ok: false,
+      error:
+        "Só se fecha um caso depois de o bilhete estar emitido. Um caso que não emitiu cancela-se, e isso é outra ação.",
+    }
+  }
+
+  const now = new Date().toISOString()
+
+  await admin
+    .from("booking_cases")
+    .update({
+      closed_at: now,
+      closed_by: identity.userId,
+      closed_by_email: identity.email,
+    })
+    .eq("id", caseId)
+    .is("closed_at", null)
+
+  await logCaseEvent({
+    caseId,
+    kind: "case_closed",
+    title: "Caso fechado",
+    detail: `por ${identity.label}`,
     actorId: identity.userId,
     actorEmail: identity.email,
     actorKind: "staff",
   })
 
   touch(caseId)
-  return { ok: true, notice: "Caso reclamado." }
+  return { ok: true, notice: "Caso fechado. Saiu das filas de trabalho." }
+}
+
+/**
+ * C-04 · reabrir, que é o critério "reversível por um administrador".
+ *
+ * A reversão fica registada — e é por isso que apagar `closed_at` não perde
+ * nada: o rasto vive em `case_events`, que ninguém reescreve.
+ */
+export async function boReopenCase(caseId: string): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  if (identity.role !== "admin") {
+    return {
+      ok: false,
+      error: "Só um administrador pode reabrir um caso fechado.",
+    }
+  }
+
+  const admin = createAdminClient()
+  if (!admin) return { ok: false, error: "Serviço indisponível." }
+
+  const { data: reopened } = await admin
+    .from("booking_cases")
+    .update({ closed_at: null, closed_by: null, closed_by_email: null })
+    .eq("id", caseId)
+    .not("closed_at", "is", null)
+    .select("id")
+
+  if (!reopened || reopened.length === 0) {
+    return { ok: false, error: "Este caso não está fechado." }
+  }
+
+  await logCaseEvent({
+    caseId,
+    kind: "case_reopened",
+    title: "Caso reaberto",
+    detail: `por ${identity.label} · administrador`,
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+  })
+
+  touch(caseId)
+  return { ok: true, notice: "Caso reaberto. Volta às filas de trabalho." }
 }
 
 const noteSchema = z.object({

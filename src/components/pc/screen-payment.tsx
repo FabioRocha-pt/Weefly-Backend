@@ -3,10 +3,19 @@
 /**
  * WeeFly Price Checker — o ecrã de pagamento.
  *
- * Seis métodos, ordenados pelo que se usa no país do cliente, e um deles pede
- * comprovativo. É esse — a transferência — que o resto do sistema foi construído
- * para servir: o ficheiro sobe para um bucket privado, a equipa abre-o, compara
- * o valor e marca a caixa. Até essa caixa ser marcada, nada está pago.
+ * C-33 · cinco vias, e o cliente **escolhe** uma em vez de pagar aqui.
+ *
+ * Eram seis famílias de pagamento ordenadas pelo país, e uma delas — a
+ * transferência — pedia comprovativo. O Sprint 3 muda a premissa: "o pagamento
+ * acontece fora da plataforma, a validação acontece dentro dela". O cliente
+ * escolhe Stripe, Vinti4/24, Revolut, Instapay ou PayPal; a escolha chega ao
+ * back-office; um agente monta o link ou a referência à mão e envia-lhos. Sem
+ * transferência bancária, que esta fase remove.
+ *
+ * O que não mudou é o fim: o ficheiro sobe para um bucket privado, a equipa
+ * abre-o, compara o valor e marca a caixa. Até essa caixa ser marcada, nada
+ * está pago — e agora as cinco vias passam por lá, porque nenhuma delas nos
+ * avisa sozinha de que o dinheiro entrou.
  *
  * O que este ecrã promete ao cliente é exatamente o que o back-office pode
  * cumprir: verificamos em horário de expediente, e há um prazo. Se o prazo
@@ -14,25 +23,21 @@
  * pendurada para sempre.
  */
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react"
+import { useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { declarePcPaid, setPcPayMethod, uploadPcProof } from "@/actions/pc"
 import type { PcState } from "@/lib/pc/state"
 import {
-  BANK_DETAILS,
-  BENEFICIARY,
-  OFFICE_ADDRESS,
-  OFFICE_HOURS,
+  PAY_METHODS,
   PROOF_MAX_BYTES,
   PROOF_REVIEW_HOURS,
-  methodsFor,
-  providersFor,
   type PayMethod,
   type PayMethodId,
 } from "@/lib/pc/catalog"
+import type { PcPayment } from "@/lib/pc/payment"
 import { countryName } from "@/lib/countries"
-import { money, phoneDisplay } from "@/lib/pc/format"
+import { money } from "@/lib/pc/format"
 import { IcFile, IcWa, MethodIcon, Rows } from "@/components/pc/bits"
 import { CopyButton, WaButton, useToast } from "@/components/pc/chrome"
 import { PickedOption } from "@/components/pc/picked-option"
@@ -46,11 +51,17 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
   /* O país vem da escolha do cliente e não do indicativo: o +1 é de vinte
      países, e é o país que decide os métodos de pagamento e o banco. */
   const country = state.contact.country
-  const methods = useMemo(() => methodsFor(country), [country])
+  /* C-33 · os cinco métodos são os mesmos em todo o mundo. Nenhum deles é
+     fornecido pela plataforma, pelo que o país deixou de decidir a lista — o
+     que decide é o que o agente consegue montar do outro lado. */
+  const methods = PAY_METHODS
 
-  const [method, setMethod] = useState<PayMethodId>(
-    (payment?.method as PayMethodId) ?? methods[0].id
-  )
+  const [method, setMethod] = useState<PayMethodId>(() => {
+    const stored = payment?.method
+    return methods.some((m) => m.id === stored)
+      ? (stored as PayMethodId)
+      : methods[0].id
+  })
   const [provider, setProvider] = useState<string | null>(payment?.pay_provider ?? null)
   const [declared, setDeclared] = useState(Boolean(payment?.client_declared_paid_at))
   const [file, setFile] = useState<File | null>(null)
@@ -83,8 +94,6 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
 
   const total = payment.amount
   const currency = payment.currency
-  const phone = phoneDisplay(state.contact.dialCode, state.contact.phone)
-  const bank = country === "CV" ? BANK_DETAILS.CV : BANK_DETAILS.PT
   const rejected = payment.proof_status === "rejeitado"
 
   function pickMethod(next: PayMethodId) {
@@ -98,10 +107,14 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
     void setPcPayMethod(state.token, next, null)
   }
 
-  function pickProvider(next: string) {
-    setProvider(next)
-    void setPcPayMethod(state.token, method, next)
-  }
+  /*
+   * C-33 · `pickProvider` saiu.
+   *
+   * Os provedores eram sub-escolhas dentro de uma família: dentro de "Payment
+   * link" havia Revolut, Wise e PayPal. Agora o método **é** o provedor, e uma
+   * segunda escolha por baixo dele não tem nada para escolher. A coluna
+   * `pay_provider` fica na base para os casos antigos a poderem mostrar.
+   */
 
   function takeFile(candidate: File | null | undefined) {
     if (!candidate) return
@@ -146,17 +159,11 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
         return
       }
       setDeclared(true)
-      toast(
-        method === "card"
-          ? "Secure payment page opened"
-          : method === "link"
-            ? "Payment link on its way"
-            : method === "momo"
-              ? "Payment request sent to your phone"
-              : method === "cash"
-                ? "We will hold the fare for you"
-                : "Thanks — we are watching for it"
-      )
+      /* C-33 · as cinco vias acabam todas no mesmo sítio: alguém do nosso lado
+         monta o link ou a referência à mão. Prometer "página segura aberta" ou
+         "pedido enviado para o seu telefone" era descrever automatismos que não
+         existem. */
+      toast("Thanks — we are preparing your payment details")
       router.refresh()
     })
   }
@@ -193,11 +200,15 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
             {countryName(country, state.contact.locale)} · {currency}
           </span>
         </div>
+        {/* C-33 · a lista deixou de depender do país, e a frase que dizia o
+            contrário saiu com ela. O que o cliente precisa de saber agora é
+            outra coisa: que alguém prepara isto à mão, e por isso não é
+            instantâneo. */}
         <p className="mnote">
-          These are the methods available for{" "}
-          <b>{countryName(country, state.contact.locale)}</b>. We
-          accept most local payment methods around the world — if you don&apos;t see
-          yours, tell us on WhatsApp and we&apos;ll arrange it.
+          Choose how you would like to pay and we will send you the link or the
+          reference for that method. One of us prepares it by hand — if you
+          don&apos;t see the method you want, tell us on WhatsApp and we&apos;ll
+          arrange it.
         </p>
 
         <div className="mlist">
@@ -212,21 +223,19 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
                   <b>{entry.t}</b>
                   <span>{entry.s}</span>
                 </span>
-                <span className={`bg${entry.free ? " free" : ""}`}>{entry.bg}</span>
+                {/* C-33 · o selo de "Instant" / "No fees" saiu. Nenhuma das
+                    cinco vias é instantânea do ponto de vista do cliente: o
+                    link é criado por uma pessoa, e prometer o contrário era
+                    prometer o que o back-office não pode cumprir. */}
               </button>
               <div className="m-b">
                 {entry.id === method && (
                   <MethodBody
                     method={entry}
-                    country={country}
-                    provider={provider}
-                    onProvider={pickProvider}
+                    payment={payment}
                     total={total}
                     currency={currency}
                     reference={state.request.reference}
-                    bank={bank}
-                    phone={phone}
-                    email={state.contact.email}
                     declared={declared}
                     onDeclare={declare}
                     pending={pending}
@@ -236,6 +245,7 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
                     onDragging={setDragging}
                     onFile={takeFile}
                     onRemoveFile={() => setFile(null)}
+                    onSendProof={sendProof}
                   />
                 )}
               </div>
@@ -272,30 +282,15 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
         </p>
       </div>
 
-      {method === "transfer" && (
-        <div className="card tight" style={{ marginTop: 12 }}>
-          <button
-            className="btn btn-primary"
-            type="button"
-            disabled={pending}
-            onClick={sendProof}
-          >
-            {pending ? "Sending…" : "I have paid · send the proof"}
-          </button>
-          <p className="subnote">
-            We check payments during business hours, usually within 2 hours.
-          </p>
-          <div style={{ marginTop: 12 }}>
-            <WaButton
-              reference={state.request.reference}
-              className="btn btn-ghost btn-sm"
-              style={{ width: "100%" }}
-            >
-              I need help with the payment
-            </WaButton>
-          </div>
-        </div>
-      )}
+      {/*
+        C-33 · o botão do comprovativo saiu daqui.
+
+        Estava neste nível e só para a transferência bancária, que era a única
+        via que pedia prova. Agora as cinco pedem — nenhuma nos avisa sozinha de
+        que o dinheiro entrou — e o botão vive dentro do bloco da via escolhida,
+        a seguir ao link ou à referência que o cliente acabou de usar. É onde ele
+        está a olhar quando acaba de pagar.
+      */}
 
       {/* Corrigir um nome antes de pagar custa nada; depois de emitir custa um
           bilhete novo. Por isso o caminho de volta está aqui, à vista. */}
@@ -309,18 +304,19 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
         </a>
       </div>
 
-      {method !== "transfer" && (
-        <div className="card tight" style={{ marginTop: 12 }}>
-          <WaButton reference={state.request.reference}>
-            <IcWa />
-            I need help with the payment
-          </WaButton>
-          <p className="subnote">
-            Prefer to send a receipt? Choose <b>Bank transfer</b> above and attach
-            it.
-          </p>
-        </div>
-      )}
+      {/* O WhatsApp deixa de estar condicionado à via: quem precisa de ajuda
+          precisa dela em qualquer uma das cinco. A frase que mandava escolher
+          "Bank transfer" para anexar um recibo saiu com a transferência. */}
+      <div className="card tight" style={{ marginTop: 12 }}>
+        <WaButton reference={state.request.reference}>
+          <IcWa />
+          I need help with the payment
+        </WaButton>
+        <p className="subnote">
+          One of us sets up the payment details by hand — if anything looks wrong,
+          tell us here before you pay.
+        </p>
+      </div>
       <div className="spacer" />
     </main>
   )
@@ -328,17 +324,33 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
 
 // ── o corpo de cada método ───────────────────────────────────────────────────
 
+/**
+ * C-33 · o que o cliente vê depois de escolher a via.
+ *
+ * Este componente tinha um bloco por família de pagamento: coordenadas
+ * bancárias para a transferência, fichas de provedor para os links, o endereço
+ * do escritório para quem pagava ao balcão. Fazia sentido enquanto a plataforma
+ * dizia ao cliente como pagar.
+ *
+ * A premissa mudou — "o pagamento acontece fora da plataforma, a validação
+ * acontece dentro dela" — e com ela este ecrã. Há dois estados, e só dois:
+ *
+ *   · **o agente ainda não forneceu nada.** Diz-se isso, e diz-se quando
+ *     chega. Não se inventa um IBAN nem se promete um link que não existe;
+ *   · **já forneceu.** Aparece o link ou a referência que ele arranjou, com
+ *     um botão para copiar, o valor a pagar e o prazo. E, por baixo, o envio
+ *     do comprovativo — que é o único gesto que fecha o lado do cliente.
+ *
+ * A transferência bancária saiu, e com ela o IBAN, o beneficiário e o endereço
+ * do escritório. Decisão confirmada do backlog: "No bank transfer option —
+ * removed from this phase."
+ */
 function MethodBody({
   method,
-  country,
-  provider,
-  onProvider,
+  payment,
   total,
   currency,
   reference,
-  bank,
-  phone,
-  email,
   declared,
   onDeclare,
   pending,
@@ -348,17 +360,13 @@ function MethodBody({
   onDragging,
   onFile,
   onRemoveFile,
+  onSendProof,
 }: {
   method: PayMethod
-  country: string
-  provider: string | null
-  onProvider: (value: string) => void
+  payment: PcPayment
   total: number
   currency: string
   reference: string
-  bank: { bank: string; iban: string; ibanFlat: string }
-  phone: string
-  email: string
   declared: boolean
   onDeclare: () => void
   pending: boolean
@@ -368,162 +376,35 @@ function MethodBody({
   onDragging: (value: boolean) => void
   onFile: (file: File | null | undefined) => void
   onRemoveFile: () => void
+  onSendProof: () => void
 }) {
-  const providers = providersFor(method.id, country)
-  const selected = provider ?? providers?.[0] ?? ""
+  /* As instruções só valem para a via que o agente tinha em mãos quando as
+     escreveu. Se o cliente mudar de via depois disso, o que está gravado é de
+     outra coisa e não se mostra — pedem-se de novo. */
+  const forThisMethod = payment.method === method.id
+  const link = forThisMethod ? payment.pay_link : null
+  const ref = forThisMethod ? payment.pay_reference : null
+  const has = Boolean(link || ref)
 
-  const chips = providers ? (
-    <div className="chips">
-      {providers.map((name) => (
-        <button
-          key={name}
-          className="chip"
-          type="button"
-          aria-pressed={name === selected}
-          onClick={() => onProvider(name)}
-        >
-          {name}
-        </button>
-      ))}
-    </div>
-  ) : null
+  const due = payment.pay_due_at
+    ? new Date(payment.pay_due_at).toLocaleString(undefined, {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null
 
-  if (method.id === "transfer") {
+  if (!has) {
     return (
       <>
-        <div className="bank">
-          <div className="bk wide">
-            <span>Beneficiary</span>
-            <b>{BENEFICIARY}</b>
-          </div>
-          <div className="bk">
-            <span>Bank</span>
-            <b>{bank.bank}</b>
-          </div>
-          <div className="bk">
-            <span>Currency</span>
-            <b>{currency}</b>
-          </div>
-          <div className="bk wide">
-            <CopyButton value={bank.ibanFlat} className="cpy" label="Copy" />
-            <span>IBAN</span>
-            <b className="mono">{bank.iban}</b>
-          </div>
-          <div className="bk">
-            <span>Exact amount</span>
-            <b className="mono">{money(total, currency)}</b>
-          </div>
-          <div className="bk" style={{ background: "var(--warn-tint)" }}>
-            <CopyButton value={reference} className="cpy" label="Copy" />
-            <span>Required description</span>
-            <b className="mono">{reference}</b>
-          </div>
-        </div>
-
-        <p
-          className="notice"
-          style={{ marginTop: 11, background: "var(--warn-tint)", color: "#6B4405" }}
-        >
-          Write the reference <b className="mono">{reference}</b> in the transfer
-          description. Without it we can&apos;t match your payment to this booking.
-        </p>
-
-        <button
-          type="button"
-          className={`drop${dragging ? " over" : ""}`}
-          onClick={() => fileInput.current?.click()}
-          onDragEnter={(event) => {
-            event.preventDefault()
-            onDragging(true)
-          }}
-          onDragOver={(event) => {
-            event.preventDefault()
-            onDragging(true)
-          }}
-          onDragLeave={(event) => {
-            event.preventDefault()
-            onDragging(false)
-          }}
-          onDrop={(event) => {
-            event.preventDefault()
-            onDragging(false)
-            onFile(event.dataTransfer.files?.[0])
-          }}
-        >
-          <b>Upload proof of payment</b>
-          <p>Tap to choose from your device · JPG, PNG or PDF up to 8 MB</p>
-        </button>
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/jpeg,image/png,application/pdf"
-          hidden
-          onChange={(event) => onFile(event.target.files?.[0])}
-        />
-
-        {file && (
-          <div className="file">
-            <IcFile />
-            <span className="nm">{file.name}</span>
-            <span className="sz">
-              {file.size > 1048576
-                ? `${(file.size / 1048576).toFixed(1)} MB`
-                : `${Math.max(1, Math.round(file.size / 1024))} KB`}
-            </span>
-            <button type="button" className="rmf" onClick={onRemoveFile}>
-              Remove
-            </button>
-          </div>
-        )}
-      </>
-    )
-  }
-
-  if (method.id === "link") {
-    return (
-      <>
-        <p style={{ margin: "0 0 10px", fontSize: 13.5, color: "var(--navy-soft)" }}>
-          We send you a secure payment link. Choose the service you already use:
-        </p>
-        {chips}
-        <div className="mrow">
-          <button
-            className="btn btn-primary btn-sm"
-            type="button"
-            disabled={pending}
-            onClick={onDeclare}
-          >
-            Send me the payment link
-          </button>
-        </div>
-        {declared && (
-          <div className="mdone">
-            ✓ Request received · we send the link to {phone} and to {email}
-          </div>
-        )}
-        <p className="mfoot">
-          The link arrives on WhatsApp at <b className="mono">{phone}</b> and by
-          email, usually within a few minutes. It is valid for 24 hours and can only
-          be used once.
-        </p>
-      </>
-    )
-  }
-
-  if (method.id === "card") {
-    return (
-      <>
-        <p style={{ margin: "0 0 11px", fontSize: 13.5, color: "var(--navy-soft)" }}>
-          Opens our payment provider&apos;s secure page, outside WeeFly.{" "}
-          <b>We never see or store your card details.</b>
-        </p>
         <div className="srow" style={{ borderTop: "1px solid var(--line-soft)" }}>
           <span className="k">Amount</span>
           <span className="v mono">{money(total, currency)}</span>
         </div>
         <div className="srow">
-          <span className="k">Card fee</span>
-          <span className="v">None</span>
+          <span className="k">Reference to quote</span>
+          <span className="v mono">{reference}</span>
         </div>
         <div className="mrow">
           <button
@@ -532,82 +413,17 @@ function MethodBody({
             disabled={pending}
             onClick={onDeclare}
           >
-            Ask for the secure payment page
+            Send me the {method.t} details
           </button>
         </div>
         {declared && (
           <div className="mdone">
-            ✓ We are preparing your payment page · we message you the link
+            ✓ We are preparing your {method.t} details and will send them here
           </div>
         )}
         <p className="mfoot">
-          Your agent sends the secure link on WhatsApp. Come back here once the
-          payment is complete.
-        </p>
-      </>
-    )
-  }
-
-  if (method.id === "momo") {
-    return (
-      <>
-        <p style={{ margin: "0 0 10px", fontSize: 13.5, color: "var(--navy-soft)" }}>
-          Choose your provider and we send a payment request to your phone:
-        </p>
-        {chips}
-        <div className="pgrid" style={{ marginTop: 12 }}>
-          <div className="ff c12">
-            <label>Mobile money number</label>
-            <input className="mono" defaultValue={phone} readOnly />
-          </div>
-        </div>
-        <div className="mrow">
-          <button
-            className="btn btn-primary btn-sm"
-            type="button"
-            disabled={pending}
-            onClick={onDeclare}
-          >
-            Send payment request
-          </button>
-        </div>
-        {declared && (
-          <div className="mdone">✓ Request noted · we send it to your phone</div>
-        )}
-        <p className="mfoot">
-          You will receive a prompt on your phone. Approve it with your PIN.
-          Availability depends on your country and provider.
-        </p>
-      </>
-    )
-  }
-
-  if (method.id === "local") {
-    return (
-      <>
-        <p style={{ margin: "0 0 10px", fontSize: 13.5, color: "var(--navy-soft)" }}>
-          Pay the way you normally do at home. Tell us which method and we send you
-          the reference:
-        </p>
-        {chips}
-        <div className="mrow">
-          <button
-            className="btn btn-primary btn-sm"
-            type="button"
-            disabled={pending}
-            onClick={onDeclare}
-          >
-            Send me the reference
-          </button>
-        </div>
-        {declared && (
-          <div className="mdone">
-            ✓ We send the entity and reference to {phone}
-          </div>
-        )}
-        <p className="mfoot">
-          The reference is generated by our provider for the method you chose and is
-          valid for 48 hours.
+          One of us sets this up by hand, so it is not instant. You will get the
+          details by email and in this link — usually within business hours.
         </p>
       </>
     )
@@ -616,32 +432,120 @@ function MethodBody({
   return (
     <>
       <div className="srow" style={{ borderTop: "1px solid var(--line-soft)" }}>
-        <span className="k">Address</span>
-        <span className="v">{OFFICE_ADDRESS}</span>
+        <span className="k">Amount to pay</span>
+        <span className="v mono">{money(total, currency)}</span>
       </div>
+
+      {link && (
+        <div className="srow">
+          <span className="k">Payment link</span>
+          <span className="v" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <a
+              href={link}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mono"
+              style={{ wordBreak: "break-all" }}
+            >
+              {link}
+            </a>
+            <CopyButton value={link} label="Copy link" />
+          </span>
+        </div>
+      )}
+
+      {ref && (
+        <div className="srow">
+          <span className="k">Reference to pay</span>
+          <span className="v" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <b className="mono">{ref}</b>
+            <CopyButton value={ref} label="Copy reference" />
+          </span>
+        </div>
+      )}
+
       <div className="srow">
-        <span className="k">Opening hours</span>
-        <span className="v">{OFFICE_HOURS}</span>
+        <span className="k">Quote our reference</span>
+        <span className="v mono">{reference}</span>
       </div>
-      <div className="srow">
-        <span className="k">Bring</span>
-        <span className="v">
-          Your reference <span className="mono">{reference}</span>
-        </span>
+
+      {due && (
+        <div className="srow">
+          <span className="k">Please pay by</span>
+          <span className="v">{due}</span>
+        </div>
+      )}
+
+      {/*
+        O comprovativo. É o único gesto que fecha o lado do cliente, e por isso
+        está sempre aqui — qualquer das cinco vias acaba com alguém a ter de
+        provar que pagou, porque nenhuma delas nos avisa sozinha.
+      */}
+      <div
+        className={`drop${dragging ? " on" : ""}`}
+        onDragOver={(event) => {
+          event.preventDefault()
+          onDragging(true)
+        }}
+        onDragLeave={() => onDragging(false)}
+        onDrop={(event) => {
+          event.preventDefault()
+          onDragging(false)
+          onFile(event.dataTransfer.files?.[0])
+        }}
+        onClick={() => fileInput.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") fileInput.current?.click()
+        }}
+        style={{ marginTop: 12 }}
+      >
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/pdf,image/jpeg,image/png"
+          hidden
+          onChange={(event) => onFile(event.target.files?.[0])}
+        />
+        {file ? (
+          <div className="dfile">
+            <IcFile />
+            <span className="mono">{file.name}</span>
+            <button
+              className="btn btn-ghost btn-sm"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                onRemoveFile()
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <>
+            <IcFile />
+            <b>Send the proof of your payment</b>
+            <span>JPG, PNG or PDF · up to 8 MB</span>
+          </>
+        )}
       </div>
+
       <div className="mrow">
         <button
           className="btn btn-primary btn-sm"
           type="button"
-          disabled={pending}
-          onClick={onDeclare}
+          disabled={pending || !file}
+          onClick={onSendProof}
         >
-          I will come to the office
+          {pending ? "Sending…" : "I have paid · send the proof"}
         </button>
       </div>
-      {declared && <div className="mdone">✓ We will hold the fare until you arrive</div>}
+
       <p className="mfoot">
-        Tell us when you plan to come so we can hold the fare until then.
+        A payment is only confirmed by a person on our side, after seeing it in
+        the account. We check within {PROOF_REVIEW_HOURS} hours in business hours.
       </p>
     </>
   )

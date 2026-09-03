@@ -31,9 +31,12 @@
  */
 
 import fontkit from "@pdf-lib/fontkit"
+
+import { readAirlineLogos } from "@/lib/tickets/airline-logo"
 import QRCode from "qrcode"
 import {
   PDFDocument,
+  type PDFImage,
   PDFFont,
   PDFPage,
   StandardFonts,
@@ -68,6 +71,14 @@ interface Ctx {
   fonts: Fonts
   /** O cursor vertical, a descer. Em PDF a origem é em baixo à esquerda. */
   y: number
+  /**
+   * C-26 · os logótipos das companhias deste bilhete, já embutidos.
+   *
+   * Embutidos antes de desenhar porque embutir é assíncrono e o desenho de cada
+   * trecho não é. A chave é o código IATA em maiúsculas; uma companhia sem
+   * logótipo não está no mapa, e o trecho escreve a sigla — que é o critério.
+   */
+  logos: Map<string, PDFImage>
 }
 
 // ── primitivas de desenho ────────────────────────────────────────────────────
@@ -406,12 +417,42 @@ function drawFlight(ctx: Ctx, segment: TicketSegment, y: number): number {
     size: 11,
     font: ctx.fonts.mono,
   })
+
+  /*
+   * C-26 · o logótipo da companhia, ao lado do número de voo.
+   *
+   * Desenhado à escala pela altura: os ficheiros são todos 480×160, mas um
+   * logótipo mais estreito não deve ser esticado para preencher uma largura
+   * fixa. Um tecto de largura impede que um logótipo largo escreva por cima do
+   * nome da companhia.
+   *
+   * Sem logótipo, o nome fica onde sempre esteve. É o critério — "um logótipo em
+   * falta cai para a sigla, nunca um espaço vazio" — e aqui a sigla já está
+   * escrita à esquerda, no número de voo.
+   */
+  const logo = ctx.logos.get((segment.carrierCode ?? "").toUpperCase())
+  let labelX = inner + 62
+
+  if (logo) {
+    const h = 11
+    const w = Math.min((logo.width / logo.height) * h, 54)
+    ctx.page.drawImage(logo, {
+      x: labelX,
+      /* O texto assenta na linha de base; a imagem assenta na aresta de baixo.
+         Descer dois pontos alinha-as opticamente. */
+      y: cursor - 2,
+      width: w,
+      height: h,
+    })
+    labelX += w + 7
+  }
+
   text(ctx, segment.carrierLabel, {
-    x: inner + 62,
+    x: labelX,
     y: cursor,
     size: 9.5,
     font: ctx.fonts.bold,
-    max: 190,
+    max: logo ? 130 : 190,
   })
   text(
     ctx,
@@ -911,11 +952,32 @@ export async function renderTicketPdf(
     mono: await doc.embedFont(MONO_TTF, { subset: false }),
   }
 
+  /*
+   * C-26 · os logótipos, embutidos uma vez antes de qualquer desenho.
+   *
+   * Uma ida e volta na mesma companhia embute a imagem uma só vez: dois
+   * `embedPng` do mesmo ficheiro dariam dois objectos dentro do documento, e o
+   * bilhete ficava com o mesmo PNG duas vezes.
+   */
+  const logos = new Map<string, PDFImage>()
+  const logoBytes = await readAirlineLogos(
+    data.segments.map((segment) => segment.carrierCode)
+  )
+  for (const [code, bytes] of Array.from(logoBytes.entries())) {
+    try {
+      logos.set(code, await doc.embedPng(bytes))
+    } catch {
+      /* Um PNG que o pdf-lib recuse não pode impedir a emissão do bilhete. */
+      console.warn("[tickets] logótipo recusado pelo pdf-lib: %s", code)
+    }
+  }
+
   const ctx: Ctx = {
     doc,
     page: doc.addPage([PAGE.w, PAGE.h]),
     fonts,
     y: PAGE.h,
+    logos,
   }
 
   await pageOne(ctx, data)
@@ -944,7 +1006,14 @@ export async function renderTicketGuidePdf(): Promise<Uint8Array> {
   const page = doc.addPage([PAGE.w, PAGE.h])
   const sans = await doc.embedFont(StandardFonts.Helvetica)
   const bold = await doc.embedFont(StandardFonts.HelveticaBold)
-  const ctx: Ctx = { doc, page, fonts: { sans, bold, mono: sans }, y: PAGE.h }
+  /* O guia não desenha trechos, e por isso não precisa de logótipo nenhum. */
+  const ctx: Ctx = {
+    doc,
+    page,
+    fonts: { sans, bold, mono: sans },
+    y: PAGE.h,
+    logos: new Map(),
+  }
 
   page.drawRectangle({ x: 0, y: PAGE.h - 92, width: PAGE.w, height: 92, color: INK })
   text(ctx, "WeeFly", { x: M, y: PAGE.h - 44, size: 20, font: bold, color: WHITE })

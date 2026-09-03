@@ -539,7 +539,17 @@
     "composerPerBooking": "par réservation",
     "publishChangeNote": "Ce qui a changé dans la révision R{revision}",
     "publishChangeNotePlaceholder": "L'aller est passé de 14h20 à 8h40 et le prix a baissé de 40 €.",
-    "publishChangeNoteHint": "Obligatoire à partir de la R2. Il part dans l'email du client, avant les options."
+    "publishChangeNoteHint": "Obligatoire à partir de la R2. Il part dans l'email du client, avant les options.",
+    "composerDateChangeTitle": "Cette option part un jour différent de celui demandé par le client.",
+    "composerDateMovedOut": "aller {from} → {to}",
+    "composerDateMovedBack": "retour {from} → {to}",
+    "composerDateChangeHelp": "Si le changement est délibéré — un meilleur tarif, un vol avec des places — écrivez le motif et confirmez. La demande initiale du client reste intacte dans l’historique, et il est informé du changement et de la raison.",
+    "composerDateChangePlaceholder": "Ce qui s’est passé, dans la phrase que le client va lire. Ex. : pas de places en économique le 14 ; le 15 il y en a, et c’est 60 € moins cher.",
+    "composerDateChangeCta": "Confirmer le changement de date",
+    "composerDateChangeNeedsReason": "Écrivez le motif pour pouvoir confirmer.",
+    "composerDateChangeDone": "Changement de date confirmé :",
+    "composerDateChangeUndo": "Revenir aux dates demandées",
+    "publishedRevisionRemoved": "Les prix publiés restent verrouillés. Pour modifier une proposition déjà envoyée, parlez au client et ouvrez une nouvelle demande — la révision à l’écran revient au Sprint 5, avec un moyen clair d’annuler."
   },
   "validation": {
     "nameMin": "Le prénom doit comporter au moins 2 caractères",
@@ -584,7 +594,8 @@
     "passengersMin": "Indiquez au moins un passager",
     "iataOrigin": "Code IATA de départ invalide",
     "iataDestination": "Code IATA de destination invalide",
-    "departDateInvalid": "Date de départ invalide"
+    "departDateInvalid": "Date de départ invalide",
+    "birthDateTooOld": "Vérifiez l’année de naissance — cette date a plus de 120 ans."
   },
   "passwordStrength": {
     "weak": "Faible",
@@ -758,7 +769,9 @@
     "noClientEmailForWeepay": "Le dossier n'a pas d'e-mail client, et WeePay en exige un pour ouvrir le paiement.",
     "statusApplyFailed": "Impossible d'appliquer le statut.",
     "unavailable": "Indisponible.",
-    "revisionNeedsChangeNote": "Écrivez ce qui a changé dans cette révision — c'est ce que le client lira dans l'email."
+    "revisionNeedsChangeNote": "Écrivez ce qui a changé dans cette révision — c'est ce que le client lira dans l'email.",
+    "publishNeedsOwner": "Ce dossier n’a pas de responsable. Réclamez-le avant de publier — une proposition doit avoir quelqu’un qui en répond.",
+    "publishNotOwner": "Ce dossier appartient à un autre agent. Seul le responsable, ou un administrateur, peut publier la proposition."
   },
   "onboarding": {
     "step1": "Compte",

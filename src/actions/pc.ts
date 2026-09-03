@@ -36,9 +36,11 @@ import {
   CURRENCIES,
   MAX_LEGS,
   NATIONALITIES,
+  PAY_METHOD_IDS,
   PAY_WINDOW_HOURS,
   PROOF_REVIEW_HOURS,
   carrierName,
+  methodLabelPt,
   type PayMethodId,
 } from "@/lib/pc/catalog"
 import { isKnownIata } from "@/lib/airports"
@@ -548,7 +550,9 @@ export async function savePcPassengers(
 
 // ── P7pay · método e comprovativo ────────────────────────────────────────────
 
-const METHODS: PayMethodId[] = ["transfer", "link", "card", "momo", "local", "cash"]
+/* C-33 · os cinco métodos vivem no catálogo, num sítio só. Estavam escritos
+   aqui outra vez, e uma segunda lista é uma lista que fica atrás. */
+const METHODS: PayMethodId[] = PAY_METHOD_IDS
 
 /** O método escolhido, guardado à medida que o cliente clica. */
 export async function setPcPayMethod(
@@ -565,11 +569,45 @@ export async function setPcPayMethod(
     return { ok: false, error: "Nothing to pay yet." }
   }
 
+  const previous = lookup.state.payment.method
+
   await recordChosenMethod(
     lookup.state.payment.id,
     method as PayMethodId,
     provider?.trim() || null
   )
+
+  /*
+   * C-32 · "escolheu o método de pagamento" é um avanço do cliente, e avisa.
+   *
+   * Era o único da lista do C-32 que não deixava rasto: a coluna era gravada e
+   * mais nada acontecia. E é o avanço que **cria trabalho para nós** — a partir
+   * daqui alguém tem de arranjar o link ou a referência daquela via (C-33), pelo
+   * que é precisamente o que a campainha tem de acender.
+   *
+   * Só quando muda de facto. O ecrã grava a escolha a cada clique, e registar
+   * cada um deles enchia o histórico com a mesma linha repetida enquanto o
+   * cliente hesitava entre dois métodos.
+   */
+  if (previous !== method) {
+    await logCaseEvent({
+      caseId: lookup.state.caseId,
+      kind: "pay_method_chosen",
+      title: "O cliente escolheu como pagar",
+      detail: [
+        methodLabelPt(method),
+        provider?.trim() || null,
+        previous ? `antes: ${methodLabelPt(previous)}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      actorKind: "client",
+      payload: { method, provider: provider?.trim() || null, previous },
+    })
+
+    revalidatePath("/admin/price-checker")
+    revalidatePath(`/admin/price-checker/${lookup.state.caseId}`)
+  }
 
   revalidatePath(`/pc/${token}`)
   return { ok: true }

@@ -31,6 +31,8 @@ import { Field, Input, Section, inputClass } from "@/components/bo/composer-bits
 interface SegmentRow {
   id: string
   label: string
+  /** C-27 · o número de voo saiu da proposta e passou a viver aqui. */
+  flight_number: string
   equipment: string
   booking_class: string
   terminal_from: string
@@ -194,7 +196,23 @@ export function BoTicketBuilder({
                     {row.label}
                   </div>
                   <div className="grid grid-cols-12 gap-2.5">
-                    <Field label="Equipamento" span={6}>
+                    {/*
+                      C-27 · "fica no ecra de emissao e no bilhete".
+
+                      Saiu do compositor porque nao ajuda o cliente a decidir.
+                      Aqui e obrigatorio: um bilhete sem numero de voo nao serve
+                      para embarcar, e este e o formulario que o escreve.
+                    */}
+                    <Field label="Numero de voo" span={2}>
+                      <Input
+                        mono
+                        maxLength={6}
+                        value={row.flight_number}
+                        onChange={(v) => patch(row.id, { flight_number: v })}
+                        placeholder="231"
+                      />
+                    </Field>
+                    <Field label="Equipamento" span={4}>
                       <Input
                         value={row.equipment}
                         onChange={(v) => patch(row.id, { equipment: v })}
@@ -282,6 +300,7 @@ function rowsOf(offer: Offer | null): SegmentRow[] {
   ].map(({ s, leg }) => ({
     id: s.id,
     label: label(s, leg),
+    flight_number: s.flight_number ?? "",
     equipment: s.equipment ?? "",
     booking_class: s.booking_class ?? "",
     terminal_from: s.terminal_from ?? "",

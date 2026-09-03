@@ -16,6 +16,7 @@
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getFlightOffers } from "@/lib/amadeus"
+import { DEFAULT_SERVICE_FEE } from "@/lib/pc/catalog"
 import type { FlightSearchInput } from "@/lib/flight-parse"
 import type { AmadeusFlightOffer, FormattedFlightOffer } from "@/types/flights"
 
@@ -128,7 +129,9 @@ export async function prefillProposalFromSearch(input: {
       price_child: pax.children > 0 ? child : 0,
       price_infant: 0,
       taxes_total: 0,
-      service_fee: 0,
+      /* C-08 · o serviço nasce a 20, como em qualquer outra oferta. Estava a
+         zero aqui, e só aqui — ver `DEFAULT_SERVICE_FEE`. */
+      service_fee: DEFAULT_SERVICE_FEE,
       cost_total: totalMinor,
       agent_note:
         source === "mock"

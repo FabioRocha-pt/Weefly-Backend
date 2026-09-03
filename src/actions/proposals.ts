@@ -21,8 +21,11 @@ import {
   type OfferDirection,
   blockerText,
   offerBlockers,
+  offerDateChange,
   offerTotal,
 } from "@/lib/proposal-math"
+import { logCaseEvent } from "@/lib/case-events"
+import { getBoAccess } from "@/lib/bo-access"
 import {
   buildProposalPublishedEmail,
   buildProposalTeamEmail,
@@ -150,6 +153,9 @@ export interface OfferDraft {
      proposta reduzida acrescenta. Ver a migração 0012, parte 4. */
   non_refundable?: boolean
   times_confirmed?: boolean
+  /* C-24 · a data diferente da pedida, assumida com motivo. Ver migração 0014. */
+  date_change_confirmed?: boolean
+  date_change_reason?: string
   change_policy?: string
   refund_policy?: string
   seat_policy?: string
@@ -519,6 +525,53 @@ export async function saveOffer(
 
   const supabase = createClient()
 
+  /*
+   * C-24 · quem assumiu a data diferente, e quando.
+   *
+   * Escrito só na transição para confirmada. O compositor grava a oferta
+   * inteira a cada mudança, e sem esta leitura cada gravação seguinte
+   * reescrevia a hora — o registo passaria a dizer que a decisão foi tomada no
+   * último toque num campo qualquer, e não no momento em que alguém a tomou.
+   */
+  const { data: before } = await supabase
+    .from("case_offers")
+    .select("date_change_confirmed, date_change_confirmed_at, date_change_confirmed_by_email")
+    .eq("id", offerId)
+    .eq("proposal_id", editable.id)
+    .maybeSingle()
+
+  const wasConfirmed = Boolean(
+    (before as { date_change_confirmed?: boolean } | null)?.date_change_confirmed
+  )
+  const nowConfirmed = draft.date_change_confirmed === true
+
+  let dateChangeAuthor: Record<string, unknown> = {}
+  if (nowConfirmed && !wasConfirmed) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    dateChangeAuthor = {
+      date_change_confirmed_at: new Date().toISOString(),
+      date_change_confirmed_by: user?.id ?? null,
+      date_change_confirmed_by_email: user?.email ?? null,
+    }
+  } else if (!nowConfirmed) {
+    /* Desconfirmar limpa o rasto: o que fica registado no caso é o evento, e
+       uma autoria pendurada numa decisão que já não existe mente. */
+    dateChangeAuthor = {
+      date_change_confirmed_at: null,
+      date_change_confirmed_by: null,
+      date_change_confirmed_by_email: null,
+    }
+  } else {
+    const kept = before as Record<string, unknown> | null
+    dateChangeAuthor = {
+      date_change_confirmed_at: kept?.date_change_confirmed_at ?? null,
+      date_change_confirmed_by_email:
+        kept?.date_change_confirmed_by_email ?? null,
+    }
+  }
+
   const { data: updated, error } = await supabase
     .from("case_offers")
     .update({
@@ -531,6 +584,12 @@ export async function saveOffer(
       baggage_hold_count: count(draft.baggage_hold_count),
       non_refundable: flag(draft.non_refundable),
       times_confirmed: draft.times_confirmed !== false,
+      /* C-24 · a data assumida, o motivo, e quem a assumiu. */
+      date_change_confirmed: nowConfirmed,
+      date_change_reason: nowConfirmed
+        ? text(draft.date_change_reason, 500)
+        : null,
+      ...dateChangeAuthor,
       change_policy: text(draft.change_policy, 240),
       refund_policy: text(draft.refund_policy, 240),
       seat_policy: text(draft.seat_policy, 240),
@@ -612,6 +671,8 @@ export interface TicketDetailsDraft {
   documents?: string
   segments?: {
     id: string
+    /* C-27 · o número de voo saiu da proposta e é escrito na emissão. */
+    flight_number?: string
     equipment?: string
     booking_class?: string
     terminal_from?: string
@@ -675,6 +736,8 @@ export async function saveTicketDetails(
     const { error: segError } = await supabase
       .from("case_offer_segments")
       .update({
+        /* C-27 · escrito aqui, e já não no compositor. */
+        flight_number: text(segment.flight_number, 6),
         equipment: text(segment.equipment, 80),
         booking_class: code(segment.booking_class, 2),
         terminal_from: text(segment.terminal_from, 40),
@@ -742,6 +805,25 @@ export async function publishProposal(
   const view = await getProposal(caseId)
   const bookingCase = await getCase(caseId)
   if (!view || !bookingCase) return { error: t("errors.caseNotFound") }
+
+  /*
+   * C-01 · "só o dono, ou um administrador, pode publicar uma proposta."
+   *
+   * A porta do compositor já é o dono (ver `BoClaimGate`), e isto é a segunda
+   * fechadura: publicar é uma server action, e uma action é um endpoint que
+   * quem souber o nome chama sem passar por ecrã nenhum. Um caso sem dono
+   * também não publica — se ninguém o reclamou, ninguém responde por ele.
+   */
+  const owner = await caseOwner(caseId)
+  const access = await getBoAccess()
+  const isAdmin = access.ok && access.identity.role === "admin"
+
+  if (!owner) {
+    return { error: t("errors.publishNeedsOwner") }
+  }
+  if (owner !== user.id && !isAdmin) {
+    return { error: t("errors.publishNotOwner") }
+  }
 
   const included = new Set(input.includedOfferIds)
   const going = view.offers.filter((o) => included.has(o.id))
@@ -834,6 +916,53 @@ export async function publishProposal(
    * dois existe — escrever a proposta lá dentro passaria a ser uma gravação que
    * ninguém pode abrir. O cliente vê a proposta onde vê tudo o resto: no /pc.
    */
+  /*
+   * C-24 · o cliente tem de saber que a data mudou, e porquê.
+   *
+   * "O cliente é avisado da alteração e do motivo." As datas novas já vão no
+   * itinerário do email, mas um itinerário não explica nada: quem pediu dia 14
+   * e recebe dia 15 sem uma frase a dizer porquê liga a perguntar se houve
+   * engano. O motivo que o vendedor escreveu na oferta vai à frente do que
+   * mudou, que é o campo que o cliente lê primeiro.
+   *
+   * Juntado ao `changeNote` em vez de num email próprio: são a mesma notícia, e
+   * dois avisos sobre a mesma publicação é exactamente o que o NT-04 recusa.
+   */
+  const dateChanges = going
+    .filter((offer) => offer.date_change_confirmed && offer.date_change_reason)
+    .map((offer) => {
+      const moved = offerDateChange(offer, requested)
+      const legs = [
+        moved.depart ? `${requested.departDate?.slice(0, 10)} → ${moved.depart}` : null,
+        moved.return ? `${requested.returnDate?.slice(0, 10)} → ${moved.return}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+      return `${offer.name || t("email.proposalUnnamed")}: ${legs} — ${offer.date_change_reason}`
+    })
+
+  if (dateChanges.length > 0) {
+    await logCaseEvent({
+      caseId,
+      kind: "dates_changed_in_offer",
+      title: "Data diferente da pedida, confirmada na proposta",
+      detail: dateChanges.join(" · "),
+      actorId: user.id,
+      actorEmail: user.email ?? null,
+      actorKind: "staff",
+      payload: {
+        requested,
+        offers: going
+          .filter((o) => o.date_change_confirmed)
+          .map((o) => ({ id: o.id, name: o.name, reason: o.date_change_reason })),
+      },
+    })
+  }
+
+  const noteWithDates = [dateChanges.join("\n"), changeNote]
+    .filter(Boolean)
+    .join("\n\n")
+
   const warning = await notifyPublication({
     bookingCase,
     offers: going,
@@ -847,11 +976,23 @@ export async function publishProposal(
     notifyClient: input.notifyClient !== false,
     notifyTeam: input.notifyTeam !== false,
     agentName: user.email ?? null,
-    changeNote,
+    changeNote: noteWithDates || null,
   })
 
   touch(caseId)
   return { error: null, ...(warning ? { warning } : {}) }
+}
+
+/** C-01 · de quem é o caso. `created_by` é o dono; ver `boClaimCase`. */
+async function caseOwner(caseId: string): Promise<string | null> {
+  const admin = createAdminClient()
+  if (!admin) return null
+  const { data } = await admin
+    .from("booking_cases")
+    .select("created_by")
+    .eq("id", caseId)
+    .maybeSingle()
+  return (data as { created_by: string | null } | null)?.created_by ?? null
 }
 
 /**

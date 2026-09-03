@@ -56,18 +56,17 @@ const LANGS = [
 export function BoTopbarActions() {
   const [open, setOpen] = useState(false)
 
+  /*
+   * C-14 · a campainha saiu daqui.
+   *
+   * Estava neste ficheiro e era um botão sem `onClick`, sem contador e sem
+   * lista. Foi para `notification-bell.tsx`, e mudou de sítio no layout por uma
+   * razão que não é de arrumação: o contador tem de vir do servidor a cada
+   * render, e este componente é de cliente — não tinha por onde o receber sem
+   * inventar uma segunda leitura no browser.
+   */
   return (
     <>
-      <button className="bell" title="Avisos" type="button">
-        <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-          <path
-            d="M9 2.5a4.2 4.2 0 00-4.2 4.2c0 3.3-1.3 4.6-1.3 4.6h11c0-.1-1.3-1.3-1.3-4.6A4.2 4.2 0 009 2.5zM7.4 13.8a1.7 1.7 0 003.2 0"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
       <button className="btn btn-primary btn-sm" type="button" onClick={() => setOpen(true)}>
         Criar link
       </button>

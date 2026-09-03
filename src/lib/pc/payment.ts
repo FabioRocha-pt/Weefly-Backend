@@ -31,13 +31,66 @@ import {
   PROOF_MAX_BYTES,
   PROOF_MIME,
   PROOF_REVIEW_HOURS,
-  METHOD_LABEL_PT,
+  /* C-33 · `methodLabelPt` e não o mapa directo: o registo de um caso antigo
+     tem um método da taxonomia anterior, e indexar o mapa novo com ele escrevia
+     "undefined" no histórico. */
+  methodLabelPt,
   type PayMethodId,
 } from "@/lib/pc/catalog"
 import { humanSize } from "@/lib/pc/format-size"
 import type { PaymentStatus } from "@/lib/case-status"
 
 export const PROOF_BUCKET = "payment-proofs"
+
+/**
+ * C-02 · o nome do ficheiro como o cliente o escreveu.
+ *
+ * Um comprovativo chegou ao registo como `FormulÃ¡rio do Pedido de
+ * DeclaraÃ§Ã£o.pdf`. O nome original era `Formulário do Pedido de
+ * Declaração.pdf`: os bytes UTF-8 do `filename` do multipart foram lidos como
+ * Latin-1, um byte por carácter. Cada `á` virou `Ã¡`.
+ *
+ * Não é cosmético. O critério do C-02 é "o nome original é preservado para
+ * mostrar", e é por este nome que quem valida reconhece o documento que o
+ * cliente diz ter enviado.
+ *
+ * A reparação é a inversa exacta: as unidades de código voltam a ser bytes e
+ * são descodificadas como UTF-8. Só se tenta quando o padrão do erro está
+ * presente e todas as unidades cabem num byte, e só se aceita se a
+ * descodificação for válida — um nome que já esteja certo nunca é tocado.
+ */
+export function repairFileName(name: string): string {
+  /*
+   * A assinatura do erro: 0xC2 ou 0xC3 seguido de uma continuacao UTF-8
+   * (0x80-0xBF). Escrito a mao e nao com uma classe de caracteres porque a
+   * classe precisaria de bytes de controlo literais no codigo-fonte, que
+   * nenhum editor mostra.
+   */
+  let suspect = false
+  for (let i = 0; i < name.length - 1; i++) {
+    const lead = name.charCodeAt(i)
+    const next = name.charCodeAt(i + 1)
+    if ((lead === 0xc2 || lead === 0xc3) && next >= 0x80 && next <= 0xbf) {
+      suspect = true
+      break
+    }
+  }
+  if (!suspect) return name
+
+  const bytes = new Uint8Array(name.length)
+  for (let i = 0; i < name.length; i++) {
+    const code = name.charCodeAt(i)
+    if (code > 0xff) return name
+    bytes[i] = code
+  }
+
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes)
+  } catch {
+    /* Não era mojibake — era um nome que legitimamente tem estes caracteres. */
+    return name
+  }
+}
 
 export type ProofStatus = "nenhum" | "recebido" | "validado" | "rejeitado"
 
@@ -73,6 +126,12 @@ export interface PcPayment {
   received_amount: number | null
   bank_reference: string | null
   value_date: string | null
+  /* C-33 · o que o agente forneceu para o cliente pagar. Ver a migração 0015. */
+  pay_link: string | null
+  pay_reference: string | null
+  pay_due_at: string | null
+  pay_instructions_sent_at: string | null
+  pay_instructions_sent_by_email: string | null
   proof_status: ProofStatus
   proof_rejected_reason: string | null
   client_declared_paid_at: string | null
@@ -85,7 +144,9 @@ const PAYMENT_COLUMNS = `
   payment_url, expires_at, review_deadline_at, extension_count,
   admin_confirmed, admin_confirmed_at, received_amount, bank_reference,
   value_date, proof_status, proof_rejected_reason, client_declared_paid_at,
-  paid_at, created_at
+  paid_at, created_at,
+  pay_link, pay_reference, pay_due_at,
+  pay_instructions_sent_at, pay_instructions_sent_by_email
 `
 
 const hoursFromNow = (h: number) =>
@@ -246,6 +307,65 @@ export async function recordChosenMethod(
     .eq("id", paymentId)
 }
 
+/**
+ * C-33 · guarda o link ou a referência que o **agente** forneceu.
+ *
+ * "O sistema não gera os links; guarda o que o agente fornece." A função não
+ * valida o endereço contra o provedor nem tenta adivinhar de que método ele é:
+ * um link de Stripe e um de Revolut são strings, e a plataforma não tem como
+ * saber se aquele link cobra o valor certo. Quem sabe é quem o criou, e é o
+ * nome dessa pessoa que fica gravado.
+ *
+ * O prazo é escrito à mão porque é uma promessa comercial, não uma consequência
+ * técnica: "pague até sexta" é uma decisão de quem está a vender.
+ */
+export async function savePayInstructions(input: {
+  caseId: string
+  paymentId: string
+  method: PayMethodId
+  link: string | null
+  reference: string | null
+  dueAt: string | null
+  actorEmail: string
+}): Promise<{ ok: boolean }> {
+  const admin = createAdminClient()
+  if (!admin) return { ok: false }
+
+  const { error } = await admin
+    .from("case_payments")
+    .update({
+      method: input.method,
+      pay_link: input.link,
+      pay_reference: input.reference,
+      pay_due_at: input.dueAt,
+    })
+    .eq("id", input.paymentId)
+    .eq("case_id", input.caseId)
+
+  if (error) {
+    console.error("[pc/payment] instruções não gravadas:", error.message)
+    return { ok: false }
+  }
+
+  return { ok: true }
+}
+
+/** C-33 · marca o instante em que as instruções saíram para o cliente. */
+export async function markInstructionsSent(input: {
+  paymentId: string
+  actorEmail: string
+}): Promise<void> {
+  const admin = createAdminClient()
+  if (!admin) return
+  await admin
+    .from("case_payments")
+    .update({
+      pay_instructions_sent_at: new Date().toISOString(),
+      pay_instructions_sent_by_email: input.actorEmail,
+    })
+    .eq("id", input.paymentId)
+}
+
 // ── o comprovativo ───────────────────────────────────────────────────────────
 
 export type ProofOutcome =
@@ -313,7 +433,8 @@ export async function attachProof(input: {
       payment_id: payment.id,
       case_id: input.caseId,
       storage_path: storagePath,
-      file_name: input.fileName.slice(0, 180),
+      /* C-02 · o nome como o cliente o escreveu, não como o multipart o partiu. */
+      file_name: repairFileName(input.fileName).slice(0, 180),
       mime_type: input.mimeType,
       size_bytes: size,
       status: "recebido",
@@ -350,7 +471,7 @@ export async function attachProof(input: {
     kind: "proof_uploaded",
     title: "Comprovativo carregado pelo cliente",
     detail: `${proof.file_name} · ${humanSize(size)}${
-      input.method ? ` · ${METHOD_LABEL_PT[input.method]}` : ""
+      input.method ? ` · ${methodLabelPt(input.method)}` : ""
     }`,
     actorKind: "client",
     payload: { proofId: proof.id, reviewDeadline },
@@ -440,7 +561,7 @@ export async function confirmPaymentByAdmin(input: {
     title: "Pagamento confirmado",
     detail: [
       formatMoney(received, payment.currency),
-      input.method ? METHOD_LABEL_PT[input.method] : null,
+      input.method ? methodLabelPt(input.method) : null,
       input.bankReference,
       `por ${input.actorEmail}`,
     ]
@@ -607,19 +728,38 @@ export async function enforceExpiry(payment: PcPayment): Promise<ExpiryVerdict> 
       : "Prazo de pagamento esgotado sem comprovativo",
   })
 
-  if (!applied.ok) {
-    /* Recusada pela matriz (um pagamento em STARTED, por exemplo). Não vale a
-       pena insistir: o que interessa é que o link deixe de convidar a pagar, e
-       isso é o estado da etapa 3. */
-    console.warn("[pc/payment] expiração recusada pela matriz:", payment.status)
-  }
-
   await admin
     .from("case_links")
     .update({ status: "expirado", expires_at: deadline })
     .eq("case_id", payment.case_id)
     .eq("stage", 3)
     .neq("status", "submetido")
+
+  if (!applied.ok) {
+    /*
+     * Recusada pela matriz — e é aqui que estava um ciclo de registo.
+     *
+     * `applyPaymentStatus` não deixa ir de STARTED para EXPIRED (§8.2 do manual
+     * da WeePay), e um pagamento que ficou em STARTED nunca chega a ter
+     * `status = 'EXPIRED'`. A guarda no topo desta função — "já fechado, num
+     * sentido ou no outro" — testa esse estado, pelo que também nunca dispara.
+     *
+     * O efeito: esta função corre a cada leitura da página **e a cada passagem
+     * do cron**, chegava sempre ao fim, e escrevia outro evento. Um caso ficou
+     * com **292 linhas de `payment_expired`**, uma por hora — 79% de todos os
+     * eventos do sistema. A campainha do C-14 lê `case_events`, e nasceria a
+     * mostrar quarenta cópias da mesma linha.
+     *
+     * O registo passa a acontecer só quando a transição aconteceu de facto. O
+     * que importa funcionalmente — o link deixar de convidar a pagar — está
+     * escrito acima e continua a acontecer nos dois casos.
+     */
+    console.warn(
+      "[pc/payment] expiração recusada pela matriz (%s) — link fechado, sem registo para não repetir.",
+      payment.status
+    )
+    return { expired: true, cause }
+  }
 
   await logCaseEvent({
     caseId: payment.case_id,

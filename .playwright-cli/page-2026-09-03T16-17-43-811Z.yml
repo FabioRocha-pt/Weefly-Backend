@@ -1,0 +1,1254 @@
+- generic [active] [ref=f4e1]:
+  - generic [ref=f4e2]: Loading WeeFly PRO…
+  - generic [ref=f4e12]:
+    - generic [ref=f4e13]: A carregar o back-office
+    - banner [ref=f4e22]:
+      - generic [ref=f4e23]:
+        - img "WeeFly" [ref=f4e24]
+        - generic [ref=f4e31]: Admin
+        - navigation [ref=f4e32]:
+          - link "Price Checker" [ref=f4e33] [cursor=pointer]:
+            - /url: /admin/price-checker
+          - link "Pagamentos" [ref=f4e34] [cursor=pointer]:
+            - /url: /admin/price-checker?tab=por_validar
+          - link "Emissões" [ref=f4e35] [cursor=pointer]:
+            - /url: /admin/price-checker?tab=pagos_sem_bilhete
+        - generic [ref=f4e36]:
+          - button "Avisos" [ref=f4e37] [cursor=pointer]
+          - button "Criar link" [ref=f4e40] [cursor=pointer]
+          - complementary "Construtor de link" [ref=f4e41]:
+            - generic [ref=f4e42]:
+              - generic [ref=f4e43]:
+                - heading "Link de atendimento" [level=3] [ref=f4e44]
+                - paragraph [ref=f4e45]: O link é permanente e reutilizável. O caso só nasce quando o cliente submete o formulário.
+              - button "✕" [ref=f4e46] [cursor=pointer]
+            - generic [ref=f4e47]:
+              - generic [ref=f4e48]:
+                - heading "Parâmetros" [level=4] [ref=f4e50]
+                - generic [ref=f4e52]:
+                  - generic [ref=f4e53]:
+                    - generic [ref=f4e54]: Vendedor
+                    - combobox [ref=f4e55]:
+                      - option "Nélida Fortes" [selected]
+                      - option "Jair Semedo"
+                      - option "Carla Évora"
+                  - generic [ref=f4e56]:
+                    - generic [ref=f4e57]: Mercado
+                    - combobox [ref=f4e58]:
+                      - option "Cabo Verde"
+                      - option "Portugal"
+                      - option "França" [selected]
+                      - option "Estados Unidos"
+                      - option "Países Baixos"
+                  - generic [ref=f4e59]:
+                    - generic [ref=f4e60]: Idioma
+                    - combobox [ref=f4e61]:
+                      - option "Português"
+                      - option "English"
+                      - option "Français" [selected]
+                  - generic [ref=f4e62]:
+                    - generic [ref=f4e63]: Moeda
+                    - combobox [ref=f4e64]:
+                      - option "EUR" [selected]
+                      - option "USD"
+                      - option "CVE"
+                  - generic [ref=f4e65]:
+                    - generic [ref=f4e66]: País do cliente
+                    - combobox [ref=f4e67]:
+                      - option "🇦🇫 Afeganistão · +93"
+                      - option "🇿🇦 África do Sul · +27"
+                      - option "🇦🇱 Albânia · +355"
+                      - option "🇩🇪 Alemanha · +49"
+                      - option "🇦🇩 Andorra · +376"
+                      - option "🇦🇴 Angola · +244"
+                      - option "🇦🇮 Anguila · +1264"
+                      - option "🇦🇬 Antígua e Barbuda · +1268"
+                      - option "🇸🇦 Arábia Saudita · +966"
+                      - option "🇩🇿 Argélia · +213"
+                      - option "🇦🇷 Argentina · +54"
+                      - option "🇦🇲 Armênia · +374"
+                      - option "🇦🇼 Aruba · +297"
+                      - option "🇦🇺 Austrália · +61"
+                      - option "🇦🇹 Áustria · +43"
+                      - option "🇦🇿 Azerbaijão · +994"
+                      - option "🇧🇸 Bahamas · +1242"
+                      - option "🇧🇩 Bangladesh · +880"
+                      - option "🇧🇧 Barbados · +1246"
+                      - option "🇧🇭 Barein · +973"
+                      - option "🇧🇪 Bélgica · +32"
+                      - option "🇧🇿 Belize · +501"
+                      - option "🇧🇯 Benin · +229"
+                      - option "🇧🇲 Bermudas · +1441"
+                      - option "🇧🇾 Bielorrússia · +375"
+                      - option "🇧🇴 Bolívia · +591"
+                      - option "🇧🇦 Bósnia e Herzegovina · +387"
+                      - option "🇧🇼 Botsuana · +267"
+                      - option "🇧🇷 Brasil · +55"
+                      - option "🇧🇳 Brunei · +673"
+                      - option "🇧🇬 Bulgária · +359"
+                      - option "🇧🇫 Burquina Faso · +226"
+                      - option "🇧🇮 Burundi · +257"
+                      - option "🇧🇹 Butão · +975"
+                      - option "🇨🇻 Cabo Verde · +238"
+                      - option "🇨🇲 Camarões · +237"
+                      - option "🇰🇭 Camboja · +855"
+                      - option "🇨🇦 Canadá · +1"
+                      - option "🇶🇦 Catar · +974"
+                      - option "🇰🇿 Cazaquistão · +7"
+                      - option "🇹🇩 Chade · +235"
+                      - option "🇨🇱 Chile · +56"
+                      - option "🇨🇳 China · +86"
+                      - option "🇨🇾 Chipre · +357"
+                      - option "🇻🇦 Cidade do Vaticano · +3"
+                      - option "🇨🇴 Colômbia · +57"
+                      - option "🇰🇲 Comores · +269"
+                      - option "🇨🇩 Congo - Kinshasa · +243"
+                      - option "🇰🇵 Coreia do Norte · +850"
+                      - option "🇰🇷 Coreia do Sul · +82"
+                      - option "🇨🇮 Costa do Marfim · +225"
+                      - option "🇨🇷 Costa Rica · +506"
+                      - option "🇭🇷 Croácia · +385"
+                      - option "🇨🇺 Cuba · +53"
+                      - option "🇨🇼 Curaçao · +599"
+                      - option "🇩🇰 Dinamarca · +45"
+                      - option "🇩🇯 Djibuti · +253"
+                      - option "🇩🇲 Dominica · +1767"
+                      - option "🇪🇬 Egito · +20"
+                      - option "🇸🇻 El Salvador · +503"
+                      - option "🇦🇪 Emirados Árabes Unidos · +971"
+                      - option "🇪🇨 Equador · +593"
+                      - option "🇪🇷 Eritreia · +291"
+                      - option "🇸🇰 Eslováquia · +421"
+                      - option "🇸🇮 Eslovênia · +386"
+                      - option "🇪🇸 Espanha · +34"
+                      - option "🇸🇿 Essuatíni · +268"
+                      - option "🇺🇸 Estados Unidos · +1"
+                      - option "🇪🇪 Estônia · +372"
+                      - option "🇪🇹 Etiópia · +251"
+                      - option "🇫🇯 Fiji · +679"
+                      - option "🇵🇭 Filipinas · +63"
+                      - option "🇫🇮 Finlândia · +358"
+                      - option "🇫🇷 França · +33" [selected]
+                      - option "🇬🇦 Gabão · +241"
+                      - option "🇬🇲 Gâmbia · +220"
+                      - option "🇬🇭 Gana · +233"
+                      - option "🇬🇪 Geórgia · +995"
+                      - option "🇬🇮 Gibraltar · +350"
+                      - option "🇬🇩 Granada · +1473"
+                      - option "🇬🇷 Grécia · +30"
+                      - option "🇬🇱 Groenlândia · +299"
+                      - option "🇬🇵 Guadalupe · +590"
+                      - option "🇬🇺 Guam · +1671"
+                      - option "🇬🇹 Guatemala · +502"
+                      - option "🇬🇬 Guernsey · +44"
+                      - option "🇬🇾 Guiana · +592"
+                      - option "🇬🇫 Guiana Francesa · +594"
+                      - option "🇬🇳 Guiné · +224"
+                      - option "🇬🇶 Guiné Equatorial · +240"
+                      - option "🇬🇼 Guiné-Bissau · +245"
+                      - option "🇭🇹 Haiti · +509"
+                      - option "🇭🇳 Honduras · +504"
+                      - option "🇭🇰 Hong Kong · +852"
+                      - option "🇭🇺 Hungria · +36"
+                      - option "🇾🇪 Iêmen · +967"
+                      - option "🇧🇻 Ilha Bouvet · +47"
+                      - option "🇨🇽 Ilha Christmas · +61"
+                      - option "🇮🇲 Ilha de Man · +44"
+                      - option "🇳🇫 Ilha Norfolk · +672"
+                      - option "🇰🇾 Ilhas Cayman · +1345"
+                      - option "🇨🇨 Ilhas Cocos (Keeling) · +61"
+                      - option "🇨🇰 Ilhas Cook · +682"
+                      - option "🇫🇴 Ilhas Faroé · +298"
+                      - option "🇬🇸 Ilhas Geórgia do Sul e Sandwich do Sul · +500"
+                      - option "🇫🇰 Ilhas Malvinas (Ilhas Falkland) · +500"
+                      - option "🇲🇵 Ilhas Marianas do Norte · +1670"
+                      - option "🇲🇭 Ilhas Marshall · +692"
+                      - option "🇺🇲 Ilhas Menores Distantes dos EUA · +268"
+                      - option "🇵🇳 Ilhas Pitcairn · +64"
+                      - option "🇸🇧 Ilhas Salomão · +677"
+                      - option "🇹🇨 Ilhas Turcas e Caicos · +1649"
+                      - option "🇻🇮 Ilhas Virgens Americanas · +1340"
+                      - option "🇻🇬 Ilhas Virgens Britânicas · +1284"
+                      - option "🇮🇳 Índia · +91"
+                      - option "🇮🇩 Indonésia · +62"
+                      - option "🇮🇷 Irã · +98"
+                      - option "🇮🇶 Iraque · +964"
+                      - option "🇮🇪 Irlanda · +353"
+                      - option "🇮🇸 Islândia · +354"
+                      - option "🇮🇱 Israel · +972"
+                      - option "🇮🇹 Itália · +39"
+                      - option "🇯🇲 Jamaica · +1876"
+                      - option "🇯🇵 Japão · +81"
+                      - option "🇯🇪 Jersey · +44"
+                      - option "🇯🇴 Jordânia · +962"
+                      - option "🇽🇰 Kosovo · +383"
+                      - option "🇰🇼 Kuwait · +965"
+                      - option "🇱🇦 Laos · +856"
+                      - option "🇱🇸 Lesoto · +266"
+                      - option "🇱🇻 Letônia · +371"
+                      - option "🇱🇧 Líbano · +961"
+                      - option "🇱🇷 Libéria · +231"
+                      - option "🇱🇾 Líbia · +218"
+                      - option "🇱🇮 Liechtenstein · +423"
+                      - option "🇱🇹 Lituânia · +370"
+                      - option "🇱🇺 Luxemburgo · +352"
+                      - option "🇲🇴 Macau · +853"
+                      - option "🇲🇰 Macedônia do Norte · +389"
+                      - option "🇲🇬 Madagascar · +261"
+                      - option "🇲🇾 Malásia · +60"
+                      - option "🇲🇼 Malaui · +265"
+                      - option "🇲🇻 Maldivas · +960"
+                      - option "🇲🇱 Mali · +223"
+                      - option "🇲🇹 Malta · +356"
+                      - option "🇲🇦 Marrocos · +212"
+                      - option "🇲🇶 Martinica · +596"
+                      - option "🇲🇺 Maurício · +230"
+                      - option "🇲🇷 Mauritânia · +222"
+                      - option "🇾🇹 Mayotte · +262"
+                      - option "🇲🇽 México · +52"
+                      - option "🇲🇲 Mianmar (Birmânia) · +95"
+                      - option "🇫🇲 Micronésia · +691"
+                      - option "🇲🇿 Moçambique · +258"
+                      - option "🇲🇩 Moldávia · +373"
+                      - option "🇲🇨 Mônaco · +377"
+                      - option "🇲🇳 Mongólia · +976"
+                      - option "🇲🇪 Montenegro · +382"
+                      - option "🇲🇸 Montserrat · +1664"
+                      - option "🇳🇦 Namíbia · +264"
+                      - option "🇳🇷 Nauru · +674"
+                      - option "🇳🇵 Nepal · +977"
+                      - option "🇳🇮 Nicarágua · +505"
+                      - option "🇳🇪 Níger · +227"
+                      - option "🇳🇬 Nigéria · +234"
+                      - option "🇳🇺 Niue · +683"
+                      - option "🇳🇴 Noruega · +47"
+                      - option "🇳🇨 Nova Caledônia · +687"
+                      - option "🇳🇿 Nova Zelândia · +64"
+                      - option "🇴🇲 Omã · +968"
+                      - option "🇳🇱 Países Baixos · +31"
+                      - option "🇧🇶 Países Baixos Caribenhos · +599"
+                      - option "🇵🇼 Palau · +680"
+                      - option "🇵🇸 Palestina · +970"
+                      - option "🇵🇦 Panamá · +507"
+                      - option "🇵🇬 Papua-Nova Guiné · +675"
+                      - option "🇵🇰 Paquistão · +92"
+                      - option "🇵🇾 Paraguai · +595"
+                      - option "🇵🇪 Peru · +51"
+                      - option "🇵🇫 Polinésia Francesa · +689"
+                      - option "🇵🇱 Polônia · +48"
+                      - option "🇵🇷 Porto Rico · +1"
+                      - option "🇵🇹 Portugal · +351"
+                      - option "🇰🇪 Quênia · +254"
+                      - option "🇰🇬 Quirguistão · +996"
+                      - option "🇰🇮 Quiribati · +686"
+                      - option "🇬🇧 Reino Unido · +44"
+                      - option "🇨🇫 República Centro-Africana · +236"
+                      - option "🇨🇬 República do Congo · +242"
+                      - option "🇩🇴 República Dominicana · +1"
+                      - option "🇷🇪 Reunião · +262"
+                      - option "🇷🇴 Romênia · +40"
+                      - option "🇷🇼 Ruanda · +250"
+                      - option "🇷🇺 Rússia · +7"
+                      - option "🇪🇭 Saara Ocidental · +2"
+                      - option "🇼🇸 Samoa · +685"
+                      - option "🇦🇸 Samoa Americana · +1684"
+                      - option "🇸🇲 San Marino · +378"
+                      - option "🇸🇭 Santa Helena · +2"
+                      - option "🇱🇨 Santa Lúcia · +1758"
+                      - option "🇧🇱 São Bartolomeu · +590"
+                      - option "🇰🇳 São Cristóvão e Névis · +1869"
+                      - option "🇲🇫 São Martinho · +590"
+                      - option "🇵🇲 São Pedro e Miquelão · +508"
+                      - option "🇸🇹 São Tomé e Príncipe · +239"
+                      - option "🇻🇨 São Vicente e Granadinas · +1784"
+                      - option "🇸🇨 Seicheles · +248"
+                      - option "🇸🇳 Senegal · +221"
+                      - option "🇸🇱 Serra Leoa · +232"
+                      - option "🇷🇸 Sérvia · +381"
+                      - option "🇸🇬 Singapura · +65"
+                      - option "🇸🇽 Sint Maarten · +1721"
+                      - option "🇸🇾 Síria · +963"
+                      - option "🇸🇴 Somália · +252"
+                      - option "🇱🇰 Sri Lanka · +94"
+                      - option "🇸🇩 Sudão · +249"
+                      - option "🇸🇸 Sudão do Sul · +211"
+                      - option "🇸🇪 Suécia · +46"
+                      - option "🇨🇭 Suíça · +41"
+                      - option "🇸🇷 Suriname · +597"
+                      - option "🇸🇯 Svalbard e Jan Mayen · +4779"
+                      - option "🇹🇯 Tadjiquistão · +992"
+                      - option "🇹🇭 Tailândia · +66"
+                      - option "🇹🇼 Taiwan · +886"
+                      - option "🇹🇿 Tanzânia · +255"
+                      - option "🇨🇿 Tchéquia · +420"
+                      - option "🇮🇴 Território Britânico do Oceano Índico · +246"
+                      - option "🇹🇫 Territórios Franceses do Sul · +262"
+                      - option "🇹🇱 Timor-Leste · +670"
+                      - option "🇹🇬 Togo · +228"
+                      - option "🇹🇰 Tokelau · +690"
+                      - option "🇹🇴 Tonga · +676"
+                      - option "🇹🇹 Trinidad e Tobago · +1868"
+                      - option "🇹🇳 Tunísia · +216"
+                      - option "🇹🇲 Turcomenistão · +993"
+                      - option "🇹🇷 Turquia · +90"
+                      - option "🇹🇻 Tuvalu · +688"
+                      - option "🇺🇦 Ucrânia · +380"
+                      - option "🇺🇬 Uganda · +256"
+                      - option "🇺🇾 Uruguai · +598"
+                      - option "🇺🇿 Uzbequistão · +998"
+                      - option "🇻🇺 Vanuatu · +678"
+                      - option "🇻🇪 Venezuela · +58"
+                      - option "🇻🇳 Vietnã · +84"
+                      - option "🇼🇫 Wallis e Futuna · +681"
+                      - option "🇿🇲 Zâmbia · +260"
+                      - option "🇿🇼 Zimbábue · +263"
+                - paragraph [ref=f4e68]: O idioma, a moeda e o país são definidos aqui e o cliente já abre o link com tudo certo — o indicativo do telefone vem do país (+33). Pode trocar, mas por omissão vê o que faz sentido no mercado dele.
+                - paragraph [ref=f4e69]: "Não há aqui nenhum valor a cobrar: o link de pagamento é gerado automaticamente depois de o cliente escolher uma opção e preencher os dados de todos os passageiros. Até aí não há montante nem passageiro a quem o cobrar."
+              - generic [ref=f4e70]:
+                - heading "Link gerado" [level=4] [ref=f4e72]
+                - generic [ref=f4e74]:
+                  - text: Endereço
+                  - generic [ref=f4e75]:
+                    - code [ref=f4e76]: https://weefly.africa/pc?lang=fr&currency=EUR&country=FR&agent=nelida
+                    - button "Copiar" [ref=f4e77] [cursor=pointer]
+                - generic [ref=f4e78]:
+                  - text: Mensagem pronta a colar
+                  - textbox [ref=f4e80]: "Bonjour ! Je suis Nélida Fortes, de WeeFly. Pour que je puisse chercher les meilleurs tarifs pour votre voyage, remplissez les détails ici — moins d'une minute, sans engagement : https://weefly.africa/pc?lang=fr&currency=EUR&country=FR&agent=nelida Je vous réponds ici avec les options."
+                  - generic [ref=f4e81]:
+                    - button "Copiar mensagem" [ref=f4e82] [cursor=pointer]
+                    - button "Abrir no WhatsApp" [ref=f4e83] [cursor=pointer]
+                - generic [ref=f4e84]:
+                  - text: Só o link
+                  - generic [ref=f4e85]:
+                    - code [ref=f4e86]: https://weefly.africa/pc
+                    - button "Copiar" [ref=f4e87] [cursor=pointer]
+                  - paragraph [ref=f4e88]: Sem parâmetros. O cliente escolhe idioma e moeda, e o caso entra sem vendedor atribuído.
+            - button "Fechar" [ref=f4e90] [cursor=pointer]
+          - button "FR Fábio Rocha" [ref=f4e92] [cursor=pointer]:
+            - generic [ref=f4e93]: FR
+            - generic [ref=f4e94]: Fábio Rocha
+    - button "a sondar" [ref=f4e98] [cursor=pointer]
+    - generic [ref=f4e100]:
+      - generic [ref=f4e102]:
+        - heading "Price Checker · fila de trabalho" [level=1] [ref=f4e103]
+        - paragraph [ref=f4e104]: Pedidos entram sozinhos quando o cliente submete o formulário. O cronómetro começa nessa submissão, não na atribuição.
+      - generic [ref=f4e105]:
+        - link "Comprovativos por validar 1 o mais antigo há 27d" [ref=f4e106] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=por_validar
+          - generic [ref=f4e107]: Comprovativos por validar
+          - generic [ref=f4e109]: "1"
+          - generic [ref=f4e110]: o mais antigo há 27d
+        - link "Pagos, sem bilhete 5 o mais antigo há 13d" [ref=f4e111] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=pagos_sem_bilhete
+          - generic [ref=f4e112]: Pagos, sem bilhete
+          - generic [ref=f4e114]: "5"
+          - generic [ref=f4e115]: o mais antigo há 13d
+        - link "Novos, sem dono 2 o mais antigo há 9d" [ref=f4e116] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=novos_sem_dono
+          - generic [ref=f4e117]: Novos, sem dono
+          - generic [ref=f4e119]: "2"
+          - generic [ref=f4e120]: o mais antigo há 9d
+        - link "A cotar, meus 1 Fábio Rocha" [ref=f4e121] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=a_cotar_meus
+          - generic [ref=f4e122]: A cotar, meus
+          - generic [ref=f4e124]: "1"
+          - generic [ref=f4e125]: Fábio Rocha
+        - link "Propostas a expirar 0 menos de 1 hora" [ref=f4e126] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=a_expirar
+          - generic [ref=f4e127]: Propostas a expirar
+          - generic [ref=f4e129]: "0"
+          - generic [ref=f4e130]: menos de 1 hora
+        - link "Espera pelo cliente 1 a escolher ou a pagar" [ref=f4e131] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=espera_cliente
+          - generic [ref=f4e132]: Espera pelo cliente
+          - generic [ref=f4e134]: "1"
+          - generic [ref=f4e135]: a escolher ou a pagar
+        - generic [ref=f4e136]:
+          - generic [ref=f4e137]: Emitidos este mês
+          - generic [ref=f4e139]: "0"
+          - generic [ref=f4e140]: € 0,00
+      - generic [ref=f4e141]:
+        - link "Comprovativos por validar 1" [ref=f4e142] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=por_validar
+          - text: Comprovativos por validar
+          - generic [ref=f4e143]: "1"
+        - link "Pagos, sem bilhete 5" [ref=f4e144] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=pagos_sem_bilhete
+          - text: Pagos, sem bilhete
+          - generic [ref=f4e145]: "5"
+        - link "Novos, sem dono 2" [ref=f4e146] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=novos_sem_dono
+          - text: Novos, sem dono
+          - generic [ref=f4e147]: "2"
+        - link "A cotar, meus 1" [ref=f4e148] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=a_cotar_meus
+          - text: A cotar, meus
+          - generic [ref=f4e149]: "1"
+        - link "Propostas a expirar 0" [ref=f4e150] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=a_expirar
+          - text: Propostas a expirar
+          - generic [ref=f4e151]: "0"
+        - link "Espera pelo cliente 1" [ref=f4e152] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=espera_cliente
+          - text: Espera pelo cliente
+          - generic [ref=f4e153]: "1"
+        - link "Tudo 36" [ref=f4e154] [cursor=pointer]:
+          - /url: /admin/price-checker?tab=tudo
+          - text: Tudo
+          - generic [ref=f4e155]: "36"
+      - generic [ref=f4e156]:
+        - textbox "Referência, nome, telefone, PNR ou rota" [ref=f4e161]
+        - generic [ref=f4e162]: 36 casos
+      - table [ref=f4e164]:
+        - rowgroup [ref=f4e165]:
+          - row [ref=f4e166]:
+            - columnheader "Referência" [ref=f4e167]
+            - columnheader "Cliente" [ref=f4e168]
+            - columnheader "Origem" [ref=f4e169]
+            - columnheader "Estado" [ref=f4e170]
+            - columnheader "Rota" [ref=f4e171]
+            - columnheader "Passageiros" [ref=f4e172]
+            - columnheader "Valor" [ref=f4e173]
+            - columnheader "Na fila há" [ref=f4e174]
+            - columnheader [ref=f4e175]
+        - rowgroup [ref=f4e176]:
+          - row [ref=f4e177]:
+            - cell "WF-2608-0005 sem agente" [ref=f4e178]:
+              - generic [ref=f4e179]: WF-2608-0005
+              - generic [ref=f4e180]: sem agente
+            - cell "Joana Rocha +238 962423263" [ref=f4e181]:
+              - generic [ref=f4e182]: Joana Rocha
+              - generic [ref=f4e183]: +238 962423263
+            - cell "WEB Link · CV" [ref=f4e184]:
+              - generic "Cabo Verde" [ref=f4e185]:
+                - generic [ref=f4e186]: WEB
+                - text: Link · CV
+            - cell "E4 · Comprovativo por validar" [ref=f4e187]
+            - cell "RAI → LIS 08-11 – 08-15 · EUR" [ref=f4e190]:
+              - generic [ref=f4e191]: RAI → LIS
+              - generic [ref=f4e192]: 08-11 – 08-15 · EUR
+            - cell "1A" [ref=f4e193]
+            - cell "€ 566,00" [ref=f4e194]
+            - cell "27d prazo esgotado" [ref=f4e195]:
+              - generic [ref=f4e196]: 27d
+              - generic [ref=f4e197]: prazo esgotado
+            - cell [ref=f4e198]:
+              - link "Validar" [ref=f4e200] [cursor=pointer]:
+                - /url: /admin/price-checker/9e2e373c-5080-4740-9f68-5341ec98c6e6?aba=t-pag
+          - row [ref=f4e201]:
+            - cell "WF-2608-0041 sem agente" [ref=f4e202]:
+              - generic [ref=f4e203]: WF-2608-0041
+              - generic [ref=f4e204]: sem agente
+            - cell "Mario Taxi teste +238 987908" [ref=f4e205]:
+              - generic [ref=f4e206]: Mario Taxi teste
+              - generic [ref=f4e207]: +238 987908
+            - cell "WEB Link · CV" [ref=f4e208]:
+              - generic "Cabo Verde" [ref=f4e209]:
+                - generic [ref=f4e210]: WEB
+                - text: Link · CV
+            - cell "Pago, sem bilhete" [ref=f4e211]
+            - cell "RAI → SID 08-21 – 08-26 · EUR" [ref=f4e214]:
+              - generic [ref=f4e215]: RAI → SID
+              - generic [ref=f4e216]: 08-21 – 08-26 · EUR
+            - cell "1A" [ref=f4e217]
+            - cell "€ 450,00" [ref=f4e218]
+            - cell "13d pagar até 04/09, 12:58" [ref=f4e219]:
+              - generic [ref=f4e220]: 13d
+              - generic [ref=f4e221]: pagar até 04/09, 12:58
+            - cell [ref=f4e222]:
+              - link "Emitir" [ref=f4e224] [cursor=pointer]:
+                - /url: /admin/price-checker/b2eb8eba-bd57-47c4-9a12-79e7bfe18348
+          - row [ref=f4e225]:
+            - cell "WF-2608-0042 sem agente" [ref=f4e226]:
+              - generic [ref=f4e227]: WF-2608-0042
+              - generic [ref=f4e228]: sem agente
+            - cell "Joana Rocha +238 962423263" [ref=f4e229]:
+              - generic [ref=f4e230]: Joana Rocha
+              - generic [ref=f4e231]: +238 962423263
+            - cell "WEB Link · CV" [ref=f4e232]:
+              - generic "Cabo Verde" [ref=f4e233]:
+                - generic [ref=f4e234]: WEB
+                - text: Link · CV
+            - cell "Pago, sem bilhete" [ref=f4e235]
+            - cell "LIS → BOS 08-30 – 09-06 · EUR" [ref=f4e238]:
+              - generic [ref=f4e239]: LIS → BOS
+              - generic [ref=f4e240]: 08-30 – 09-06 · EUR
+            - cell "1A" [ref=f4e241]
+            - cell "€ 630,00" [ref=f4e242]
+            - cell "13d proposta válida até 16:52" [ref=f4e243]:
+              - generic [ref=f4e244]: 13d
+              - generic [ref=f4e245]: proposta válida até 16:52
+            - cell [ref=f4e246]:
+              - link "Emitir" [ref=f4e248] [cursor=pointer]:
+                - /url: /admin/price-checker/ef404be6-a712-4459-bb38-d7b35fcc1ca0
+          - row [ref=f4e249]:
+            - cell "WF-2608-0043 sem agente" [ref=f4e250]:
+              - generic [ref=f4e251]: WF-2608-0043
+              - generic [ref=f4e252]: sem agente
+            - cell "Shutsha Luambo +238 9592388" [ref=f4e253]:
+              - generic [ref=f4e254]: Shutsha Luambo
+              - generic [ref=f4e255]: +238 9592388
+            - cell "WEB Link · CV" [ref=f4e256]:
+              - generic "Cabo Verde" [ref=f4e257]:
+                - generic [ref=f4e258]: WEB
+                - text: Link · CV
+            - cell "Pago, sem bilhete" [ref=f4e259]
+            - cell "BOS → RAI 08-27 – 08-31 · EUR" [ref=f4e262]:
+              - generic [ref=f4e263]: BOS → RAI
+              - generic [ref=f4e264]: 08-27 – 08-31 · EUR
+            - cell "1A" [ref=f4e265]
+            - cell "€ 121,00" [ref=f4e266]
+            - cell "13d prazo esgotado" [ref=f4e267]:
+              - generic [ref=f4e268]: 13d
+              - generic [ref=f4e269]: prazo esgotado
+            - cell [ref=f4e270]:
+              - link "Emitir" [ref=f4e272] [cursor=pointer]:
+                - /url: /admin/price-checker/5b9a3f0b-5914-4d0d-b666-f5b2058c5154
+          - row [ref=f4e273]:
+            - cell "WF-2608-0048 agent=jair" [ref=f4e274]:
+              - generic [ref=f4e275]: WF-2608-0048
+              - generic [ref=f4e276]: agent=jair
+            - cell "Teste 002 +238 9800700" [ref=f4e277]:
+              - generic [ref=f4e278]: Teste 002
+              - generic [ref=f4e279]: +238 9800700
+            - cell "WEB Link · CV" [ref=f4e280]:
+              - generic "Cabo Verde" [ref=f4e281]:
+                - generic [ref=f4e282]: WEB
+                - text: Link · CV
+            - cell "Pago, sem bilhete" [ref=f4e283]
+            - cell "RAI → AMS 08-31 · CVE" [ref=f4e286]:
+              - generic [ref=f4e287]: RAI → AMS
+              - generic [ref=f4e288]: 08-31 · CVE
+            - cell "1A" [ref=f4e289]
+            - cell "$ 463,00" [ref=f4e290]
+            - cell "9d prazo esgotado" [ref=f4e291]:
+              - generic [ref=f4e292]: 9d
+              - generic [ref=f4e293]: prazo esgotado
+            - cell [ref=f4e294]:
+              - link "Emitir" [ref=f4e296] [cursor=pointer]:
+                - /url: /admin/price-checker/4319b6b0-7362-4f88-91a7-7107863bb16e
+          - row [ref=f4e297]:
+            - cell "WF-2608-0053 sem agente" [ref=f4e298]:
+              - generic [ref=f4e299]: WF-2608-0053
+              - generic [ref=f4e300]: sem agente
+            - cell "Ivandro Test005 +238 9800700" [ref=f4e301]:
+              - generic [ref=f4e302]: Ivandro Test005
+              - generic [ref=f4e303]: +238 9800700
+            - cell "WEB Link · CV" [ref=f4e304]:
+              - generic "Cabo Verde" [ref=f4e305]:
+                - generic [ref=f4e306]: WEB
+                - text: Link · CV
+            - cell "Pago, sem bilhete" [ref=f4e307]
+            - cell "RAK → BOS 08-29 – 10-23 · EUR" [ref=f4e310]:
+              - generic [ref=f4e311]: RAK → BOS
+              - generic [ref=f4e312]: 08-29 – 10-23 · EUR
+            - cell "1A" [ref=f4e313]
+            - cell "€ 420,00" [ref=f4e314]
+            - cell "6d 18h prazo esgotado" [ref=f4e315]:
+              - generic [ref=f4e316]: 6d 18h
+              - generic [ref=f4e317]: prazo esgotado
+            - cell [ref=f4e318]:
+              - link "Emitir" [ref=f4e320] [cursor=pointer]:
+                - /url: /admin/price-checker/721d06e2-cbfa-472a-9b39-8df06b15006b
+          - row [ref=f4e321]:
+            - cell "WF-2608-0001 sem agente" [ref=f4e322]:
+              - generic [ref=f4e323]: WF-2608-0001
+              - generic [ref=f4e324]: sem agente
+            - cell "Fábio Rocha +351 962423263" [ref=f4e325]:
+              - generic [ref=f4e326]: Fábio Rocha
+              - generic [ref=f4e327]: +351 962423263
+            - cell "WEB Link · PT" [ref=f4e328]:
+              - generic "Portugal" [ref=f4e329]:
+                - generic [ref=f4e330]: WEB
+                - text: Link · PT
+            - cell "E1 · Novo" [ref=f4e331]
+            - cell "Praia → Lisboa 08-20 – 08-28 · EUR" [ref=f4e334]:
+              - generic [ref=f4e335]: Praia → Lisboa
+              - generic [ref=f4e336]: 08-20 – 08-28 · EUR
+            - cell "1A" [ref=f4e337]
+            - cell "—" [ref=f4e338]
+            - cell "29d à espera de nós" [ref=f4e339]:
+              - generic [ref=f4e340]: 29d
+              - generic [ref=f4e341]: à espera de nós
+            - cell [ref=f4e342]:
+              - link "Cotar" [ref=f4e344] [cursor=pointer]:
+                - /url: /admin/price-checker/edb05fd4-3863-4770-b2df-7a16bbe2f45b
+          - row [ref=f4e345]:
+            - cell "WF-2608-0002 sem agente" [ref=f4e346]:
+              - generic [ref=f4e347]: WF-2608-0002
+              - generic [ref=f4e348]: sem agente
+            - cell "Cliente Demonstração +238 9912345" [ref=f4e349]:
+              - generic [ref=f4e350]: Cliente Demonstração
+              - generic [ref=f4e351]: +238 9912345
+            - cell "WEB Link · CV" [ref=f4e352]:
+              - generic "Cabo Verde" [ref=f4e353]:
+                - generic [ref=f4e354]: WEB
+                - text: Link · CV
+            - cell "E2 · Em cotação" [ref=f4e355]
+            - cell "Praia (RAI) → Lisboa (LIS) 09-15 – 09-29 · EUR" [ref=f4e358]:
+              - generic [ref=f4e359]: Praia (RAI) → Lisboa (LIS)
+              - generic [ref=f4e360]: 09-15 – 09-29 · EUR
+            - cell "2A · 1C" [ref=f4e361]
+            - cell "€ 245 000,00" [ref=f4e362]
+            - cell "29d à espera de nós" [ref=f4e363]:
+              - generic [ref=f4e364]: 29d
+              - generic [ref=f4e365]: à espera de nós
+            - cell [ref=f4e366]:
+              - generic [ref=f4e367]:
+                - button "Reclamar" [ref=f4e368] [cursor=pointer]
+                - link "Abrir" [ref=f4e369] [cursor=pointer]:
+                  - /url: /admin/price-checker/4ee4904d-0eff-4439-b90d-03c335796f6f
+          - row [ref=f4e370]:
+            - cell "WF-2608-0004 sem agente" [ref=f4e371]:
+              - generic [ref=f4e372]: WF-2608-0004
+              - generic [ref=f4e373]: sem agente
+            - cell "Fábio Rocha +351 962423263" [ref=f4e374]:
+              - generic [ref=f4e375]: Fábio Rocha
+              - generic [ref=f4e376]: +351 962423263
+            - cell "WEB Link · PT" [ref=f4e377]:
+              - generic "Portugal" [ref=f4e378]:
+                - generic [ref=f4e379]: WEB
+                - text: Link · PT
+            - cell "E1 · Novo" [ref=f4e380]
+            - cell "Lisbon → Dubai 08-08 – 08-15 · EUR" [ref=f4e383]:
+              - generic [ref=f4e384]: Lisbon → Dubai
+              - generic [ref=f4e385]: 08-08 – 08-15 · EUR
+            - cell "2A · 2C" [ref=f4e386]
+            - cell "—" [ref=f4e387]
+            - cell "29d à espera de nós" [ref=f4e388]:
+              - generic [ref=f4e389]: 29d
+              - generic [ref=f4e390]: à espera de nós
+            - cell [ref=f4e391]:
+              - link "Cotar" [ref=f4e393] [cursor=pointer]:
+                - /url: /admin/price-checker/cd669648-9445-46f9-9c5a-a70870f67086
+          - row [ref=f4e394]:
+            - cell "WF-2608-0006 sem agente" [ref=f4e395]:
+              - generic [ref=f4e396]: WF-2608-0006
+              - generic [ref=f4e397]: sem agente
+            - cell "Teste 002 +238 9800700" [ref=f4e398]:
+              - generic [ref=f4e399]: Teste 002
+              - generic [ref=f4e400]: +238 9800700
+            - cell "WEB Link · CV" [ref=f4e401]:
+              - generic "Cabo Verde" [ref=f4e402]:
+                - generic [ref=f4e403]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e404]
+            - cell "Moçambique → Lisbon 08-08 – 08-18 · EUR" [ref=f4e407]:
+              - generic [ref=f4e408]: Moçambique → Lisbon
+              - generic [ref=f4e409]: 08-08 – 08-18 · EUR
+            - cell "3A · 2C" [ref=f4e410]
+            - cell "—" [ref=f4e411]
+            - cell "27d à espera de nós" [ref=f4e412]:
+              - generic [ref=f4e413]: 27d
+              - generic [ref=f4e414]: à espera de nós
+            - cell [ref=f4e415]:
+              - link "Cotar" [ref=f4e417] [cursor=pointer]:
+                - /url: /admin/price-checker/ce956f80-2769-456d-84ba-b372ad2b08ce
+          - row [ref=f4e418]:
+            - cell "WF-2608-0007 sem agente" [ref=f4e419]:
+              - generic [ref=f4e420]: WF-2608-0007
+              - generic [ref=f4e421]: sem agente
+            - cell "Bruno Dominik teste +351 999999999" [ref=f4e422]:
+              - generic [ref=f4e423]: Bruno Dominik teste
+              - generic [ref=f4e424]: +351 999999999
+            - cell "WEB Link · PT" [ref=f4e425]:
+              - generic "Portugal" [ref=f4e426]:
+                - generic [ref=f4e427]: WEB
+                - text: Link · PT
+            - cell "E1 · Novo" [ref=f4e428]
+            - cell "Quelimane → Porto 08-20 – 08-31 · EUR" [ref=f4e431]:
+              - generic [ref=f4e432]: Quelimane → Porto
+              - generic [ref=f4e433]: 08-20 – 08-31 · EUR
+            - cell "2A" [ref=f4e434]
+            - cell "—" [ref=f4e435]
+            - cell "27d à espera de nós" [ref=f4e436]:
+              - generic [ref=f4e437]: 27d
+              - generic [ref=f4e438]: à espera de nós
+            - cell [ref=f4e439]:
+              - link "Cotar" [ref=f4e441] [cursor=pointer]:
+                - /url: /admin/price-checker/18f16dc0-edb5-4867-bc6b-693b0eacce73
+          - row [ref=f4e442]:
+            - cell "WF-2608-0008 sem agente" [ref=f4e443]:
+              - generic [ref=f4e444]: WF-2608-0008
+              - generic [ref=f4e445]: sem agente
+            - cell "Joa +238 989765" [ref=f4e446]:
+              - generic [ref=f4e447]: Joa
+              - generic [ref=f4e448]: +238 989765
+            - cell "WEB Link · CV" [ref=f4e449]:
+              - generic "Cabo Verde" [ref=f4e450]:
+                - generic [ref=f4e451]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e452]
+            - cell "casa blanca → Porto 08-09 – 08-18 · EUR" [ref=f4e455]:
+              - generic [ref=f4e456]: casa blanca → Porto
+              - generic [ref=f4e457]: 08-09 – 08-18 · EUR
+            - cell "1A" [ref=f4e458]
+            - cell "—" [ref=f4e459]
+            - cell "27d à espera de nós" [ref=f4e460]:
+              - generic [ref=f4e461]: 27d
+              - generic [ref=f4e462]: à espera de nós
+            - cell [ref=f4e463]:
+              - link "Cotar" [ref=f4e465] [cursor=pointer]:
+                - /url: /admin/price-checker/5f67b683-ba52-40f2-9f1d-3cb45fb35894
+          - row [ref=f4e466]:
+            - cell "WF-2608-0009 sem agente" [ref=f4e467]:
+              - generic [ref=f4e468]: WF-2608-0009
+              - generic [ref=f4e469]: sem agente
+            - cell "Teste 4 +238 999999" [ref=f4e470]:
+              - generic [ref=f4e471]: Teste 4
+              - generic [ref=f4e472]: +238 999999
+            - cell "WEB Link · CV" [ref=f4e473]:
+              - generic "Cabo Verde" [ref=f4e474]:
+                - generic [ref=f4e475]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e476]
+            - cell "frt → rttr 08-07 – 08-14 · EUR" [ref=f4e479]:
+              - generic [ref=f4e480]: frt → rttr
+              - generic [ref=f4e481]: 08-07 – 08-14 · EUR
+            - cell "1A" [ref=f4e482]
+            - cell "—" [ref=f4e483]
+            - cell "27d à espera de nós" [ref=f4e484]:
+              - generic [ref=f4e485]: 27d
+              - generic [ref=f4e486]: à espera de nós
+            - cell [ref=f4e487]:
+              - link "Cotar" [ref=f4e489] [cursor=pointer]:
+                - /url: /admin/price-checker/be81fbfd-80c1-44a2-9974-c28225b13b19
+          - row [ref=f4e490]:
+            - cell "WF-2608-0010 sem agente" [ref=f4e491]:
+              - generic [ref=f4e492]: WF-2608-0010
+              - generic [ref=f4e493]: sem agente
+            - cell "Shutsha Luambo +33 9592388" [ref=f4e494]:
+              - generic [ref=f4e495]: Shutsha Luambo
+              - generic [ref=f4e496]: +33 9592388
+            - cell "WEB Link · FR" [ref=f4e497]:
+              - generic "França" [ref=f4e498]:
+                - generic [ref=f4e499]: WEB
+                - text: Link · FR
+            - cell "E1 · Novo" [ref=f4e500]
+            - cell "paris → praia 08-21 – 08-31 · EUR" [ref=f4e503]:
+              - generic [ref=f4e504]: paris → praia
+              - generic [ref=f4e505]: 08-21 – 08-31 · EUR
+            - cell "1A" [ref=f4e506]
+            - cell "—" [ref=f4e507]
+            - cell "27d à espera de nós" [ref=f4e508]:
+              - generic [ref=f4e509]: 27d
+              - generic [ref=f4e510]: à espera de nós
+            - cell [ref=f4e511]:
+              - link "Cotar" [ref=f4e513] [cursor=pointer]:
+                - /url: /admin/price-checker/8a31f439-3932-4284-ab59-706b87e22e97
+          - row [ref=f4e514]:
+            - cell "WF-2608-0011 sem agente" [ref=f4e515]:
+              - generic [ref=f4e516]: WF-2608-0011
+              - generic [ref=f4e517]: sem agente
+            - cell "Maria +238 5916919" [ref=f4e518]:
+              - generic [ref=f4e519]: Maria
+              - generic [ref=f4e520]: +238 5916919
+            - cell "WEB Link · CV" [ref=f4e521]:
+              - generic "Cabo Verde" [ref=f4e522]:
+                - generic [ref=f4e523]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e524]
+            - cell "Praia → Lisboa 08-10 – 08-23 · EUR" [ref=f4e527]:
+              - generic [ref=f4e528]: Praia → Lisboa
+              - generic [ref=f4e529]: 08-10 – 08-23 · EUR
+            - cell "1A · 1C" [ref=f4e530]
+            - cell "—" [ref=f4e531]
+            - cell "27d à espera de nós" [ref=f4e532]:
+              - generic [ref=f4e533]: 27d
+              - generic [ref=f4e534]: à espera de nós
+            - cell [ref=f4e535]:
+              - link "Cotar" [ref=f4e537] [cursor=pointer]:
+                - /url: /admin/price-checker/7f0046f5-e9fb-422d-9b99-1d36a9c8e72d
+          - row [ref=f4e538]:
+            - cell "WF-2608-0012 sem agente" [ref=f4e539]:
+              - generic [ref=f4e540]: WF-2608-0012
+              - generic [ref=f4e541]: sem agente
+            - cell "Shutsha Luambo +33 9592388" [ref=f4e542]:
+              - generic [ref=f4e543]: Shutsha Luambo
+              - generic [ref=f4e544]: +33 9592388
+            - cell "WEB Link · FR" [ref=f4e545]:
+              - generic "França" [ref=f4e546]:
+                - generic [ref=f4e547]: WEB
+                - text: Link · FR
+            - cell "E1 · Novo" [ref=f4e548]
+            - cell "Paris → praia 10-12 – 11-06 · EUR" [ref=f4e551]:
+              - generic [ref=f4e552]: Paris → praia
+              - generic [ref=f4e553]: 10-12 – 11-06 · EUR
+            - cell "1A" [ref=f4e554]
+            - cell "—" [ref=f4e555]
+            - cell "26d à espera de nós" [ref=f4e556]:
+              - generic [ref=f4e557]: 26d
+              - generic [ref=f4e558]: à espera de nós
+            - cell [ref=f4e559]:
+              - link "Cotar" [ref=f4e561] [cursor=pointer]:
+                - /url: /admin/price-checker/f8198cbe-ef50-4b5d-b44e-1e6ccff448d4
+          - row [ref=f4e562]:
+            - cell "WF-2608-0013 sem agente" [ref=f4e563]:
+              - generic [ref=f4e564]: WF-2608-0013
+              - generic [ref=f4e565]: sem agente
+            - cell "Shutsha Luambo +33 9592388" [ref=f4e566]:
+              - generic [ref=f4e567]: Shutsha Luambo
+              - generic [ref=f4e568]: +33 9592388
+            - cell "WEB Link · FR" [ref=f4e569]:
+              - generic "França" [ref=f4e570]:
+                - generic [ref=f4e571]: WEB
+                - text: Link · FR
+            - cell "E1 · Novo" [ref=f4e572]
+            - cell "paris → praia 10-12 – 11-06 · EUR" [ref=f4e575]:
+              - generic [ref=f4e576]: paris → praia
+              - generic [ref=f4e577]: 10-12 – 11-06 · EUR
+            - cell "1A" [ref=f4e578]
+            - cell "—" [ref=f4e579]
+            - cell "24d à espera de nós" [ref=f4e580]:
+              - generic [ref=f4e581]: 24d
+              - generic [ref=f4e582]: à espera de nós
+            - cell [ref=f4e583]:
+              - link "Cotar" [ref=f4e585] [cursor=pointer]:
+                - /url: /admin/price-checker/67bc1a45-6fdf-4fc4-a768-d39a44d36608
+          - row [ref=f4e586]:
+            - cell "WF-2608-0014 sem agente" [ref=f4e587]:
+              - generic [ref=f4e588]: WF-2608-0014
+              - generic [ref=f4e589]: sem agente
+            - cell "Mary +238 931931649" [ref=f4e590]:
+              - generic [ref=f4e591]: Mary
+              - generic [ref=f4e592]: +238 931931649
+            - cell "WEB Link · CV" [ref=f4e593]:
+              - generic "Cabo Verde" [ref=f4e594]:
+                - generic [ref=f4e595]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e596]
+            - cell "Paris → Dakar 08-31 – 09-27 · EUR" [ref=f4e599]:
+              - generic [ref=f4e600]: Paris → Dakar
+              - generic [ref=f4e601]: 08-31 – 09-27 · EUR
+            - cell "1A" [ref=f4e602]
+            - cell "—" [ref=f4e603]
+            - cell "24d à espera de nós" [ref=f4e604]:
+              - generic [ref=f4e605]: 24d
+              - generic [ref=f4e606]: à espera de nós
+            - cell [ref=f4e607]:
+              - link "Cotar" [ref=f4e609] [cursor=pointer]:
+                - /url: /admin/price-checker/aecaef2f-2dd8-4127-9d9a-fdb906aa47b2
+          - row [ref=f4e610]:
+            - cell "WF-2608-0015 sem agente" [ref=f4e611]:
+              - generic [ref=f4e612]: WF-2608-0015
+              - generic [ref=f4e613]: sem agente
+            - cell "Shutsha Luambo +33 9592388" [ref=f4e614]:
+              - generic [ref=f4e615]: Shutsha Luambo
+              - generic [ref=f4e616]: +33 9592388
+            - cell "WEB Link · FR" [ref=f4e617]:
+              - generic "França" [ref=f4e618]:
+                - generic [ref=f4e619]: WEB
+                - text: Link · FR
+            - cell "E1 · Novo" [ref=f4e620]
+            - cell "paris → praia 10-12 – 11-11 · EUR" [ref=f4e623]:
+              - generic [ref=f4e624]: paris → praia
+              - generic [ref=f4e625]: 10-12 – 11-11 · EUR
+            - cell "1A" [ref=f4e626]
+            - cell "—" [ref=f4e627]
+            - cell "23d à espera de nós" [ref=f4e628]:
+              - generic [ref=f4e629]: 23d
+              - generic [ref=f4e630]: à espera de nós
+            - cell [ref=f4e631]:
+              - link "Cotar" [ref=f4e633] [cursor=pointer]:
+                - /url: /admin/price-checker/034609c3-77ef-4d58-bf36-a6edf3f3ba7d
+          - row [ref=f4e634]:
+            - cell "WF-2608-0016 sem agente" [ref=f4e635]:
+              - generic [ref=f4e636]: WF-2608-0016
+              - generic [ref=f4e637]: sem agente
+            - cell "Teste 002 +238 9800700" [ref=f4e638]:
+              - generic [ref=f4e639]: Teste 002
+              - generic [ref=f4e640]: +238 9800700
+            - cell "WEB Link · CV" [ref=f4e641]:
+              - generic "Cabo Verde" [ref=f4e642]:
+                - generic [ref=f4e643]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e644]
+            - cell "Praia → Quelimane 09-10 · EUR" [ref=f4e647]:
+              - generic [ref=f4e648]: Praia → Quelimane
+              - generic [ref=f4e649]: 09-10 · EUR
+            - cell "1A" [ref=f4e650]
+            - cell "—" [ref=f4e651]
+            - cell "21d à espera de nós" [ref=f4e652]:
+              - generic [ref=f4e653]: 21d
+              - generic [ref=f4e654]: à espera de nós
+            - cell [ref=f4e655]:
+              - link "Cotar" [ref=f4e657] [cursor=pointer]:
+                - /url: /admin/price-checker/a392c39b-4782-41ec-b76e-435b2ad758bf
+          - row [ref=f4e658]:
+            - cell "WF-2608-0021 sem agente" [ref=f4e659]:
+              - generic [ref=f4e660]: WF-2608-0021
+              - generic [ref=f4e661]: sem agente
+            - cell "Teste 002 +238 9800700" [ref=f4e662]:
+              - generic [ref=f4e663]: Teste 002
+              - generic [ref=f4e664]: +238 9800700
+            - cell "WEB Link · CV" [ref=f4e665]:
+              - generic "Cabo Verde" [ref=f4e666]:
+                - generic [ref=f4e667]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e668]
+            - cell "RAI → SID 08-26 – 08-27 · EUR" [ref=f4e671]:
+              - generic [ref=f4e672]: RAI → SID
+              - generic [ref=f4e673]: 08-26 – 08-27 · EUR
+            - cell "1A" [ref=f4e674]
+            - cell "—" [ref=f4e675]
+            - cell "15d à espera de nós" [ref=f4e676]:
+              - generic [ref=f4e677]: 15d
+              - generic [ref=f4e678]: à espera de nós
+            - cell [ref=f4e679]:
+              - link "Cotar" [ref=f4e681] [cursor=pointer]:
+                - /url: /admin/price-checker/ec822694-fef6-4dc1-9805-d7b16cc88b1b
+          - row [ref=f4e682]:
+            - cell "WF-2608-0039 sem agente" [ref=f4e683]:
+              - generic [ref=f4e684]: WF-2608-0039
+              - generic [ref=f4e685]: sem agente
+            - cell "Fábio Rocha +351 962423263" [ref=f4e686]:
+              - generic [ref=f4e687]: Fábio Rocha
+              - generic [ref=f4e688]: +351 962423263
+            - cell "WEB Link · PT" [ref=f4e689]:
+              - generic "Portugal" [ref=f4e690]:
+                - generic [ref=f4e691]: WEB
+                - text: Link · PT
+            - cell "E1 · Novo" [ref=f4e692]
+            - cell "Lisbon → Dubai 08-24 – 08-31 · EUR" [ref=f4e695]:
+              - generic [ref=f4e696]: Lisbon → Dubai
+              - generic [ref=f4e697]: 08-24 – 08-31 · EUR
+            - cell "1A" [ref=f4e698]
+            - cell "—" [ref=f4e699]
+            - cell "13d à espera de nós" [ref=f4e700]:
+              - generic [ref=f4e701]: 13d
+              - generic [ref=f4e702]: à espera de nós
+            - cell [ref=f4e703]:
+              - link "Cotar" [ref=f4e705] [cursor=pointer]:
+                - /url: /admin/price-checker/d7f82e4d-d472-453e-a3c3-7efa0b5ae6fb
+          - row [ref=f4e706]:
+            - cell "WF-2608-0044 sem agente" [ref=f4e707]:
+              - generic [ref=f4e708]: WF-2608-0044
+              - generic [ref=f4e709]: sem agente
+            - cell "Ivandro teste +238 9800700" [ref=f4e710]:
+              - generic [ref=f4e711]: Ivandro teste
+              - generic [ref=f4e712]: +238 9800700
+            - cell "WEB Link · CV" [ref=f4e713]:
+              - generic "Cabo Verde" [ref=f4e714]:
+                - generic [ref=f4e715]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e716]
+            - cell "UEL → FLN 08-27 – 08-31 · EUR" [ref=f4e719]:
+              - generic [ref=f4e720]: UEL → FLN
+              - generic [ref=f4e721]: 08-27 – 08-31 · EUR
+            - cell "1A" [ref=f4e722]
+            - cell "—" [ref=f4e723]
+            - cell "12d à espera de nós" [ref=f4e724]:
+              - generic [ref=f4e725]: 12d
+              - generic [ref=f4e726]: à espera de nós
+            - cell [ref=f4e727]:
+              - link "Cotar" [ref=f4e729] [cursor=pointer]:
+                - /url: /admin/price-checker/eb8acdaf-fad9-4677-bf25-cee6afdb2cc0
+          - row [ref=f4e730]:
+            - cell "WF-2608-0045 sem agente" [ref=f4e731]:
+              - generic [ref=f4e732]: WF-2608-0045
+              - generic [ref=f4e733]: sem agente
+            - cell "Dom ivandro teste +238 7213476867" [ref=f4e734]:
+              - generic [ref=f4e735]: Dom ivandro teste
+              - generic [ref=f4e736]: +238 7213476867
+            - cell "WEB Link · CV" [ref=f4e737]:
+              - generic "Cabo Verde" [ref=f4e738]:
+                - generic [ref=f4e739]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e740]
+            - cell "CDG → SID 08-27 – 09-30 · CVE" [ref=f4e743]:
+              - generic [ref=f4e744]: CDG → SID
+              - generic [ref=f4e745]: 08-27 – 09-30 · CVE
+            - cell "1A" [ref=f4e746]
+            - cell "—" [ref=f4e747]
+            - cell "12d à espera de nós" [ref=f4e748]:
+              - generic [ref=f4e749]: 12d
+              - generic [ref=f4e750]: à espera de nós
+            - cell [ref=f4e751]:
+              - link "Cotar" [ref=f4e753] [cursor=pointer]:
+                - /url: /admin/price-checker/ea5d3152-449a-48d2-b1ec-3e910e9a3449
+          - row [ref=f4e754]:
+            - cell "WF-2608-0049 sem agente" [ref=f4e755]:
+              - generic [ref=f4e756]: WF-2608-0049
+              - generic [ref=f4e757]: sem agente
+            - cell "teste 003 +238 9800700" [ref=f4e758]:
+              - generic [ref=f4e759]: teste 003
+              - generic [ref=f4e760]: +238 9800700
+            - cell "WEB Link · CV" [ref=f4e761]:
+              - generic "Cabo Verde" [ref=f4e762]:
+                - generic [ref=f4e763]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e764]
+            - cell "RAI → SID 08-27 – 08-31 · EUR" [ref=f4e767]:
+              - generic [ref=f4e768]: RAI → SID
+              - generic [ref=f4e769]: 08-27 – 08-31 · EUR
+            - cell "1A" [ref=f4e770]
+            - cell "—" [ref=f4e771]
+            - cell "9d à espera de nós" [ref=f4e772]:
+              - generic [ref=f4e773]: 9d
+              - generic [ref=f4e774]: à espera de nós
+            - cell [ref=f4e775]:
+              - link "Cotar" [ref=f4e777] [cursor=pointer]:
+                - /url: /admin/price-checker/c2a7daf0-75ac-4b23-9374-2532f0bba7e6
+          - row [ref=f4e778]:
+            - cell "WF-2608-0050 agent=nelOlá" [ref=f4e779]:
+              - generic [ref=f4e780]: WF-2608-0050
+              - generic [ref=f4e781]: agent=nelOlá
+            - cell "Shutsha Luambo +33 9592388" [ref=f4e782]:
+              - generic [ref=f4e783]: Shutsha Luambo
+              - generic [ref=f4e784]: +33 9592388
+            - cell "WEB Link · FR" [ref=f4e785]:
+              - generic "França" [ref=f4e786]:
+                - generic [ref=f4e787]: WEB
+                - text: Link · FR
+            - cell "E1 · Novo" [ref=f4e788]
+            - cell "RAI → SID 08-28 · EUR" [ref=f4e791]:
+              - generic [ref=f4e792]: RAI → SID
+              - generic [ref=f4e793]: 08-28 · EUR
+            - cell "1A" [ref=f4e794]
+            - cell "—" [ref=f4e795]
+            - cell "9d à espera de nós" [ref=f4e796]:
+              - generic [ref=f4e797]: 9d
+              - generic [ref=f4e798]: à espera de nós
+            - cell [ref=f4e799]:
+              - generic [ref=f4e800]:
+                - button "Reclamar" [ref=f4e801] [cursor=pointer]
+                - link "Cotar" [ref=f4e802] [cursor=pointer]:
+                  - /url: /admin/price-checker/bcb5ecc0-e5eb-4d0c-a0aa-d8a5dfea4ee8
+          - row [ref=f4e803]:
+            - cell "WF-2608-0051 agent=nelida" [ref=f4e804]:
+              - generic [ref=f4e805]: WF-2608-0051
+              - generic [ref=f4e806]: agent=nelida
+            - cell "Aruna Pereira Handem +238 9958540" [ref=f4e807]:
+              - generic [ref=f4e808]: Aruna Pereira Handem
+              - generic [ref=f4e809]: +238 9958540
+            - cell "WEB Link · CV" [ref=f4e810]:
+              - generic "Cabo Verde" [ref=f4e811]:
+                - generic [ref=f4e812]: WEB
+                - text: Link · CV
+            - cell "E1 · Novo" [ref=f4e813]
+            - cell "RAI → CDG 09-03 – 09-12 · EUR" [ref=f4e816]:
+              - generic [ref=f4e817]: RAI → CDG
+              - generic [ref=f4e818]: 09-03 – 09-12 · EUR
+            - cell "1A" [ref=f4e819]
+            - cell "—" [ref=f4e820]
+            - cell "7d à espera de nós" [ref=f4e821]:
+              - generic [ref=f4e822]: 7d
+              - generic [ref=f4e823]: à espera de nós
+            - cell [ref=f4e824]:
+              - generic [ref=f4e825]:
+                - button "Reclamar" [ref=f4e826] [cursor=pointer]
+                - link "Cotar" [ref=f4e827] [cursor=pointer]:
+                  - /url: /admin/price-checker/10c72002-2f03-4cd6-b19c-3efc5585f232
+          - row [ref=f4e828]:
+            - cell "WF-2608-0052 agent=nelida" [ref=f4e829]:
+              - generic [ref=f4e830]: WF-2608-0052
+              - generic [ref=f4e831]: agent=nelida
+            - cell "Shutsha Luambo +33 9592388" [ref=f4e832]:
+              - generic [ref=f4e833]: Shutsha Luambo
+              - generic [ref=f4e834]: +33 9592388
+            - cell "WEB Link · FR" [ref=f4e835]:
+              - generic "França" [ref=f4e836]:
+                - generic [ref=f4e837]: WEB
+                - text: Link · FR
+            - cell "E1 · Novo" [ref=f4e838]
+            - cell "BOS → RAI 08-31 – 09-30 · EUR" [ref=f4e841]:
+              - generic [ref=f4e842]: BOS → RAI
+              - generic [ref=f4e843]: 08-31 – 09-30 · EUR
+            - cell "1A" [ref=f4e844]
+            - cell "—" [ref=f4e845]
+            - cell "6d 18h à espera de nós" [ref=f4e846]:
+              - generic [ref=f4e847]: 6d 18h
+              - generic [ref=f4e848]: à espera de nós
+            - cell [ref=f4e849]:
+              - link "Cotar" [ref=f4e851] [cursor=pointer]:
+                - /url: /admin/price-checker/8f5aeec2-1c4b-40bd-b416-3dc5c92de644
+          - row [ref=f4e852]:
+            - cell "WF-2608-0054 agent=nelida" [ref=f4e853]:
+              - generic [ref=f4e854]: WF-2608-0054
+              - generic [ref=f4e855]: agent=nelida
+            - cell "Shutsha Luambo +33 9592388" [ref=f4e856]:
+              - generic [ref=f4e857]: Shutsha Luambo
+              - generic [ref=f4e858]: +33 9592388
+            - cell "WEB Link · FR" [ref=f4e859]:
+              - generic "França" [ref=f4e860]:
+                - generic [ref=f4e861]: WEB
+                - text: Link · FR
+            - cell "E1 · Novo" [ref=f4e862]
+            - cell "RAI → BOS 08-31 – 09-17 · EUR" [ref=f4e865]:
+              - generic [ref=f4e866]: RAI → BOS
+              - generic [ref=f4e867]: 08-31 – 09-17 · EUR
+            - cell "1A" [ref=f4e868]
+            - cell "—" [ref=f4e869]
+            - cell "5d 18h à espera de nós" [ref=f4e870]:
+              - generic [ref=f4e871]: 5d 18h
+              - generic [ref=f4e872]: à espera de nós
+            - cell [ref=f4e873]:
+              - link "Cotar" [ref=f4e875] [cursor=pointer]:
+                - /url: /admin/price-checker/b47abebd-8e3d-45b1-842c-e12b2115a56b
+          - row [ref=f4e876]:
+            - cell "WF-2609-0056 sem agente" [ref=f4e877]:
+              - generic [ref=f4e878]: WF-2609-0056
+              - generic [ref=f4e879]: sem agente
+            - cell "ivandro teste 8 +238 9800700" [ref=f4e880]:
+              - generic [ref=f4e881]: ivandro teste 8
+              - generic [ref=f4e882]: +238 9800700
+            - cell "WEB Link · CV" [ref=f4e883]:
+              - generic "Cabo Verde" [ref=f4e884]:
+                - generic [ref=f4e885]: WEB
+                - text: Link · CV
+            - cell "E2 · Em cotação" [ref=f4e886]
+            - cell "AMS → RAI 09-17 – 09-30 · EUR" [ref=f4e889]:
+              - generic [ref=f4e890]: AMS → RAI
+              - generic [ref=f4e891]: 09-17 – 09-30 · EUR
+            - cell "1A" [ref=f4e892]
+            - cell "—" [ref=f4e893]
+            - cell "4h 12m proposta válida até 13:34" [ref=f4e894]:
+              - generic [ref=f4e895]: 4h 12m
+              - generic [ref=f4e896]: proposta válida até 13:34
+            - cell [ref=f4e897]:
+              - link "Abrir" [ref=f4e899] [cursor=pointer]:
+                - /url: /admin/price-checker/d93b618e-69a5-488a-b863-76751e15f44f
+          - row [ref=f4e900]:
+            - cell "WF-2608-0003 sem agente" [ref=f4e901]:
+              - generic [ref=f4e902]: WF-2608-0003
+              - generic [ref=f4e903]: sem agente
+            - cell "Fábio Rocha +351 962423263" [ref=f4e904]:
+              - generic [ref=f4e905]: Fábio Rocha
+              - generic [ref=f4e906]: +351 962423263
+            - cell "WEB Link · PT" [ref=f4e907]:
+              - generic "Portugal" [ref=f4e908]:
+                - generic [ref=f4e909]: WEB
+                - text: Link · PT
+            - cell "E3 · Aguarda passaportes" [ref=f4e910]
+            - cell "Dubai → Lisboa 08-12 – 08-16 · EUR" [ref=f4e913]:
+              - generic [ref=f4e914]: Dubai → Lisboa
+              - generic [ref=f4e915]: 08-12 – 08-16 · EUR
+            - cell "2A · 1C" [ref=f4e916]
+            - cell "€ 2320,00" [ref=f4e917]
+            - cell "29d proposta válida até 10:33" [ref=f4e918]:
+              - generic [ref=f4e919]: 29d
+              - generic [ref=f4e920]: proposta válida até 10:33
+            - cell [ref=f4e921]:
+              - link "Abrir" [ref=f4e923] [cursor=pointer]:
+                - /url: /admin/price-checker/a6d5b2cc-b70e-43d6-adf1-63406be18331
+          - row [ref=f4e924]:
+            - cell "WF-2608-0027 agent=nelida" [ref=f4e925]:
+              - generic [ref=f4e926]: WF-2608-0027
+              - generic [ref=f4e927]: agent=nelida
+            - cell "ZZTESTE Ensaio 1787139834429 +238 9911223" [ref=f4e928]:
+              - generic [ref=f4e929]: ZZTESTE Ensaio 1787139834429
+              - generic [ref=f4e930]: +238 9911223
+            - cell "WEB Link · CV" [ref=f4e931]:
+              - generic "Cabo Verde" [ref=f4e932]:
+                - generic [ref=f4e933]: WEB
+                - text: Link · CV
+            - cell "X1 · Expirado" [ref=f4e934]
+            - cell "RAI → LIS 09-28 – 10-12 · EUR" [ref=f4e937]:
+              - generic [ref=f4e938]: RAI → LIS
+              - generic [ref=f4e939]: 09-28 – 10-12 · EUR
+            - cell "2A · 1C · 1B" [ref=f4e940]
+            - cell "€ 162 000,00" [ref=f4e941]
+            - cell "15d link expirado" [ref=f4e942]:
+              - generic [ref=f4e943]: 15d
+              - generic [ref=f4e944]: link expirado
+            - cell [ref=f4e945]:
+              - generic [ref=f4e946]:
+                - button "Reclamar" [ref=f4e947] [cursor=pointer]
+                - link "Abrir" [ref=f4e948] [cursor=pointer]:
+                  - /url: /admin/price-checker/08c6a76b-d642-4705-9f25-3a07ef0d8124
+          - row [ref=f4e949]:
+            - cell "WF-2608-0046 sem agente" [ref=f4e950]:
+              - generic [ref=f4e951]: WF-2608-0046
+              - generic [ref=f4e952]: sem agente
+            - cell "Shutsha Luambo +33 9592388" [ref=f4e953]:
+              - generic [ref=f4e954]: Shutsha Luambo
+              - generic [ref=f4e955]: +33 9592388
+            - cell "WEB Link · FR" [ref=f4e956]:
+              - generic "França" [ref=f4e957]:
+                - generic [ref=f4e958]: WEB
+                - text: Link · FR
+            - cell "X1 · Expirado" [ref=f4e959]
+            - cell "RAI → LIS 08-24 – 08-31 · EUR" [ref=f4e962]:
+              - generic [ref=f4e963]: RAI → LIS
+              - generic [ref=f4e964]: 08-24 – 08-31 · EUR
+            - cell "1A" [ref=f4e965]
+            - cell "€ 190,00" [ref=f4e966]
+            - cell "12d link expirado" [ref=f4e967]:
+              - generic [ref=f4e968]: 12d
+              - generic [ref=f4e969]: link expirado
+            - cell [ref=f4e970]:
+              - link "Abrir" [ref=f4e972] [cursor=pointer]:
+                - /url: /admin/price-checker/0dd183a6-f5fd-4a9f-ab77-7fe00503bdc7
+          - row [ref=f4e973]:
+            - cell "WF-2608-0047 sem agente" [ref=f4e974]:
+              - generic [ref=f4e975]: WF-2608-0047
+              - generic [ref=f4e976]: sem agente
+            - cell "Shutsha Luambo +33 9592388" [ref=f4e977]:
+              - generic [ref=f4e978]: Shutsha Luambo
+              - generic [ref=f4e979]: +33 9592388
+            - cell "WEB Link · FR" [ref=f4e980]:
+              - generic "França" [ref=f4e981]:
+                - generic [ref=f4e982]: WEB
+                - text: Link · FR
+            - cell "X2 · Cancelado" [ref=f4e983]
+            - cell "RAI → LIS 08-29 – 09-05 · EUR" [ref=f4e986]:
+              - generic [ref=f4e987]: RAI → LIS
+              - generic [ref=f4e988]: 08-29 – 09-05 · EUR
+            - cell "1A" [ref=f4e989]
+            - cell "—" [ref=f4e990]
+            - cell "11d cancelado" [ref=f4e991]:
+              - generic [ref=f4e992]: 11d
+              - generic [ref=f4e993]: cancelado
+            - cell [ref=f4e994]:
+              - generic [ref=f4e995]:
+                - button "Reclamar" [ref=f4e996] [cursor=pointer]
+                - link "Abrir" [ref=f4e997] [cursor=pointer]:
+                  - /url: /admin/price-checker/7e0b2cdc-ab2b-4d9d-bba7-d1e09c97ee1c
+          - row [ref=f4e998]:
+            - cell "WF-2608-0026 agent=nelida" [ref=f4e999]:
+              - generic [ref=f4e1000]: WF-2608-0026
+              - generic [ref=f4e1001]: agent=nelida
+            - cell "ZZTESTE Ensaio 1787139811449 +238 9911223" [ref=f4e1002]:
+              - generic [ref=f4e1003]: ZZTESTE Ensaio 1787139811449
+              - generic [ref=f4e1004]: +238 9911223
+            - cell "WEB Link · CV" [ref=f4e1005]:
+              - generic "Cabo Verde" [ref=f4e1006]:
+                - generic [ref=f4e1007]: WEB
+                - text: Link · CV
+            - cell "E5 · Emitido" [ref=f4e1008]
+            - cell "RAI → LIS 09-28 – 10-12 · EUR" [ref=f4e1011]:
+              - generic [ref=f4e1012]: RAI → LIS
+              - generic [ref=f4e1013]: 09-28 – 10-12 · EUR
+            - cell "2A · 1C · 1B" [ref=f4e1014]
+            - cell "€ 162 000,00" [ref=f4e1015]
+            - cell "15d PNR ZZ7T4K" [ref=f4e1016]:
+              - generic [ref=f4e1017]: 15d
+              - generic [ref=f4e1018]: PNR ZZ7T4K
+            - cell [ref=f4e1019]:
+              - generic [ref=f4e1020]:
+                - button "Reclamar" [ref=f4e1021] [cursor=pointer]
+                - link "Abrir" [ref=f4e1022] [cursor=pointer]:
+                  - /url: /admin/price-checker/4eb6102b-9362-42cd-91de-ffed85b4aed4
+          - row [ref=f4e1023]:
+            - cell "WF-2609-0055 sem agente" [ref=f4e1024]:
+              - generic [ref=f4e1025]: WF-2609-0055
+              - generic [ref=f4e1026]: sem agente
+            - cell "ivandro teste 8 +238 9800700" [ref=f4e1027]:
+              - generic [ref=f4e1028]: ivandro teste 8
+              - generic [ref=f4e1029]: +238 9800700
+            - cell "WEB Link · CV" [ref=f4e1030]:
+              - generic "Cabo Verde" [ref=f4e1031]:
+                - generic [ref=f4e1032]: WEB
+                - text: Link · CV
+            - cell "Fechado" [ref=f4e1033]
+            - cell "SID → RAI 09-30 · EUR" [ref=f4e1036]:
+              - generic [ref=f4e1037]: SID → RAI
+              - generic [ref=f4e1038]: 09-30 · EUR
+            - cell "1A" [ref=f4e1039]
+            - cell "€ 240,00" [ref=f4e1040]
+            - cell "2d 00h prazo esgotado" [ref=f4e1041]:
+              - generic [ref=f4e1042]: 2d 00h
+              - generic [ref=f4e1043]: prazo esgotado
+            - cell [ref=f4e1044]:
+              - link "Abrir" [ref=f4e1046] [cursor=pointer]:
+                - /url: /admin/price-checker/d495203a-1ca4-4918-9f41-b98b1b49a7f5

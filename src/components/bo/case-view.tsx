@@ -16,7 +16,8 @@ import type { PaymentProof, PcPayment } from "@/lib/pc/payment"
 import type { PublicProposalView } from "@/lib/proposals"
 import type { CaseEvent } from "@/lib/case-events"
 import type { CaseNotification } from "@/lib/notifications"
-import type { CasePassenger } from "@/lib/case-status"
+import type { CasePassenger, LinkState } from "@/lib/case-status"
+import { fareAgeChange } from "@/lib/validations"
 import { formatMoney, offerTotal } from "@/lib/proposal-math"
 import { BoPaymentPanel } from "@/components/bo/payment-panel"
 import { BoIssuancePanel } from "@/components/bo/issuance-panel"
@@ -50,6 +51,29 @@ function defaultTab(detail: BoCaseDetail): TabId {
     default:
       return "t-pedido"
   }
+}
+
+/** C-05 · as três etapas de link, com o nome que a equipa lhes dá. */
+const LINK_STAGE_LABEL: Record<number, string> = {
+  1: "1 · Pedido",
+  2: "2 · Proposta",
+  3: "3 · Pagamento",
+}
+
+const LINK_STATE_LABEL: Record<LinkState, string> = {
+  bloqueado: "bloqueado",
+  aberto: "aberto",
+  submetido: "submetido",
+  expirado: "expirado",
+  fechado: "fechado",
+}
+
+const LINK_STATE_TONE: Record<LinkState, string> = {
+  bloqueado: "var(--muted)",
+  aberto: "var(--ok)",
+  submetido: "var(--blue)",
+  expirado: "var(--ember)",
+  fechado: "var(--muted)",
 }
 
 const dt = (iso: string | null | undefined, withTime = true): string => {
@@ -388,11 +412,17 @@ export function BoCaseView({
                   {/* BO-09 · "Compor propostas" passa a "Criar proposta". Uma
                       proposta com várias opções continua a ser uma proposta, e
                       o plural fazia crer que se enviavam várias. */}
+                  {/* C-01 · sem dono, a acção oferecida é reclamar — e é o
+                      compositor que fica atrás dela, não este botão. */}
                   <Link
                     className="btn btn-sm btn-primary"
                     href={`/admin/price-checker/${row.caseId}/ofertas`}
                   >
-                    {proposal ? "Editar proposta" : "Criar proposta"}
+                    {!row.ownerId
+                      ? "Reclamar e cotar"
+                      : proposal
+                        ? "Editar proposta"
+                        : "Criar proposta"}
                   </Link>
                   <Link className="btn btn-sm" href={`/pc/${row.token}`} target="_blank">
                     Ver como o cliente vê
@@ -464,6 +494,12 @@ export function BoCaseView({
                 ) : (
                   <>
                     <PassportWarnings passengers={passengers} returnDate={row.returnDate ?? row.departDate} />
+                    {/* C-06 · quem muda de tarifa entre a marcação e a partida. */}
+                    <FareAgeWarnings
+                      passengers={passengers}
+                      bookedAt={row.submittedAt}
+                      departDate={row.departDate}
+                    />
                     {passengers.map((p, index) => (
                       <PassengerCard
                         key={p.id}
@@ -541,6 +577,63 @@ export function BoCaseView({
               <Kv k="Email" v={row.clientEmail} />
               <Kv k="Idioma" v={row.locale} mono />
               <Kv k="Link do cliente" v={`/pc/${row.token.slice(0, 8)}…`} mono />
+
+              {/*
+                C-05 · o estado de cada link, e a última vez que o cliente o abriu.
+
+                O back-office dava um link fechado como aberto. Mostrava-se a
+                coluna `case_links.status`, que cinco caminhos diferentes
+                escrevem — e um valor com cinco escritores e nenhum dono
+                diverge. Agora o que aparece é derivado do estado do caso
+                (`deriveLinkState`), e a data é o acesso real e não a primeira
+                visita de sempre.
+              */}
+              <div style={{ marginTop: 13 }}>
+                <div
+                  style={{
+                    fontSize: 10.5,
+                    textTransform: "uppercase",
+                    letterSpacing: ".1em",
+                    color: "var(--muted)",
+                    marginBottom: 7,
+                  }}
+                >
+                  Estado dos links
+                </div>
+                {row.links.length === 0 ? (
+                  <p className="note">Este caso não tem links.</p>
+                ) : (
+                  row.links.map((link) => (
+                    <div className="kv" key={link.stage}>
+                      <span className="kv-k">
+                        {LINK_STAGE_LABEL[link.stage] ?? `Etapa ${link.stage}`}
+                      </span>
+                      <span
+                        className="kv-v"
+                        style={{ color: LINK_STATE_TONE[link.state] }}
+                      >
+                        {LINK_STATE_LABEL[link.state]}
+                        {link.lastOpenedAt
+                          ? ` · aberto ${dt(link.lastOpenedAt)}`
+                          : link.state === "aberto"
+                            ? " · nunca aberto"
+                            : ""}
+                        {link.openCount > 1 ? ` · ${link.openCount}×` : ""}
+                      </span>
+                    </div>
+                  ))
+                )}
+
+                {/* Uma divergência não se corrige em silêncio: quem atende tem
+                    de saber que a base de dados diz outra coisa. */}
+                {row.links.some((link) => link.drifted) && (
+                  <p className="note warn" style={{ marginTop: 9 }}>
+                    O estado gravado de um destes links não corresponde ao estado
+                    do caso. O que está acima é o do caso, que é o que vale. A
+                    linha do registo diz quando divergiram.
+                  </p>
+                )}
+              </div>
             </div>
           </aside>
           <main className="stack">
@@ -819,6 +912,72 @@ function PassportWarnings({
       <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
         {warnings.map((warning) => (
           <li key={warning}>{warning}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * C-06 · o passageiro que muda de tarifa antes de partir.
+ *
+ * "Um alerta dispara se uma criança fizer 12 anos entre a marcação e a
+ * partida." É o erro que só se descobre ao balcão: o tipo do passageiro foi
+ * decidido no dia do pedido, a companhia decide-o no dia do voo, e entre os
+ * dois há um aniversário. A tarifa de criança deixa de ser válida e o bilhete
+ * tem de ser reemitido — com o preço de adulto e a taxa de alteração.
+ *
+ * A fronteira dos 2 anos aparece pela mesma razão: um bebé de colo que faz 2
+ * anos passa a ocupar lugar, e um lugar que ninguém reservou não existe.
+ */
+function FareAgeWarnings({
+  passengers,
+  bookedAt,
+  departDate,
+}: {
+  passengers: CasePassenger[]
+  bookedAt: string
+  departDate: string
+}) {
+  if (!departDate) return null
+
+  const booking = bookedAt.slice(0, 10)
+  const travel = departDate.slice(0, 10)
+
+  const changes = passengers.flatMap((p, index) => {
+    if (!p.birth_date) return []
+    const change = fareAgeChange(p.birth_date, booking, travel)
+    if (!change) return []
+    return [
+      {
+        tag: `P${index + 1}`,
+        name: `${p.last_name}/${p.first_name}`.toUpperCase(),
+        change,
+      },
+    ]
+  })
+
+  if (changes.length === 0) return null
+
+  const label: Record<string, string> = {
+    infant: "bebé",
+    child: "criança",
+    adult: "adulto",
+  }
+
+  return (
+    <div className="note bad" style={{ marginBottom: 13 }}>
+      <b>Muda de tarifa antes de partir:</b>
+      <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+        {changes.map((entry) => (
+          <li key={entry.tag}>
+            {entry.tag} {entry.name} faz {entry.change.turns} anos antes de{" "}
+            {dt(departDate, false)} — na data da viagem já é{" "}
+            <b>{label[entry.change.to]}</b> e não {label[entry.change.from]}.
+            {entry.change.to === "adult"
+              ? " A tarifa de criança não é válida para este voo."
+              : " Passa a ocupar lugar próprio."}
+          </li>
         ))}
       </ul>
     </div>

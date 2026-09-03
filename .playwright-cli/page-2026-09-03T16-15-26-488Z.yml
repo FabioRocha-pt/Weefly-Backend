@@ -1,0 +1,77 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e63]
+  - generic [ref=e65]:
+    - complementary [ref=e67]:
+      - link "WeeFly PRO" [ref=e69] [cursor=pointer]:
+        - /url: /inicio
+        - img "WeeFly" [ref=e70]
+        - generic [ref=e77]: PRO
+      - generic [ref=e79]:
+        - button "Provider" [ref=e80] [cursor=pointer]
+        - button "Agent" [ref=e86] [cursor=pointer]
+      - generic [ref=e91]:
+        - paragraph [ref=e92]: Active company
+        - link "+ Create first company" [ref=e93] [cursor=pointer]:
+          - /url: /criar-empresa
+      - navigation [ref=e94]:
+        - list [ref=e95]:
+          - listitem [ref=e96]:
+            - link "Home (all companies)" [ref=e97] [cursor=pointer]:
+              - /url: /inicio
+          - listitem [ref=e102]:
+            - link "Company dashboard" [ref=e103] [cursor=pointer]:
+              - /url: /empresa/dashboard
+          - listitem [ref=e110]:
+            - link "Products" [ref=e111] [cursor=pointer]:
+              - /url: /empresa/produtos
+          - listitem [ref=e117]:
+            - link "Calendar & pricing" [ref=e118] [cursor=pointer]:
+              - /url: /empresa/calendario
+          - listitem [ref=e122]:
+            - link "Bookings" [ref=e123] [cursor=pointer]:
+              - /url: /empresa/reservas
+          - listitem [ref=e128]:
+            - link "Reviews" [ref=e129] [cursor=pointer]:
+              - /url: /empresa/avaliacoes
+          - listitem [ref=e133]:
+            - link "Finance" [ref=e134] [cursor=pointer]:
+              - /url: /empresa/financeiro
+          - listitem [ref=e139]:
+            - link "Company settings" [ref=e140] [cursor=pointer]:
+              - /url: /empresa/definicoes
+      - generic [ref=e145]:
+        - paragraph [ref=e146]: One login.
+        - paragraph [ref=e147]: Reach every company without a PIN. Team management (RBAC) is coming soon.
+    - generic [ref=e148]:
+      - banner [ref=e149]:
+        - heading "Home" [level=1] [ref=e151]
+        - generic [ref=e152]:
+          - button "English" [ref=e154] [cursor=pointer]: EN
+          - button "Notifications" [ref=e158] [cursor=pointer]
+          - button "FR Fábio Rocha" [ref=e165] [cursor=pointer]:
+            - generic [ref=e166]: FR
+            - generic [ref=e168]: Fábio Rocha
+      - main [ref=e171]:
+        - generic [ref=e172]:
+          - generic [ref=e175]:
+            - paragraph [ref=e176]: Welcome to WeeFlyPro
+            - heading "Hello, Fábio" [level=1] [ref=e177]
+            - paragraph [ref=e178]: Your account is ready. To put services on the platform, the first step is to create a company — a provider (cars, houses or tours) or an agent. You can have several, all reachable with this one login.
+            - generic [ref=e179]:
+              - link [ref=e180] [cursor=pointer]:
+                - /url: /criar-empresa
+                - button "Create the first company" [ref=e181]
+              - button "See how it works" [ref=e183] [cursor=pointer]
+          - generic [ref=e190]:
+            - generic [ref=e191]:
+              - heading "1 · Create the company" [level=3] [ref=e197]
+              - paragraph [ref=e198]: Tax details, contacts and type of service. It goes live straight away.
+            - generic [ref=e199]:
+              - heading "2 · Add products" [level=3] [ref=e205]
+              - paragraph [ref=e206]: Cars, houses or tours — one at a time, with photos and rules.
+            - generic [ref=e207]:
+              - heading "3 · Sell everywhere" [level=3] [ref=e212]
+              - paragraph [ref=e213]: Searchable on WeeFly and on every channel connected by API.
+          - generic [ref=e219]:
+            - paragraph [ref=e220]: Going to act as an agent too?
+            - paragraph [ref=e221]: The agent area is already included in your account — switch mode in the side menu whenever you like.

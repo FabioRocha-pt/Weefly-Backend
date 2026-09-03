@@ -1,0 +1,21 @@
+[    1725ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/login:0
+[    1889ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ webpack-internal:///./node_modules/react-dom/cjs/react-dom.development.js:29889
+[    1928ms] Error: Invariant: missing bootstrap script. This is a bug in Next.js
+    at rx (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:39:2197)
+    at <unknown> (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:39:24745)
+    at <unknown> (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\server\lib\trace\tracer.js:191:62)
+    at <unknown> (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\server\lib\trace\tracer.js:140:36)
+    at NoopContextManager.with (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:7062)
+    at ContextAPI.with (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:518)
+    at NoopTracer.startActiveSpan (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:18093)
+    at ProxyTracer.startActiveSpan (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:18854)
+    at <unknown> (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\server\lib\trace\tracer.js:122:103)
+    at NoopContextManager.with (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:7062)
+    at ContextAPI.with (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:518)
+    at NextTracerImpl.trace (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\server\lib\trace\tracer.js:122:28)
+    at <unknown> (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\server\lib\trace\tracer.js:191:31)
+    at r2 (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:41:1673)
+    at async doRender (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\server\base-server.js:1438:30)
+    at async cacheEntry.responseCache.get.routeKind (file://E:\Projects\WeeFly\Weefly Backend\node_modules\next\dist\server\base-server.js:1599:28)
+[    1921ms] [LOG] [HMR] connected @ webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/websocket.js:45
+[    1930ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0

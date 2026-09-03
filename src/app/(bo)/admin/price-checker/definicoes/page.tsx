@@ -58,7 +58,9 @@ export default async function BoSettingsPage() {
             </div>
             <div>
               <dt>Perfil</dt>
-              <dd>{role === "admin" ? "Administrador" : "Gestor"}</dd>
+              {/* C-20 · um serviço, um perfil. Ver o comentário em
+                  `components/bo/user-menu.tsx`. */}
+              <dd>WeeFly Concierge</dd>
             </div>
           </dl>
           <p className="note" style={{ marginTop: 14 }}>

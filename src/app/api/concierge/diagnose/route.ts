@@ -6,6 +6,8 @@ import {
   buildTravelRequestNotificationEmail,
   type TravelRequestNotificationData,
 } from "@/lib/emails/travel-request-notification"
+import { senderAddress, teamRecipients } from "@/lib/notifications"
+import { whatsappConfigured, whatsappTeamNumber } from "@/lib/whatsapp"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -24,8 +26,6 @@ export const dynamic = "force-dynamic"
  * ?token= — it exposes config state and can send mail, so it must not be open.
  */
 
-const DEFAULT_TEAM_EMAILS = ["info@weefly.africa", "info@weefly.cv"]
-
 const SAMPLE: TravelRequestNotificationData = {
   title: "mr",
   fullName: "Ivandro Tavares Silva",
@@ -42,14 +42,6 @@ const SAMPLE: TravelRequestNotificationData = {
   infants: 0,
   cabinClass: "economy",
   sourceChannel: "Diagnóstico (teste)",
-}
-
-function teamRecipients(): string[] {
-  const configured = (process.env.CONCIERGE_TEAM_EMAIL ?? "")
-    .split(",")
-    .map((address) => address.trim())
-    .filter(Boolean)
-  return configured.length > 0 ? configured : DEFAULT_TEAM_EMAILS
 }
 
 export async function GET(request: Request) {
@@ -77,9 +69,16 @@ export async function GET(request: Request) {
   }
 
   const apiKey = process.env.RESEND_API_KEY
-  const from =
-    process.env.CONCIERGE_FROM_EMAIL ??
-    "WeeFly Concierge <onboarding@resend.dev>"
+  /*
+   * C-03a · o mesmo remetente que os envios a sério usam.
+   *
+   * Este ficheiro tinha a sua própria cópia da regra, e foi por isso que o
+   * diagnóstico dizia que estava tudo bem enquanto o campo `from` que saía
+   * levava dois endereços. Um diagnóstico que não lê o que o código lê não
+   * diagnostica nada.
+   */
+  const configured = (process.env.CONCIERGE_FROM_EMAIL ?? "").trim()
+  const from = senderAddress()
   const usingSandbox = from.includes("onboarding@resend.dev")
   const recipients = teamRecipients()
 
@@ -88,11 +87,19 @@ export async function GET(request: Request) {
       ? `set (${apiKey.slice(0, 6)}…, ${apiKey.length} chars)`
       : "MISSING — nothing can send",
     from,
+    fromConfigured: configured || "(unset)",
     usingSandboxSender: usingSandbox,
     teamRecipients: recipients,
     teamRecipientsSource: process.env.CONCIERGE_TEAM_EMAIL
       ? "CONCIERGE_TEAM_EMAIL"
       : "default (hardcoded)",
+    resendWebhookSecret: process.env.RESEND_WEBHOOK_SECRET
+      ? "set — delivery state can reach `delivered`"
+      : "MISSING — delivery state stops at `sent`",
+    whatsapp: whatsappConfigured()
+      ? "configured"
+      : "MISSING WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN",
+    whatsappTeamNumber: whatsappTeamNumber() ?? "(unset)",
   }
 
   const blockers: string[] = []
@@ -101,9 +108,24 @@ export async function GET(request: Request) {
       "RESEND_API_KEY is not set in .env.local — the form accepts requests but sends nothing. Create one at https://resend.com/api-keys and restart `npm run dev`."
     )
   }
+  if (configured && from !== configured.replace(/^"|"$/g, "").trim()) {
+    blockers.push(
+      `C-03a: CONCIERGE_FROM_EMAIL holds more than one sender (${configured}). A message has exactly one — the provider rejects the rest with validation_error and EVERY notification comes back bounced. Sending as "${from}". Set a single address, and put the other mailbox in CONCIERGE_TEAM_EMAIL so it still receives replies.`
+    )
+  }
   if (usingSandbox) {
     blockers.push(
       "Sender is the Resend sandbox (onboarding@resend.dev). It ONLY delivers to the email address that owns the Resend account — client confirmations to real customers will be rejected. Verify weefly.africa at https://resend.com/domains, then set CONCIERGE_FROM_EMAIL to an address on that domain."
+    )
+  }
+  if (!process.env.RESEND_WEBHOOK_SECRET) {
+    blockers.push(
+      "RESEND_WEBHOOK_SECRET is not set — sends are recorded as `sent` and never reach `delivered` or `bounced`. C-03a asks for the real delivery state on the case. See docs/sprint2-notificacoes.md."
+    )
+  }
+  if (!whatsappConfigured()) {
+    blockers.push(
+      "C-03b: WhatsApp has no credentials (WHATSAPP_PHONE_NUMBER_ID + WHATSAPP_ACCESS_TOKEN). WhatsApp sends are logged `skipped` with the reason written and the email still goes out — the two channels are independent by design."
     )
   }
 

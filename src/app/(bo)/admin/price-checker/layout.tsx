@@ -8,6 +8,8 @@ import { getBoAccess, boInitials } from "@/lib/bo-access"
 import { RoutePreloader } from "@/components/route-preloader"
 import { WeeFlyLogo } from "@/components/weefly-logo"
 import { BoTopbarActions } from "@/components/bo/topbar-actions"
+import { BoNotificationBell } from "@/components/bo/notification-bell"
+import { loadBoAlerts } from "@/lib/bo-alerts"
 import { BoUserMenu } from "@/components/bo/user-menu"
 import { BoLiveUpdates } from "@/components/bo/live-updates"
 
@@ -40,14 +42,26 @@ export const metadata: Metadata = {
 }
 
 /*
- * As entradas "Pedidos" e "Casos" apontavam para o back-office antigo, que já
- * não existe. Este é agora o único back-office: a fila é a lista de casos, e as
- * outras entradas são vistas filtradas da mesma fila.
+ * C-13 · "Pagamentos" e "Emissões" saíram da barra de topo.
+ *
+ * As entradas "Pedidos" e "Casos" já tinham saído com o back-office antigo.
+ * Estas duas eram links para a mesma página com um `?tab=` diferente, e o
+ * filtro funciona — mas do lado de quem clica não acontece nada de visível: a
+ * página é a mesma, o indicador de menu activo não se move, e os baldes dentro
+ * da fila não mostram qual deles está a filtrar. O teste registou-as como
+ * botões que não fazem nada, e é essa a leitura correcta do ponto de vista de
+ * quem as usa.
+ *
+ * Os dois baldes continuam a existir onde sempre estiveram e onde se veem a
+ * funcionar: os separadores da própria fila. O que desaparece é a promessa
+ * duplicada em cima.
+ *
+ * "A estrutura completa do menu é Sprint 4 — este sprint só remove o que está
+ * quebrado." Fica o ícone da plataforma e a única entrada que leva a algum
+ * lado.
  */
 const NAV = [
   { label: "Price Checker", href: "/admin/price-checker", current: true },
-  { label: "Pagamentos", href: "/admin/price-checker?tab=por_validar" },
-  { label: "Emissões", href: "/admin/price-checker?tab=pagos_sem_bilhete" },
 ]
 
 export default async function BoPriceCheckerLayout({
@@ -61,6 +75,12 @@ export default async function BoPriceCheckerLayout({
     redirect("/login?redirectedFrom=/admin/price-checker")
   }
 
+  /* C-14 · os alertas desta pessoa. Só depois de a allowlist a reconhecer: um
+     feed lido antes disso seria trabalho para quem não vai ver o ecrã. */
+  const feed = access.ok
+    ? await loadBoAlerts(access.identity.userId)
+    : { alerts: [], unread: 0 }
+
   return (
     <>
       <style>{`:root{--font-jakarta:${jakarta.style.fontFamily};--font-plex-mono:${plexMono.style.fontFamily}}`}</style>
@@ -73,7 +93,10 @@ export default async function BoPriceCheckerLayout({
           <header className="topbar">
             <div className="topbar-in">
               <WeeFlyLogo className="logo" />
-              <span className="env">Admin</span>
+              {/* C-20 · dizia "Admin". Só existe um perfil neste serviço, e
+                  chama-se WeeFly Concierge — é o nome do serviço que a equipa
+                  está a operar, não o nível de acesso de quem o abriu. */}
+              <span className="env">Concierge</span>
               <nav className="nav">
                 {NAV.map((item) => (
                   <Link
@@ -86,6 +109,9 @@ export default async function BoPriceCheckerLayout({
                 ))}
               </nav>
               <div className="topbar-right">
+                {/* C-14 · o contador é lido no servidor a cada render, e é o
+                    `BoLiveUpdates` que força esse render quando a base muda. */}
+                <BoNotificationBell alerts={feed.alerts} unread={feed.unread} />
                 <BoTopbarActions />
                 <BoUserMenu
                   label={access.identity.label}

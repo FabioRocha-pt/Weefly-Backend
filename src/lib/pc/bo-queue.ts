@@ -22,7 +22,14 @@ import {
 } from "@/lib/proposal-math"
 import { CABIN_FROM_DB, TRIP_FROM_DB } from "@/lib/pc/catalog"
 import { countryOfDial } from "@/lib/countries"
-import type { PaymentStatus } from "@/lib/case-status"
+import {
+  deriveLinkState,
+  linkStateDrifted,
+  type CaseStage,
+  type LinkState,
+  type LinkStatus,
+  type PaymentStatus,
+} from "@/lib/case-status"
 
 /**
  * O estado do caso como o back-office fala dele: E1 a E5, mais os desfechos.
@@ -42,6 +49,8 @@ export type BoState =
   | "comprovativo_por_validar"
   | "pago_sem_bilhete"
   | "emitido"
+  /** C-04 · trabalho concluído. Sai das filas. Ver `boCloseCase`. */
+  | "fechado"
   | "expirado"
   | "cancelado"
 
@@ -55,6 +64,7 @@ export const BO_STATE_LABEL: Record<BoState, string> = {
   comprovativo_por_validar: "E4 · Comprovativo por validar",
   pago_sem_bilhete: "Pago, sem bilhete",
   emitido: "E5 · Emitido",
+  fechado: "Fechado",
   expirado: "X1 · Expirado",
   cancelado: "X2 · Cancelado",
 }
@@ -70,6 +80,7 @@ export const BO_STATE_CLASS: Record<BoState, string> = {
   comprovativo_por_validar: "st-x",
   pago_sem_bilhete: "st-x",
   emitido: "st-e5",
+  fechado: "st-e5",
   expirado: "st-x",
   cancelado: "st-x",
 }
@@ -87,6 +98,7 @@ export const BO_STATE_WAITING: Record<BoState, Waiting> = {
   comprovativo_por_validar: "bad",
   pago_sem_bilhete: "bad",
   emitido: "done",
+  fechado: "done",
   expirado: "off",
   cancelado: "off",
 }
@@ -130,6 +142,21 @@ export interface BoQueueRow {
   deadlineIsOurs: boolean
   offerValidUntil: string | null
   pnr: string | null
+  /** C-01 · quando passou a ter dono. Nulo = nunca foi reclamado. */
+  claimedAt: string | null
+  /** C-04 · quando o trabalho foi concluído. Nulo = ainda aberto. */
+  closedAt: string | null
+  closedByEmail: string | null
+  /** C-05 · o estado de cada link, derivado do caso. Ver `deriveLinkState`. */
+  links: {
+    stage: number
+    state: LinkState
+    /** Verdadeiro quando a coluna gravada discorda do estado real. */
+    drifted: boolean
+    firstOpenedAt: string | null
+    lastOpenedAt: string | null
+    openCount: number
+  }[]
 }
 
 /*
@@ -146,6 +173,7 @@ export interface BoQueueRow {
  */
 const QUEUE_COLUMNS = `
   id, token, stage, created_at, updated_at, created_by, pnr,
+  claimed_at, closed_at, closed_by_email,
   trip_request:trip_requests (
     reference, trip_type, origin, destination, depart_date, return_date,
     adults, children, infants, infants_in_seat, infants_on_lap,
@@ -165,7 +193,7 @@ const QUEUE_COLUMNS = `
     expires_at, review_deadline_at, created_at
   ),
   passengers:case_passengers (id),
-  links:case_links (stage, status)
+  links:case_links (stage, status, submitted_at, first_opened_at, last_opened_at, open_count)
 `
 
 function unwrap(value: unknown): Record<string, any> | null {
@@ -195,9 +223,13 @@ function deriveState(
   payment: Record<string, any> | null,
   proposal: Record<string, any> | null,
   passengerCount: number,
-  pnr: string | null
+  pnr: string | null,
+  closedAt: string | null
 ): BoState {
   if (stage === "cancelado") return "cancelado"
+  /* C-04 · fechado ganha a emitido: são independentes, e o que a fila precisa de
+     saber é se ainda há trabalho — não se o bilhete existe. */
+  if (closedAt) return "fechado"
   if (stage === "emitido" || pnr) return "emitido"
 
   const paid = payment?.admin_confirmed || payment?.status === "COMPLETED"
@@ -345,7 +377,8 @@ export async function loadBoQueue(
       payment,
       proposal,
       passengerCount,
-      (raw.pnr as string | null) ?? null
+      (raw.pnr as string | null) ?? null,
+      (raw.closed_at as string | null) ?? null
     )
 
     /* Qual dos dois relógios mostrar: o nosso quando há comprovativo à espera,
@@ -388,12 +421,53 @@ export async function loadBoQueue(
       deadlineIsOurs,
       offerValidUntil,
       pnr: (raw.pnr as string | null) ?? null,
+      claimedAt: (raw.claimed_at as string | null) ?? null,
+      closedAt: (raw.closed_at as string | null) ?? null,
+      closedByEmail: (raw.closed_by_email as string | null) ?? null,
+      /*
+       * C-05 · o estado do link, calculado a partir do caso.
+       *
+       * A coluna `status` continua a ser lida — é ela que autoriza o cliente a
+       * entrar — mas deixa de ser o que este ecrã mostra. `drifted` diz quando
+       * as duas discordam, porque uma divergência silenciosamente corrigida é a
+       * mesma classe de problema que o C-05 aponta.
+       */
+      links: ((raw.links ?? []) as Record<string, any>[])
+        .map((link) => {
+          const stage = Number(link.stage)
+          const stored = String(link.status) as LinkStatus
+          const state = deriveLinkState({
+            stage,
+            stored,
+            submittedAt: (link.submitted_at as string | null) ?? null,
+            caseStage: String(raw.stage) as CaseStage,
+            closed: Boolean(raw.closed_at),
+          })
+          return {
+            stage,
+            state,
+            drifted: linkStateDrifted(stored, state),
+            firstOpenedAt: (link.first_opened_at as string | null) ?? null,
+            lastOpenedAt: (link.last_opened_at as string | null) ?? null,
+            openCount: Number(link.open_count ?? 0),
+          }
+        })
+        .sort((a, b) => a.stage - b.stage),
     })
   }
 
   // ── baldes ────────────────────────────────────────────────────────────────
   const soon = Date.now() + 60 * 60 * 1000
   const belongs = (row: BoQueueRow, bucket: BoBucket): boolean => {
+    /*
+     * C-04 · "o caso fechado sai das filas de trabalho."
+     *
+     * Aqui e não em cada balde: um caso fechado não pertence a nenhum deles, e
+     * repetir a condição sete vezes garantia que o oitavo balde a esquecesse.
+     * "tudo" continua a mostrá-lo — é a lista, não uma fila.
+     */
+    if (row.closedAt && bucket !== "tudo") return false
+
     switch (bucket) {
       case "por_validar":
         return row.state === "comprovativo_por_validar"

@@ -82,7 +82,8 @@ export interface NotifyInput {
   text?: string
   /** NT-07 · o texto que uma pessoa escreveu, guardado tal e qual. */
   body?: string | null
-  replyTo?: string
+  /** C-03a · quem recebe a resposta. Aqui pode ser mais do que um. */
+  replyTo?: string | string[]
   attachments?: NotifyAttachment[]
   /** NT-04 · a chave que impede o segundo aviso do mesmo acontecimento. */
   dedupeKey?: string
@@ -113,11 +114,71 @@ const NOTIFICATION_COLUMNS = `
   actor_email, created_at, sent_at, delivered_at, failed_at
 `
 
-const FROM = () =>
-  process.env.CONCIERGE_FROM_EMAIL ??
-  "WeeFly Concierge <onboarding@resend.dev>"
+const FROM_FALLBACK = "WeeFly Concierge <onboarding@resend.dev>"
 
 const TEAM_FALLBACK = ["info@weefly.africa", "info@weefly.cv"]
+
+/** Um endereço nu. Sem vírgulas, porque é a vírgula que parte o campo `from`. */
+const BARE_EMAIL = /^[^\s@,<>]+@[^\s@,<>]+\.[^\s@,<>]+$/
+
+/**
+ * C-03a · o primeiro remetente que sirva, de um valor que pode vir errado.
+ *
+ * Aceita `Name <email@host>` e um endereço nu. Se o valor traz uma lista —
+ * `info@weefly.africa, info@weefly.cv`, que foi exactamente o que estava em
+ * produção — fica o primeiro, porque uma mensagem tem um remetente e nenhum
+ * fornecedor aceita dois.
+ */
+function firstSender(raw: string): string | null {
+  /* O nome pode ter vírgulas; o endereço dentro dos sinais não pode. */
+  const angled = raw.match(/^\s*("?[^<>]*?"?)\s*<\s*([^\s<>,]+)\s*>/)
+  if (angled) {
+    const name = angled[1].replace(/^"|"$/g, "").trim()
+    const address = angled[2].trim()
+    if (!BARE_EMAIL.test(address)) return null
+    return name ? `${name} <${address}>` : address
+  }
+
+  const bare = (raw.split(",")[0] ?? "").trim()
+  return BARE_EMAIL.test(bare) ? bare : null
+}
+
+/**
+ * C-03a · o remetente, garantidamente um só.
+ *
+ * O campo `from` era passado tal como vinha do ambiente. Em produção vinha com
+ * dois endereços separados por vírgula e **todos os envios voltaram
+ * `devolvido`** — cada notificação do teste, com o mesmo `validation_error`.
+ *
+ * A configuração corrige-se num ficheiro; isto corrige-se uma vez. Uma variável
+ * mal escrita passa a custar um aviso no log e um remetente de recurso, e não o
+ * ciclo comercial inteiro em silêncio.
+ */
+export function senderAddress(): string {
+  const raw = (process.env.CONCIERGE_FROM_EMAIL ?? "").trim()
+  if (!raw) return FROM_FALLBACK
+
+  const sender = firstSender(raw)
+
+  if (!sender) {
+    console.error(
+      "[notify] CONCIERGE_FROM_EMAIL não é um endereço utilizável (%s) — a usar %s.",
+      raw,
+      FROM_FALLBACK
+    )
+    return FROM_FALLBACK
+  }
+
+  if (sender !== raw.replace(/^"|"$/g, "").trim()) {
+    console.warn(
+      "[notify] CONCIERGE_FROM_EMAIL trazia mais do que um remetente (%s) — a enviar como %s.",
+      raw,
+      sender
+    )
+  }
+
+  return sender
+}
 
 /** Os endereços da equipa, da configuração ou do que sempre foram. */
 export function teamRecipients(): string[] {
@@ -267,14 +328,16 @@ async function deliverEmail(
   }
 
   try {
+    const replyTo = list(input.replyTo)
+
     const resend = new Resend(process.env.RESEND_API_KEY)
     const { data, error } = await resend.emails.send({
-      from: FROM(),
+      from: senderAddress(),
       to,
       subject: input.subject ?? "WeeFly",
       html: input.html ?? "",
       text: input.text ?? "",
-      ...(input.replyTo ? { replyTo: input.replyTo } : {}),
+      ...(replyTo.length > 0 ? { replyTo } : {}),
       ...(input.attachments?.length
         ? {
             attachments: input.attachments.map((file) => ({
@@ -368,13 +431,16 @@ async function close(
 /**
  * A bandeira no caso.
  *
- * Só para o que o cliente devia ter recebido e não recebeu. Um alerta interno
- * que não sai é chato; um cliente que nunca soube que tem uma proposta à espera
- * é uma venda perdida sem ninguém dar por ela.
+ * Era levantada só para o cliente, com o argumento de que um alerta interno que
+ * não sai é chato e um cliente que nunca soube da proposta é uma venda perdida.
+ * O primeiro teste a sério desmentiu a primeira metade: **todos** os avisos
+ * voltaram devolvidos, os da equipa incluídos, e ninguém deu por isso — que é o
+ * mesmo silêncio, só de outro lado. C-03a fecha-o para os dois.
+ *
+ * A audiência fica escrita na razão: quem lê a ficha precisa de saber se o que
+ * se perdeu ia para o cliente ou para a equipa.
  */
 async function raiseFlag(input: NotifyInput, error: string): Promise<void> {
-  if (input.audience !== "client") return
-
   const admin = createAdminClient()
   if (!admin) return
 
@@ -382,7 +448,11 @@ async function raiseFlag(input: NotifyInput, error: string): Promise<void> {
     .from("booking_cases")
     .update({
       notify_alert_at: new Date().toISOString(),
-      notify_alert_reason: `${input.channel} · ${input.kind} · ${error}`.slice(0, 300),
+      notify_alert_reason:
+        `${input.channel} · ${input.audience} · ${input.kind} · ${error}`.slice(
+          0,
+          300
+        ),
     })
     .eq("id", input.caseId)
 }
@@ -440,13 +510,12 @@ export async function recordDeliveryEvent(input: {
      tem de ligar ao cliente. */
   if (input.status === "bounced") {
     for (const row of updated) {
-      if (row.audience !== "client") continue
       await admin
         .from("booking_cases")
         .update({
           notify_alert_at: now,
           notify_alert_reason:
-            `${row.channel} · ${row.kind} · devolvido pelo servidor do destinatário`.slice(
+            `${row.channel} · ${row.audience} · ${row.kind} · devolvido pelo servidor do destinatário`.slice(
               0,
               300
             ),

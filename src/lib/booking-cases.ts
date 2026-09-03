@@ -65,7 +65,7 @@ export interface BookingCaseRow {
 
 const CASE_COLUMNS = `
   id, token, stage, trip_request_id, created_at, updated_at,
-  links:case_links (id, stage, status, unlocked_at, first_opened_at, submitted_at),
+  links:case_links (id, stage, status, unlocked_at, first_opened_at, submitted_at, last_opened_at, open_count),
   trip_request:trip_requests (
     id, reference, origin, destination, depart_date, return_date,
     adults, children, infants, baggage_hold, cabin_class, trip_type, currency,
@@ -286,13 +286,51 @@ export async function bindTripRequestToCase(
   return true
 }
 
-/** Stamp the first time a client opened a link — useful chase-up signal. */
+/**
+ * Stamp a client's access to a link.
+ *
+ * C-05 · "a data de última abertura reflecte o acesso real do cliente."
+ *
+ * Isto gravava só `first_opened_at`, e só quando estava a nulo — de propósito,
+ * porque o que interessava era saber se o link tinha chegado. O efeito era que
+ * a segunda visita do cliente, e a décima, não deixavam rasto nenhum: quem
+ * atendia não tinha como distinguir um cliente que abriu o link há um mês de um
+ * que o está a ler agora.
+ *
+ * As duas datas respondem a perguntas diferentes e por isso ficam as duas. A
+ * primeira é escrita uma vez (o `coalesce` garante-o do lado do servidor, sem
+ * depender de uma segunda query para saber se já existia); a última é escrita
+ * sempre.
+ */
 export async function markLinkOpened(linkId: string): Promise<void> {
   const admin = createAdminClient()
   if (!admin) return
+
+  const now = new Date().toISOString()
+
+  /*
+   * Uma leitura antes da escrita, e não um `coalesce` em SQL: o PostgREST não
+   * aceita expressões num update, e a alternativa era uma função na base de
+   * dados para gravar duas datas. O custo é uma query por abertura de link, o
+   * que é exactamente a frequência com que um cliente carrega num link.
+   */
+  const { data } = await admin
+    .from("case_links")
+    .select("first_opened_at, open_count")
+    .eq("id", linkId)
+    .maybeSingle()
+
+  const row = (data ?? null) as {
+    first_opened_at: string | null
+    open_count: number | null
+  } | null
+
   await admin
     .from("case_links")
-    .update({ first_opened_at: new Date().toISOString() })
+    .update({
+      first_opened_at: row?.first_opened_at ?? now,
+      last_opened_at: now,
+      open_count: (row?.open_count ?? 0) + 1,
+    })
     .eq("id", linkId)
-    .is("first_opened_at", null)
 }

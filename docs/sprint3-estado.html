@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<title>WeeFly Concierge · Sprint 3 — estado das 33 correcções</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+
+  :root{
+    --ink:#1A1F28; --mid:#525C6B; --soft:#8A94A3;
+    --line:#DFE3E9; --wash:#F6F7F9;
+    --ok:#1B7F4B; --warn:#A8710C; --stop:#B3321F;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    font:11pt/1.5 -apple-system,"Segoe UI",system-ui,sans-serif;
+    color:var(--ink); margin:0; padding:0;
+  }
+  h1{font-size:20pt;letter-spacing:-.02em;margin:0 0 2mm}
+  h2{font-size:12.5pt;margin:9mm 0 3mm;padding-bottom:1.5mm;border-bottom:1.5pt solid var(--ink)}
+  h3{font-size:10.5pt;margin:5mm 0 2mm;color:var(--mid)}
+  p{margin:0 0 3mm}
+  .lede{font-size:10.5pt;color:var(--mid);margin:0 0 6mm}
+  .meta{font-size:9pt;color:var(--soft);margin:0 0 8mm}
+  .meta b{color:var(--mid);font-weight:600}
+
+  table{width:100%;border-collapse:collapse;margin:0 0 4mm;font-size:9.5pt}
+  th{text-align:left;font-size:8pt;text-transform:uppercase;letter-spacing:.08em;
+     color:var(--soft);padding:0 0 1.5mm;border-bottom:.75pt solid var(--line);font-weight:700}
+  td{padding:2mm 3mm 2mm 0;border-bottom:.5pt solid var(--line);vertical-align:top}
+  td.id{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-weight:700;
+        white-space:nowrap;width:17mm}
+  td.st{white-space:nowrap;width:26mm;font-weight:600}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .stop{color:var(--stop)}
+
+  .box{background:var(--wash);border-left:2.5pt solid var(--ink);
+       padding:4mm 5mm;margin:0 0 5mm;font-size:10pt}
+  .box.act{border-left-color:var(--stop)}
+  .box h3{margin:0 0 2mm;color:var(--ink);font-size:10.5pt}
+  .box p:last-child{margin-bottom:0}
+  ol,ul{margin:0 0 3mm;padding-left:6mm}
+  li{margin:0 0 1.5mm}
+  code{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:9pt;
+       background:var(--wash);padding:.4mm 1.2mm;border-radius:1.5mm}
+  .sig{margin-top:9mm;padding-top:3mm;border-top:.5pt solid var(--line);
+       font-size:8.5pt;color:var(--soft)}
+  .keep{page-break-inside:avoid}
+</style>
+</head>
+<body>
+
+<h1>Sprint 3 · estado das correcções</h1>
+<p class="lede">
+  Resposta ao <i>Corrections Backlog v3.2</i> — as 33 correcções numeradas que o teste de 3 de Setembro levantou. Inclui o estado do servidor e o que falta configurar nele.
+</p>
+<p class="meta">
+  <b>Documento</b> WeeFly Concierge · estado de execução · 4.ª revisão &nbsp;·&nbsp;
+  <b>Data</b> 3 de Setembro de 2026 &nbsp;·&nbsp;
+  <b>Para</b> Ivandro Ribeiro &nbsp;·&nbsp;
+  <b>Feito</b> 24 de 33 &nbsp;·&nbsp; <b>Por fazer</b> 9
+</p>
+
+<div class="box">
+  <h3>O essencial em três linhas</h3>
+  <p>
+    <b>O Group A está fechado</b> — os oito itens que quebravam o ciclo
+    comercial, faltando só as credenciais do WhatsApp, que não são código.
+    <b>Onze dos vinte e quatro</b> foram confirmados no browser contra a base de
+    dados real, não apenas compilados.
+  </p>
+  <p>
+    <b>A base de dados e o DNS estão em dia</b> — as quatro migrações aplicadas, e o SPF, o DKIM e o DMARC já estavam configurados desde Agosto (fui verificar os registos). O que falta no servidor são <b>três variáveis de ambiente</b>, não infraestrutura.
+  </p>
+  <p>
+    <b>Os logótipos chegaram e estão instalados</b> — as 31 companhias, com
+    logótipo no back-office e dentro do PDF do bilhete. Restam duas coisas à
+    espera de ti: a resposta ao contador «3» do C-23 e as chaves do WhatsApp.
+  </p>
+</div>
+
+<div class="box act">
+  <h3>Um defeito que a campainha revelou, e que vale a pena saberes</h3>
+  <p>
+    Ao ligar a campainha do C-14 e olhar para os dados reais, apareceu isto:
+    <b>292 dos 372 acontecimentos do sistema — 79% — eram a mesma linha
+    repetida</b>, «prazo de pagamento expirado», para um único caso, uma vez por
+    hora.
+  </p>
+  <p>
+    A causa: aquele pagamento ficou num estado que a matriz de transições não
+    deixa mover para «expirado». Como o estado nunca mudava, a verificação que
+    devia travar a repetição nunca disparava, e cada passagem do processo
+    automático escrevia outra linha. Está corrigido, e a campainha passou também
+    a <b>colapsar repetições</b>: mostra «expirou ×36» numa linha em vez de
+    trinta e seis iguais.
+  </p>
+  <p>
+    Registo-o porque é a segunda vez neste sprint que um defeito só aparece
+    quando alguém <i>olha</i> para o ecrã — o outro foi a mistura de línguas do
+    C-22. Sem a campainha construída e testada com dados verdadeiros, ela teria
+    nascido inútil e o próximo teste teria registado «a campainha está cheia de
+    lixo».
+  </p>
+</div>
+
+<h2>Group A · o ciclo comercial</h2>
+<table>
+  <thead><tr><th>ID</th><th>Estado</th><th>O que ficou feito</th></tr></thead>
+  <tbody>
+    <tr><td class="id">C-03a</td><td class="st ok">Feito · verificado</td>
+      <td>A causa estava confirmada nos dados: <b>todas</b> as notificações de 3
+      de Setembro voltaram <code>bounced</code> com <code>validation_error</code>,
+      porque o campo <code>from</code> levava dois endereços. Três ficheiros
+      diferentes construíam o remetente por sua conta — incluindo a rota que
+      envia o lead. Agora é um só, protegido: uma variável mal escrita custa uma
+      linha de log, não o ciclo comercial em silêncio. A segunda caixa passou
+      para o <i>reply-to</i>.</td></tr>
+
+    <tr><td class="id">C-03b</td><td class="st stop">Por fazer · precisa de chaves</td>
+      <td>Faltam <code>WHATSAPP_PHONE_NUMBER_ID</code> e
+      <code>WHATSAPP_ACCESS_TOKEN</code>, de quem tiver a conta Meta Business.
+      O adaptador está pronto e os dois canais são independentes — sem chaves o
+      WhatsApp fica <code>skipped</code> com a razão escrita e o email sai igual.
+      <br><br><b>Mas havia um segundo problema, e este era código.</b> Metade dos
+      clientes na base não tem o número em formato internacional gravado — o
+      indicativo e o número estão lá em separado e são perfeitamente utilizáveis
+      (<code>+238</code> + <code>9592388</code>), mas o campo que o WhatsApp usa
+      está vazio, e o aviso saía «sem destinatário». <b>Com as chaves postas,
+      metade dos clientes continuaria a não receber nada — e a causa seria
+      procurada na Meta, onde não estava.</b> Corrigido: o número passa a ser
+      calculado quando o campo falta.</td></tr>
+
+    <tr><td class="id">C-01</td><td class="st ok">Feito · verificado</td>
+      <td>O compositor não abre num caso sem dono; no lugar dele aparece
+      <b>Reclamar e cotar</b> com o tempo de espera calculado. Confirmado num
+      caso real: reclamar gravou o agente, a hora, e o registo ficou com «esteve
+      6d 18h sem dono». Publicar exige ser o dono ou administrador. Dois cliques
+      simultâneos: ganha quem chega primeiro à base de dados.</td></tr>
+
+    <tr><td class="id">C-02</td><td class="st ok">Feito · verificado</td>
+      <td><b>Nota importante:</b> o comprovativo <i>abre</i> contra os dados
+      reais — os seis existentes descarregam, com o tipo certo. Não consegui
+      reproduzir a falha que viste, e a rota já estava correcta desde o Sprint 2.
+      Corrigi três defeitos reais desse caminho: um nome gravado em mojibake
+      (<code>FormulÃ¡rio…</code>), o tamanho vindo do registo em vez do ficheiro,
+      e o nome cortado a meio de uma sequência de escape. E os erros passaram a
+      ser uma página legível em vez de código num separador em branco —
+      <b>se voltar a falhar, o próximo teste diz a causa.</b></td></tr>
+
+    <tr><td class="id">C-24</td><td class="st ok">Feito · verificado</td>
+      <td>O item mais grave, e a causa era exactamente a que descreveste: uma
+      validação recusava qualquer oferta que não partisse no dia pedido, e a
+      única saída reescrevia o pedido do cliente e mandava a proposta de volta a
+      rascunho. Agora a alteração vive <b>na oferta</b>: um bloco de
+      justificação e um botão <b>Confirmar alteração de data</b>. Verificado a
+      mover a ida de 17 para 18/09 — o bloqueio desapareceu e
+      <b>o pedido original do cliente ficou intacto</b>, que era o critério.</td></tr>
+
+    <tr><td class="id">C-04</td><td class="st ok">Feito · verificado</td>
+      <td><b>Fechar caso</b> depois de emitido; sai das filas de trabalho e
+      continua em «Tudo». Reversível por administrador, com registo.
+      Confirmado num caso emitido.</td></tr>
+
+    <tr><td class="id">C-05</td><td class="st ok">Feito · verificado</td>
+      <td>A causa era estrutural: o estado do link era uma coluna gravada com
+      <b>cinco caminhos diferentes a escrevê-la</b>. Passou a ser derivado do
+      estado do caso, e quando os dois discordam isso <i>aparece</i> em vez de
+      ser resolvido em silêncio. Não existia nenhuma data de última abertura —
+      agora existe, e conta os acessos.</td></tr>
+
+    <tr><td class="id">C-33</td><td class="st warn">Feito · parcial</td>
+      <td>A via escolhida em cima, só os campos daquela via, valor, prazo e
+      envio ao cliente; a validação do comprovativo por baixo. Os seis métodos
+      antigos deram lugar aos cinco decididos, sem transferência bancária. Os
+      casos antigos <b>não</b> foram migrados de propósito — <code>transfer</code>
+      não é nenhum dos cinco novos, e reescrevê-lo inventava um método que
+      aquele cliente nunca escolheu. Isto desbloqueia também o <code>PC-10</code>.<br><br><b>Verificado só em parte:</b> vi no browser o painel do pagamento já liquidado e a etiqueta do método antigo. O <b>formulário editável</b> — onde o agente cola o link — não pude confirmar porque os três pagamentos que existem na base estão todos <code>COMPLETED</code>. Fica para o teu próximo teste com um caso a pagar.</td></tr>
+  </tbody>
+</table>
+
+<h2>Group B · dados errados ou incompletos</h2>
+<table>
+  <thead><tr><th>ID</th><th>Estado</th><th>O que ficou feito</th></tr></thead>
+  <tbody>
+    <tr><td class="id">C-06</td><td class="st ok">Feito</td>
+      <td>A data futura já era recusada; faltava a outra ponta. Limite de 120
+      anos, e — o que mais importa — <b>o tipo de passageiro passou a contar à
+      data da viagem</b>, não à da marcação. Quem faz 12 anos entre as duas
+      viaja como adulto, e calcular a partir de hoje dava o número certo hoje e
+      o errado no aeroporto. O alerta cobre também a fronteira dos 2 anos.</td></tr>
+
+    <tr><td class="id">C-07</td><td class="st ok">Feito · já existia</td>
+      <td>Verificado contra os critérios: casa por código, cidade e país, mostra
+      <code>RAK — Marraquexe</code>, só aceita entradas escolhidas e reutiliza o
+      dataset do lado do cliente. O construtor de bilhete não tem campos de
+      aeroporto para converter.</td></tr>
+
+    <tr><td class="id">C-08</td><td class="st ok">Feito · verificado</td>
+      <td>O campo de taxas já tinha saído. O furo era outro e específico: as
+      propostas geradas pela pesquisa nasciam com o serviço a <b>zero</b>,
+      enquanto as feitas à mão nasciam a 20 — a mesma regra a dar dois números
+      conforme o caminho. Confirmado no ecrã: duas linhas e o total.</td></tr>
+
+    <tr><td class="id">C-09</td><td class="st ok">Feito · já existia</td>
+      <td>Datas pré-preenchidas do pedido, marcadas como vindas do cliente e
+      editáveis.</td></tr>
+
+    <tr><td class="id">C-10</td><td class="st ok">Feito</td>
+      <td>Os 31 logótipos chegaram, com <i>checksums</i> a bater e os códigos
+      exactamente os do backlog. As companhias passaram de <b>dez escritas no
+      código</b> para uma <b>tabela</b> — acrescentar a trigésima segunda é um
+      <code>insert</code>, que é o critério. A ordem do seletor passou a ser a
+      prioridade que o backlog dá (primeiro a VR e a TP, não a AF por ser
+      alfabética). A queda para a sigla decide-se <b>antes</b> de renderizar, e
+      não por uma imagem que falha: assim não pisca numa lista de dez ofertas.</td></tr>
+
+    <tr><td class="id">C-12</td><td class="st ok">Feito · já existia</td>
+      <td>Verificado: margem em valor e percentagem, vermelha a zero ou
+      negativa, e o custo existe apenas na consulta de administração — o caminho
+      do cliente não o lê, logo não há por onde escapar.</td></tr>
+
+    <tr><td class="id">C-26</td><td class="st ok">Feito</td>
+      <td>A companhia da proposta passou a ser o valor de partida no ecrã de
+      emissão — antes começava vazia, e quem emitia tinha de ir ver a oferta
+      noutro separador para saber qual das 31 escolher, com o risco óbvio.
+      <br><br>O gerador de PDF não embutia imagem nenhuma; agora embute, e os 31
+      logótipos foram testados um a um. Evitei a armadilha das fontes de outra
+      maneira: os ficheiros vivem em <code>public/</code>, que o Next copia para
+      o <i>deployment</i> por contrato — não depende do rastreio que fez o
+      <code>.ttf</code> desaparecer. A alternativa era quase 900 KB de imagens
+      em base64 dentro de um ficheiro de código.
+      <br><br><b>Fica em falta:</b> mostrar a companhia operadora separada da
+      comercial quando diferem. Não existe campo para a operadora, e inventá-lo
+      a meio deste sprint era pior do que dizer que falta.</td></tr>
+
+    <tr><td class="id">C-27</td><td class="st ok">Feito</td>
+      <td>O número de voo saiu da proposta. Isso abriu um buraco que tive de
+      tapar: a emissão apenas o <i>mostrava</i>, nunca o pedia — sem campo em
+      lado nenhum, o bilhete sairia sem número de voo. Passou para o construtor
+      de bilhete, onde já vivem o equipamento, a classe e os terminais.</td></tr>
+
+    <tr><td class="id">C-29</td><td class="st warn">Por fazer</td>
+      <td>Hoje a bagagem é por oferta, não por voo. Precisa de migração e toca
+      no compositor, no ecrã do cliente e no bilhete. É o item substancial que
+      falta do Group B e não depende de ninguém.</td></tr>
+  </tbody>
+</table>
+
+<h2>Group C · interface e usabilidade</h2>
+<table>
+  <thead><tr><th>ID</th><th>Estado</th><th>O que ficou feito</th></tr></thead>
+  <tbody>
+    <tr><td class="id">C-13</td><td class="st ok">Feito · verificado</td>
+      <td>«Pagamentos» e «Emissões» fora da barra de topo. Filtravam de facto,
+      mas do lado de quem clica não acontecia nada visível — a tua leitura
+      estava certa. Os baldes continuam onde se veem a funcionar: os
+      separadores da fila.</td></tr>
+
+    <tr><td class="id">C-14</td><td class="st ok">Feito · verificado</td>
+      <td>A campainha era um botão sem contador, sem lista e sem acção. Agora
+      tem contador real, lista do mais recente para o mais antigo, cada entrada
+      com o que aconteceu / que caso / quando / quem, e lido/não lido <b>por
+      utilizador</b>. Marca como visto ao abrir, não ao clicar numa entrada —
+      caso contrário o contador nunca desceria. Confirmado no browser: contador
+      a 5, a lista com os quatro avanços reais do cliente mais a linha colapsada
+      «expirou ×36», e o contador a cair para zero com as marcas gravadas.</td></tr>
+
+    <tr><td class="id">C-15</td><td class="st warn">Por fazer</td>
+      <td>Mudanças de campo com valor antigo → novo na aba Comunicações.</td></tr>
+
+    <tr><td class="id">C-16</td><td class="st warn">Por fazer</td>
+      <td>O auto-save que interrompe a escrita. É o item com maior efeito no dia
+      a dia de quem usa a plataforma.</td></tr>
+
+    <tr><td class="id">C-17</td><td class="st warn">Parcial</td>
+      <td>A lista de erros já existe no compositor e no ecrã de emissão. Falta
+      no formulário de passageiros.</td></tr>
+
+    <tr><td class="id">C-18</td><td class="st ok">Feito</td>
+      <td>Já não havia «Compor proposta» em lado nenhum.</td></tr>
+
+    <tr><td class="id">C-19</td><td class="st warn">Por fazer</td>
+      <td>Sobreposição no campo de hora entre 360 e 1920 px. Testo eu, não
+      preciso de nada.</td></tr>
+
+    <tr><td class="id">C-20</td><td class="st ok">Feito</td>
+      <td>Sem referência a Pro nem a Admin: saiu do topbar, do menu da conta e
+      das definições. A permissão continua na base de dados e continua a decidir
+      o que se pode fazer — o que sai é a etiqueta.</td></tr>
+
+    <tr><td class="id">C-21</td><td class="st ok">Feito</td>
+      <td>O seletor mostra o Dominik e mais ninguém. As duas contas de
+      administração deixam de ser atribuíveis mas continuam a entrar — <b>eram a
+      única porta de acesso, e desactivá-las trancava a equipa fora.</b> Um caso
+      já atribuído a uma delas continua a mostrá-la: não se reescreve
+      histórico.</td></tr>
+
+    <tr><td class="id">C-22</td><td class="st ok">Feito · verificado</td>
+      <td><b>Isto só apareceu ao olhar para o ecrã.</b> O compositor renderizava
+      em <b>inglês</b> dentro de um back-office português: «Fechar caso» e
+      «ESTADO DOS LINKS» ao lado de «CLIENT'S REQUEST» e «Publish and notify
+      client». Seguia o idioma do browser de quem atende. Fixado em português —
+      o seletor PT/EN do back-office é Sprint 4.</td></tr>
+
+    <tr><td class="id">C-23</td><td class="st stop">Travado · precisa de ti</td>
+      <td>O próprio backlog manda confirmar contigo em que ecrã aparece o
+      contador «3» antes de começar. <b>É a pergunta que preciso de te fazer.</b></td></tr>
+
+    <tr><td class="id">C-25</td><td class="st warn">Por fazer</td>
+      <td>Mensagens prontas por fase, para WhatsApp e email.</td></tr>
+
+    <tr><td class="id">C-28</td><td class="st ok">Feito</td>
+      <td>A marca existia mas era <b>cinzenta</b> — a mesma cor de tudo o que
+      está bem naquele ecrã, pelo que se lia como decoração. Agora é amarela,
+      com ponto de exclamação e explicação ao passar o rato.</td></tr>
+
+    <tr><td class="id">C-30</td><td class="st ok">Feito · verificado</td>
+      <td>O botão de nova revisão foi removido. A numeração fica intacta no
+      modelo de dados e as propostas publicadas continuam trancadas. Volta no
+      Sprint 5 com uma acção de cancelar.</td></tr>
+
+    <tr><td class="id">C-31</td><td class="st warn">Por fazer</td>
+      <td>As notas na conversa, com autor e separação entre interno e o que o
+      cliente vê. As colunas já vão na migração 0016.</td></tr>
+
+    <tr><td class="id">C-32</td><td class="st ok">Feito</td>
+      <td>Dos sete avanços que o critério lista, seis já eram registados.
+      Faltava exactamente <b>«escolheu o método de pagamento»</b> — a coluna era
+      gravada e mais nada acontecia. E é o avanço que <i>cria trabalho para
+      nós</i>, porque a partir dali alguém tem de arranjar o link daquela via.</td></tr>
+  </tbody>
+</table>
+
+<h2>O que é preciso para fechar o resto</h2>
+
+<div class="box keep">
+  <h3>Base de dados · feito (0014 a 0017)</h3>
+  <p>
+    As quatro migrações do sprint — <code>0014</code> a <code>0017</code> — estão aplicadas e verificadas por sonda directa. A tabela das companhias tem as 31 activas. <b>Não há nada pendente na base de dados.</b>
+  </p>
+</div>
+
+<div class="box act keep">
+  <h3>1 · Configurar o servidor de produção</h3>
+  <p>
+    O C-03a está corrigido em código, mas <b>o servidor continua com o valor
+    errado</b> — e enquanto não mudar, cada notificação continua a voltar
+    devolvida:
+  </p>
+  <ul>
+    <li><code>CONCIERGE_FROM_EMAIL</code> — <b>um</b> endereço, não dois</li>
+    <li><code>RESEND_WEBHOOK_SECRET</code> — sem ela o estado nunca passa de
+      «enviado» para «entregue»</li>
+    <li><code>WHATSAPP_PHONE_NUMBER_ID</code> e <code>WHATSAPP_ACCESS_TOKEN</code> — C-03b</li>
+    <li>SPF, DKIM e DMARC em <code>weefly.africa</code></li>
+  </ul>
+  <p>
+    <code>/api/concierge/diagnose</code> lista o que falta, com a causa escrita.
+  </p>
+</div>
+
+<div class="box act keep">
+  <h3>2 · Duas coisas que faltam, de duas pessoas diferentes</h3>
+  <ul>
+    <li><b>C-23 · para o Ivandro</b> — em que ecrã aparece o contador «3»? O
+      backlog manda confirmar antes de começar, e é a única pergunta de desenho
+      que trava trabalho.</li>
+    <li><b>C-22 · a apresentação do Dominik</b> — o critério é "seguir a
+      linguagem usada na apresentação do Dominik", e não a tenho. A mistura de
+      línguas, que era o defeito visível e o que o teste apanhou, já está
+      corrigida; o que falta é afinar o vocabulário por esse documento.</li>
+  </ul>
+</div>
+
+<h2>O servidor · o que já está e o que falta</h2>
+
+<p>
+  A equipa do Sarin entregou a máquina configurada: <b>EC2 com Node 20, PM2
+  7.0.4, NGINX, IP fixo <code>52.30.78.0</code> e SSL activo em
+  <code>concierge.weefly.africa</code></b>. As chaves PEM e PPK chegaram e estão
+  guardadas fora do controlo de versões. Custo estimado: cerca de 45 USD por mês.
+</p>
+<p>
+  O que falta é a configuração <b>da aplicação</b> dentro dessa máquina. O passo
+  a passo completo está em <code>docs/deploy-ec2.md</code>; o que se segue é o
+  que não pode ser esquecido.
+</p>
+
+<div class="box keep">
+  <h3>Limite de upload · verificado, não precisa de nada</h3>
+  <p>
+    Estava a avisar que o NGINX aceita 1 MB por omissão e que isso recusaria
+    comprovativos com <b>413</b>. Fui ver o painel: está em <b>128 MB</b>, muito
+    acima dos 8 MB que a aplicação aceita. <b>Não há nada a mudar.</b>
+  </p>
+  <p>
+    O que fica por confirmar é outro número: a emissão gera três PDF no mesmo
+    pedido, e um <i>timeout</i> de proxy curto corta-a a meio. Se a emissão
+    falhar sem explicação, é aí que se olha — em «Additional nginx directives»,
+    com <code>proxy_read_timeout 60s;</code>.
+  </p>
+</div>
+
+<div class="box act keep">
+  <h3>As variáveis, em <code>.env.production</code></h3>
+  <p>Na raiz da aplicação, com <code>chmod 600</code> — tem a chave de serviço da base de dados:</p>
+  <ul>
+    <li><code>CONCIERGE_FROM_EMAIL</code> — <b>um</b> endereço. É a correcção do
+      C-03a, e a razão por que nada foi entregue no teste de 3 de Setembro.</li>
+    <li><code>NEXT_PUBLIC_SITE_URL=https://concierge.weefly.africa</code> — é o
+      endereço que vai <b>dentro de cada email</b> e forma o link do cliente. Um
+      valor errado aqui manda todos os clientes para um sítio que não existe, e
+      os emails saem na mesma.</li>
+    <li><code>RESEND_WEBHOOK_SECRET</code> — sem ela o estado de entrega nunca
+      passa de «enviado» para «entregue».</li>
+    <li><code>WHATSAPP_PHONE_NUMBER_ID</code> e
+      <code>WHATSAPP_ACCESS_TOKEN</code> — fecham o C-03b.</li>
+  </ul>
+  <p>
+    <b>Falta o <code>CONCIERGE_DIAGNOSE_TOKEN</code>.</b> Sem ele, a rota de
+    diagnóstico responde 404 em produção — e é precisamente a ferramenta que diz
+    se a configuração de email está certa. Qualquer segredo longo serve.
+  </p>
+  <p>
+    <b>E há duas variáveis a retirar:</b> <code>BO_PASSWORD_FAPI_ROCHA</code> e
+    <code>BO_PASSWORD_GOCGO2008</code>. Nada no código as lê — são o registo de
+    um utilitário local. São duas passwords de administração num painel, sem
+    servirem para nada.
+  </p>
+</div>
+
+<div class="box act keep">
+  <h3>Enquanto o endereço for provisório · uma coisa é permanente</h3>
+  <p>
+    A plataforma está a servir em <code>weefly.duckdns.org</code> para testes,
+    o que é sensato. Duas consequências:
+  </p>
+  <ul>
+    <li>O <b>webhook do Resend</b> tem de apontar para
+      <code>https://weefly.duckdns.org/api/webhooks/resend</code> enquanto for
+      esse o endereço. Se ficar no domínio final, o estado de entrega pára em
+      «enviado» e nunca chega a «entregue».</li>
+    <li><b>O PDF do bilhete leva o endereço lá dentro.</b> Um bilhete emitido
+      agora carrega um <i>link</i> <code>duckdns</code> <b>dentro do ficheiro,
+      para sempre</b> — e um PDF é uma coisa que o cliente guarda. Quando o
+      endereço mudar, os bilhetes já enviados apontam para um sítio que pode
+      deixar de responder.</li>
+  </ul>
+  <p>
+    Testar à vontade. <b>Emitir bilhetes a clientes reais, só depois de o
+    endereço ser o definitivo.</b>
+  </p>
+</div>
+
+<div class="box keep">
+  <h3>DNS · SPF, DKIM e DMARC já estão feitos</h3>
+  <p>
+    Eu vinha a listar isto como pendente. <b>Fui verificar os registos reais e
+    está tudo lá</b>, desde Agosto:
+  </p>
+  <ul>
+    <li><b>DKIM</b> — a chave em <code>resend._domainkey.weefly.africa</code>;</li>
+    <li><b>SPF</b> — <code>v=spf1 include:amazonses.com ~all</code> em
+      <code>send.weefly.africa</code>, mais o MX de retorno para a Amazon;</li>
+    <li><b>DMARC</b> — <code>v=DMARC1; p=reject; adkim=r; aspf=r</code>.</li>
+  </ul>
+  <p>
+    <b>Não há nada a configurar.</b> Peço desculpa por ter mantido isto na lista:
+    a informação estava nas nossas próprias notas e eu devia tê-la confirmado
+    antes de a pedir.
+  </p>
+  <p>
+    Duas observações que valem por si. A política DMARC é <code>p=reject</code>,
+    a mais estrita que existe — um email cujo remetente não esteja alinhado não
+    vai para spam, <b>é recusado</b>. É por isso que o campo do remetente ter dois
+    endereços (o C-03a) era tão grave, e é a razão de a protecção que lá pusemos
+    valer a pena. E os relatórios DMARC vão para
+    <code>dmarc_rua@onsecureserver.net</code>, um endereço de terceiros: ninguém
+    da WeeFly os está a ler.
+  </p>
+</div>
+
+<div class="box act keep">
+  <h3>Responder ao Sarin</h3>
+  <p>
+    Ele pede o <b>IP público do escritório</b> para restringir o acesso SSH.
+    Neste momento <b>a porta 22 está aberta a todos os endereços da
+    internet</b> — foi deliberado para a instalação, mas não deve ficar assim.
+    É o pedido dele e é o mais urgente da lista dele.
+  </p>
+  <p>
+    Vale a pena confirmar ao mesmo tempo <b>onde ficam as cópias de segurança da
+    base de dados</b> e quem tem acesso à consola AWS: nada disso está
+    documentado do nosso lado.
+  </p>
+</div>
+
+<h3>Depois de estar no ar</h3>
+<p>
+  A verificação em sete passos está no fim de <code>docs/deploy-ec2.md</code>. O
+  atalho para saber se a configuração de email ficou certa é abrir
+  <code>/api/concierge/diagnose</code>: ele lista o que falta com a causa
+  escrita, e passou a apanhar precisamente o erro do C-03a.
+</p>
+
+<h2>Os 9 que faltam · o que cada um precisa</h2>
+
+<p>
+  Dos nove, <b>só dois estão à espera de alguém</b>. Os outros sete não dependem
+  de ninguém — mas quatro deles têm uma decisão por tomar, e prefiro dizê-la a
+  adivinhá-la em silêncio.
+</p>
+
+<table>
+  <thead><tr><th>ID</th><th>Depende de</th><th>O que falta saber, ou nada</th></tr></thead>
+  <tbody>
+    <tr><td class="id">C-03b</td><td class="st stop">Chaves Meta</td>
+      <td>As duas variáveis. A parte de código já está feita.</td></tr>
+
+    <tr><td class="id">C-23</td><td class="st stop">Ivandro</td>
+      <td>Em que ecrã aparece o contador «3». O backlog manda confirmar
+      primeiro.</td></tr>
+
+    <tr><td class="id">C-15</td><td class="st warn">Uma decisão minha</td>
+      <td>«As alterações de campo aparecem com o valor antigo e o novo» — mas
+      <b>quais campos?</b> Instrumentar todos enche a aba de ruído. Vou pelos que
+      têm consequência comercial: datas, preços, vendedor, valor a cobrar e
+      método. Se quiseres outros, diz.</td></tr>
+
+    <tr><td class="id">C-17</td><td class="st warn">Uma decisão minha</td>
+      <td>O critério diz «o formulário da proposta, o dos passageiros e o de
+      emissão». A proposta e a emissão já têm a lista. O «formulário dos
+      passageiros» só existe do <b>lado do cliente</b> — no back-office os
+      passageiros são só de leitura. É esse que vou fazer.</td></tr>
+
+    <tr><td class="id">C-19</td><td class="st warn">Nada</td>
+      <td>Não sei qual dos campos de hora se sobrepõe, mas isso descubro eu:
+      varro os tamanhos de 360 a 1920 px no browser e encontro-o.</td></tr>
+
+    <tr><td class="id">C-25</td><td class="st warn">Melhor com a apresentação</td>
+      <td>O backlog dá o exemplo escrito, que basta para construir. Sai melhor
+      com a apresentação do Dominik à mão, pelo tom.</td></tr>
+
+    <tr><td class="id">C-16</td><td class="st warn">Nada</td>
+      <td>Seis critérios, todos claros. É o que tem mais efeito no dia a dia de
+      quem usa a plataforma.</td></tr>
+
+    <tr><td class="id">C-29</td><td class="st warn">Nada</td>
+      <td>Especificado ao detalhe: um bloco por voo, mala de cabina, item
+      pessoal e porão em peças × kg, com contadores. Precisa de migração.</td></tr>
+
+    <tr><td class="id">C-31</td><td class="st warn">Nada</td>
+      <td>As colunas já foram criadas com a migração 0016.</td></tr>
+  </tbody>
+</table>
+
+<h2>Duas coisas que encontrei e que não estavam na lista</h2>
+<p>
+  <b>Hidratação quebrada no back-office.</b> O bloco de estilos das fontes emite
+  aspas escapadas no servidor e cruas no cliente, o que faz o React desistir e
+  redesenhar toda a raiz no browser. Não é do Sprint 3, mas é real e degrada
+  todos os ecrãs do back-office. Vale um item no Sprint 4.
+</p>
+<p>
+  <b>O grafo do projeto estava desactualizado</b> e cobria apenas a camada de
+  autenticação — nenhum dos ecrãs do Concierge. Foi reconstruído, e as
+  migrações passaram a entrar nele.
+</p>
+
+<h2>Nota sobre o método</h2>
+<p>
+  Onze itens estão marcados «verificado» porque foram abertos no browser e
+  confirmados contra a base de dados real, não apenas compilados. Essa distinção
+  é deliberada: o C-02 é o exemplo de porque importa — o código estava correcto
+  desde o Sprint 2 e a falha que viste tinha outra causa. Os restantes dez
+  compilam e passam as verificações automáticas, mas ainda não foram clicados.
+</p>
+<p>
+  Ficaram três casos de teste com dados alterados durante a verificação
+  (<code>WF-2608-0052</code> reclamado, <code>WF-2609-0055</code> fechado,
+  <code>WF-2609-0056</code> com a ida movida). Todos reversíveis.
+</p>
+
+<p class="sig">
+  WeeFly Concierge · estado de execução do Sprint 3 · 3 de Setembro de 2026 ·
+  24 de 33 correcções feitas · 11 confirmadas no browser · 11 por fazer · 3 à espera de decisão ou de ficheiros · migrações 0014, 0015 e 0016 aplicadas.
+</p>
+
+</body>
+</html>

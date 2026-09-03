@@ -44,6 +44,7 @@ const OFFER_PUBLIC_COLUMNS = `
   fare_name, baggage_cabin, baggage_hold,
   baggage_cabin_count, baggage_hold_count,
   non_refundable, times_confirmed,
+  date_change_confirmed, date_change_reason,
   change_policy, refund_policy,
   seat_policy, documents,
   price_adult, price_child, price_infant, taxes_total, service_fee,

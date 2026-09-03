@@ -181,7 +181,49 @@ export const CURRENCIES = Object.keys(CUR)
 
 // ── métodos de pagamento ─────────────────────────────────────────────────────
 
-export type PayMethodId = "transfer" | "link" | "card" | "momo" | "local" | "cash"
+/*
+ * C-33 · os cinco métodos, e só os cinco.
+ *
+ * Isto era uma taxonomia de **famílias** de pagamento — `transfer`, `link`,
+ * `card`, `momo`, `local`, `cash` — com tabelas de provedores por país por
+ * baixo de cada uma. Fazia sentido enquanto o cliente pagava dentro do link: o
+ * ecrã tinha de saber que em Cabo Verde se paga por Vinti4 e nos Países Baixos
+ * por iDEAL.
+ *
+ * O Sprint 3 muda a premissa, e está escrito nas decisões confirmadas: **o
+ * pagamento acontece fora da plataforma; a validação acontece dentro dela.** O
+ * cliente escolhe uma via, a escolha chega ao back-office, e é o agente que
+ * fornece o link ou a referência. A plataforma não gera nada — guarda o que o
+ * agente lhe dá.
+ *
+ * Com essa premissa, as famílias deixam de ter função: o que interessa saber de
+ * um método é **o que o agente tem de escrever**. Um link, uma referência, ou
+ * qualquer dos dois. É isso que `supply` diz, e é isso que decide os campos que
+ * a aba Pagamento mostra.
+ *
+ * Sem transferência bancária — decisão confirmada, "removed from this phase".
+ */
+export type PayMethodId = "stripe" | "vinti4" | "revolut" | "instapay" | "paypal"
+
+/** O que o agente fornece: um endereço, uma referência, ou qualquer dos dois. */
+export type PaySupply = "link" | "reference" | "either"
+
+/**
+ * C-08 · o serviço WeeFly, pré-preenchido a 20 e editável.
+ *
+ * Em unidades menores da moeda do caso — 2000 = 20,00. É **por reserva** e não
+ * por passageiro, e sempre foi (ver a parte 4 da migração 0013).
+ *
+ * A migração já põe isto como `default` da coluna, e é por isso que este
+ * constante existe: `lib/proposal-prefill.ts` escrevia `service_fee: 0`
+ * explicitamente ao gerar um rascunho a partir da pesquisa, o que passa por
+ * cima do default da base. O resultado era que uma proposta pré-preenchida
+ * saía com o serviço a zero e uma composta à mão saía com 20 — a mesma regra
+ * a dar dois números, dependendo do caminho.
+ *
+ * Um valor por omissão em dois sítios diverge. Este é o sítio.
+ */
+export const DEFAULT_SERVICE_FEE = 2000
 
 export const LOCAL_BY_COUNTRY: Record<string, string[]> = {
   CV: ["Vinti4", "Pagalu"], PT: ["Multibanco", "MB WAY"], ES: ["Bizum"],
@@ -208,78 +250,116 @@ export const LINK_PROVIDERS = ["Revolut", "Wise", "PayPal", "Other"]
 
 export interface PayMethod {
   id: PayMethodId
+  /** O que o cliente lê no cartão da escolha. */
   t: string
   s: string
-  bg: string
-  free?: boolean
+  /** O que o agente fornece a seguir. Decide os campos da aba Pagamento. */
+  supply: PaySupply
+  /** A etiqueta do campo no back-office, em português. */
+  fieldPt: string
+  /** Um exemplo do que ali se escreve, para o `placeholder`. */
+  samplePt: string
 }
 
 /**
- * O catálogo é o mesmo em todo o mundo; o que muda por país é a ordem e os
- * provedores dentro de cada método.
+ * Os cinco métodos, na ordem em que o cliente os vê.
+ *
+ * O catálogo deixou de depender do país. Um cliente da diáspora em França e um
+ * cliente na Praia escolhem da mesma lista, porque nenhuma destas vias é
+ * fornecida pela plataforma — é o agente que a monta do outro lado, e ele sabe
+ * o que consegue montar melhor do que uma tabela de países sabe.
  */
-export function methodsFor(co: string): PayMethod[] {
-  const list: PayMethod[] = [
-    {
-      id: "transfer",
-      t: "Bank transfer",
-      s: co === "CV" ? "Local transfer · same day" : "SEPA · arrives in 1 business day",
-      bg: "No fees",
-      free: true,
-    },
-    { id: "link", t: "Payment link", s: "Revolut · Wise · PayPal", bg: "Instant" },
-    { id: "card", t: "Credit or debit card", s: "Visa · Mastercard · Amex", bg: "Instant" },
-    {
-      id: "momo",
-      t: "Mobile money",
-      s: (MOMO_BY_COUNTRY[co] ?? ["Wave", "Orange Money", "MTN MoMo", "M-Pesa"]).join(" · "),
-      bg: "Instant",
-    },
-    {
-      id: "local",
-      t: "Local payment methods",
-      s: (LOCAL_BY_COUNTRY[co] ?? ["Multibanco", "MB WAY", "Vinti4", "Pix", "iDEAL"]).join(" · "),
-      bg: "By country",
-    },
-    { id: "cash", t: "Pay in person", s: "At our office in Praia", bg: "Cash or card" },
-  ]
+export const PAY_METHODS: PayMethod[] = [
+  {
+    id: "stripe",
+    t: "Card via Stripe",
+    s: "Visa · Mastercard · Amex",
+    supply: "link",
+    fieldPt: "Link de pagamento Stripe",
+    samplePt: "https://buy.stripe.com/…",
+  },
+  {
+    id: "vinti4",
+    t: "Vinti4 / 24",
+    s: "Cabo Verde · SISP",
+    /* O único com as duas: a SISP dá uma referência para pagar no 24 e, em
+       alternativa, um endereço de pagamento. O agente usa o que tiver. */
+    supply: "either",
+    fieldPt: "Referência SISP ou link",
+    samplePt: "Referência 1234 5678 9012 — ou https://…",
+  },
+  {
+    id: "revolut",
+    t: "Revolut",
+    s: "Transferência instantânea",
+    supply: "link",
+    fieldPt: "Link Revolut",
+    samplePt: "https://revolut.me/…",
+  },
+  {
+    id: "instapay",
+    t: "Instapay",
+    s: "Referência de pagamento",
+    supply: "reference",
+    fieldPt: "Referência Instapay",
+    samplePt: "INSTA-000-000",
+  },
+  {
+    id: "paypal",
+    t: "PayPal",
+    s: "Conta ou cartão",
+    supply: "link",
+    fieldPt: "Link PayPal",
+    samplePt: "https://paypal.me/…",
+  },
+]
 
-  /* Cabo Verde é verificado primeiro: tem carteira móvel, mas em casa as
-     pessoas pagam-nos por transferência local ou ao balcão. */
-  const order: PayMethodId[] =
-    co === "CV"
-      ? ["transfer", "local", "cash", "link", "card", "momo"]
-      : MOMO_COUNTRIES.includes(co)
-        ? ["momo", "transfer", "link", "local", "card", "cash"]
-        : ["transfer", "link", "card", "local", "momo", "cash"]
+export const PAY_METHOD_IDS: PayMethodId[] = PAY_METHODS.map((m) => m.id)
 
-  return order.map((id) => list.find((m) => m.id === id)!)
-}
-
-export function providersFor(id: PayMethodId, co: string): string[] | null {
-  if (id === "link") return LINK_PROVIDERS
-  if (id === "momo") return MOMO_BY_COUNTRY[co] ?? ["Wave", "Orange Money", "MTN MoMo", "M-Pesa"]
-  if (id === "local") return LOCAL_BY_COUNTRY[co] ?? ["Multibanco", "MB WAY", "Vinti4", "Pix", "iDEAL"]
-  return null
-}
+export const payMethod = (id: string | null | undefined): PayMethod | null =>
+  PAY_METHODS.find((m) => m.id === id) ?? null
 
 export const METHOD_LABEL: Record<PayMethodId, string> = {
-  transfer: "Bank transfer",
-  link: "Payment link",
-  card: "Card",
-  momo: "Mobile money",
-  local: "Local method",
-  cash: "In person",
+  stripe: "Card via Stripe",
+  vinti4: "Vinti4 / 24",
+  revolut: "Revolut",
+  instapay: "Instapay",
+  paypal: "PayPal",
 }
 
 /** As mesmas etiquetas em português, para o back-office. */
 export const METHOD_LABEL_PT: Record<PayMethodId, string> = {
-  transfer: "Transferência bancária",
-  link: "Link de pagamento",
-  card: "Cartão",
-  momo: "Mobile money",
-  local: "Métodos locais",
-  cash: "Presencial",
+  stripe: "Stripe",
+  vinti4: "Vinti4 / 24",
+  revolut: "Revolut",
+  instapay: "Instapay",
+  paypal: "PayPal",
+}
+
+/**
+ * As etiquetas antigas, para os casos que já existem.
+ *
+ * Doze casos na base de dados têm `method` da taxonomia anterior. Não se
+ * migram: `transfer` não é nenhum dos cinco novos, e reescrevê-lo para um deles
+ * seria inventar um método que aquele cliente nunca escolheu. O que se faz é
+ * continuar a saber lê-los — um caso antigo tem de mostrar o que aconteceu, e
+ * não um campo vazio.
+ */
+export const LEGACY_METHOD_LABEL_PT: Record<string, string> = {
+  transfer: "Transferência bancária (método antigo)",
+  link: "Link de pagamento (método antigo)",
+  card: "Cartão (método antigo)",
+  momo: "Mobile money (método antigo)",
+  local: "Métodos locais (método antigo)",
+  cash: "Presencial (método antigo)",
+}
+
+/** A etiqueta de qualquer método, novo ou antigo. Nunca devolve vazio. */
+export function methodLabelPt(id: string | null | undefined): string {
+  if (!id) return "—"
+  return (
+    METHOD_LABEL_PT[id as PayMethodId] ?? LEGACY_METHOD_LABEL_PT[id] ?? id
+  )
 }
 
 /** Coordenadas bancárias por país. CV para quem paga em Cabo Verde, PT para o resto. */

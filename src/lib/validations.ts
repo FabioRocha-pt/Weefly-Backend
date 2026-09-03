@@ -159,15 +159,96 @@ export function getPasswordStrength(password: string): {
 
 const today = () => new Date().toISOString().slice(0, 10)
 
+/** C-06 · a data de nascimento mais antiga aceitável: 120 anos atrás. */
+export const MAX_AGE_YEARS = 120
+
+const oldestBirthDate = () => {
+  const d = new Date()
+  d.setFullYear(d.getFullYear() - MAX_AGE_YEARS)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * C-06 · a idade **à data da viagem**, e não à data da marcação.
+ *
+ * É a regra das companhias e é a que decide o preço: quem faz 12 anos entre a
+ * reserva e a partida viaja como adulto, com tarifa de adulto e sem desconto de
+ * criança. Calcular a idade a partir de hoje dá o número certo hoje e o número
+ * errado no aeroporto — e a diferença descobre-se ao balcão do check-in, já com
+ * o bilhete emitido em nome errado.
+ *
+ * Devolve anos completos na data dada.
+ */
+export function ageAt(birthDate: string, onDate: string): number {
+  const born = new Date(birthDate)
+  const when = new Date(onDate)
+  if (Number.isNaN(born.getTime()) || Number.isNaN(when.getTime())) return 0
+
+  let years = when.getFullYear() - born.getFullYear()
+  const monthDiff = when.getMonth() - born.getMonth()
+  /* Ainda não fez anos nesse ano: desconta um. */
+  if (monthDiff < 0 || (monthDiff === 0 && when.getDate() < born.getDate())) {
+    years--
+  }
+  return Math.max(0, years)
+}
+
+/** As fronteiras de tarifa das companhias: bebé < 2, criança < 12, adulto. */
+export type FareAge = "infant" | "child" | "adult"
+
+export function fareAgeAt(birthDate: string, travelDate: string): FareAge {
+  const age = ageAt(birthDate, travelDate)
+  if (age < 2) return "infant"
+  if (age < 12) return "child"
+  return "adult"
+}
+
+/**
+ * C-06 · o aviso de quem muda de tarifa entre a marcação e a partida.
+ *
+ * "Um alerta dispara se uma criança fizer 12 anos entre a marcação e a
+ * partida." A mesma fronteira existe aos 2 anos, e pela mesma razão — um bebé
+ * de colo que faz 2 anos passa a ocupar lugar — por isso as duas são
+ * verificadas aqui.
+ *
+ * Devolve nulo quando nada muda, e uma descrição do que muda quando muda.
+ */
+export function fareAgeChange(
+  birthDate: string,
+  bookingDate: string,
+  travelDate: string
+): { from: FareAge; to: FareAge; turns: number } | null {
+  if (!birthDate || !travelDate) return null
+
+  const from = fareAgeAt(birthDate, bookingDate)
+  const to = fareAgeAt(birthDate, travelDate)
+  if (from === to) return null
+
+  return { from, to, turns: to === "adult" ? 12 : 2 }
+}
+
 export const passengerSchema = z.object({
   passengerType: z.enum(["adult", "child", "infant"]),
   firstName: z.string().trim().min(2, "validation.firstNameRequired"),
   lastName: z.string().trim().min(2, "validation.lastNameRequired"),
   gender: z.enum(["m", "f", "x"], { required_error: "validation.genderRequired" }),
+  /*
+   * C-06 · as duas pontas de uma data de nascimento.
+   *
+   * O futuro já era recusado. O que faltava era a outra ponta: um `1066-04-12`
+   * passava, e um erro de digitação no ano é o engano mais comum deste campo —
+   * escreve-se `1889` em vez de `1989` e ninguém repara até a companhia
+   * recusar o bilhete.
+   *
+   * 120 anos é o limite do critério, e é generoso de propósito: a pessoa mais
+   * velha de que há registo viveu 122, e um limite apertado recusaria um
+   * centenário verdadeiro.
+   */
   birthDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "validation.birthDateInvalid")
-    .refine((d) => d <= today(), "validation.birthDateFuture"),
+    .refine((d) => d <= today(), "validation.birthDateFuture")
+    .refine((d) => d >= oldestBirthDate(), "validation.birthDateTooOld"),
   nationality: z.string().trim().min(2, "validation.nationalityRequired"),
   passportNumber: z
     .string()

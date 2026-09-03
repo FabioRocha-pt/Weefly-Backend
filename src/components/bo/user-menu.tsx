@@ -84,7 +84,19 @@ export function BoUserMenu({
           <div className="who-head">
             <b>{label}</b>
             <span className="mono">{email}</span>
-            <span className="who-role">{role === "admin" ? "Administrador" : "Gestor"}</span>
+            {/*
+              C-20 · "não há referência a Pro nem a Admin na interface."
+
+              Isto dizia "Administrador" ou "Gestor" — dois perfis a aparecer num
+              serviço que só tem um. A `role` continua na base de dados e
+              continua a decidir o que se pode fazer (reabrir um caso fechado é
+              de administrador, ver `boReopenCase`); o que sai é a etiqueta, que
+              anunciava uma estrutura de perfis que este serviço ainda não tem.
+
+              "A estrutura permite acrescentar perfis mais tarde sem retrabalho"
+              — e permite, porque nada disto mexe na coluna.
+            */}
+            <span className="who-role">WeeFly Concierge</span>
           </div>
 
           <Link className="who-item" role="menuitem" href="/inicio" onClick={() => setOpen(false)}>

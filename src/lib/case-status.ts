@@ -144,6 +144,84 @@ export interface CaseLinkRow {
   unlocked_at: string | null
   first_opened_at: string | null
   submitted_at: string | null
+  /** C-05 · último acesso real do cliente. Ver a migração 0014. */
+  last_opened_at?: string | null
+  open_count?: number | null
+}
+
+/**
+ * C-05 · o estado do link como ele é, e não como uma coluna diz que é.
+ *
+ * O back-office mostrava um link fechado como aberto, e a causa é estrutural:
+ * `case_links.status` é uma coluna gravada, e são cinco caminhos independentes
+ * que a escrevem — a submissão do pedido, a publicação da proposta, a abertura
+ * da janela de pagamento, a expiração e a reabertura. Cinco escritores e nenhum
+ * dono é a definição de um valor que deriva: basta um caminho não correr, ou
+ * correr fora de ordem, e a coluna passa a descrever um caso que já não existe.
+ *
+ * O critério do C-05 diz o que fazer — "derivado do estado real do caso, nunca
+ * guardado à parte e deixado a divergir". Esta função é esse cálculo, e é ela
+ * que os ecrãs leem. A coluna continua a existir porque é ela que autoriza o
+ * cliente a entrar (ver `getCaseByToken`), e essa é uma decisão de segurança
+ * que não deve depender de uma derivação; o que ela deixa de fazer é responder
+ * à pergunta "este link está aberto?" no ecrã de quem atende.
+ *
+ * Quando as duas discordam, quem manda é o caso — e a discordância aparece, em
+ * vez de ser resolvida em silêncio. Ver `linkStateDrifted`.
+ */
+export type LinkState = "bloqueado" | "aberto" | "submetido" | "expirado" | "fechado"
+
+export function deriveLinkState(input: {
+  stage: number
+  stored: LinkStatus
+  submittedAt: string | null
+  /** A etapa do caso, de `booking_cases.stage`. */
+  caseStage: CaseStage
+  /** C-04 · um caso fechado não tem links abertos. */
+  closed: boolean
+}): LinkState {
+  if (input.closed) return "fechado"
+  if (input.caseStage === "cancelado") return "fechado"
+
+  /* Submetido é um facto, não um estado a recalcular: o cliente entregou o que
+     este link pedia, e nada o desfaz. */
+  if (input.submittedAt || input.stored === "submetido") return "submetido"
+
+  const reached = STAGE_REACHED[input.caseStage] ?? 0
+
+  /* O caso já passou por esta etapa sem a submeter: o link cumpriu o que tinha
+     para cumprir e não é uma porta aberta. É este o caso que aparecia "aberto".  */
+  if (reached > input.stage) return "submetido"
+
+  if (reached < input.stage) return "bloqueado"
+
+  if (input.stored === "expirado") return "expirado"
+  return "aberto"
+}
+
+/**
+ * Até que etapa do link o caso já chegou.
+ *
+ * 1 é o pedido, 2 a proposta, 3 o pagamento — ver `LINK_STAGE_PATHS`.
+ */
+const STAGE_REACHED: Record<CaseStage, number> = {
+  novo: 1,
+  pedido_recebido: 1,
+  proposta_enviada: 2,
+  opcao_escolhida: 2,
+  detalhes_pendentes: 2,
+  detalhes_recebidos: 2,
+  pagamento_pendente: 3,
+  pago: 3,
+  emitido: 3,
+  cancelado: 3,
+}
+
+/** Verdadeiro quando a coluna gravada e o estado real não dizem o mesmo. */
+export function linkStateDrifted(stored: LinkStatus, derived: LinkState): boolean {
+  if (derived === "aberto") return stored !== "ativo"
+  if (derived === "fechado") return false
+  return stored !== derived
 }
 
 /*

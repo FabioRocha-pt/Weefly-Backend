@@ -141,10 +141,26 @@ export async function listBoSellers(): Promise<BoSeller[]> {
   const admin = createAdminClient()
   if (!admin) return []
 
+  /*
+   * C-21 · o seletor tem uma entrada: Dominik.
+   *
+   * A lista continua a ser lida da base de dados — acrescentar um vendedor
+   * continua a ser um insert e não um deploy, que é o resto do critério. O que
+   * se acrescenta é o filtro por `role`: as duas contas de administração são a
+   * única porta de entrada neste back-office, e por isso **não** podem ser
+   * desactivadas para cumprir "uma entrada" — desactivá-las trancava a equipa
+   * fora. Deixam de ser atribuíveis como vendedor, que é a pergunta que este
+   * seletor faz, e continuam a entrar.
+   *
+   * Um caso já atribuído a uma delas continua a mostrá-la: ver o `option` de
+   * recurso em `case-header.tsx`, que existe precisamente para não reescrever
+   * o histórico.
+   */
   const { data, error } = await admin
     .from("bo_allowlist")
     .select("email, label, role")
     .eq("active", true)
+    .eq("role", "manager")
     .order("label", { ascending: true, nullsFirst: false })
 
   if (error) {

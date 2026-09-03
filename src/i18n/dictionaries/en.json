@@ -539,7 +539,17 @@
     "composerPerBooking": "per booking",
     "publishChangeNote": "What changed in revision R{revision}",
     "publishChangeNotePlaceholder": "The outbound moved from 14:20 to 08:40 and the price came down by €40.",
-    "publishChangeNoteHint": "Required from R2 onwards. It goes in the customer's email, above the options."
+    "publishChangeNoteHint": "Required from R2 onwards. It goes in the customer's email, above the options.",
+    "composerDateChangeTitle": "This option departs on a different day from the one the customer asked for.",
+    "composerDateMovedOut": "outbound {from} → {to}",
+    "composerDateMovedBack": "return {from} → {to}",
+    "composerDateChangeHelp": "If the change is deliberate — a better fare, a flight with seats — write the reason and confirm. The customer’s original request stays untouched in the history, and they are notified of the change and the reason.",
+    "composerDateChangePlaceholder": "What happened, in the sentence the customer will read. E.g.: no economy seats on the 14th; the 15th has them, and it is 60 € cheaper.",
+    "composerDateChangeCta": "Confirm date change",
+    "composerDateChangeNeedsReason": "Write the reason to be able to confirm.",
+    "composerDateChangeDone": "Date change confirmed:",
+    "composerDateChangeUndo": "Back to the requested dates",
+    "publishedRevisionRemoved": "Published prices stay locked. To change a proposal already sent, talk to the customer and open a new request — on-screen revisions return in Sprint 5, with a clear way to cancel."
   },
   "validation": {
     "nameMin": "Name must be at least 2 characters",
@@ -584,7 +594,8 @@
     "passengersMin": "Enter at least one passenger",
     "iataOrigin": "Invalid origin IATA code",
     "iataDestination": "Invalid destination IATA code",
-    "departDateInvalid": "Invalid departure date"
+    "departDateInvalid": "Invalid departure date",
+    "birthDateTooOld": "Check the year of birth — that date is more than 120 years ago."
   },
   "passwordStrength": {
     "weak": "Weak",
@@ -758,7 +769,9 @@
     "noClientEmailForWeepay": "The case has no client email, and WeePay requires one to open the payment.",
     "statusApplyFailed": "The status could not be applied.",
     "unavailable": "Unavailable.",
-    "revisionNeedsChangeNote": "Write what changed in this revision — it is what the customer reads in the email."
+    "revisionNeedsChangeNote": "Write what changed in this revision — it is what the customer reads in the email.",
+    "publishNeedsOwner": "This case has no owner. Claim it before publishing — a proposal needs someone who answers for it.",
+    "publishNotOwner": "This case belongs to another agent. Only the owner, or an admin, can publish the proposal."
   },
   "onboarding": {
     "step1": "Account",

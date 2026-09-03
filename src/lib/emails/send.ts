@@ -27,6 +27,7 @@ import {
   type NotifyOutcome,
 } from "@/lib/notifications"
 import { whatsappTeamNumber } from "@/lib/whatsapp"
+import { toE164 } from "@/lib/countries"
 import {
   BORDER,
   EMBER_RED,
@@ -160,7 +161,28 @@ async function context(caseId: string): Promise<CaseContext | null> {
   const lead = unwrap(trip?.lead)
 
   const fullName = (lead?.full_name as string) ?? "cliente"
-  const e164 = (lead?.phone_e164 as string | null) ?? null
+  /*
+   * C-03b · o número de WhatsApp, calculado quando a coluna está vazia.
+   *
+   * `phone_e164` só existe nos leads gravados depois de o campo ter sido
+   * acrescentado: **metade dos que estão na base tem-no a nulo**, com o
+   * indicativo e o número guardados em separado e perfeitamente utilizáveis
+   * (`+238` + `9592388`). Sem este recurso, o aviso de WhatsApp desses casos
+   * sai `skipped · sem destinatário` — e é isso que o registo mostra hoje.
+   *
+   * Importa mais do que parece: o C-03b lê-se como "faltam as chaves", e com as
+   * chaves postas metade dos clientes continuaria sem receber nada. A causa
+   * seria procurada na Meta, onde não está.
+   *
+   * `toE164` é a mesma função que grava a coluna na entrada (ver `actions/pc`),
+   * pelo que o número calculado aqui é igual ao que teria sido gravado.
+   */
+  const e164 =
+    (lead?.phone_e164 as string | null) ??
+    toE164(
+      (lead?.phone_prefix as string | null) ?? "",
+      (lead?.phone as string | null) ?? ""
+    )
 
   /* O dono do caso, para o NT-05. O email fica em `auth.users` e não na linha do
      caso; uma leitura a mais só quando há alguém a quem escrever. */
@@ -346,7 +368,7 @@ export async function sendRequestReceivedEmail(
     subject,
     html,
     text,
-    replyTo: teamRecipients()[0],
+    replyTo: teamRecipients(),
     dedupeKey: "request_received",
   })
 }
@@ -503,7 +525,7 @@ export async function sendProposalPublishedEmail(input: {
     subject: input.subject,
     html: input.html,
     text: input.text,
-    replyTo: teamRecipients()[0],
+    replyTo: teamRecipients(),
     dedupeKey: `proposal_published:r${input.revision}`,
   })
 
@@ -602,7 +624,7 @@ export async function sendOfferChosenEmail(
     subject,
     html,
     text,
-    replyTo: teamRecipients()[0],
+    replyTo: teamRecipients(),
     dedupeKey: "offer_selected",
   })
 }
@@ -618,7 +640,20 @@ export async function sendOfferChosenEmail(
  * pode.
  */
 export async function sendPaymentInstructionsEmail(
-  caseId: string
+  caseId: string,
+  /**
+   * C-33 · o que distingue este envio do anterior.
+   *
+   * A chave de duplicado era a constante `"payment_instructions"`, e com ela um
+   * caso só podia receber instruções **uma vez na vida**. Enquanto o cliente
+   * pagava dentro do link isso bastava. Agora não: é o agente que fornece o
+   * link ou a referência, e se o cliente trocar de método — ou se o primeiro
+   * link expirar — o segundo envio é uma notícia nova e tem de sair.
+   *
+   * Quem chama passa o método e a instrução; dois cliques no mesmo botão com o
+   * mesmo conteúdo continuam a dar um aviso só, que é o que o NT-04 pede.
+   */
+  dedupeSuffix?: string
 ): Promise<NotifyOutcome> {
   const ctx = await context(caseId)
   if (!ctx) {
@@ -664,8 +699,10 @@ export async function sendPaymentInstructionsEmail(
     subject,
     html,
     text,
-    replyTo: teamRecipients()[0],
-    dedupeKey: "payment_instructions",
+    replyTo: teamRecipients(),
+    dedupeKey: dedupeSuffix
+      ? `payment_instructions:${dedupeSuffix}`
+      : "payment_instructions",
   })
 }
 
@@ -729,7 +766,7 @@ export async function sendPaymentConfirmedEmail(
     subject,
     html,
     text,
-    replyTo: teamRecipients()[0],
+    replyTo: teamRecipients(),
     dedupeKey: "payment_confirmed",
   })
 
@@ -815,7 +852,7 @@ export async function sendTicketsIssuedEmail(input: {
     subject,
     html,
     text,
-    replyTo: teamRecipients()[0],
+    replyTo: teamRecipients(),
     attachments: input.attachments,
     /* Sem `dedupeKey`: o EM-03 pede o reenvio a partir do back-office, e um
        reenvio pedido por uma pessoa não é um duplicado. O que o impede de sair
@@ -984,7 +1021,7 @@ export async function sendManualClientNotice(input: {
         clientVisible: true,
         actorId: input.actorId,
         actorEmail: input.actorEmail,
-        replyTo: teamRecipients()[0],
+        replyTo: teamRecipients(),
       })
     : null
 
@@ -1174,7 +1211,7 @@ export async function sendDatesProposedEmail(
     subject,
     html,
     text,
-    replyTo: teamRecipients()[0],
+    replyTo: teamRecipients(),
     /* Sem chave de duplicado: uma segunda proposta de datas é outra notícia. */
   })
 

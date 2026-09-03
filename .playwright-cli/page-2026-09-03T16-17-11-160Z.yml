@@ -1,0 +1,470 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e12]:
+    - banner [ref=f2e22]:
+      - generic [ref=f2e23]:
+        - img "WeeFly" [ref=f2e24]
+        - generic [ref=f2e31]: Admin
+        - navigation [ref=f2e32]:
+          - link "Price Checker" [ref=f2e33] [cursor=pointer]:
+            - /url: /admin/price-checker
+          - link "Pagamentos" [ref=f2e34] [cursor=pointer]:
+            - /url: /admin/price-checker?tab=por_validar
+          - link "Emissões" [ref=f2e35] [cursor=pointer]:
+            - /url: /admin/price-checker?tab=pagos_sem_bilhete
+        - generic [ref=f2e36]:
+          - button "Avisos" [ref=f2e37] [cursor=pointer]
+          - button "Criar link" [ref=f2e40] [cursor=pointer]
+          - complementary "Construtor de link" [ref=f2e41]:
+            - generic [ref=f2e42]:
+              - generic [ref=f2e43]:
+                - heading "Link de atendimento" [level=3] [ref=f2e44]
+                - paragraph [ref=f2e45]: O link é permanente e reutilizável. O caso só nasce quando o cliente submete o formulário.
+              - button "✕" [ref=f2e46] [cursor=pointer]
+            - generic [ref=f2e47]:
+              - generic [ref=f2e48]:
+                - heading "Parâmetros" [level=4] [ref=f2e50]
+                - generic [ref=f2e52]:
+                  - generic [ref=f2e53]:
+                    - generic [ref=f2e54]: Vendedor
+                    - combobox [ref=f2e55]:
+                      - option "Nélida Fortes" [selected]
+                      - option "Jair Semedo"
+                      - option "Carla Évora"
+                  - generic [ref=f2e56]:
+                    - generic [ref=f2e57]: Mercado
+                    - combobox [ref=f2e58]:
+                      - option "Cabo Verde"
+                      - option "Portugal"
+                      - option "França" [selected]
+                      - option "Estados Unidos"
+                      - option "Países Baixos"
+                  - generic [ref=f2e59]:
+                    - generic [ref=f2e60]: Idioma
+                    - combobox [ref=f2e61]:
+                      - option "Português"
+                      - option "English"
+                      - option "Français" [selected]
+                  - generic [ref=f2e62]:
+                    - generic [ref=f2e63]: Moeda
+                    - combobox [ref=f2e64]:
+                      - option "EUR" [selected]
+                      - option "USD"
+                      - option "CVE"
+                  - generic [ref=f2e65]:
+                    - generic [ref=f2e66]: País do cliente
+                    - combobox [ref=f2e67]:
+                      - option "🇦🇫 Afeganistão · +93"
+                      - option "🇿🇦 África do Sul · +27"
+                      - option "🇦🇱 Albânia · +355"
+                      - option "🇩🇪 Alemanha · +49"
+                      - option "🇦🇩 Andorra · +376"
+                      - option "🇦🇴 Angola · +244"
+                      - option "🇦🇮 Anguila · +1264"
+                      - option "🇦🇬 Antígua e Barbuda · +1268"
+                      - option "🇸🇦 Arábia Saudita · +966"
+                      - option "🇩🇿 Argélia · +213"
+                      - option "🇦🇷 Argentina · +54"
+                      - option "🇦🇲 Armênia · +374"
+                      - option "🇦🇼 Aruba · +297"
+                      - option "🇦🇺 Austrália · +61"
+                      - option "🇦🇹 Áustria · +43"
+                      - option "🇦🇿 Azerbaijão · +994"
+                      - option "🇧🇸 Bahamas · +1242"
+                      - option "🇧🇩 Bangladesh · +880"
+                      - option "🇧🇧 Barbados · +1246"
+                      - option "🇧🇭 Barein · +973"
+                      - option "🇧🇪 Bélgica · +32"
+                      - option "🇧🇿 Belize · +501"
+                      - option "🇧🇯 Benin · +229"
+                      - option "🇧🇲 Bermudas · +1441"
+                      - option "🇧🇾 Bielorrússia · +375"
+                      - option "🇧🇴 Bolívia · +591"
+                      - option "🇧🇦 Bósnia e Herzegovina · +387"
+                      - option "🇧🇼 Botsuana · +267"
+                      - option "🇧🇷 Brasil · +55"
+                      - option "🇧🇳 Brunei · +673"
+                      - option "🇧🇬 Bulgária · +359"
+                      - option "🇧🇫 Burquina Faso · +226"
+                      - option "🇧🇮 Burundi · +257"
+                      - option "🇧🇹 Butão · +975"
+                      - option "🇨🇻 Cabo Verde · +238"
+                      - option "🇨🇲 Camarões · +237"
+                      - option "🇰🇭 Camboja · +855"
+                      - option "🇨🇦 Canadá · +1"
+                      - option "🇶🇦 Catar · +974"
+                      - option "🇰🇿 Cazaquistão · +7"
+                      - option "🇹🇩 Chade · +235"
+                      - option "🇨🇱 Chile · +56"
+                      - option "🇨🇳 China · +86"
+                      - option "🇨🇾 Chipre · +357"
+                      - option "🇻🇦 Cidade do Vaticano · +3"
+                      - option "🇨🇴 Colômbia · +57"
+                      - option "🇰🇲 Comores · +269"
+                      - option "🇨🇩 Congo - Kinshasa · +243"
+                      - option "🇰🇵 Coreia do Norte · +850"
+                      - option "🇰🇷 Coreia do Sul · +82"
+                      - option "🇨🇮 Costa do Marfim · +225"
+                      - option "🇨🇷 Costa Rica · +506"
+                      - option "🇭🇷 Croácia · +385"
+                      - option "🇨🇺 Cuba · +53"
+                      - option "🇨🇼 Curaçao · +599"
+                      - option "🇩🇰 Dinamarca · +45"
+                      - option "🇩🇯 Djibuti · +253"
+                      - option "🇩🇲 Dominica · +1767"
+                      - option "🇪🇬 Egito · +20"
+                      - option "🇸🇻 El Salvador · +503"
+                      - option "🇦🇪 Emirados Árabes Unidos · +971"
+                      - option "🇪🇨 Equador · +593"
+                      - option "🇪🇷 Eritreia · +291"
+                      - option "🇸🇰 Eslováquia · +421"
+                      - option "🇸🇮 Eslovênia · +386"
+                      - option "🇪🇸 Espanha · +34"
+                      - option "🇸🇿 Essuatíni · +268"
+                      - option "🇺🇸 Estados Unidos · +1"
+                      - option "🇪🇪 Estônia · +372"
+                      - option "🇪🇹 Etiópia · +251"
+                      - option "🇫🇯 Fiji · +679"
+                      - option "🇵🇭 Filipinas · +63"
+                      - option "🇫🇮 Finlândia · +358"
+                      - option "🇫🇷 França · +33" [selected]
+                      - option "🇬🇦 Gabão · +241"
+                      - option "🇬🇲 Gâmbia · +220"
+                      - option "🇬🇭 Gana · +233"
+                      - option "🇬🇪 Geórgia · +995"
+                      - option "🇬🇮 Gibraltar · +350"
+                      - option "🇬🇩 Granada · +1473"
+                      - option "🇬🇷 Grécia · +30"
+                      - option "🇬🇱 Groenlândia · +299"
+                      - option "🇬🇵 Guadalupe · +590"
+                      - option "🇬🇺 Guam · +1671"
+                      - option "🇬🇹 Guatemala · +502"
+                      - option "🇬🇬 Guernsey · +44"
+                      - option "🇬🇾 Guiana · +592"
+                      - option "🇬🇫 Guiana Francesa · +594"
+                      - option "🇬🇳 Guiné · +224"
+                      - option "🇬🇶 Guiné Equatorial · +240"
+                      - option "🇬🇼 Guiné-Bissau · +245"
+                      - option "🇭🇹 Haiti · +509"
+                      - option "🇭🇳 Honduras · +504"
+                      - option "🇭🇰 Hong Kong · +852"
+                      - option "🇭🇺 Hungria · +36"
+                      - option "🇾🇪 Iêmen · +967"
+                      - option "🇧🇻 Ilha Bouvet · +47"
+                      - option "🇨🇽 Ilha Christmas · +61"
+                      - option "🇮🇲 Ilha de Man · +44"
+                      - option "🇳🇫 Ilha Norfolk · +672"
+                      - option "🇰🇾 Ilhas Cayman · +1345"
+                      - option "🇨🇨 Ilhas Cocos (Keeling) · +61"
+                      - option "🇨🇰 Ilhas Cook · +682"
+                      - option "🇫🇴 Ilhas Faroé · +298"
+                      - option "🇬🇸 Ilhas Geórgia do Sul e Sandwich do Sul · +500"
+                      - option "🇫🇰 Ilhas Malvinas (Ilhas Falkland) · +500"
+                      - option "🇲🇵 Ilhas Marianas do Norte · +1670"
+                      - option "🇲🇭 Ilhas Marshall · +692"
+                      - option "🇺🇲 Ilhas Menores Distantes dos EUA · +268"
+                      - option "🇵🇳 Ilhas Pitcairn · +64"
+                      - option "🇸🇧 Ilhas Salomão · +677"
+                      - option "🇹🇨 Ilhas Turcas e Caicos · +1649"
+                      - option "🇻🇮 Ilhas Virgens Americanas · +1340"
+                      - option "🇻🇬 Ilhas Virgens Britânicas · +1284"
+                      - option "🇮🇳 Índia · +91"
+                      - option "🇮🇩 Indonésia · +62"
+                      - option "🇮🇷 Irã · +98"
+                      - option "🇮🇶 Iraque · +964"
+                      - option "🇮🇪 Irlanda · +353"
+                      - option "🇮🇸 Islândia · +354"
+                      - option "🇮🇱 Israel · +972"
+                      - option "🇮🇹 Itália · +39"
+                      - option "🇯🇲 Jamaica · +1876"
+                      - option "🇯🇵 Japão · +81"
+                      - option "🇯🇪 Jersey · +44"
+                      - option "🇯🇴 Jordânia · +962"
+                      - option "🇽🇰 Kosovo · +383"
+                      - option "🇰🇼 Kuwait · +965"
+                      - option "🇱🇦 Laos · +856"
+                      - option "🇱🇸 Lesoto · +266"
+                      - option "🇱🇻 Letônia · +371"
+                      - option "🇱🇧 Líbano · +961"
+                      - option "🇱🇷 Libéria · +231"
+                      - option "🇱🇾 Líbia · +218"
+                      - option "🇱🇮 Liechtenstein · +423"
+                      - option "🇱🇹 Lituânia · +370"
+                      - option "🇱🇺 Luxemburgo · +352"
+                      - option "🇲🇴 Macau · +853"
+                      - option "🇲🇰 Macedônia do Norte · +389"
+                      - option "🇲🇬 Madagascar · +261"
+                      - option "🇲🇾 Malásia · +60"
+                      - option "🇲🇼 Malaui · +265"
+                      - option "🇲🇻 Maldivas · +960"
+                      - option "🇲🇱 Mali · +223"
+                      - option "🇲🇹 Malta · +356"
+                      - option "🇲🇦 Marrocos · +212"
+                      - option "🇲🇶 Martinica · +596"
+                      - option "🇲🇺 Maurício · +230"
+                      - option "🇲🇷 Mauritânia · +222"
+                      - option "🇾🇹 Mayotte · +262"
+                      - option "🇲🇽 México · +52"
+                      - option "🇲🇲 Mianmar (Birmânia) · +95"
+                      - option "🇫🇲 Micronésia · +691"
+                      - option "🇲🇿 Moçambique · +258"
+                      - option "🇲🇩 Moldávia · +373"
+                      - option "🇲🇨 Mônaco · +377"
+                      - option "🇲🇳 Mongólia · +976"
+                      - option "🇲🇪 Montenegro · +382"
+                      - option "🇲🇸 Montserrat · +1664"
+                      - option "🇳🇦 Namíbia · +264"
+                      - option "🇳🇷 Nauru · +674"
+                      - option "🇳🇵 Nepal · +977"
+                      - option "🇳🇮 Nicarágua · +505"
+                      - option "🇳🇪 Níger · +227"
+                      - option "🇳🇬 Nigéria · +234"
+                      - option "🇳🇺 Niue · +683"
+                      - option "🇳🇴 Noruega · +47"
+                      - option "🇳🇨 Nova Caledônia · +687"
+                      - option "🇳🇿 Nova Zelândia · +64"
+                      - option "🇴🇲 Omã · +968"
+                      - option "🇳🇱 Países Baixos · +31"
+                      - option "🇧🇶 Países Baixos Caribenhos · +599"
+                      - option "🇵🇼 Palau · +680"
+                      - option "🇵🇸 Palestina · +970"
+                      - option "🇵🇦 Panamá · +507"
+                      - option "🇵🇬 Papua-Nova Guiné · +675"
+                      - option "🇵🇰 Paquistão · +92"
+                      - option "🇵🇾 Paraguai · +595"
+                      - option "🇵🇪 Peru · +51"
+                      - option "🇵🇫 Polinésia Francesa · +689"
+                      - option "🇵🇱 Polônia · +48"
+                      - option "🇵🇷 Porto Rico · +1"
+                      - option "🇵🇹 Portugal · +351"
+                      - option "🇰🇪 Quênia · +254"
+                      - option "🇰🇬 Quirguistão · +996"
+                      - option "🇰🇮 Quiribati · +686"
+                      - option "🇬🇧 Reino Unido · +44"
+                      - option "🇨🇫 República Centro-Africana · +236"
+                      - option "🇨🇬 República do Congo · +242"
+                      - option "🇩🇴 República Dominicana · +1"
+                      - option "🇷🇪 Reunião · +262"
+                      - option "🇷🇴 Romênia · +40"
+                      - option "🇷🇼 Ruanda · +250"
+                      - option "🇷🇺 Rússia · +7"
+                      - option "🇪🇭 Saara Ocidental · +2"
+                      - option "🇼🇸 Samoa · +685"
+                      - option "🇦🇸 Samoa Americana · +1684"
+                      - option "🇸🇲 San Marino · +378"
+                      - option "🇸🇭 Santa Helena · +2"
+                      - option "🇱🇨 Santa Lúcia · +1758"
+                      - option "🇧🇱 São Bartolomeu · +590"
+                      - option "🇰🇳 São Cristóvão e Névis · +1869"
+                      - option "🇲🇫 São Martinho · +590"
+                      - option "🇵🇲 São Pedro e Miquelão · +508"
+                      - option "🇸🇹 São Tomé e Príncipe · +239"
+                      - option "🇻🇨 São Vicente e Granadinas · +1784"
+                      - option "🇸🇨 Seicheles · +248"
+                      - option "🇸🇳 Senegal · +221"
+                      - option "🇸🇱 Serra Leoa · +232"
+                      - option "🇷🇸 Sérvia · +381"
+                      - option "🇸🇬 Singapura · +65"
+                      - option "🇸🇽 Sint Maarten · +1721"
+                      - option "🇸🇾 Síria · +963"
+                      - option "🇸🇴 Somália · +252"
+                      - option "🇱🇰 Sri Lanka · +94"
+                      - option "🇸🇩 Sudão · +249"
+                      - option "🇸🇸 Sudão do Sul · +211"
+                      - option "🇸🇪 Suécia · +46"
+                      - option "🇨🇭 Suíça · +41"
+                      - option "🇸🇷 Suriname · +597"
+                      - option "🇸🇯 Svalbard e Jan Mayen · +4779"
+                      - option "🇹🇯 Tadjiquistão · +992"
+                      - option "🇹🇭 Tailândia · +66"
+                      - option "🇹🇼 Taiwan · +886"
+                      - option "🇹🇿 Tanzânia · +255"
+                      - option "🇨🇿 Tchéquia · +420"
+                      - option "🇮🇴 Território Britânico do Oceano Índico · +246"
+                      - option "🇹🇫 Territórios Franceses do Sul · +262"
+                      - option "🇹🇱 Timor-Leste · +670"
+                      - option "🇹🇬 Togo · +228"
+                      - option "🇹🇰 Tokelau · +690"
+                      - option "🇹🇴 Tonga · +676"
+                      - option "🇹🇹 Trinidad e Tobago · +1868"
+                      - option "🇹🇳 Tunísia · +216"
+                      - option "🇹🇲 Turcomenistão · +993"
+                      - option "🇹🇷 Turquia · +90"
+                      - option "🇹🇻 Tuvalu · +688"
+                      - option "🇺🇦 Ucrânia · +380"
+                      - option "🇺🇬 Uganda · +256"
+                      - option "🇺🇾 Uruguai · +598"
+                      - option "🇺🇿 Uzbequistão · +998"
+                      - option "🇻🇺 Vanuatu · +678"
+                      - option "🇻🇪 Venezuela · +58"
+                      - option "🇻🇳 Vietnã · +84"
+                      - option "🇼🇫 Wallis e Futuna · +681"
+                      - option "🇿🇲 Zâmbia · +260"
+                      - option "🇿🇼 Zimbábue · +263"
+                - paragraph [ref=f2e68]: O idioma, a moeda e o país são definidos aqui e o cliente já abre o link com tudo certo — o indicativo do telefone vem do país (+33). Pode trocar, mas por omissão vê o que faz sentido no mercado dele.
+                - paragraph [ref=f2e69]: "Não há aqui nenhum valor a cobrar: o link de pagamento é gerado automaticamente depois de o cliente escolher uma opção e preencher os dados de todos os passageiros. Até aí não há montante nem passageiro a quem o cobrar."
+              - generic [ref=f2e70]:
+                - heading "Link gerado" [level=4] [ref=f2e72]
+                - generic [ref=f2e74]:
+                  - text: Endereço
+                  - generic [ref=f2e75]:
+                    - code [ref=f2e76]: http://localhost:3000/pc?lang=fr&currency=EUR&country=FR&agent=nelida
+                    - button "Copiar" [ref=f2e77] [cursor=pointer]
+                - generic [ref=f2e78]:
+                  - text: Mensagem pronta a colar
+                  - textbox [ref=f2e80]: "Bonjour ! Je suis Nélida Fortes, de WeeFly. Pour que je puisse chercher les meilleurs tarifs pour votre voyage, remplissez les détails ici — moins d'une minute, sans engagement : http://localhost:3000/pc?lang=fr&currency=EUR&country=FR&agent=nelida Je vous réponds ici avec les options."
+                  - generic [ref=f2e81]:
+                    - button "Copiar mensagem" [ref=f2e82] [cursor=pointer]
+                    - button "Abrir no WhatsApp" [ref=f2e83] [cursor=pointer]
+                - generic [ref=f2e84]:
+                  - text: Só o link
+                  - generic [ref=f2e85]:
+                    - code [ref=f2e86]: http://localhost:3000/pc
+                    - button "Copiar" [ref=f2e87] [cursor=pointer]
+                  - paragraph [ref=f2e88]: Sem parâmetros. O cliente escolhe idioma e moeda, e o caso entra sem vendedor atribuído.
+            - button "Fechar" [ref=f2e90] [cursor=pointer]
+          - button "FR Fábio Rocha" [ref=f2e92] [cursor=pointer]:
+            - generic [ref=f2e93]: FR
+            - generic [ref=f2e94]: Fábio Rocha
+    - button "ao vivo" [ref=f2e226] [cursor=pointer]
+    - generic [ref=f2e100]:
+      - generic [ref=f2e101]:
+        - generic [ref=f2e102]:
+          - paragraph [ref=f2e103]:
+            - link "Price Checker" [ref=f2e104] [cursor=pointer]:
+              - /url: /admin/price-checker
+            - text: ·
+            - link "Casos" [ref=f2e105] [cursor=pointer]:
+              - /url: /admin/price-checker?tab=tudo
+          - heading "ivandro teste 8 WF-2609-0055 Fechado" [level=2] [ref=f2e227]:
+            - text: ivandro teste 8
+            - generic [ref=f2e107]: WF-2609-0055
+            - generic [ref=f2e108]: Fechado
+          - generic [ref=f2e110]:
+            - generic [ref=f2e111]:
+              - generic [ref=f2e112]: Entrada
+              - text: Link · sem agente
+            - generic [ref=f2e113]:
+              - generic [ref=f2e114]: Mercado e moeda
+              - text: 🇨🇻 Cabo Verde · EUR ·
+              - generic [ref=f2e115]: lang=en
+            - generic [ref=f2e116]:
+              - generic [ref=f2e117]: Vendedor
+              - combobox [ref=f2e118]:
+                - option "sem vendedor" [selected]
+                - option "Dominik"
+                - option "Fábio Rocha"
+                - option "WeeFly Admin"
+            - generic [ref=f2e119]:
+              - generic [ref=f2e120]: Submetido
+              - text: 01/09/2026, 15:16 ·
+              - generic [ref=f2e121]: há 2d 00h
+        - generic [ref=f2e122]:
+          - link "Ver como cliente" [ref=f2e123] [cursor=pointer]:
+            - /url: /pc/OGcB-9GAUsv0OhAB-WBZDs4XbBlJx5s7
+          - link "WhatsApp" [ref=f2e124] [cursor=pointer]:
+            - /url: https://wa.me/2389800700?text=Ol%C3%A1%20ivandro%2C%20sobre%20o%20pedido%20WF-2609-0055%3A
+          - button "Avisar cliente" [ref=f2e125] [cursor=pointer]
+          - button "Reabrir caso" [ref=f2e228] [cursor=pointer]
+      - generic [ref=f2e229]: Caso fechado. Saiu das filas de trabalho.
+      - tablist [ref=f2e127]:
+        - tab "Pedido" [selected] [ref=f2e128] [cursor=pointer]
+        - tab "Propostas 1" [ref=f2e129] [cursor=pointer]:
+          - text: Propostas
+          - generic [ref=f2e130]: "1"
+        - tab "Passageiros 1" [ref=f2e131] [cursor=pointer]:
+          - text: Passageiros
+          - generic [ref=f2e132]: "1"
+        - tab "Pagamento" [ref=f2e133] [cursor=pointer]
+        - tab "Emissão" [ref=f2e134] [cursor=pointer]
+        - tab "Comunicações 15" [ref=f2e135] [cursor=pointer]:
+          - text: Comunicações
+          - generic [ref=f2e136]: "15"
+        - tab "Registo 10" [ref=f2e230] [cursor=pointer]:
+          - text: Registo
+          - generic [ref=f2e138]: "10"
+    - generic [ref=f2e139]:
+      - complementary [ref=f2e140]:
+        - heading "Pedido do cliente" [level=3] [ref=f2e142]
+        - generic [ref=f2e143]:
+          - generic [ref=f2e144]:
+            - generic [ref=f2e145]:
+              - generic [ref=f2e146]: SID
+              - generic [ref=f2e147]: SID
+            - generic [ref=f2e148]: →
+            - generic [ref=f2e149]:
+              - generic [ref=f2e150]: RAI
+              - generic [ref=f2e151]: RAI
+          - generic [ref=f2e152]:
+            - generic [ref=f2e153]: Tipo
+            - generic [ref=f2e154]: Só ida
+          - generic [ref=f2e155]:
+            - generic [ref=f2e156]: Ida
+            - generic [ref=f2e157]: 29/09/2026
+          - generic [ref=f2e158]:
+            - generic [ref=f2e159]: Adultos
+            - generic [ref=f2e160]: "1"
+          - generic [ref=f2e161]:
+            - generic [ref=f2e162]: Crianças 2–11
+            - generic [ref=f2e163]: "0"
+          - generic [ref=f2e164]:
+            - generic [ref=f2e165]: Bebés
+            - generic [ref=f2e166]: 0 c/ assento · 0 colo
+          - generic [ref=f2e167]:
+            - generic [ref=f2e168]: Classe
+            - generic [ref=f2e169]: Económica
+          - generic [ref=f2e170]:
+            - generic [ref=f2e171]: Bagagem de porão
+            - generic [ref=f2e172]: 1 mala
+          - generic [ref=f2e173]:
+            - text: Pedidos especiais do cliente
+            - paragraph [ref=f2e174]: yes i wanto to teste if this messagem...
+      - main [ref=f2e175]:
+        - generic [ref=f2e176]:
+          - heading "Contacto" [level=3] [ref=f2e178]
+          - generic [ref=f2e180]:
+            - generic [ref=f2e181]:
+              - generic [ref=f2e182]: Nome completo
+              - textbox [ref=f2e183]: ivandro teste 8
+            - generic [ref=f2e184]:
+              - generic [ref=f2e185]: Telefone · WhatsApp
+              - textbox [ref=f2e186]: +238 9800700
+            - generic [ref=f2e187]:
+              - generic [ref=f2e188]: Email
+              - textbox [ref=f2e189]: bebikov668@mapsguy.com
+            - generic [ref=f2e190]:
+              - generic [ref=f2e191]: Consentimento
+              - textbox [ref=f2e192]: 03/09/2026, 11:05 · 41.74.128.185 · Mozilla/5.0 (Macintosh; Intel Mac OS X 1
+        - generic [ref=f2e193]:
+          - generic [ref=f2e194]:
+            - heading "Rota e datas" [level=3] [ref=f2e195]
+            - generic [ref=f2e196]: as datas vêm do pedido e são editáveis
+          - generic [ref=f2e197]:
+            - generic [ref=f2e198]:
+              - generic [ref=f2e199]:
+                - generic [ref=f2e200]: Origem
+                - textbox [disabled] [ref=f2e201]: SID
+              - generic [ref=f2e202]:
+                - generic [ref=f2e203]: Destino
+                - textbox [disabled] [ref=f2e204]: RAI
+              - generic [ref=f2e205]:
+                - generic [ref=f2e206]: Ida
+                - textbox [ref=f2e207]: 2026-09-30
+                - generic [ref=f2e208]: "pedido: 30/09/2026"
+              - generic [ref=f2e209]:
+                - generic [ref=f2e210]: Volta
+                - textbox [disabled] [ref=f2e211]
+                - generic [ref=f2e212]: viagem só de ida
+            - paragraph [ref=f2e213]: "A origem e o destino não são editáveis por nenhum perfil do back-office: uma rota diferente é um pedido diferente. Tipo de viagem: Só ida."
+        - generic [ref=f2e215]:
+          - generic [ref=f2e216]:
+            - heading "Notas internas" [level=3] [ref=f2e217]
+            - generic [ref=f2e218]: só a equipa vê
+          - generic [ref=f2e219]:
+            - generic [ref=f2e220]:
+              - textbox "O que ficou combinado no WhatsApp. Só a equipa vê." [ref=f2e221]
+              - generic [ref=f2e222]: A conversa de WhatsApp não fica guardada no sistema. Registe aqui o que importa para o caso.
+            - button "Guardar no caso" [disabled] [ref=f2e224]
+  - alert [ref=f2e231]
+  - generic [ref=f2e234] [cursor=pointer]:
+    - generic [ref=f2e237]: 1 error
+    - button "Hide Errors" [ref=f2e238]
