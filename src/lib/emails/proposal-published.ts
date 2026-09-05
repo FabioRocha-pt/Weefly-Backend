@@ -23,6 +23,7 @@ import {
   MUTED,
   SURFACE_ALT,
   escapeHtml,
+  masthead,
 } from "./shared"
 import {
   type Offer,
@@ -72,20 +73,72 @@ function paxLine(pax: PaxCounts, t: Translator): string {
   return parts.join(" · ")
 }
 
-/** "08:40 RAI → 14:15 BOS · 10h 35m · 1 escala · SID 1h 20m" */
-function legLine(offer: Offer, direction: "ida" | "volta"): string | null {
+/**
+ * T-16 · "a data aparece, não só a hora — hoje só aparece uma hora, o que é
+ * inutilizável".
+ *
+ * Era `08:40 RAI → 14:15 BOS`. Numa proposta com duas opções para datas
+ * diferentes — que é metade das propostas — quatro horas soltas não dizem a
+ * ninguém em que dia se viaja. E este é o email a partir do qual o cliente
+ * escolhe.
+ *
+ * A data vai à frente da hora de partida e, quando a chegada cai noutro dia, a
+ * de chegada também. O `+1` sozinho é uma convenção de quem trabalha com
+ * bilhetes; escrever o dia é o que se lê sem a conhecer.
+ *
+ * "sáb, 12 set · 08:40 RAI → dom, 13 set · 06:15 BOS · 21h 35m · 1 escala"
+ */
+function legLine(
+  offer: Offer,
+  direction: "ida" | "volta",
+  locale: Locale
+): string | null {
   const segments = legsOf(offer)[direction]
   if (segments.length === 0) return null
   const first = segments[0]
   const last = segments[segments.length - 1]
+
+  const departDay = dayOf(first.depart_at, locale)
+  const arriveDay = dayOf(last.arrive_at, locale)
+  /* O dia da chegada só se escreve quando é outro: repeti-lo em todos os voos
+     directos seria ruído em cima da informação. */
+  const arrivePrefix =
+    arriveDay && departDay && arriveDay !== departDay ? `${arriveDay} · ` : ""
+
   return [
-    `${timeOf(first.depart_at)} ${first.origin ?? "—"} → ${timeOf(last.arrive_at)} ${last.destination ?? "—"}`,
+    `${departDay ? `${departDay} · ` : ""}${timeOf(first.depart_at)} ${first.origin ?? "—"} → ${arrivePrefix}${timeOf(last.arrive_at)} ${last.destination ?? "—"}`,
     formatDuration(legMinutes(segments)),
     stopsLabel(segments),
   ].join(" · ")
 }
 
-function offerCard(offer: Offer, data: ProposalEmailData, t: Translator): string {
+/**
+ * "sáb, 12 set" — o dia, na língua de quem lê.
+ *
+ * As horas em `case_offer_segments` são horas locais do aeroporto, guardadas
+ * como `YYYY-MM-DDTHH:mm` sem fuso (ver a migração 0005). Por isso a data é
+ * lida da string e montada em UTC: passá-la por um `new Date()` local mudaria o
+ * dia para quem abrisse o email do outro lado do Atlântico, que é exactamente
+ * quem esta agência serve.
+ */
+function dayOf(value: string | null, locale: Locale): string {
+  if (!value) return ""
+  const day = value.slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return ""
+  return new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(new Date(`${day}T00:00:00Z`))
+}
+
+function offerCard(
+  offer: Offer,
+  data: ProposalEmailData,
+  t: Translator,
+  locale: Locale
+): string {
   const total = formatMoney(offerTotal(offer, data.pax), data.currency)
   const badges = [
     offer.is_recommended ? t("proposal.badgeRecommended") : null,
@@ -102,7 +155,7 @@ function offerCard(offer: Offer, data: ProposalEmailData, t: Translator): string
 
   const legs = (["ida", "volta"] as const)
     .map((d) => {
-      const line = legLine(offer, d)
+      const line = legLine(offer, d, locale)
       if (!line) return ""
       const label = t(d === "ida" ? "legs.outbound" : "legs.inbound")
       return `<tr>
@@ -176,19 +229,14 @@ export function buildProposalPublishedEmail(
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SURFACE_ALT};padding:32px 16px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${BORDER};">
-        <tr>
-          <td style="background:${EMBER_RED};padding:28px 32px;">
-            <span style="font-size:22px;font-weight:800;letter-spacing:-0.02em;color:#ffffff;">WeeFly</span>
-            <span style="font-size:12px;font-weight:700;color:#ffffff;opacity:0.85;margin-left:8px;text-transform:uppercase;letter-spacing:0.08em;">Concierge</span>
-          </td>
-        </tr>
+        ${masthead(data.reference)}
 
         <tr>
           <td style="padding:36px 32px 4px;">
             <h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:${INK};letter-spacing:-0.02em;">
               ${escapeHtml(data.revision > 1 ? t("email.proposalHeadingRevised") : t("email.proposalHeading", { count }))}
             </h1>
-            <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:${EMBER_RED};">${route}${data.reference ? ` · ${escapeHtml(data.reference)}` : ""}</p>
+            <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:${EMBER_RED};">${route}</p>
             <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${MUTED};">
               ${t("email.proposalHello", { name: `<strong style="color:${INK};">${name}</strong>`, intro: escapeHtml(intro) })}
             </p>
@@ -210,7 +258,7 @@ export function buildProposalPublishedEmail(
 
         <tr>
           <td style="padding:8px 32px 0;">
-            ${data.offers.map((o) => offerCard(o, data, t)).join("")}
+            ${data.offers.map((o) => offerCard(o, data, t, locale)).join("")}
           </td>
         </tr>
 
@@ -255,8 +303,8 @@ export function buildProposalPublishedEmail(
       const lines = [
         `— ${offer.name || t("email.proposalUnnamed")} — ${formatMoney(offerTotal(offer, data.pax), data.currency)}`,
       ]
-      const ida = legLine(offer, "ida")
-      const volta = legLine(offer, "volta")
+      const ida = legLine(offer, "ida", locale)
+      const volta = legLine(offer, "volta", locale)
       if (ida) lines.push(`  ${t("legs.outbound")}: ${ida}`)
       if (volta) lines.push(`  ${t("legs.inbound")}: ${volta}`)
       if (offer.agent_note) lines.push(`  ${offer.agent_note}`)
