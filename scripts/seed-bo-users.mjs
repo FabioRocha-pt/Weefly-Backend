@@ -32,12 +32,18 @@ const ROOT = process.cwd()
 const ENV_LOCAL = resolve(ROOT, ".env.local")
 
 /* ── contas ───────────────────────────────────────────────────────────────
-   A lista está aqui e não num ficheiro de configuração de propósito: são duas
-   pessoas nomeadas, e acrescentar uma terceira deve custar um commit revisto,
-   não uma variável de ambiente que ninguém vê. */
+   A lista está aqui e não num ficheiro de configuração de propósito: são
+   pessoas nomeadas, e acrescentar mais uma deve custar um commit revisto, não
+   uma variável de ambiente que ninguém vê.
+
+   `fapirocha@gmail.com` (sem ponto) não está aqui de propósito. É uma conta em
+   uso diário e já com password própria; pô-la nesta lista fazia com que cada
+   corrida deste script a trocasse por baixo de quem está a usá-la. Entra pela
+   allowlist (migração 0018) e já era `platform_staff`. */
 const ACCOUNTS = [
   { email: "fapi.rocha@gmail.com", label: "Fábio Rocha",  envKey: "BO_PASSWORD_FAPI_ROCHA" },
   { email: "gocgo2008@gmail.com",  label: "WeeFly Admin", envKey: "BO_PASSWORD_GOCGO2008" },
+  { email: "ivandrodebarros@gmail.com", label: "Ivandro de Barros", envKey: "BO_PASSWORD_IVANDRO" },
 ]
 
 // ── env ─────────────────────────────────────────────────────────────────────

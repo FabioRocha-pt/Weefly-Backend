@@ -48,11 +48,36 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const token = process.env.CONCIERGE_DIAGNOSE_TOKEN
 
+  const given = searchParams.get("token")
   const authorized =
     process.env.NODE_ENV !== "production" ||
-    (Boolean(token) && searchParams.get("token") === token)
+    (Boolean(token) && given === token)
 
   if (!authorized) {
+    /*
+     * O 404 não distingue "sem token configurado" de "token errado", e é
+     * deliberado: a rota envia email a sério com `?send=`, e uma resposta que
+     * diferencie os dois casos diz a quem tenta que ela existe.
+     *
+     * Mas quem opera o servidor precisa de saber qual dos dois é — houve uma
+     * tarde perdida a olhar para o mesmo 404 sem saber se a variável não tinha
+     * chegado ao processo ou se o valor não batia. A distinção vai para o log,
+     * que só quem tem acesso à máquina lê, e nunca para a resposta.
+     */
+    if (!token) {
+      console.warn(
+        "[diagnose] CONCIERGE_DIAGNOSE_TOKEN não está definida neste processo — a rota responde 404 em produção. Se a acabou de acrescentar no painel, reinicie a aplicação: as variáveis são lidas no arranque."
+      )
+    } else if (given === null) {
+      console.warn("[diagnose] pedido sem ?token= — 404.")
+    } else {
+      console.warn(
+        "[diagnose] o ?token= não corresponde. Recebido %d caracteres, esperado %d — se os números batem, procure um espaço no início ou no fim do valor no painel.",
+        given.length,
+        token.length
+      )
+    }
+
     return new NextResponse("Not found", { status: 404 })
   }
 
