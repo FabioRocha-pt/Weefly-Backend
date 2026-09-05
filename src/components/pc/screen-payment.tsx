@@ -26,7 +26,12 @@
 import { useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
-import { declarePcPaid, setPcPayMethod, uploadPcProof } from "@/actions/pc"
+import {
+  declarePcPaid,
+  sendPcMessage,
+  setPcPayMethod,
+  uploadPcProof,
+} from "@/actions/pc"
 import type { PcState } from "@/lib/pc/state"
 import {
   PAY_METHODS,
@@ -41,10 +46,13 @@ import { money } from "@/lib/pc/format"
 import { IcFile, IcWa, MethodIcon, Rows } from "@/components/pc/bits"
 import { CopyButton, WaButton, useToast } from "@/components/pc/chrome"
 import { PickedOption } from "@/components/pc/picked-option"
+import { useI18n, useT } from "@/i18n/provider"
+import { methodLabel } from "@/lib/pc/catalog"
 
 export function ScreenP7Pay({ state }: { state: PcState }) {
   const router = useRouter()
   const toast = useToast()
+  const t = useT()
   const [pending, startTransition] = useTransition()
 
   const payment = state.payment
@@ -80,11 +88,9 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
     return (
       <main className="shell view">
         <div className="card">
-          <h2>Almost there</h2>
+          <h2>{t("pc.pay.preparingTitle")}</h2>
           <p className="mnote" style={{ marginTop: 8 }}>
-            We are preparing the payment details for your trip. Refresh this page
-            in a moment — if it stays like this, message us on WhatsApp and we
-            will send the instructions by hand.
+            {t("pc.pay.preparing")}
           </p>
         </div>
         <div className="spacer" />
@@ -119,11 +125,11 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
   function takeFile(candidate: File | null | undefined) {
     if (!candidate) return
     if (candidate.size > PROOF_MAX_BYTES) {
-      setError("That file is over 8 MB")
+      setError(t("pc.pay.fileTooBig"))
       return
     }
     if (!["application/pdf", "image/jpeg", "image/png"].includes(candidate.type)) {
-      setError("Send a JPG, a PNG or a PDF")
+      setError(t("pc.pay.fileWrongType"))
       return
     }
     setError(null)
@@ -132,7 +138,7 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
 
   function sendProof() {
     if (!file) {
-      setError("Attach the proof of your transfer so we can match the payment")
+      setError(t("pc.pay.attachProof"))
       return
     }
     const data = new FormData()
@@ -146,7 +152,7 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
         setError(result.error)
         return
       }
-      toast("Proof received — we are checking it")
+      toast(t("pc.pay.proofReceived"))
       router.refresh()
     })
   }
@@ -163,7 +169,7 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
          monta o link ou a referência à mão. Prometer "página segura aberta" ou
          "pedido enviado para o seu telefone" era descrever automatismos que não
          existem. */
-      toast("Thanks — we are preparing your payment details")
+      toast(t("pc.pay.detailsComing"))
       router.refresh()
     })
   }
@@ -171,14 +177,13 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
   return (
     <main className="shell view">
       <section className="hero">
-        <span className="eyebrow">Step 6 · last one</span>
+        <span className="eyebrow">{t("pc.pay.eyebrow")}</span>
         <h1>
-          How would you like <em>to pay</em>?
+          {t("pc.pay.headingBefore")}
+          <em>{t("pc.pay.headingEm")}</em>
+          {t("pc.pay.headingAfter")}
         </h1>
-        <p>
-          Passenger details are saved. Pay by the method that suits you and send us
-          the proof — we issue the tickets once the payment is confirmed.
-        </p>
+        <p>{t("pc.pay.intro")}</p>
       </section>
 
       <PickedOption state={state} />
@@ -187,15 +192,19 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
         <div className="banner warn" style={{ marginTop: 12 }}>
           <span className="ic">!</span>
           <div>
-            <b>We could not match your last proof</b>
-            <p>{payment.proof_rejected_reason} — please send another one.</p>
+            <b>{t("pc.pay.proofRejected")}</b>
+            <p>
+              {t("pc.pay.proofRejectedNote", {
+                reason: payment.proof_rejected_reason,
+              })}
+            </p>
           </div>
         </div>
       )}
 
       <div className="card">
         <div className="sechead">
-          <h3>How would you like to pay?</h3>
+          <h3>{t("pc.pay.howToPay")}</h3>
           <span className="rt">
             {countryName(country, state.contact.locale)} · {currency}
           </span>
@@ -204,12 +213,7 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
             contrário saiu com ela. O que o cliente precisa de saber agora é
             outra coisa: que alguém prepara isto à mão, e por isso não é
             instantâneo. */}
-        <p className="mnote">
-          Choose how you would like to pay and we will send you the link or the
-          reference for that method. One of us prepares it by hand — if you
-          don&apos;t see the method you want, tell us on WhatsApp and we&apos;ll
-          arrange it.
-        </p>
+        <p className="mnote">{t("pc.pay.chooseNote")}</p>
 
         <div className="mlist">
           {methods.map((entry) => (
@@ -262,23 +266,25 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
 
       <div className="card">
         <div className="sechead">
-          <h3>What happens next</h3>
+          <h3>{t("pc.pay.whatNext")}</h3>
         </div>
         <div className="sumrows">
           <Rows
             rows={[
-              ["Amount", money(total, currency)],
-              ["Reference to quote", state.request.reference],
-              ["We check it", `In business hours, within ${PROOF_REVIEW_HOURS} h`],
-              ["Then", "Tickets by email and in this link"],
+              [t("pc.pay.amount"), money(total, currency)],
+              [t("pc.pay.quoteReference"), state.request.reference],
+              [
+                t("pc.pay.weCheck"),
+                t("pc.pay.weCheckValue", { hours: PROOF_REVIEW_HOURS }),
+              ],
+              [t("pc.pay.then"), t("pc.pay.thenValue")],
             ]}
           />
         </div>
         <p className="notice" style={{ marginTop: 12 }}>
-          A payment is only confirmed by a person on our side, after seeing it in
-          the account. <b>Until then the price is held, not charged</b> — and if we
-          do not confirm within {PROOF_REVIEW_HOURS} hours the window closes and we
-          quote you again.
+          {t("pc.pay.onlyPersonBefore")}
+          <b>{t("pc.pay.onlyPersonBold")}</b>
+          {t("pc.pay.onlyPersonAfter", { hours: PROOF_REVIEW_HOURS })}
         </p>
       </div>
 
@@ -300,25 +306,112 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
           style={{ width: "100%" }}
           href={`/pc/${state.token}?view=p7`}
         >
-          Check the passenger details again
+          {t("pc.pay.checkPassengers")}
         </a>
       </div>
 
-      {/* O WhatsApp deixa de estar condicionado à via: quem precisa de ajuda
-          precisa dela em qualquer uma das cinco. A frase que mandava escolher
-          "Bank transfer" para anexar um recibo saiu com a transferência. */}
+      {/*
+        T-18 · escrever-nos, e ficar escrito no caso.
+
+        O WhatsApp continua aqui — quem precisa de ajuda precisa dela em
+        qualquer uma das cinco vias — mas tem um defeito que só se nota do outro
+        lado: a mensagem chega a um telemóvel e não chega ao caso. Este campo
+        chega. "Paguei pelo Revolut da minha irmã, o nome no comprovativo não é
+        o meu" é a frase que evita uma hora de investigação, e tem de estar no
+        sítio onde essa investigação começa.
+      */}
+      <MessageToWeefly token={state.token} />
+
       <div className="card tight" style={{ marginTop: 12 }}>
         <WaButton reference={state.request.reference}>
           <IcWa />
-          I need help with the payment
+          {t("pc.pay.needHelp")}
         </WaButton>
-        <p className="subnote">
-          One of us sets up the payment details by hand — if anything looks wrong,
-          tell us here before you pay.
-        </p>
+        <p className="subnote">{t("pc.pay.needHelpNote")}</p>
       </div>
       <div className="spacer" />
     </main>
+  )
+}
+
+// ── T-18 · a mensagem à WeeFly ───────────────────────────────────────────────
+
+/**
+ * Um campo, um botão, e uma confirmação que não desaparece.
+ *
+ * A confirmação fica no lugar do formulário em vez de ser um toast: um toast
+ * some ao fim de dois segundos e quem escreveu uma frase importante quer ver
+ * que ela ficou. O botão "write another" está lá para quem se lembrou de mais
+ * uma coisa.
+ */
+function MessageToWeefly({ token }: { token: string }) {
+  const t = useT()
+  const [message, setMessage] = useState("")
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+
+  function send() {
+    setError(null)
+    startTransition(async () => {
+      const result = await sendPcMessage(token, message)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      setSent(true)
+      setMessage("")
+    })
+  }
+
+  return (
+    <div className="card" style={{ marginTop: 12 }}>
+      <div className="sechead">
+        <h3>{t("pc.pay.messageHeading")}</h3>
+      </div>
+
+      {sent ? (
+        <>
+          <div className="mdone">✓ {t("pc.pay.messageSent")}</div>
+          <div className="mrow">
+            <button
+              className="btn btn-ghost btn-sm"
+              type="button"
+              onClick={() => setSent(false)}
+            >
+              {t("pc.pay.messageAnother")}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="mnote">{t("pc.pay.messageNote")}</p>
+          <textarea
+            className="ta"
+            rows={3}
+            maxLength={2000}
+            placeholder={t("pc.pay.messagePlaceholder")}
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+          />
+          {error && (
+            <span className="err" style={{ display: "block", marginTop: 8 }}>
+              {error}
+            </span>
+          )}
+          <div className="mrow">
+            <button
+              className="btn btn-sm"
+              type="button"
+              disabled={pending || message.trim().length < 2}
+              onClick={send}
+            >
+              {pending ? t("pc.pay.sending") : t("pc.pay.messageSend")}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -378,6 +471,7 @@ function MethodBody({
   onRemoveFile: () => void
   onSendProof: () => void
 }) {
+  const { locale, t } = useI18n()
   /* As instruções só valem para a via que o agente tinha em mãos quando as
      escreveu. Se o cliente mudar de via depois disso, o que está gravado é de
      outra coisa e não se mostra — pedem-se de novo. */
@@ -385,6 +479,10 @@ function MethodBody({
   const link = forThisMethod ? payment.pay_link : null
   const ref = forThisMethod ? payment.pay_reference : null
   const has = Boolean(link || ref)
+
+  /* T-08 · o nome do método na língua de quem lê. "Vinti4 / 24" é um nome
+     próprio e não se traduz; o que muda é a frase à volta dele. */
+  const methodName = methodLabel(method.id, locale)
 
   const due = payment.pay_due_at
     ? new Date(payment.pay_due_at).toLocaleString(undefined, {
@@ -399,11 +497,11 @@ function MethodBody({
     return (
       <>
         <div className="srow" style={{ borderTop: "1px solid var(--line-soft)" }}>
-          <span className="k">Amount</span>
+          <span className="k">{t("pc.pay.amount")}</span>
           <span className="v mono">{money(total, currency)}</span>
         </div>
         <div className="srow">
-          <span className="k">Reference to quote</span>
+          <span className="k">{t("pc.pay.quoteReference")}</span>
           <span className="v mono">{reference}</span>
         </div>
         <div className="mrow">
@@ -413,18 +511,15 @@ function MethodBody({
             disabled={pending}
             onClick={onDeclare}
           >
-            Send me the {method.t} details
+            {t("pc.pay.sendMeDetails", { method: methodName })}
           </button>
         </div>
         {declared && (
           <div className="mdone">
-            ✓ We are preparing your {method.t} details and will send them here
+            ✓ {t("pc.pay.preparingDetails", { method: methodName })}
           </div>
         )}
-        <p className="mfoot">
-          One of us sets this up by hand, so it is not instant. You will get the
-          details by email and in this link — usually within business hours.
-        </p>
+        <p className="mfoot">{t("pc.pay.byHand")}</p>
       </>
     )
   }
@@ -438,7 +533,7 @@ function MethodBody({
 
       {link && (
         <div className="srow">
-          <span className="k">Payment link</span>
+          <span className="k">{t("pc.pay.paymentLink")}</span>
           <span className="v" style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <a
               href={link}
@@ -449,17 +544,17 @@ function MethodBody({
             >
               {link}
             </a>
-            <CopyButton value={link} label="Copy link" />
+            <CopyButton value={link} label={t("pc.pay.copyLink")} />
           </span>
         </div>
       )}
 
       {ref && (
         <div className="srow">
-          <span className="k">Reference to pay</span>
+          <span className="k">{t("pc.pay.referenceToPay")}</span>
           <span className="v" style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <b className="mono">{ref}</b>
-            <CopyButton value={ref} label="Copy reference" />
+            <CopyButton value={ref} label={t("pc.pay.copyReference")} />
           </span>
         </div>
       )}
@@ -471,7 +566,7 @@ function MethodBody({
 
       {due && (
         <div className="srow">
-          <span className="k">Please pay by</span>
+          <span className="k">{t("pc.pay.payBy")}</span>
           <span className="v">{due}</span>
         </div>
       )}
@@ -520,14 +615,14 @@ function MethodBody({
                 onRemoveFile()
               }}
             >
-              Remove
+              {t("pc.pay.remove")}
             </button>
           </div>
         ) : (
           <>
             <IcFile />
-            <b>Send the proof of your payment</b>
-            <span>JPG, PNG or PDF · up to 8 MB</span>
+            <b>{t("pc.pay.sendProof")}</b>
+            <span>{t("pc.pay.proofTypes")}</span>
           </>
         )}
       </div>
@@ -539,13 +634,12 @@ function MethodBody({
           disabled={pending || !file}
           onClick={onSendProof}
         >
-          {pending ? "Sending…" : "I have paid · send the proof"}
+          {pending ? t("pc.pay.sending") : t("pc.pay.paidSendProof")}
         </button>
       </div>
 
       <p className="mfoot">
-        A payment is only confirmed by a person on our side, after seeing it in
-        the account. We check within {PROOF_REVIEW_HOURS} hours in business hours.
+        {t("pc.pay.confirmedByPerson", { hours: PROOF_REVIEW_HOURS })}
       </p>
     </>
   )

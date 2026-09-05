@@ -8,8 +8,11 @@
  * dois cliques para chegar à única coisa que falta fazer.
  */
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+
+import { boClaimCase } from "@/actions/bo-price-checker"
 
 import type { BoCaseDetail } from "@/lib/pc/bo-queue"
 import type { PaymentProof, PcPayment } from "@/lib/pc/payment"
@@ -17,6 +20,7 @@ import type { PublicProposalView } from "@/lib/proposals"
 import type { CaseEvent } from "@/lib/case-events"
 import type { CaseNotification } from "@/lib/notifications"
 import type { CasePassenger, LinkState } from "@/lib/case-status"
+import type { PassengerBaggage, SegmentIssuance } from "@/lib/issuance"
 import { fareAgeChange } from "@/lib/validations"
 import { formatMoney, offerTotal } from "@/lib/proposal-math"
 import { BoPaymentPanel } from "@/components/bo/payment-panel"
@@ -97,6 +101,8 @@ export function BoCaseView({
   notifications,
   sellers,
   seats,
+  segmentIssuance,
+  passengerBaggage,
   hasTicketDocument,
   initialTab,
   viewer,
@@ -109,6 +115,10 @@ export function BoCaseView({
   events: CaseEvent[]
   /** EM-01 · os lugares por passageiro e por voo já gravados. */
   seats: { passenger_id: string; segment_id: string; seat: string | null }[]
+  /** T-04 · os campos do documento já gravados, um por voo. */
+  segmentIssuance: SegmentIssuance[]
+  /** T-04 · a bagagem já gravada, por passageiro e por voo. */
+  passengerBaggage: PassengerBaggage[]
   /** EM-03 · já existe PDF guardado para este caso? */
   hasTicketDocument: boolean
   /** NT-06 · o registo de entrega, que a aba Comunicações mostra. */
@@ -412,18 +422,29 @@ export function BoCaseView({
                   {/* BO-09 · "Compor propostas" passa a "Criar proposta". Uma
                       proposta com várias opções continua a ser uma proposta, e
                       o plural fazia crer que se enviavam várias. */}
-                  {/* C-01 · sem dono, a acção oferecida é reclamar — e é o
-                      compositor que fica atrás dela, não este botão. */}
-                  <Link
-                    className="btn btn-sm btn-primary"
-                    href={`/admin/price-checker/${row.caseId}/ofertas`}
-                  >
-                    {!row.ownerId
-                      ? "Reclamar e cotar"
-                      : proposal
-                        ? "Editar proposta"
-                        : "Criar proposta"}
-                  </Link>
+                  {/*
+                    T-01 · sem dono não há caminho para o compositor.
+
+                    O botão era um link para `/ofertas` com o rótulo trocado. O
+                    endereço abria — e o que aparecia lá era o painel de
+                    reclamar. Funcionava, e continuava a ser uma porta para o
+                    compositor num caso sem dono, que é o que o critério manda
+                    tirar: "nenhum caminho chega ao compositor num caso não
+                    reclamado".
+
+                    Agora reclama-se **aqui**, e só depois se navega. Um caso já
+                    reclamado por outra pessoa nunca chega a mudar de página.
+                  */}
+                  {!row.ownerId ? (
+                    <ClaimAndQuote caseId={row.caseId} />
+                  ) : (
+                    <Link
+                      className="btn btn-sm btn-primary"
+                      href={`/admin/price-checker/${row.caseId}/ofertas`}
+                    >
+                      {proposal ? "Editar proposta" : "Criar proposta"}
+                    </Link>
+                  )}
                   <Link className="btn btn-sm" href={`/pc/${row.token}`} target="_blank">
                     Ver como o cliente vê
                   </Link>
@@ -545,6 +566,8 @@ export function BoCaseView({
               )?.segments ?? []
             }
             savedSeats={seats}
+            savedFlights={segmentIssuance}
+            savedBaggage={passengerBaggage}
             issuance={detail.issuance}
             amount={row.amount}
             currency={row.currency}
@@ -741,6 +764,47 @@ export function BoCaseView({
 }
 
 // ── peças ────────────────────────────────────────────────────────────────────
+
+/**
+ * T-01 · reclamar e cotar, por esta ordem e num gesto só.
+ *
+ * A navegação só acontece se a reclamação passar. Quando outra pessoa chegou
+ * primeiro, o que aparece é a frase que o diz — e não o compositor de um caso
+ * que já não é de quem está a olhar.
+ */
+function ClaimAndQuote({ caseId }: { caseId: string }) {
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <>
+      <button
+        className="btn btn-sm btn-primary"
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          setError(null)
+          startTransition(async () => {
+            const result = await boClaimCase(caseId)
+            if (!result.ok) {
+              setError(result.error)
+              return
+            }
+            router.push(`/admin/price-checker/${caseId}/ofertas`)
+          })
+        }}
+      >
+        {pending ? "A reclamar…" : "Reclamar e cotar"}
+      </button>
+      {error && (
+        <span className="note bad" style={{ width: "100%" }}>
+          {error}
+        </span>
+      )}
+    </>
+  )
+}
 
 function Kv({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
   return (

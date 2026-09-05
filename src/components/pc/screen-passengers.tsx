@@ -28,6 +28,8 @@ import {
 } from "@/lib/pc/format"
 import { PickedOption } from "@/components/pc/picked-option"
 import { useToast } from "@/components/pc/chrome"
+import { useT } from "@/i18n/provider"
+import type { Translator } from "@/i18n/translate"
 
 type Kind = "adult" | "child" | "infant_seat" | "infant_lap"
 
@@ -44,18 +46,18 @@ interface PaxRow {
   issuingCountry: string
 }
 
-const KIND_TITLE: Record<Kind, string> = {
-  adult: "Adult",
-  child: "Child",
-  infant_seat: "Infant",
-  infant_lap: "Infant",
+const KIND_KEY: Record<Kind, string> = {
+  adult: "pc.pax.kind.adult",
+  child: "pc.pax.kind.child",
+  infant_seat: "pc.pax.kind.infant",
+  infant_lap: "pc.pax.kind.infant",
 }
 
-function kindSub(kind: Kind, lead: boolean): string {
-  if (kind === "child") return "Aged 2 to 11 · must travel accompanied"
-  if (kind === "infant_lap") return "Under 2 · on an adult's lap"
-  if (kind === "infant_seat") return "Under 2 · with own seat"
-  return lead ? "Lead passenger · receives all messages" : "Adult passenger"
+function kindSub(kind: Kind, lead: boolean, t: Translator): string {
+  if (kind === "child") return t("pc.pax.sub.child")
+  if (kind === "infant_lap") return t("pc.pax.sub.infantLap")
+  if (kind === "infant_seat") return t("pc.pax.sub.infantSeat")
+  return t(lead ? "pc.pax.sub.lead" : "pc.pax.sub.adult")
 }
 
 /** Quem viaja, na ordem em que o pedido os declarou. */
@@ -68,12 +70,15 @@ function seatKinds(request: PcState["request"]): Kind[] {
   return kinds
 }
 
-const SEX_LABEL: Record<string, string> = { f: "Female", m: "Male" }
+const SEX_KEY: Record<string, string> = { f: "pc.pax.sex.f", m: "pc.pax.sex.m" }
+/* Os tratamentos ficam nas abreviaturas internacionais: e o que vai no
+   bilhete e o que a companhia aceita. */
 const TITLE_LABEL: Record<string, string> = { mr: "Mr", mrs: "Mrs", ms: "Ms" }
 
 export function ScreenP7({ state }: { state: PcState }) {
   const router = useRouter()
   const toast = useToast()
+  const t = useT()
   const [pending, startTransition] = useTransition()
 
   const kinds = useMemo(() => seatKinds(state.request), [state.request])
@@ -137,37 +142,37 @@ export function ScreenP7({ state }: { state: PcState }) {
   const errorsFor = (row: PaxRow): Record<string, string> => {
     const e: Record<string, string> = {}
 
-    if (row.kind === "adult" && !row.title) e.title = "Required"
-    if (row.given.trim().length < 2) e.given = "As in the passport"
-    if (row.surname.trim().length < 2) e.surname = "As in the passport"
+    if (row.kind === "adult" && !row.title) e.title = t("pc.pax.error.required")
+    if (row.given.trim().length < 2) e.given = t("pc.pax.error.asInPassport")
+    if (row.surname.trim().length < 2) e.surname = t("pc.pax.error.asInPassport")
 
-    if (!row.dob) e.dob = "Required"
+    if (!row.dob) e.dob = t("pc.pax.error.required")
     else {
       const age = ageAt(row.dob, travelDate)
-      if (age === null || age < 0) e.dob = "Check this date"
+      if (age === null || age < 0) e.dob = t("pc.pax.error.checkDate")
       else if (row.kind === "adult" && age < 12)
-        e.dob = "An adult is 12 or over on the travel date"
+        e.dob = t("pc.pax.error.adultAge")
       else if (row.kind === "child" && (age < 2 || age > 11))
-        e.dob = "A child is 2 to 11 on the travel date"
+        e.dob = t("pc.pax.error.childAge")
       else if (row.kind !== "adult" && row.kind !== "child" && age >= 2)
-        e.dob = "An infant is under 2 on the travel date"
+        e.dob = t("pc.pax.error.infantAge")
     }
 
-    if (!row.sex) e.sex = "Required"
-    if (!row.nationality) e.nationality = "Required"
+    if (!row.sex) e.sex = t("pc.pax.error.required")
+    if (!row.nationality) e.nationality = t("pc.pax.error.required")
     if (!/^[A-Za-z0-9]{5,12}$/.test(row.passportNumber.trim()))
-      e.passportNumber = "5 to 12 letters or digits"
+      e.passportNumber = t("pc.pax.error.passportFormat")
 
-    if (!row.passportExpiry) e.passportExpiry = "Required"
+    if (!row.passportExpiry) e.passportExpiry = t("pc.pax.error.required")
     else {
       const need = addMonths(lastDate, 6)
       if (row.passportExpiry < lastDate)
-        e.passportExpiry = "This passport expires before the trip"
+        e.passportExpiry = t("pc.pax.error.expiresBefore")
       else if (row.passportExpiry < need)
-        e.passportExpiry = `Must be valid until ${fmtDateY(need)}`
+        e.passportExpiry = t("pc.pax.error.validUntil", { date: fmtDateY(need) })
     }
 
-    if (!row.issuingCountry) e.issuingCountry = "Required"
+    if (!row.issuingCountry) e.issuingCountry = t("pc.pax.error.required")
     return e
   }
 
@@ -184,7 +189,7 @@ export function ScreenP7({ state }: { state: PcState }) {
   const missing = allErrors.flatMap((errors, index) =>
     Object.entries(errors).map(([field, message]) => ({
       target: `pax${index}-${field}`,
-      label: `P${index + 1} ${rows[index].surname || KIND_TITLE[rows[index].kind]} · ${message}`,
+      label: `P${index + 1} ${rows[index].surname || t(KIND_KEY[rows[index].kind])} · ${message}`,
     }))
   )
 
@@ -234,7 +239,7 @@ export function ScreenP7({ state }: { state: PcState }) {
         return
       }
 
-      toast("Passenger details saved")
+      toast(t("pc.pax.saved"))
       /* `replace` e não `refresh`: quem chegou aqui por `?view=p7` (a corrigir um
          nome) tem de sair do parâmetro, ou continuaria a ver o formulário depois
          de o gravar. Sem o parâmetro, o ecrã volta a ser o que o estado manda. */
@@ -246,29 +251,27 @@ export function ScreenP7({ state }: { state: PcState }) {
   return (
     <main className="shell view">
       <section className="hero">
-        <span className="eyebrow">Step 5 · passengers</span>
+        <span className="eyebrow">{t("pc.pax.eyebrow")}</span>
         <h1>
-          Who is <em>travelling</em>?
+          {t("pc.pax.headingBefore")}
+          <em>{t("pc.pax.headingEm")}</em>
+          {t("pc.pax.headingAfter")}
         </h1>
-        <p>
-          Enter the details exactly as they appear in the passport. The payment
-          instructions come on the next screen.
-        </p>
+        <p>{t("pc.pax.intro")}</p>
       </section>
 
       <PickedOption state={state} />
 
       <div className="card">
         <div className="sechead">
-          <h3>Passenger details</h3>
-          <span className="rt">{paxShort(state.request)} · as in the passport</span>
+          <h3>{t("pc.pax.cardTitle")}</h3>
+          <span className="rt">
+            {paxShort(state.request)} · {t("pc.pax.asInPassport")}
+          </span>
         </div>
         <p className="notice">
-          Write the names exactly as they appear in the passport.{" "}
-          <b>
-            After issuing, correcting a name requires a brand new ticket at the
-            airline&apos;s full cost.
-          </b>
+          {t("pc.pax.warnBefore")}
+          <b>{t("pc.pax.warnBold")}</b>
         </p>
 
         {/*
@@ -282,8 +285,8 @@ export function ScreenP7({ state }: { state: PcState }) {
           <div className="notice" role="alert" style={{ marginTop: 10 }}>
             <b>
               {missing.length === 1
-                ? "1 field still to fill in"
-                : `${missing.length} fields still to fill in`}
+                ? t("pc.pax.missingOne")
+                : t("pc.pax.missingMany", { count: missing.length })}
             </b>
             <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
               {missing.map((item) => (
@@ -323,12 +326,12 @@ export function ScreenP7({ state }: { state: PcState }) {
                   <span className={`paxtag${isAdult ? "" : " child"}`}>P{index + 1}</span>
                   <div>
                     <b>
-                      {KIND_TITLE[row.kind]} {index + 1}
+                      {t(KIND_KEY[row.kind])} {index + 1}
                     </b>
-                    <span>{kindSub(row.kind, index === 0)}</span>
+                    <span>{kindSub(row.kind, index === 0, t)}</span>
                   </div>
                   <span className={`st2${done ? " ok" : ""}`}>
-                    {done ? "Complete" : "To fill in"}
+                    {done ? t("pc.pax.field.complete") : t("pc.pax.field.toFill")}
                   </span>
                 </div>
                 <div className="paxcard-b">
@@ -336,7 +339,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                     {isAdult && (
                       <Field
                         cls="c4"
-                        label="Title"
+                        label={t("pc.pax.field.title")}
                         error={showErrors ? errors.title : undefined}
                       id={`pax${index}-title`}
                       >
@@ -345,7 +348,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                           onChange={(event) => patch(index, "title", event.target.value)}
                         >
                           <option value="" disabled>
-                            Select
+                            {t("pc.pax.field.select")}
                           </option>
                           {Object.entries(TITLE_LABEL).map(([value, label]) => (
                             <option key={value} value={value}>
@@ -358,13 +361,13 @@ export function ScreenP7({ state }: { state: PcState }) {
 
                     <Field
                       cls={isAdult ? "c8" : "c6"}
-                      label="Given names"
-                      hint="All of them, in passport order"
+                      label={t("pc.pax.field.given")}
+                      hint={t("pc.pax.field.givenHint")}
                       error={showErrors ? errors.given : undefined}
                       id={`pax${index}-given`}
                     >
                       <input
-                        placeholder="As in the passport"
+                        placeholder={t("pc.pax.field.asInPassport")}
                         value={row.given}
                         onChange={(event) => patch(index, "given", event.target.value)}
                       />
@@ -372,12 +375,12 @@ export function ScreenP7({ state }: { state: PcState }) {
 
                     <Field
                       cls="c6"
-                      label="Surnames"
+                      label={t("pc.pax.field.surname")}
                       error={showErrors ? errors.surname : undefined}
                       id={`pax${index}-surname`}
                     >
                       <input
-                        placeholder="As in the passport"
+                        placeholder={t("pc.pax.field.asInPassport")}
                         value={row.surname}
                         onChange={(event) => patch(index, "surname", event.target.value)}
                       />
@@ -385,13 +388,13 @@ export function ScreenP7({ state }: { state: PcState }) {
 
                     <Field
                       cls="c6"
-                      label="Date of birth"
+                      label={t("pc.pax.field.dob")}
                       hint={
                         row.kind === "child"
-                          ? "2 to 11 on the travel date"
+                          ? t("pc.pax.field.dobChild")
                           : row.kind === "adult"
-                            ? "12 or over on the travel date"
-                            : "Under 2 on the travel date"
+                            ? t("pc.pax.field.dobAdult")
+                            : t("pc.pax.field.dobInfant")
                       }
                       error={showErrors ? errors.dob : undefined}
                       id={`pax${index}-dob`}
@@ -404,18 +407,18 @@ export function ScreenP7({ state }: { state: PcState }) {
                       />
                     </Field>
 
-                    <Field cls="c6" label="Sex" error={showErrors ? errors.sex : undefined}
+                    <Field cls="c6" label={t("pc.pax.field.sex")} error={showErrors ? errors.sex : undefined}
                       id={`pax${index}-sex`}>
                       <select
                         value={row.sex}
                         onChange={(event) => patch(index, "sex", event.target.value)}
                       >
                         <option value="" disabled>
-                          Select
+                          {t("pc.pax.field.select")}
                         </option>
-                        {Object.entries(SEX_LABEL).map(([value, label]) => (
+                        {Object.entries(SEX_KEY).map(([value, key]) => (
                           <option key={value} value={value}>
-                            {label}
+                            {t(key)}
                           </option>
                         ))}
                       </select>
@@ -423,7 +426,7 @@ export function ScreenP7({ state }: { state: PcState }) {
 
                     <Field
                       cls="c6"
-                      label="Nationality"
+                      label={t("pc.pax.field.nationality")}
                       error={showErrors ? errors.nationality : undefined}
                       id={`pax${index}-nationality`}
                     >
@@ -432,7 +435,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                         onChange={(event) => patch(index, "nationality", event.target.value)}
                       >
                         <option value="" disabled>
-                          Select
+                          {t("pc.pax.field.select")}
                         </option>
                         {NATIONALITIES.map((n) => (
                           <option key={n}>{n}</option>
@@ -442,13 +445,13 @@ export function ScreenP7({ state }: { state: PcState }) {
 
                     <Field
                       cls="c6"
-                      label="Passport number"
+                      label={t("pc.pax.field.passportNumber")}
                       error={showErrors ? errors.passportNumber : undefined}
                       id={`pax${index}-passportNumber`}
                     >
                       <input
                         className="mono"
-                        placeholder="e.g. CV1234567"
+                        placeholder={t("pc.pax.field.passportSample")}
                         style={{ letterSpacing: ".04em" }}
                         value={row.passportNumber}
                         onChange={(event) =>
@@ -459,8 +462,8 @@ export function ScreenP7({ state }: { state: PcState }) {
 
                     <Field
                       cls="c6"
-                      label="Valid until"
-                      hint="6 months beyond the return date"
+                      label={t("pc.pax.field.passportExpiry")}
+                      hint={t("pc.pax.field.passportExpiryHint")}
                       error={showErrors ? errors.passportExpiry : undefined}
                       id={`pax${index}-passportExpiry`}
                     >
@@ -476,7 +479,7 @@ export function ScreenP7({ state }: { state: PcState }) {
 
                     <Field
                       cls="c6"
-                      label="Issuing country"
+                      label={t("pc.pax.field.issuingCountry")}
                       error={showErrors ? errors.issuingCountry : undefined}
                       id={`pax${index}-issuingCountry`}
                     >
@@ -487,7 +490,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                         }
                       >
                         <option value="" disabled>
-                          Select
+                          {t("pc.pax.field.select")}
                         </option>
                         {NATIONALITIES.map((n) => (
                           <option key={n}>{n}</option>
@@ -503,7 +506,7 @@ export function ScreenP7({ state }: { state: PcState }) {
 
         {showErrors && !complete && (
           <span className="err" style={{ marginTop: 10, display: "block" }}>
-            Complete every passenger before continuing
+            {t("pc.pax.completeAll")}
           </span>
         )}
       </div>
@@ -516,15 +519,13 @@ export function ScreenP7({ state }: { state: PcState }) {
           onChange={(event) => setAck(event.target.checked)}
         />
         <p>
-          <b>I confirm the details above match the passports</b> and that the
-          passports are valid for at least 6 months beyond the return date. I
-          understand that entry to some countries requires a visa or electronic
-          authorisation.
+          <b>{t("pc.pax.consentBold")}</b>
+          {t("pc.pax.consentRest")}
         </p>
       </label>
       {showErrors && !ack && (
         <span className="err" style={{ marginTop: 8, display: "block" }}>
-          Please confirm this before we issue
+          {t("pc.pax.consentMissing")}
         </span>
       )}
 
@@ -536,11 +537,9 @@ export function ScreenP7({ state }: { state: PcState }) {
 
       <div className="card tight" style={{ marginTop: 12 }}>
         <button className="btn btn-primary" type="button" disabled={pending} onClick={submit}>
-          {pending ? "Saving…" : "Continue to payment"}
+          {pending ? t("pc.pax.saving") : t("pc.pax.continue")}
         </button>
-        <p className="subnote">
-          Nothing is charged yet. The next screen has the payment instructions.
-        </p>
+        <p className="subnote">{t("pc.pax.nothingCharged")}</p>
       </div>
       <div className="spacer" />
     </main>

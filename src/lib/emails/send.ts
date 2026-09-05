@@ -36,6 +36,7 @@ import {
   SURFACE_ALT,
   escapeHtml,
   formatDate,
+  masthead,
   summaryRow,
 } from "./shared"
 import { DEFAULT_LOCALE, LOCALE_TAGS, type Locale } from "@/i18n/config"
@@ -232,7 +233,27 @@ async function context(caseId: string): Promise<CaseContext | null> {
   }
 }
 
-function shell(title: string, body: string, locale: Locale = DEFAULT_LOCALE): string {
+/**
+ * A moldura de todos os emails.
+ *
+ * T-14 e T-15 · a faixa laranja passa a levar o logótipo da marca à esquerda e
+ * **a referência do caso à direita**, em monospace. Era uma palavra escrita à
+ * mão com uma etiqueta "Concierge" ao lado, e a referência aparecia — quando
+ * aparecia — no meio de uma linha de metadados a meio do corpo. Num telemóvel
+ * isso é procurar; e a referência é a única coisa que o cliente cita ao
+ * telefone.
+ *
+ * O `reference` é o quarto argumento e não o segundo por uma razão prática: os
+ * emails à equipa não têm língua nem referência do cliente, e obrigá-los a
+ * passar `null` em todos os sítios seria ruído. Quem não o passa fica com a
+ * faixa só com o logótipo, que é o que estes tinham antes.
+ */
+function shell(
+  title: string,
+  body: string,
+  locale: Locale = DEFAULT_LOCALE,
+  reference: string | null = null
+): string {
   return `<!DOCTYPE html>
 <html lang="${LOCALE_TAGS[locale]}">
 <head><meta charset="utf-8" /><meta name="color-scheme" content="light only" /><title>${escapeHtml(title)}</title></head>
@@ -240,11 +261,8 @@ function shell(title: string, body: string, locale: Locale = DEFAULT_LOCALE): st
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SURFACE_ALT};padding:32px 16px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${BORDER};">
-        <tr><td style="background:${EMBER_RED};padding:28px 32px;">
-          <span style="font-size:22px;font-weight:800;letter-spacing:-0.02em;color:#ffffff;">WeeFly</span>
-          <span style="font-size:12px;font-weight:700;color:#ffffff;opacity:0.85;margin-left:8px;text-transform:uppercase;letter-spacing:0.08em;">Concierge</span>
-        </td></tr>
-        <tr><td style="padding:36px 32px;">${body}</td></tr>
+        ${masthead(reference)}
+        <tr><td style="padding:32px;">${body}</td></tr>
         <tr><td style="padding:0 32px 32px;">
           <hr style="border:none;border-top:1px solid ${BORDER};margin:0 0 16px;" />
           <p style="margin:0;font-size:12px;color:#98A1AE;">© ${new Date().getFullYear()} WeeFly Africa · Praia, Cabo Verde</p>
@@ -340,7 +358,8 @@ export async function sendRequestReceivedEmail(
        ${escapeHtml(t("email.receivedNext"))}
      </p>
      ${cta(link, t("email.receivedCta"))}`,
-    locale
+    locale,
+    ctx.reference
   )
 
   const text = [
@@ -435,7 +454,9 @@ export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome
        sair de "novos sem dono" e componha a proposta — enquanto não for
        publicada, o que ele vê é um ecrã a dizer que estamos a pesquisar.
      </p>
-     ${cta(link, "Abrir o caso")}`
+     ${cta(link, "Abrir o caso")}`,
+    DEFAULT_LOCALE,
+    ctx.reference
   )
 
   const text = [
@@ -601,7 +622,8 @@ export async function sendOfferChosenEmail(
      </p>
      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(t("email.chosenNext"))}</p>
      ${cta(link, t("email.chosenCta"))}`,
-    ctx.locale
+    ctx.locale,
+    ctx.reference
   )
 
   const text = [
@@ -632,12 +654,34 @@ export async function sendOfferChosenEmail(
 // ═══ NT-04 · instruções de pagamento, ao cliente ═════════════════════════════
 
 /**
- * As instruções de pagamento, quando passam a ser accionáveis.
+ * T-17 · o email de pagamento leva **o link de pagamento**.
  *
- * O momento é o dos passaportes submetidos e não o da escolha: entre uma coisa
- * e outra o cliente ainda tem trabalho a fazer, e um email a dizer "pague" com
- * um ecrã que ainda pede passaportes é um email que manda fazer o que não se
- * pode.
+ * O teste apanhou-o assim: "nesta altura o cliente escolheu um método e a
+ * equipa gerou o link. Esse link tem de estar no email — senão o cliente não
+ * consegue pagar."
+ *
+ * O que saía era um botão para `/pc/{token}`, que é o link do **caso** e não o
+ * do pagamento. Quem o abria caía no ecrã de pagamento, e o ecrã dizia que
+ * estávamos a preparar os dados — porque, no instante em que o email saía
+ * (passaportes submetidos), era verdade. O email era mandado antes de existir
+ * aquilo de que ele falava.
+ *
+ * Agora este email tem um momento só: o agente carrega em "Gravar e enviar" na
+ * aba Pagamento, depois de ter criado o link no Stripe ou pedido a referência à
+ * SISP. E o que ele leva é o que a pessoa precisa de ter à frente para pagar:
+ *
+ *   · **o link, como botão**, ou a referência em monospace quando a via é de
+ *     referência — o Instapay não tem endereço nenhum para abrir;
+ *   · o método pelo nome, porque o cliente escolheu-o e tem de reconhecer o que
+ *     recebeu;
+ *   · o valor e o prazo (T-11), que é a data e hora deste envio mais uma hora;
+ *   · a nossa referência, para ele a citar na transferência.
+ *
+ * **Recusa-se a sair sem link nem referência.** É o critério à letra: "falha o
+ * envio, com um erro visível, se o link faltar — melhor do que mandar um email
+ * sobre o qual o cliente não pode agir". A recusa acontece antes de `notify`,
+ * pelo que não fica linha nenhuma em `case_notifications` nem bandeira no caso:
+ * não houve aviso falhado, houve um aviso que não devia ser tentado.
  */
 export async function sendPaymentInstructionsEmail(
   caseId: string,
@@ -660,24 +704,94 @@ export async function sendPaymentInstructionsEmail(
     return { ok: false, id: null, status: "failed", reason: "caso não encontrado" }
   }
 
+  const { getPcPayment } = await import("@/lib/pc/payment")
+  const payment = await getPcPayment(caseId)
+
+  const payLink = payment?.pay_link?.trim() || null
+  const payReference = payment?.pay_reference?.trim() || null
+
+  if (!payLink && !payReference) {
+    return {
+      ok: false,
+      id: null,
+      status: "failed",
+      reason:
+        "sem link nem referência de pagamento — o cliente não teria como pagar",
+    }
+  }
+
   const t = getTranslator(ctx.locale)
   const link = clientLink(ctx)
   const route = routeOf(ctx)
   const amount = formatAmount(ctx.amount, ctx.currency)
   const subject = t("email.payInstructionsSubject", { route })
 
+  const { methodLabel } = await import("@/lib/pc/catalog")
+  const method = methodLabel(payment?.method ?? null, ctx.locale)
+
+  /* O prazo em hora de Cabo Verde e por extenso: um `2026-09-05T14:30Z` não
+     diz a ninguém até quando tem de pagar. */
+  const due = payment?.pay_due_at
+    ? new Intl.DateTimeFormat(LOCALE_TAGS[ctx.locale], {
+        day: "2-digit",
+        month: "long",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Atlantic/Cape_Verde",
+      }).format(new Date(payment.pay_due_at))
+    : null
+
+  const rows = [
+    summaryRow(t("email.payInstructionsMethod"), escapeHtml(method)),
+    summaryRow(
+      t("email.payInstructionsAmount"),
+      `<span style="font-family:'IBM Plex Mono','Courier New',monospace;">${escapeHtml(amount)}</span>`
+    ),
+    payReference
+      ? summaryRow(
+          t("email.payInstructionsReference"),
+          `<span style="font-family:'IBM Plex Mono','Courier New',monospace;font-size:16px;">${escapeHtml(payReference)}</span>`
+        )
+      : "",
+    ctx.reference
+      ? summaryRow(
+          t("email.payInstructionsQuote"),
+          `<span style="font-family:'IBM Plex Mono','Courier New',monospace;">${escapeHtml(ctx.reference)}</span>`
+        )
+      : "",
+    due ? summaryRow(t("email.payInstructionsDue"), escapeHtml(due)) : "",
+  ]
+    .filter(Boolean)
+    .join("")
+
   const html = shell(
     subject,
     `<h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:${INK};letter-spacing:-0.02em;">${escapeHtml(t("email.payInstructionsHeading"))}</h1>
-     <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:${EMBER_RED};">${escapeHtml(route)}${ctx.reference ? ` · ${escapeHtml(ctx.reference)}` : ""}</p>
+     <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:${EMBER_RED};">${escapeHtml(route)}</p>
      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${MUTED};">
        ${t("email.payInstructionsBody", {
          name: `<strong style="color:${INK};">${escapeHtml(ctx.clientFirstName)}</strong>`,
          amount: `<strong style="color:${INK};">${escapeHtml(amount)}</strong>`,
        })}
      </p>
-     ${cta(link, t("email.payInstructionsCta"))}`,
-    ctx.locale
+     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SURFACE_ALT};border:1px solid ${BORDER};border-radius:12px;padding:4px 20px;margin-bottom:22px;">
+       ${rows}
+     </table>
+     ${
+       payLink
+         ? `${cta(payLink, t("email.payInstructionsPayNow"))}
+            <p style="margin:14px 0 0;font-size:12px;line-height:1.6;color:${MUTED};word-break:break-all;">
+              ${escapeHtml(t("email.payInstructionsLinkNote"))}<br />
+              <a href="${payLink}" style="color:${EMBER_RED};">${escapeHtml(payLink)}</a>
+            </p>`
+         : `<p style="margin:0 0 4px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(t("email.payInstructionsReferenceNote"))}</p>`
+     }
+     <p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">
+       ${escapeHtml(t("email.payInstructionsProof"))}
+       <a href="${link}" style="color:${EMBER_RED};">${escapeHtml(t("email.payInstructionsCta"))}</a>
+     </p>`,
+    ctx.locale,
+    ctx.reference
   )
 
   const text = [
@@ -685,9 +799,17 @@ export async function sendPaymentInstructionsEmail(
     "",
     t("email.payInstructionsTextBody", { amount }),
     "",
-    link,
+    `${t("email.payInstructionsMethod")}: ${method}`,
+    payLink ? `${t("email.payInstructionsPayNow")}: ${payLink}` : "",
+    payReference ? `${t("email.payInstructionsReference")}: ${payReference}` : "",
+    ctx.reference ? `${t("email.payInstructionsQuote")}: ${ctx.reference}` : "",
+    due ? `${t("email.payInstructionsDue")}: ${due}` : "",
+    "",
+    `${t("email.payInstructionsProof")} ${link}`,
     "© WeeFly Africa",
-  ].join("\n")
+  ]
+    .filter(Boolean)
+    .join("\n")
 
   return notify({
     caseId,
@@ -737,7 +859,8 @@ export async function sendPaymentConfirmedEmail(
      <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${MUTED};">
        ${escapeHtml(t("email.paidNext"))}
      </p>`,
-    locale
+    locale,
+    ctx.reference
   )
 
   const text = [
@@ -827,7 +950,8 @@ export async function sendTicketsIssuedEmail(input: {
      }
      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(t("email.issuedGuide"))}</p>
      ${cta(link, t("email.issuedCta"))}`,
-    ctx.locale
+    ctx.locale,
+    ctx.reference
   )
 
   const text = [
@@ -883,12 +1007,15 @@ export type ClientAction =
   | "passengers_submitted"
   | "proof_uploaded"
   | "request_cancelled"
+  /** T-18 · escreveu-nos do ecrã de pagamento. */
+  | "message_sent"
 
 const AGENT_SUBJECT: Record<ClientAction, string> = {
   offer_selected: "escolheu uma opção",
   passengers_submitted: "submeteu os passaportes",
   proof_uploaded: "enviou o comprovativo",
   request_cancelled: "cancelou o pedido",
+  message_sent: "escreveu-nos",
 }
 
 /**
@@ -939,7 +1066,9 @@ export async function notifyAgentOfClientAction(input: {
      <h1 style="margin:0 0 8px;font-size:20px;font-weight:800;color:${INK};">${escapeHtml(subject)}</h1>
      <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(meta)}</p>
      ${input.detail ? `<p style="margin:0 0 18px;padding:12px 14px;background:${SURFACE_ALT};border-radius:10px;font-size:14px;color:${INK};">${escapeHtml(input.detail)}</p>` : ""}
-     ${cta(link, "Abrir o caso")}`
+     ${cta(link, "Abrir o caso")}`,
+    DEFAULT_LOCALE,
+    ctx.reference
   )
 
   return notify({
@@ -952,7 +1081,17 @@ export async function notifyAgentOfClientAction(input: {
     html,
     text: [subject, meta, input.detail ?? "", "", link].filter(Boolean).join("\n"),
     ...(ctx.clientEmail ? { replyTo: ctx.clientEmail } : {}),
-    dedupeKey: `agent_${input.action}`,
+    /*
+     * T-18 · uma mensagem escrita à mão não é um estado, é uma frase.
+     *
+     * As outras quatro acções acontecem uma vez por caso e a chave existe para
+     * isso. Uma mensagem do cliente não: a segunda é quase sempre o
+     * esclarecimento da primeira, e recusá-la deixava o agente com metade da
+     * conversa.
+     */
+    ...(input.action === "message_sent"
+      ? {}
+      : { dedupeKey: `agent_${input.action}` }),
   })
 }
 
@@ -988,7 +1127,8 @@ export async function sendManualClientNotice(input: {
      <p style="margin:0 0 20px;padding:14px 16px;border-left:3px solid ${EMBER_RED};background:${SURFACE_ALT};font-size:15px;line-height:1.65;color:${INK};white-space:pre-wrap;">${escapeHtml(input.message)}</p>
      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(t("email.alertFooter"))}</p>
      ${cta(link, t("email.alertCta"))}`,
-    ctx.locale
+    ctx.locale,
+    ctx.reference
   )
 
   const text = [
@@ -1109,7 +1249,9 @@ export async function sendPaymentDeclaredEmail(
      <h1 style="margin:0 0 8px;font-size:20px;font-weight:800;color:${INK};">${escapeHtml(headline)}</h1>
      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(meta)}</p>
      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(explain)}</p>
-     ${cta(link, withProof ? "Abrir o comprovativo" : "Abrir o caso")}`
+     ${cta(link, withProof ? "Abrir o comprovativo" : "Abrir o caso")}`,
+    DEFAULT_LOCALE,
+    ctx.reference
   )
 
   const text = [headline + ".", meta, "", explain, link ? `\n${link}` : ""]
@@ -1185,7 +1327,8 @@ export async function sendDatesProposedEmail(
        ${escapeHtml(t("email.datesNext"))}
      </p>
      ${cta(link, t("email.datesCta"))}`,
-    locale
+    locale,
+    ctx.reference
   )
 
   const text = [

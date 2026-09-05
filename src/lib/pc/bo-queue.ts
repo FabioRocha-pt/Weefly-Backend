@@ -272,6 +272,8 @@ export type BoBucket =
   | "a_expirar"
   | "espera_cliente"
   | "tudo"
+  /** T-21 · os casos fechados, e só eles. */
+  | "fechados"
 
 export interface BoQueue {
   rows: BoQueueRow[]
@@ -303,6 +305,7 @@ export async function loadBoQueue(
       a_expirar: 0,
       espera_cliente: 0,
       tudo: 0,
+      fechados: 0,
     },
     oldest: {},
     issuedThisMonth: { count: 0, revenue: 0, currency: "EUR" },
@@ -460,13 +463,20 @@ export async function loadBoQueue(
   const soon = Date.now() + 60 * 60 * 1000
   const belongs = (row: BoQueueRow, bucket: BoBucket): boolean => {
     /*
-     * C-04 · "o caso fechado sai das filas de trabalho."
+     * C-04 e T-21 · "o caso fechado sai das filas de trabalho".
      *
      * Aqui e não em cada balde: um caso fechado não pertence a nenhum deles, e
-     * repetir a condição sete vezes garantia que o oitavo balde a esquecesse.
-     * "tudo" continua a mostrá-lo — é a lista, não uma fila.
+     * repetir a condição em cada um garantia que o próximo a nascer a
+     * esquecesse.
+     *
+     * T-21 muda o que "tudo" quer dizer. Um caso fechado aparecia lá, e o
+     * separador "Tudo" é o que se abre quando se procura alguma coisa — o
+     * resultado era uma lista que crescia para sempre com trabalho que já não
+     * existe. O critério é explícito: "os casos fechados saem das filas de
+     * trabalho e aparecem só neste filtro".
      */
-    if (row.closedAt && bucket !== "tudo") return false
+    if (row.closedAt) return bucket === "fechados"
+    if (bucket === "fechados") return false
 
     switch (bucket) {
       case "por_validar":
@@ -502,6 +512,7 @@ export async function loadBoQueue(
     "a_expirar",
     "espera_cliente",
     "tudo",
+    "fechados",
   ]
 
   const counts = {} as Record<BoBucket, number>
@@ -522,6 +533,20 @@ export async function loadBoQueue(
 
   if (filters.bucket && filters.bucket !== "tudo") {
     visible = visible.filter((row) => belongs(row, filters.bucket!))
+  } else if (filters.bucket === "tudo" && !filters.caseId) {
+    /*
+     * T-21 · "Tudo" é tudo o que está em aberto.
+     *
+     * `belongs` já responde por isto nos outros separadores, mas o "tudo" salta
+     * o filtro de propósito — é a lista completa e não um balde. O critério
+     * corta-lhe os fechados na mesma: quem abre "Tudo" está a procurar trabalho,
+     * e um caso emitido e encerrado há três meses só lá está a ocupar espaço.
+     *
+     * `caseId` é a excepção, e é a razão de a condição existir: `loadBoCase`
+     * chama isto com `bucket: "tudo"` para carregar uma ficha, e uma ficha de um
+     * caso fechado tem de continuar a abrir.
+     */
+    visible = visible.filter((row) => !row.closedAt)
   }
 
   if (filters.search?.trim()) {

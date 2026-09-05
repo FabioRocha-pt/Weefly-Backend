@@ -30,6 +30,7 @@ import {
 import { sendPaymentInstructionsEmail } from "@/lib/emails/send"
 import {
   METHOD_LABEL_PT,
+  PAY_DUE_HOURS,
   PROOF_REVIEW_HOURS,
   payMethod,
   type PayMethodId,
@@ -308,6 +309,21 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
       created_by: identity.userId,
       claimed_at: now.toISOString(),
       claimed_by_email: identity.email,
+      /*
+       * T-06 · quem reclama é o vendedor, e a partir daqui é o que a proposta
+       * mostra.
+       *
+       * "A proposta regista o utilizador que a criou, a partir da sessão." O
+       * vendedor era um campo à parte, preenchido à mão num seletor — e um caso
+       * reclamado por uma pessoa podia continuar a mostrar outra, ou nenhuma.
+       * São a mesma pessoa até o `RBAC` existir para os separar, e escrevê-los
+       * no mesmo gesto é o que faz o cabeçalho dizer a verdade sem ninguém ter
+       * de a repetir.
+       */
+      seller_email: identity.email,
+      seller_label: identity.label,
+      seller_set_at: now.toISOString(),
+      seller_set_by: identity.userId,
     })
     .eq("id", caseId)
     /* A corrida decide-se aqui, e não numa leitura anterior. */
@@ -455,6 +471,27 @@ export async function boSavePayInstructions(
     actorKind: "staff",
   })
 
+  /*
+   * T-11 · o prazo escrito à mão fica registado, tal como a mudança dele.
+   *
+   * O critério pede "editável pelo agente, se preciso, com a alteração
+   * registada". O prazo automático não precisa de linha própria — vem no
+   * registo do envio, logo abaixo — mas um prazo diferente do automático é uma
+   * decisão comercial de alguém, e essa tem nome.
+   */
+  if (dueAt && dueAt !== payment.pay_due_at) {
+    await logCaseEvent({
+      caseId: v.caseId,
+      kind: "pay_due_changed",
+      title: "Prazo de pagamento definido à mão",
+      detail: `${new Date(dueAt).toISOString()} · por ${identity.label}`,
+      actorId: identity.userId,
+      actorEmail: identity.email,
+      actorKind: "staff",
+      payload: { from: payment.pay_due_at, to: dueAt },
+    })
+  }
+
   if (!v.send) {
     touch(v.caseId)
     return { ok: true, notice: "Instruções gravadas. Ainda não foram enviadas." }
@@ -467,17 +504,59 @@ export async function boSavePayInstructions(
     `${v.method}:${link ?? reference}`
   )
 
+  /*
+   * T-11 · o prazo nasce do envio, e é por isso que se carimba depois dele.
+   *
+   * "Preenchido automaticamente no momento em que as instruções de pagamento
+   * são enviadas. A base é a hora do envio, não a da proposta."
+   */
+  let due = dueAt ?? payment.pay_due_at
+  let autoFilled = false
   if (outcome.ok) {
-    await markInstructionsSent({
+    const stamped = await markInstructionsSent({
       paymentId: v.paymentId,
       actorEmail: identity.email,
+      currentDueAt: due,
+    })
+    due = stamped.dueAt
+    autoFilled = stamped.autoFilled
+
+    await logCaseEvent({
+      caseId: v.caseId,
+      kind: "pay_instructions_sent",
+      title: "Instruções de pagamento enviadas ao cliente",
+      detail: [
+        METHOD_LABEL_PT[v.method],
+        due ? `prazo ${new Date(due).toLocaleString("pt-PT", { timeZone: "Atlantic/Cape_Verde" })}` : null,
+        autoFilled ? `automático · envio +${PAY_DUE_HOURS}h` : "prazo escrito à mão",
+        `por ${identity.label}`,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      actorId: identity.userId,
+      actorEmail: identity.email,
+      actorKind: "staff",
+      payload: { dueAt: due, autoFilled },
     })
   }
 
   touch(v.caseId)
 
   if (outcome.ok) {
-    return { ok: true, notice: "Instruções gravadas e enviadas ao cliente." }
+    return {
+      ok: true,
+      notice: autoFilled
+        ? `Instruções enviadas ao cliente. O prazo ficou em ${new Date(
+            due!
+          ).toLocaleString("pt-PT", {
+            day: "2-digit",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "Atlantic/Cape_Verde",
+          })} — hora do envio mais ${PAY_DUE_HOURS}h.`
+        : "Instruções gravadas e enviadas ao cliente.",
+    }
   }
 
   if (outcome.status === "duplicate") {
@@ -487,9 +566,17 @@ export async function boSavePayInstructions(
     }
   }
 
+  /*
+   * T-17 · o insucesso do envio é um erro, e não uma nota de rodapé verde.
+   *
+   * O ecrã mostrava isto no mesmo lugar e na mesma cor do sucesso, com a frase
+   * a começar por "Instruções gravadas" — que é a leitura errada quando o
+   * cliente continua sem saber por onde pagar. O que ficou gravado continua
+   * gravado; o que a frase tem de dizer é que ninguém foi avisado.
+   */
   return {
-    ok: true,
-    notice: `Instruções gravadas, mas o aviso não saiu: ${outcome.reason}. Envie o link por WhatsApp.`,
+    ok: false,
+    error: `As instruções ficaram gravadas, mas o email NÃO saiu: ${outcome.reason}. O cliente continua sem saber por onde pagar — mande-lhe o link por WhatsApp ou tente enviar outra vez.`,
   }
 }
 
@@ -717,6 +804,46 @@ const issueSchema = z.object({
       })
     )
     .default([]),
+  /**
+   * T-04 · um bloco por voo, e o documento de cada um.
+   *
+   * "Uma ida e volta produz pelo menos dois blocos; um multi-city produz um por
+   * trecho." A validação de que **todos** estão completos não vive aqui: vive
+   * mais abaixo, contra os trechos reais da oferta escolhida. Um schema não sabe
+   * quantos voos a viagem tem — a base de dados sabe, e é ela que responde.
+   */
+  segments: z
+    .array(
+      z.object({
+        segmentId: z.string().uuid(),
+        fareBasis: z.string().trim().max(40).optional(),
+        nvb: z.string().trim().max(20).optional(),
+        nva: z.string().trim().max(20).optional(),
+        couponNumber: z.string().trim().max(20).optional(),
+        aircraft: z.string().trim().max(60).optional(),
+        cabin: z.string().trim().max(30).optional(),
+        bookingClass: z.string().trim().max(4).optional(),
+        terminalFrom: z.string().trim().max(12).optional(),
+        terminalTo: z.string().trim().max(12).optional(),
+        airlinePnr: z.string().trim().max(12).optional(),
+        segmentStatus: z.string().trim().max(20).optional(),
+        baggageThrough: z.boolean().optional(),
+      })
+    )
+    .default([]),
+  /** T-04 · a bagagem de cada passageiro em cada voo. */
+  baggage: z
+    .array(
+      z.object({
+        passengerId: z.string().uuid(),
+        segmentId: z.string().uuid(),
+        checkedPieces: z.coerce.number().int().min(0).max(9),
+        checkedKg: z.coerce.number().min(0).max(200).nullable().optional(),
+        cabinPieces: z.coerce.number().int().min(0).max(9),
+        cabinKg: z.coerce.number().min(0).max(50).nullable().optional(),
+      })
+    )
+    .default([]),
 })
 
 /**
@@ -754,7 +881,54 @@ export async function boIssueTickets(
   const admin = createAdminClient()
   if (!admin) return { ok: false, error: "Serviço indisponível." }
 
+  /*
+   * T-04 · "o botão de emitir fica desactivado até cada voo estar completo".
+   *
+   * O ecrã já não deixa carregar, e isto é a segunda fechadura pela mesma razão
+   * de sempre: uma server action é um endpoint. A lista de voos vem dos trechos
+   * da oferta que o cliente escolheu, e não do que o formulário mandou — senão
+   * bastava mandar um array vazio para a verificação passar.
+   */
+  const flights = await selectedSegments(v.caseId)
+
+  if (flights.length > 0) {
+    const filled = new Map(v.segments.map((s) => [s.segmentId, s]))
+    const missing: string[] = []
+
+    for (const flight of flights) {
+      const row = filled.get(flight.id)
+      const label =
+        [flight.carrier_code, flight.flight_number].filter(Boolean).join(" ") ||
+        `${flight.origin ?? "?"}→${flight.destination ?? "?"}`
+
+      if (!row) {
+        missing.push(label)
+        continue
+      }
+      const gaps = [
+        row.fareBasis?.trim() ? "" : "base tarifária",
+        row.nvb?.trim() ? "" : "NVB",
+        row.nva?.trim() ? "" : "NVA",
+      ].filter(Boolean)
+      if (gaps.length) missing.push(`${label} (${gaps.join(", ")})`)
+    }
+
+    if (missing.length > 0) {
+      return {
+        ok: false,
+        error: `Faltam campos do documento em ${missing.length} voo(s): ${missing.join(" · ")}.`,
+      }
+    }
+  }
+
   const now = new Date().toISOString()
+
+  /* As colunas antigas de `booking_cases` guardam o primeiro voo. Continuam a
+     ser escritas porque são o que os casos já emitidos têm e o que os ecrãs
+     antigos leem; o detalhe por voo vive em `case_segment_issuance`. */
+  const firstFlight = flights[0]
+    ? v.segments.find((s) => s.segmentId === flights[0].id)
+    : undefined
 
   const { error } = await admin
     .from("booking_cases")
@@ -765,9 +939,9 @@ export async function boIssueTickets(
       issuing_carrier: v.issuingCarrier || null,
       consolidator: v.consolidator || null,
       cost_real: v.costReal ? parseMoney(v.costReal) : null,
-      fare_basis: v.fareBasis || null,
-      nvb: v.nvb || null,
-      nva: v.nva || null,
+      fare_basis: firstFlight?.fareBasis || v.fareBasis || null,
+      nvb: firstFlight?.nvb || v.nvb || null,
+      nva: firstFlight?.nva || v.nva || null,
       endorsements: v.endorsements || null,
       stage: "emitido",
     })
@@ -793,8 +967,12 @@ export async function boIssueTickets(
       .eq("case_id", v.caseId)
   }
 
-  const { savePassengerSeats } = await import("@/lib/issuance")
+  const { savePassengerSeats, savePassengerBaggage, saveSegmentIssuance } =
+    await import("@/lib/issuance")
   await savePassengerSeats(v.caseId, v.seats)
+  /* T-04 · o cupão de cada voo, e a bagagem de cada passageiro em cada voo. */
+  await saveSegmentIssuance(v.caseId, v.segments)
+  await savePassengerBaggage(v.caseId, v.baggage)
 
   await logCaseEvent({
     caseId: v.caseId,
@@ -859,6 +1037,53 @@ export async function boIssueTickets(
       .filter(Boolean)
       .join(" "),
   }
+}
+
+/**
+ * T-04 · os voos da opção que o cliente escolheu.
+ *
+ * A lista de voos de um caso não é o que o formulário diz que ela é: é o que
+ * está gravado na oferta escolhida. Ler daqui é o que faz a verificação de
+ * "todos os voos completos" ser verificável — com a lista vinda do browser,
+ * mandar um array vazio passava sempre.
+ */
+async function selectedSegments(caseId: string): Promise<
+  {
+    id: string
+    carrier_code: string | null
+    flight_number: string | null
+    origin: string | null
+    destination: string | null
+  }[]
+> {
+  const admin = createAdminClient()
+  if (!admin) return []
+
+  const { data: proposal } = await admin
+    .from("case_proposals")
+    .select("selected_offer_id")
+    .eq("case_id", caseId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const offerId = (proposal as { selected_offer_id: string | null } | null)
+    ?.selected_offer_id
+  if (!offerId) return []
+
+  const { data } = await admin
+    .from("case_offer_segments")
+    .select("id, carrier_code, flight_number, origin, destination, position, direction")
+    .eq("offer_id", offerId)
+    .order("position")
+
+  return (data ?? []) as {
+    id: string
+    carrier_code: string | null
+    flight_number: string | null
+    origin: string | null
+    destination: string | null
+  }[]
 }
 
 /**

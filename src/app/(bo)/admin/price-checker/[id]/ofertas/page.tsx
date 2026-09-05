@@ -87,13 +87,28 @@ export default async function BoCaseOffersPage({
   ])
   if (!bookingCase) notFound()
 
+  /*
+   * T-01 · o caso sem dono nem chega a ter proposta.
+   *
+   * `ensureProposalForRender` **cria** a linha da proposta quando ela não
+   * existe. Corria antes da verificação do dono, pelo que abrir este endereço
+   * num caso da fila já deixava um rascunho gravado em nome de ninguém — que é
+   * cotar sem reclamar, mesmo que o formulário nunca aparecesse no ecrã.
+   *
+   * A ordem passa a ser a inversa: primeiro o dono, e só depois é que existe
+   * alguma coisa para editar.
+   */
+  const unclaimed = Boolean(detail) && !detail!.row.ownerId
+
   /* A moeda da proposta nasce da moeda em que o cliente pediu a cotação. Sem
      isto a proposta nascia sempre em CVE, e o ecrã do cliente mostrava os
      números em EUR — o mesmo valor lido em duas moedas diferentes. */
-  const result = await ensureProposalForRender(
-    bookingCase.id,
-    bookingCase.trip_request?.currency || "CVE"
-  )
+  const result = unclaimed
+    ? null
+    : await ensureProposalForRender(
+        bookingCase.id,
+        bookingCase.trip_request?.currency || "CVE"
+      )
 
   return (
     <I18nProvider locale={locale} dictionary={dictionary} fallback={fallback}>
@@ -111,7 +126,7 @@ export default async function BoCaseOffersPage({
           detail={detail}
           sellers={sellers}
           active="t-propostas"
-          counts={{ "t-propostas": result.ok ? result.view.offers.length : 0 }}
+          counts={{ "t-propostas": result?.ok ? result.view.offers.length : 0 }}
         />
       )}
 
@@ -125,16 +140,16 @@ export default async function BoCaseOffersPage({
             A verificação é aqui, no servidor, e não numa condição dentro do
             compositor: o que não se pode compor não deve chegar ao browser.
           */}
-          {detail && !detail.row.ownerId ? (
+          {unclaimed && detail ? (
             <BoClaimGate
               caseId={bookingCase.id}
               clientName={detail.row.clientName}
               waiting={elapsedSince(detail.row.submittedAt)}
             />
-          ) : !result.ok ? (
+          ) : !result || !result.ok ? (
             <div className="rounded-xl border border-adm-line bg-adm-panel p-8 text-center">
               <p className="text-[13px] text-adm-muted">
-                {t(FAILURE_MESSAGE[result.reason])}
+                {t(FAILURE_MESSAGE[result?.reason ?? "unknown"])}
               </p>
             </div>
           ) : (
@@ -269,6 +284,33 @@ function ClientBrief({ bookingCase }: { bookingCase: BookingCaseRow }) {
                   : "—"
               }
             />
+
+            {/*
+              T-09 · o pedido especial do cliente, aqui.
+
+              "O pedido especial que o cliente escreveu não é visível onde o
+              agente cria a proposta — que é exactamente onde ele faz falta."
+              Estava nas duas colunas da ficha do caso (FE-05) e faltava no único
+              ecrã onde alguém escreve preços: o compositor. Quem cotava tinha de
+              abrir outro separador para se lembrar de que a senhora viaja em
+              cadeira de rodas, ou não se lembrava de todo.
+
+              Em bloco próprio, com a marca lateral laranja e sem cortar: é a
+              frase do cliente, e resumi-la é perder a parte que muda a cotação.
+            */}
+            {trip.special_requests && (
+              <div className="mt-3 rounded-[10px] border-l-[3px] border-adm-ember bg-adm-panel-2 p-3">
+                <div className="mb-1.5 text-[10.5px] font-extrabold uppercase tracking-[.1em] text-adm-ember">
+                  {t("admin.briefSpecial")}
+                </div>
+                <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-adm-txt">
+                  {trip.special_requests}
+                </p>
+                <p className="mt-2 text-[11px] text-adm-muted">
+                  {t("admin.briefSpecialNote")}
+                </p>
+              </div>
+            )}
 
             {link1?.first_opened_at && (
               <div className="mt-3 flex items-center gap-2 text-xs text-adm-muted">

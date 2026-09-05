@@ -31,6 +31,7 @@ import {
 import type { PcPayment } from "@/lib/pc/payment"
 import type { CasePassenger } from "@/lib/case-status"
 import type { OfferSegment } from "@/lib/proposal-math"
+import type { PassengerBaggage, SegmentIssuance } from "@/lib/issuance"
 import { formatAmountPlain, formatMoney, parseMoney } from "@/lib/proposal-math"
 import { CARRIERS } from "@/lib/pc/catalog"
 import { CarrierMark } from "@/components/bo/carrier-mark"
@@ -42,9 +43,71 @@ interface TicketRow {
   ticketNumber: string
 }
 
+/**
+ * T-04 · o documento de um voo.
+ *
+ * Os campos do cupão deixaram de ser um só para a viagem inteira. Uma ida e
+ * volta tem dois cupões, cada um com a sua base tarifária e as suas validades —
+ * a ida pode ser TLXCV3 e a volta YLOWCV, e escrever uma só delas produzia um
+ * bilhete de volta que não existia.
+ */
+interface FlightDoc {
+  fareBasis: string
+  nvb: string
+  nva: string
+  couponNumber: string
+  aircraft: string
+  cabin: string
+  bookingClass: string
+  terminalFrom: string
+  terminalTo: string
+  airlinePnr: string
+  baggageThrough: boolean
+}
+
+const EMPTY_DOC: FlightDoc = {
+  fareBasis: "",
+  nvb: "",
+  nva: "",
+  couponNumber: "",
+  aircraft: "",
+  cabin: "",
+  bookingClass: "",
+  terminalFrom: "",
+  terminalTo: "",
+  airlinePnr: "",
+  baggageThrough: true,
+}
+
 /** A chave de um lugar: um passageiro num voo. */
 const seatKey = (passengerId: string, segmentId: string) =>
   `${passengerId}::${segmentId}`
+
+/** A mesma chave serve a bagagem: um passageiro num voo. */
+const bagKey = seatKey
+
+interface BagRow {
+  checkedPieces: number
+  checkedKg: string
+  cabinPieces: number
+  cabinKg: string
+}
+
+const EMPTY_BAG: BagRow = {
+  checkedPieces: 0,
+  checkedKg: "",
+  cabinPieces: 1,
+  cabinKg: "",
+}
+
+/** O rótulo de um voo, como quem emite o reconhece. */
+function flightLabel(segment: OfferSegment): string {
+  const flight = [segment.carrier_code, segment.flight_number]
+    .filter(Boolean)
+    .join(" ")
+  const route = `${segment.origin ?? "?"} → ${segment.destination ?? "?"}`
+  return flight ? `${flight} · ${route}` : route
+}
 
 /* C-10 · as 31 do backlog, na ordem de prioridade dele. Eram as dez de
    `CARRIERS`, por código — o que punha a AF antes da VR. */
@@ -56,6 +119,8 @@ export function BoIssuancePanel({
   passengers,
   segments,
   savedSeats,
+  savedFlights,
+  savedBaggage,
   issuance,
   amount,
   currency,
@@ -68,6 +133,10 @@ export function BoIssuancePanel({
   segments: OfferSegment[]
   /** Os lugares já gravados, de uma emissão anterior ou de uma correcção. */
   savedSeats: { passenger_id: string; segment_id: string; seat: string | null }[]
+  /** T-04 · os campos do documento já gravados, por voo. */
+  savedFlights: SegmentIssuance[]
+  /** T-04 · a bagagem já gravada, por passageiro e por voo. */
+  savedBaggage: PassengerBaggage[]
   issuance: {
     pnr: string | null
     issuingCarrier: string | null
@@ -146,6 +215,74 @@ export function BoIssuancePanel({
     return initial
   })
 
+  /*
+   * T-04 · um bloco por voo, e não um conjunto de campos para a viagem toda.
+   *
+   * O estado nasce do que já está gravado; um voo sem linha começa vazio, com
+   * duas excepções que poupam trabalho a quem emite e não inventam nada:
+   *
+   *   · a cabina vem da que a proposta vendeu — é a que o cliente comprou;
+   *   · os valores antigos de `booking_cases` entram no **primeiro** voo, que é
+   *     onde eles sempre estiveram na prática. Um caso emitido antes desta
+   *     mudança reabre com a sua base tarifária no sítio certo em vez de a
+   *     perder.
+   */
+  const [flights, setFlights] = useState<Record<string, FlightDoc>>(() => {
+    const saved = new Map(savedFlights.map((row) => [row.segment_id, row]))
+    const initial: Record<string, FlightDoc> = {}
+    const ordered = [...segments].sort(
+      (a, b) =>
+        (a.direction === b.direction ? 0 : a.direction === "ida" ? -1 : 1) ||
+        a.position - b.position
+    )
+
+    ordered.forEach((segment, index) => {
+      const row = saved.get(segment.id)
+      initial[segment.id] = {
+        fareBasis: row?.fare_basis ?? (index === 0 ? (issuance.fareBasis ?? "") : ""),
+        nvb: row?.nvb ?? (index === 0 ? (issuance.nvb ?? "") : ""),
+        nva: row?.nva ?? (index === 0 ? (issuance.nva ?? "") : ""),
+        couponNumber: row?.coupon_number ?? String(index + 1),
+        /* Aeronave, classe e terminais já foram escritos na proposta — o
+           compositor tem-nos (ver `OfferSegment`). Repeti-los aqui em branco
+           era pedir a quem emite que fosse buscá-los a outro separador. */
+        aircraft: row?.aircraft ?? segment.equipment ?? "",
+        cabin: row?.cabin ?? segment.cabin ?? "",
+        bookingClass: row?.booking_class ?? segment.booking_class ?? "",
+        terminalFrom: row?.terminal_from ?? segment.terminal_from ?? "",
+        terminalTo: row?.terminal_to ?? segment.terminal_to ?? "",
+        airlinePnr: row?.airline_pnr ?? "",
+        baggageThrough: row?.baggage_through ?? true,
+      }
+    })
+    return initial
+  })
+
+  const [bags, setBags] = useState<Record<string, BagRow>>(() => {
+    const initial: Record<string, BagRow> = {}
+    for (const row of savedBaggage) {
+      initial[bagKey(row.passenger_id, row.segment_id)] = {
+        checkedPieces: row.checked_pieces,
+        checkedKg: row.checked_kg === null ? "" : String(row.checked_kg),
+        cabinPieces: row.cabin_pieces,
+        cabinKg: row.cabin_kg === null ? "" : String(row.cabin_kg),
+      }
+    }
+    return initial
+  })
+
+  const patchFlight = (segmentId: string, patch: Partial<FlightDoc>) =>
+    setFlights((current) => ({
+      ...current,
+      [segmentId]: { ...(current[segmentId] ?? EMPTY_DOC), ...patch },
+    }))
+
+  const patchBag = (key: string, patch: Partial<BagRow>) =>
+    setBags((current) => ({
+      ...current,
+      [key]: { ...(current[key] ?? EMPTY_BAG), ...patch },
+    }))
+
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -184,11 +321,40 @@ export function BoIssuancePanel({
       label: "Há números de bilhete repetidos — cada passageiro tem o seu.",
     })
   }
-  if (!fareBasis.trim()) {
-    errors.push({ target: "em-fare-basis", label: "Falta a base tarifária." })
+  /*
+   * T-04 · "o botão de emitir fica desactivado até cada voo estar completo".
+   *
+   * Era um trio de campos para a viagem inteira — uma base tarifária, um NVB, um
+   * NVA — e por isso uma ida e volta emitia com metade do documento por
+   * escrever. Agora falta-por-voo, com o voo nomeado no erro: `TP 1234
+   * PRA→LIS` diz onde ir, e "falta o NVA" não dizia.
+   *
+   * Quando a opção escolhida não tem trechos gravados cai-se nos campos antigos:
+   * é o caso das propostas anteriores ao compositor de itinerário, e recusar a
+   * emissão delas seria recusar uma emissão legítima.
+   */
+  if (ordered.length > 0) {
+    for (const segment of ordered) {
+      const doc = flights[segment.id] ?? EMPTY_DOC
+      const gaps = [
+        doc.fareBasis.trim() ? "" : "base tarifária",
+        doc.nvb.trim() ? "" : "NVB",
+        doc.nva.trim() ? "" : "NVA",
+      ].filter(Boolean)
+      if (gaps.length) {
+        errors.push({
+          target: `em-fare-${segment.id}`,
+          label: `${flightLabel(segment)}: falta ${gaps.join(", ")}.`,
+        })
+      }
+    }
+  } else {
+    if (!fareBasis.trim()) {
+      errors.push({ target: "em-fare-basis", label: "Falta a base tarifária." })
+    }
+    if (!nvb.trim()) errors.push({ target: "em-nvb", label: "Falta o NVB." })
+    if (!nva.trim()) errors.push({ target: "em-nva", label: "Falta o NVA." })
   }
-  if (!nvb.trim()) errors.push({ target: "em-nvb", label: "Falta o NVB." })
-  if (!nva.trim()) errors.push({ target: "em-nva", label: "Falta o NVA." })
   if (passengers.length === 0) {
     errors.push({
       target: "em-pnr",
@@ -491,33 +657,77 @@ export function BoIssuancePanel({
                         volta, e dois campos chamados "ida" e "volta" não sabiam
                         dizer qual era qual.
                       */}
-                      {ordered.map((segment) => (
-                        <div className="f s2" key={segment.id}>
-                          <label>
-                            {[segment.carrier_code, segment.flight_number]
-                              .filter(Boolean)
-                              .join(" ") || segment.origin}
-                            <br />
-                            <span style={{ fontWeight: 400, color: "var(--muted)" }}>
-                              {segment.origin}→{segment.destination}
-                            </span>
-                          </label>
-                          <input
-                            className="mono"
-                            placeholder="12A"
-                            maxLength={6}
-                            value={seats[seatKey(passenger.id, segment.id)] ?? ""}
-                            onChange={(event) =>
-                              setSeats((current) => ({
-                                ...current,
-                                [seatKey(passenger.id, segment.id)]:
-                                  event.target.value.toUpperCase(),
-                              }))
-                            }
-                            disabled={issued}
-                          />
-                        </div>
-                      ))}
+                      {/*
+                        EM-01 e T-04 · lugar **e bagagem**, por voo.
+
+                        "Por passageiro por voo: lugar e bagagem." A bagagem
+                        estava numa linha só da oferta, para a viagem inteira —
+                        e o T-10 explica porque isso não chega: um cliente pode
+                        deliberadamente ir com duas malas e voltar com nenhuma
+                        para pagar menos. Um número para os dois sentidos não
+                        sabe dizer isso, e o balcão da volta cobra a diferença.
+                      */}
+                      {ordered.map((segment) => {
+                        const key = seatKey(passenger.id, segment.id)
+                        const bag = bags[key] ?? EMPTY_BAG
+                        return (
+                          <div className="f s4" key={segment.id}>
+                            <label>
+                              {[segment.carrier_code, segment.flight_number]
+                                .filter(Boolean)
+                                .join(" ") || segment.origin}
+                              <br />
+                              <span style={{ fontWeight: 400, color: "var(--muted)" }}>
+                                {segment.origin}→{segment.destination}
+                              </span>
+                            </label>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <input
+                                className="mono"
+                                style={{ width: 74 }}
+                                placeholder="12A"
+                                maxLength={6}
+                                title="Lugar"
+                                value={seats[key] ?? ""}
+                                onChange={(event) =>
+                                  setSeats((current) => ({
+                                    ...current,
+                                    [key]: event.target.value.toUpperCase(),
+                                  }))
+                                }
+                                disabled={issued}
+                              />
+                              <input
+                                className="mono"
+                                style={{ width: 56 }}
+                                type="number"
+                                min={0}
+                                max={9}
+                                title="Malas de porão neste voo"
+                                value={bag.checkedPieces}
+                                onChange={(event) =>
+                                  patchBag(key, {
+                                    checkedPieces: Number(event.target.value || 0),
+                                  })
+                                }
+                                disabled={issued}
+                              />
+                              <input
+                                className="mono"
+                                style={{ width: 66 }}
+                                placeholder="kg"
+                                title="Peso por mala, em quilos"
+                                value={bag.checkedKg}
+                                onChange={(event) =>
+                                  patchBag(key, { checkedKg: event.target.value })
+                                }
+                                disabled={issued}
+                              />
+                            </div>
+                            <span className="hint">lugar · malas · kg</span>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
@@ -531,48 +741,304 @@ export function BoIssuancePanel({
               )}
             </div>
 
+            {/*
+              T-04 · um bloco por voo.
+
+              "Uma ida e volta produz pelo menos dois blocos; um multi-city
+              produz um por trecho." Os campos que estavam aqui em cima — uma
+              base tarifária, um NVB, um NVA para a viagem inteira — só sabiam
+              descrever um voo, e era por isso que a volta não se conseguia
+              emitir.
+
+              A ordem dos campos dentro de cada bloco é a do critério:
+              companhia, número de voo, aeronave, cabina, partida, chegada,
+              terminais, base tarifária, NVB, NVA, número do cupão.
+            */}
+            {ordered.length > 0 && (
+              <div className="sec">
+                <div className="sec-h">
+                  <h4>Documento por voo</h4>
+                  <span className="rule" />
+                  <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                    {ordered.length} voo{ordered.length === 1 ? "" : "s"} · um
+                    cupão cada
+                  </span>
+                </div>
+
+                {ordered.map((segment, index) => {
+                  const doc = flights[segment.id] ?? EMPTY_DOC
+                  return (
+                    <div className="paxcard" key={`doc-${segment.id}`}>
+                      <div className="paxcard-h">
+                        <span className="paxtag">Voo {index + 1}</span>
+                        <b>{flightLabel(segment)}</b>
+                        <span
+                          className="st state st-n"
+                          style={{ marginLeft: "auto" }}
+                        >
+                          {segment.direction === "ida" ? "Ida" : "Volta"}
+                        </span>
+                      </div>
+                      <div
+                        className="paxcard-h"
+                        style={{
+                          background: "none",
+                          borderBottom: 0,
+                          padding: "11px 13px",
+                        }}
+                      >
+                        <div className="fgrid" style={{ width: "100%" }}>
+                          <div className="f s3">
+                            <label>Partida</label>
+                            <input
+                              className="mono"
+                              value={segment.depart_at?.replace("T", " ") ?? "—"}
+                              disabled
+                            />
+                          </div>
+                          <div className="f s3">
+                            <label>Chegada</label>
+                            <input
+                              className="mono"
+                              value={segment.arrive_at?.replace("T", " ") ?? "—"}
+                              disabled
+                            />
+                          </div>
+                          <div className="f s3">
+                            <label>Aeronave</label>
+                            <input
+                              placeholder="Airbus A330-900"
+                              value={doc.aircraft}
+                              onChange={(event) =>
+                                patchFlight(segment.id, {
+                                  aircraft: event.target.value,
+                                })
+                              }
+                              disabled={issued}
+                            />
+                          </div>
+                          <div className="f s3">
+                            <label>Cabina · classe</label>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <input
+                                value={doc.cabin}
+                                placeholder="economy"
+                                onChange={(event) =>
+                                  patchFlight(segment.id, {
+                                    cabin: event.target.value,
+                                  })
+                                }
+                                disabled={issued}
+                              />
+                              <input
+                                className="mono"
+                                style={{ width: 60 }}
+                                maxLength={2}
+                                placeholder="T"
+                                value={doc.bookingClass}
+                                onChange={(event) =>
+                                  patchFlight(segment.id, {
+                                    bookingClass:
+                                      event.target.value.toUpperCase(),
+                                  })
+                                }
+                                disabled={issued}
+                              />
+                            </div>
+                          </div>
+                          <div className="f s3">
+                            <label>Terminal de partida</label>
+                            <input
+                              value={doc.terminalFrom}
+                              placeholder="1"
+                              onChange={(event) =>
+                                patchFlight(segment.id, {
+                                  terminalFrom: event.target.value,
+                                })
+                              }
+                              disabled={issued}
+                            />
+                          </div>
+                          <div className="f s3">
+                            <label>Terminal de chegada</label>
+                            <input
+                              value={doc.terminalTo}
+                              placeholder="2"
+                              onChange={(event) =>
+                                patchFlight(segment.id, {
+                                  terminalTo: event.target.value,
+                                })
+                              }
+                              disabled={issued}
+                            />
+                          </div>
+                          <div className="f s3">
+                            <label>Localizador da companhia</label>
+                            <input
+                              className="mono"
+                              placeholder="ABC123"
+                              maxLength={12}
+                              value={doc.airlinePnr}
+                              onChange={(event) =>
+                                patchFlight(segment.id, {
+                                  airlinePnr: event.target.value.toUpperCase(),
+                                })
+                              }
+                              disabled={issued}
+                            />
+                            <span className="hint">
+                              o PNR da companhia, se for diferente do nosso
+                            </span>
+                          </div>
+                          <div className="f s3">
+                            <label>Nº do cupão</label>
+                            <input
+                              className="mono"
+                              maxLength={4}
+                              value={doc.couponNumber}
+                              onChange={(event) =>
+                                patchFlight(segment.id, {
+                                  couponNumber: event.target.value,
+                                })
+                              }
+                              disabled={issued}
+                            />
+                          </div>
+                          <div className="f s4">
+                            <label>Fare basis</label>
+                            <input
+                              id={`em-fare-${segment.id}`}
+                              className="mono"
+                              placeholder="TLXCV3"
+                              value={doc.fareBasis}
+                              aria-invalid={!issued && !doc.fareBasis.trim()}
+                              onChange={(event) =>
+                                patchFlight(segment.id, {
+                                  fareBasis: event.target.value.toUpperCase(),
+                                })
+                              }
+                              disabled={issued}
+                            />
+                          </div>
+                          <div className="f s4">
+                            <label>NVB</label>
+                            <input
+                              className="mono"
+                              placeholder="01SEP26"
+                              value={doc.nvb}
+                              aria-invalid={!issued && !doc.nvb.trim()}
+                              onChange={(event) =>
+                                patchFlight(segment.id, {
+                                  nvb: event.target.value.toUpperCase(),
+                                })
+                              }
+                              disabled={issued}
+                            />
+                          </div>
+                          <div className="f s4">
+                            <label>NVA</label>
+                            <input
+                              className="mono"
+                              placeholder="12SEP26"
+                              value={doc.nva}
+                              aria-invalid={!issued && !doc.nva.trim()}
+                              onChange={(event) =>
+                                patchFlight(segment.id, {
+                                  nva: event.target.value.toUpperCase(),
+                                })
+                              }
+                              disabled={issued}
+                            />
+                          </div>
+
+                          {/* TK-04 · numa ligação, a bagagem segue ou não? É a
+                              pergunta que mais se faz ao balcão de transferência,
+                              e o bilhete tem de a responder. Só aparece quando há
+                              um voo a seguir a este. */}
+                          {index < ordered.length - 1 &&
+                            ordered[index + 1].direction ===
+                              segment.direction && (
+                              <div className="f s12">
+                                <label className="chk" style={{ display: "flex", gap: 8 }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={doc.baggageThrough}
+                                    onChange={(event) =>
+                                      patchFlight(segment.id, {
+                                        baggageThrough: event.target.checked,
+                                      })
+                                    }
+                                    disabled={issued}
+                                  />
+                                  <span>
+                                    A bagagem segue directa até ao destino final
+                                    — o passageiro não a levanta na escala de{" "}
+                                    {segment.destination}
+                                  </span>
+                                </label>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
             <div className="sec">
               <div className="sec-h">
-                <h4>Campos do documento</h4>
+                <h4>
+                  {ordered.length > 0
+                    ? "Campos comuns ao bilhete"
+                    : "Campos do documento"}
+                </h4>
                 <span className="rule" />
               </div>
               <div className="fgrid">
-                <div className="f s3">
-                  <label>Fare basis</label>
-                  <input
-                    id="em-fare-basis"
-                    className="mono"
-                    placeholder="TLXCV3"
-                    value={fareBasis}
-                    aria-invalid={!issued && !fareBasis.trim()}
-                    onChange={(event) => setFareBasis(event.target.value)}
-                    disabled={issued}
-                  />
-                </div>
-                <div className="f s3">
-                  <label>NVB</label>
-                  <input
-                    id="em-nvb"
-                    className="mono"
-                    placeholder="01SEP26"
-                    value={nvb}
-                    aria-invalid={!issued && !nvb.trim()}
-                    onChange={(event) => setNvb(event.target.value)}
-                    disabled={issued}
-                  />
-                </div>
-                <div className="f s3">
-                  <label>NVA</label>
-                  <input
-                    id="em-nva"
-                    className="mono"
-                    placeholder="12SEP26"
-                    value={nva}
-                    aria-invalid={!issued && !nva.trim()}
-                    onChange={(event) => setNva(event.target.value)}
-                    disabled={issued}
-                  />
-                </div>
+                {/* Sem itinerário gravado não há blocos por voo, e estes três
+                    campos voltam a ser a única forma de descrever o documento.
+                    É o caso das propostas anteriores ao compositor. */}
+                {ordered.length === 0 && (
+                  <>
+                    <div className="f s3">
+                      <label>Fare basis</label>
+                      <input
+                        id="em-fare-basis"
+                        className="mono"
+                        placeholder="TLXCV3"
+                        value={fareBasis}
+                        aria-invalid={!issued && !fareBasis.trim()}
+                        onChange={(event) => setFareBasis(event.target.value)}
+                        disabled={issued}
+                      />
+                    </div>
+                    <div className="f s3">
+                      <label>NVB</label>
+                      <input
+                        id="em-nvb"
+                        className="mono"
+                        placeholder="01SEP26"
+                        value={nvb}
+                        aria-invalid={!issued && !nvb.trim()}
+                        onChange={(event) => setNvb(event.target.value)}
+                        disabled={issued}
+                      />
+                    </div>
+                    <div className="f s3">
+                      <label>NVA</label>
+                      <input
+                        id="em-nva"
+                        className="mono"
+                        placeholder="12SEP26"
+                        value={nva}
+                        aria-invalid={!issued && !nva.trim()}
+                        onChange={(event) => setNva(event.target.value)}
+                        disabled={issued}
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="f s3">
                   <label>Endossos</label>
                   <input
@@ -631,6 +1097,51 @@ export function BoIssuancePanel({
                           .map(([key, seat]) => {
                             const [passengerId, segmentId] = key.split("::")
                             return { passengerId, segmentId, seat }
+                          }),
+                        /* T-04 · o cupão de cada voo. */
+                        segments: ordered.map((segment) => {
+                          const doc = flights[segment.id] ?? EMPTY_DOC
+                          return {
+                            segmentId: segment.id,
+                            fareBasis: doc.fareBasis,
+                            nvb: doc.nvb,
+                            nva: doc.nva,
+                            couponNumber: doc.couponNumber,
+                            aircraft: doc.aircraft,
+                            cabin: doc.cabin,
+                            bookingClass: doc.bookingClass,
+                            terminalFrom: doc.terminalFrom,
+                            terminalTo: doc.terminalTo,
+                            airlinePnr: doc.airlinePnr,
+                            segmentStatus: "confirmed",
+                            baggageThrough: doc.baggageThrough,
+                          }
+                        }),
+                        /* T-04 · a bagagem, por passageiro e por voo. Só as
+                           linhas que alguém preencheu: um par sem resposta é
+                           "por atribuir", e gravar zeros seria afirmar que a
+                           tarifa não leva mala nenhuma. */
+                        baggage: Object.entries(bags)
+                          .filter(
+                            ([, bag]) =>
+                              bag.checkedPieces > 0 ||
+                              bag.checkedKg.trim() !== "" ||
+                              bag.cabinPieces !== EMPTY_BAG.cabinPieces
+                          )
+                          .map(([key, bag]) => {
+                            const [passengerId, segmentId] = key.split("::")
+                            return {
+                              passengerId,
+                              segmentId,
+                              checkedPieces: bag.checkedPieces,
+                              checkedKg: bag.checkedKg.trim()
+                                ? Number(bag.checkedKg.replace(",", "."))
+                                : null,
+                              cabinPieces: bag.cabinPieces,
+                              cabinKg: bag.cabinKg.trim()
+                                ? Number(bag.cabinKg.replace(",", "."))
+                                : null,
+                            }
                           }),
                       })
                     )

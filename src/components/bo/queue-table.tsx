@@ -31,6 +31,11 @@ const EMPTY: Record<BoBucket, string> = {
   a_expirar: "Nenhuma proposta a expirar na próxima hora.",
   espera_cliente: "Nenhum caso à espera do cliente.",
   tudo: "Ainda não entrou nenhum pedido pelo Price Checker.",
+  /* T-21 · fechar um caso é um gesto deliberado, e um sistema novo não tem
+     nenhum. A frase diz onde ele aparece, para ninguém o procurar aqui antes de
+     o ter fechado. */
+  fechados:
+    "Nenhum caso fechado. Um caso fecha-se depois de emitido, no botão do cabeçalho da ficha.",
 }
 
 /* A coluna é estreita: fica o código do país, que é o que a equipa lê de
@@ -212,6 +217,16 @@ export function BoQueueTable({
  * cliente" é uma espera normal.
  */
 function deadlineNote(row: BoQueueRow): string {
+  /* T-21 · num caso fechado o prazo já não é notícia; quem o fechou e quando é
+     que é. É a única pergunta que se faz sobre um caso arquivado. */
+  if (row.closedAt) {
+    const when = new Date(row.closedAt).toLocaleDateString("pt-PT", {
+      day: "2-digit",
+      month: "short",
+      timeZone: "Atlantic/Cape_Verde",
+    })
+    return `fechado ${when}${row.closedByEmail ? ` · ${row.closedByEmail}` : ""}`
+  }
   if (row.state === "emitido") return row.pnr ? `PNR ${row.pnr}` : "emitido"
   if (row.state === "cancelado") return "cancelado"
   if (row.state === "expirado") return "link expirado"

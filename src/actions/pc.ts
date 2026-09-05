@@ -13,8 +13,11 @@
  */
 
 import { revalidatePath } from "next/cache"
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { z } from "zod"
+
+import { LOCALE_COOKIE_MAX_AGE, isLocale } from "@/i18n/config"
+import { PC_LOCALE_COOKIE } from "@/lib/pc/locale"
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import {
@@ -29,7 +32,7 @@ import {
   openPaymentWindow,
   recordChosenMethod,
 } from "@/lib/pc/payment"
-import { recordOfferSelection } from "@/lib/proposals"
+import { recordOfferSelection, syncPaymentToOffer } from "@/lib/proposals"
 import { offerTotal } from "@/lib/proposal-math"
 import { logCaseEvent } from "@/lib/case-events"
 import {
@@ -333,6 +336,28 @@ export async function choosePcOffer(
   const offer = state.offers.find((o) => o.id === offerId)
   if (!offer) return { ok: false, error: "That option is not available." }
 
+  /*
+   * T-02 · trocar de opção não pode deixar o cliente encalhado.
+   *
+   * "No ecrã de pagamento, carregar em Trocar de opção volta às ofertas mas o
+   * cliente já não consegue escolher nenhuma. O fluxo fica sem saída."
+   *
+   * Havia duas coisas partidas, e nenhuma delas era a permissão de escolher.
+   *
+   *   1. **Nada mudava depois do clique.** A escolha gravava, o ecrã fazia
+   *      `router.refresh()` — e o endereço continuava a ser `?view=p5`, que é o
+   *      que força a lista das opções. A página voltava exactamente igual, sem
+   *      confirmação nenhuma, e a leitura de quem estava a olhar era "o botão
+   *      não faz nada". A saída está no ecrã (ver `screen-options.tsx`), que
+   *      passa a sair do `?view=p5` quando a escolha passa.
+   *   2. **O valor a cobrar não acompanhava.** `openPaymentWindow` só corre na
+   *      submissão dos passaportes. Trocar de opção depois disso deixava o
+   *      pagamento com o preço da opção antiga — e este é o defeito que custa
+   *      dinheiro, não o que se vê.
+   */
+  const previousOfferId = state.selectedOfferId
+  const changed = Boolean(previousOfferId) && previousOfferId !== offerId
+
   const recorded = await recordOfferSelection(state.caseId, offerId)
   if (!recorded) return { ok: false, error: "We could not record your choice." }
 
@@ -349,18 +374,93 @@ export async function choosePcOffer(
       .in("stage", ["novo", "pedido_recebido", "proposta_enviada"])
   }
 
-  await logCaseEvent({
+  /*
+   * O valor segue a escolha, e as instruções antigas morrem com ela.
+   *
+   * Um link de Stripe cobra o valor que o agente lá pôs. Se o cliente troca
+   * para uma opção mais cara e o link continua no email dele, ele paga a
+   * menos — e ninguém dá por isso até à emissão. Apagar o link é a resposta
+   * honesta: quem o criou tem de criar outro, e o back-office fica a saber
+   * porquê pelo registo.
+   */
+  if (changed && state.payment) {
+    const description = [
+      offer.name || carrierName(offer.segments[0]?.carrier_code),
+      `${state.request.origin} → ${state.request.destination}`,
+      state.request.reference,
+    ]
+      .filter(Boolean)
+      .join(" · ")
+
+    await syncPaymentToOffer(
+      state.caseId,
+      amount,
+      state.quoteCurrency,
+      description
+    )
+
+    const stale =
+      state.payment.amount !== amount &&
+      Boolean(state.payment.pay_link || state.payment.pay_reference)
+
+    if (stale && admin) {
+      await admin
+        .from("case_payments")
+        .update({
+          pay_link: null,
+          pay_reference: null,
+          pay_instructions_sent_at: null,
+          pay_instructions_sent_by_email: null,
+          pay_due_at: null,
+        })
+        .eq("id", state.payment.id)
+
+      await logCaseEvent({
+        caseId: state.caseId,
+        kind: "pay_instructions_voided",
+        title: "Instruções de pagamento anuladas",
+        detail: `O cliente trocou de opção e o valor passou de ${
+          state.payment.amount / 100
+        } para ${amount / 100} ${state.quoteCurrency} — o link antigo cobrava o preço errado.`,
+        actorKind: "system",
+        payload: { from: state.payment.amount, to: amount },
+      })
+    }
+
+    await logCaseEvent({
+      caseId: state.caseId,
+      kind: "offer_changed",
+      title: "Cliente trocou de opção",
+      detail: `${state.payment.amount / 100} → ${amount / 100} ${state.quoteCurrency}`,
+      actorKind: "client",
+      payload: { from: previousOfferId, to: offerId, amount },
+    })
+  }
+
+  /*
+   * T-22 · a mesma escolha não é uma notícia nova.
+   *
+   * `O cliente escolheu uma opção ×6` na lista de notificações é o cliente a
+   * carregar seis vezes no mesmo cartão — a página recarrega, ele volta atrás,
+   * confirma outra vez. Trocar **de** opção continua a ser notícia, e por isso a
+   * chave leva o `offerId`: escolher a A depois da B escreve as duas linhas.
+   */
+  const fresh = await logCaseEvent({
     caseId: state.caseId,
     kind: "offer_selected",
     title: "Cliente escolheu a opção",
     detail: `${offer.name || carrierName(offer.segments[0]?.carrier_code)} · ${amount / 100} ${recorded.currency}`,
     actorKind: "client",
     payload: { offerId, amount },
+    once: `offer_selected:${offerId}`,
   })
 
-  const offerName = offer.name || carrierName(offer.segments[0]?.carrier_code)
-  await notifyClientState(state.caseId, "offer_selected", offerName)
-  await notifyAgent(state.caseId, "offer_selected", offerName)
+  /* E o aviso segue o registo: repetir o gesto não repete o email. */
+  if (fresh.written) {
+    const offerName = offer.name || carrierName(offer.segments[0]?.carrier_code)
+    await notifyClientState(state.caseId, "offer_selected", offerName)
+    await notifyAgent(state.caseId, "offer_selected", offerName)
+  }
 
   revalidatePath(`/pc/${token}`)
   revalidatePath("/admin/price-checker")
@@ -521,19 +621,30 @@ export async function savePcPassengers(
         detail: `${amount / 100} ${state.quoteCurrency} · expira em ${PAY_WINDOW_HOURS}h`,
         actorKind: "system",
         payload: { amount, currency: state.quoteCurrency },
+        /* T-22 · uma janela por pagamento. */
+        once: `payment_window_opened:${payment.id}`,
       })
     }
   }
 
   /*
-   * NT-04 · "instruções de pagamento enviadas" é aqui, e só aqui.
+   * T-17 · as instruções de pagamento deixaram de sair daqui.
    *
-   * É este o instante em que o pagamento passa a ser uma coisa que o cliente
-   * pode fazer: a opção está escolhida, os passaportes estão completos e o
-   * valor a cobrar acabou de nascer. Mandá-lo mais cedo era mandar alguém pagar
-   * num ecrã que ainda lhe pedia passaportes.
+   * Saíam, e é isso que o teste apanhou: "o email de pagamento tem de levar o
+   * link de pagamento — senão o cliente não consegue pagar". Neste instante o
+   * link **não existe**. A premissa do C-33 é que a plataforma não gera nada: é
+   * um agente que cria o link no Stripe ou pede a referência à SISP, e só depois
+   * disso há alguma coisa para o cliente clicar.
+   *
+   * O que saía era um email a dizer "pague" com um botão que abria o link do
+   * caso — e o cliente chegava lá para ver um ecrã à espera de nós. O aviso
+   * verdadeiro sai de `boSavePayInstructions`, no gesto em que o agente carrega
+   * em "Gravar e enviar", e leva o link, o método, o valor e o prazo.
+   *
+   * O que o cliente vê entretanto continua a ser verdade: o ecrã do link dele
+   * diz que estamos a preparar os dados de pagamento, e o botão "Send me the
+   * … details" avisa a equipa de que ele está à espera.
    */
-  await notifyClientState(state.caseId, "payment_instructions")
   await notifyAgent(
     state.caseId,
     "passengers_submitted",
@@ -729,18 +840,136 @@ export async function declarePcPaid(
     })
     .eq("id", payment.id)
 
-  await logCaseEvent({
+  /* T-22 · uma declaração por pagamento e por via. Carregar duas vezes no botão
+     não põe duas linhas na campainha nem dois emails na caixa da equipa. */
+  const fresh = await logCaseEvent({
     caseId: state.caseId,
     kind: "client_declared_paid",
     title: "Cliente declarou ter pago",
     detail: method,
     actorKind: "client",
+    once: `client_declared_paid:${payment.id}:${method}`,
   })
 
-  await notifyTeam(state.caseId)
+  if (fresh.written) await notifyTeam(state.caseId)
 
   revalidatePath(`/pc/${token}`)
   revalidatePath("/admin/price-checker")
+
+  return { ok: true }
+}
+
+// ── T-08 · a língua do cliente ───────────────────────────────────────────────
+
+/**
+ * T-08 · o seletor do cabeçalho passa a fazer alguma coisa.
+ *
+ * "O cliente escolheu português, a notificação chegou, e o link abriu
+ * **inteiramente em inglês**. O seletor de língua nesses ecrãs não faz nada."
+ *
+ * Fazia mesmo nada: mudava a letra do botão e mostrava um aviso. Aqui a escolha
+ * é gravada nos dois sítios onde ela tem consequências, e são dois de propósito:
+ *
+ *   · **o cookie**, para os ecrãs seguintes desta visita saírem na língua certa
+ *     sem esperar por nada. Leva o token porque a preferência é sobre *este*
+ *     pedido: um telemóvel partilhado por duas pessoas não deve arrastar a
+ *     língua de uma para o link da outra;
+ *   · **o lead**, porque o critério pede que "a mesma `lang` mande nos emails e
+ *     nos modelos de WhatsApp" — e esses saem horas depois, sem browser nenhum
+ *     do lado do cliente. O que existe nessa altura é a coluna (ver
+ *     `localeForClient`).
+ */
+export async function setPcLocale(
+  token: string,
+  locale: string
+): Promise<PcResult> {
+  if (!isLocale(locale)) return { ok: false, error: "Unknown language." }
+
+  const lookup = await loadPcState(token)
+  if (!lookup.ok) return { ok: false, error: "This link is no longer available." }
+
+  const state = lookup.state
+
+  cookies().set(PC_LOCALE_COOKIE, `${token}:${locale}`, {
+    path: "/",
+    maxAge: LOCALE_COOKIE_MAX_AGE,
+    sameSite: "lax",
+  })
+
+  const admin = createAdminClient()
+  if (admin && state.contact.locale !== locale) {
+    const { data: trip } = await admin
+      .from("trip_requests")
+      .select("lead_id")
+      .eq("reference", state.request.reference)
+      .maybeSingle()
+
+    const leadId = (trip as { lead_id: string | null } | null)?.lead_id
+    if (leadId) {
+      await admin.from("leads").update({ locale }).eq("id", leadId)
+    }
+
+    await logCaseEvent({
+      caseId: state.caseId,
+      kind: "locale_changed",
+      title: "O cliente mudou de língua",
+      detail: `${state.contact.locale} → ${locale}`,
+      actorKind: "client",
+      payload: { from: state.contact.locale, to: locale },
+    })
+  }
+
+  revalidatePath(`/pc/${token}`)
+  return { ok: true }
+}
+
+// ── T-18 · o cliente escreve-nos a partir do ecrã de pagamento ───────────────
+
+/**
+ * T-18 · "um campo de texto livre onde o cliente pode escrever algo à WeeFly".
+ *
+ * O ecrã de pagamento tinha um botão de WhatsApp e mais nada. O WhatsApp é
+ * óptimo e tem um defeito: a mensagem chega a um telemóvel e **não chega ao
+ * caso**. Quem abre a ficha no dia seguinte não sabe que o cliente disse "paguei
+ * pelo Revolut da minha irmã, o nome no comprovativo não é o meu" — que é
+ * exactamente a frase que evita uma hora de investigação.
+ *
+ * Por isso isto escreve no registo do caso e avisa o agente dono, pelos mesmos
+ * canais dos outros avanços do cliente. Sem chave de duplicado: duas mensagens
+ * seguidas são duas mensagens, e recusar a segunda seria perder o esclarecimento
+ * que veio a seguir ao mal-entendido.
+ */
+export async function sendPcMessage(
+  token: string,
+  message: string
+): Promise<PcResult> {
+  const body = message.trim()
+  if (body.length < 2) {
+    return { ok: false, error: "Write your message first." }
+  }
+  if (body.length > 2000) {
+    return { ok: false, error: "That message is too long — 2000 characters max." }
+  }
+
+  const lookup = await loadPcState(token)
+  if (!lookup.ok) return { ok: false, error: "This link is no longer available." }
+
+  const state = lookup.state
+
+  await logCaseEvent({
+    caseId: state.caseId,
+    kind: "client_message",
+    title: "Mensagem do cliente",
+    detail: body.slice(0, 500),
+    actorKind: "client",
+    payload: { length: body.length },
+  })
+
+  await notifyAgent(state.caseId, "message_sent", body.slice(0, 500))
+
+  revalidatePath(`/pc/${token}`)
+  revalidatePath("/admin/price-checker")
+  revalidatePath(`/admin/price-checker/${state.caseId}`)
 
   return { ok: true }
 }
@@ -775,12 +1004,14 @@ export async function cancelPcRequest(
     .update({ status: "perdido" })
     .eq("reference", state.request.reference)
 
+  /* T-22 · um pedido cancela-se uma vez. */
   await logCaseEvent({
     caseId: state.caseId,
     kind: "request_cancelled",
     title: "Pedido cancelado pelo cliente",
     detail: reason.trim() || "Sem motivo indicado",
     actorKind: "client",
+    once: true,
   })
 
   await notifyAgent(
@@ -871,7 +1102,13 @@ async function notifyRequestReceived(caseId: string): Promise<void> {
  */
 async function notifyAgent(
   caseId: string,
-  action: "offer_selected" | "passengers_submitted" | "proof_uploaded" | "request_cancelled",
+  action:
+    | "offer_selected"
+    | "passengers_submitted"
+    | "proof_uploaded"
+    | "request_cancelled"
+    /** T-18 · o cliente escreveu-nos a partir do ecrã de pagamento. */
+    | "message_sent",
   detail?: string
 ): Promise<void> {
   try {
@@ -882,18 +1119,22 @@ async function notifyAgent(
   }
 }
 
-/** NT-04 · o cliente, a cada mudança de estado que ele provocou. */
+/**
+ * NT-04 · o cliente, a cada mudança de estado que ele provocou.
+ *
+ * T-17 · sem o ramo das instruções de pagamento. Ver o comentário em
+ * `savePcPassengers`: esse aviso passou a ser um gesto do agente, porque é ele
+ * que traz o link sem o qual o email não serve para nada.
+ */
 async function notifyClientState(
   caseId: string,
-  event: "offer_selected" | "payment_instructions",
+  event: "offer_selected",
   offerName?: string
 ): Promise<void> {
   try {
     const mails = await import("@/lib/emails/send")
     if (event === "offer_selected") {
       await mails.sendOfferChosenEmail(caseId, offerName ?? "")
-    } else {
-      await mails.sendPaymentInstructionsEmail(caseId)
     }
   } catch (err) {
     console.error("[pc] aviso ao cliente falhou:", err)

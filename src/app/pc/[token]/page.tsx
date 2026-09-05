@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation"
 
 import { loadPcState, touchLink } from "@/lib/pc/state"
-import { ToastHost } from "@/components/pc/chrome"
+import { pcLocale } from "@/lib/pc/locale"
+import { PcFab, PcFooter, ToastHost } from "@/components/pc/chrome"
 import { PcScreenRouter } from "@/components/pc/screen-router"
+import { I18nProvider } from "@/i18n/provider"
+import { getDictionary } from "@/i18n/server"
+import { DEFAULT_LOCALE } from "@/i18n/config"
 
 /**
  * /pc/{token} — o pedido do cliente, em qualquer ponto do percurso.
@@ -11,6 +15,14 @@ import { PcScreenRouter } from "@/components/pc/screen-router"
  * link: you can come back any time") e é a razão de o ecrã ser derivado do
  * estado em vez de ser escolhido pela navegação: entre uma visita e a seguinte,
  * quem mexeu no caso foi o back-office.
+ *
+ * T-08 · e é aqui que a língua do caso passa a mandar.
+ *
+ * Faltava o `I18nProvider`. Sem ele, o `useT()` de qualquer componente do fluxo
+ * devolvia a própria chave — razão pela qual todos eles estavam escritos em
+ * inglês literal, que é o que o cliente via independentemente do que tinha
+ * escolhido. A resolução da língua está em `lib/pc/locale.ts`, com a ordem e o
+ * porquê de cada degrau.
  */
 
 export const dynamic = "force-dynamic"
@@ -27,7 +39,10 @@ export default async function PriceCheckerCasePage({
   if (!lookup.ok) {
     if (lookup.reason === "unavailable") {
       /* Sem service role o link não pode ser resolvido. Dizê-lo é melhor do que
-         um 404, que mandaria o cliente procurar o erro no link dele. */
+         um 404, que mandaria o cliente procurar o erro no link dele.
+
+         Em inglês e sem dicionário de propósito: não há caso, logo não há
+         língua do caso — e ir buscá-la ao browser aqui seria adivinhar. */
       return (
         <main className="shell" style={{ paddingTop: 40 }}>
           <div className="card">
@@ -45,6 +60,12 @@ export default async function PriceCheckerCasePage({
 
   const state = lookup.state
 
+  const locale = pcLocale({
+    token: params.token,
+    stored: state.contact.locale,
+    fromUrl: searchParams.lang,
+  })
+
   /*
    * Marca a primeira abertura da etapa que este ecrã representa, para o
    * back-office saber se o cliente já viu o que lhe foi enviado. Best-effort e
@@ -58,8 +79,18 @@ export default async function PriceCheckerCasePage({
     : searchParams.view
 
   return (
-    <ToastHost>
-      <PcScreenRouter state={state} forceView={view} />
-    </ToastHost>
+    <I18nProvider
+      locale={locale}
+      dictionary={getDictionary(locale)}
+      /* O português serve de rede para uma chave ainda por traduzir: melhor uma
+         frase na língua errada do que o nome da chave no ecrã do cliente. */
+      fallback={locale === DEFAULT_LOCALE ? undefined : getDictionary(DEFAULT_LOCALE)}
+    >
+      <ToastHost>
+        <PcScreenRouter state={state} forceView={view} locale={locale} />
+        <PcFooter />
+        <PcFab />
+      </ToastHost>
+    </I18nProvider>
   )
 }

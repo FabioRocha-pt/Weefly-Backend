@@ -41,11 +41,32 @@ const COUNTRY_OPTIONS = [...COUNTRIES].sort((a, b) =>
   countryName(a.iso, "pt").localeCompare(countryName(b.iso, "pt"), "pt")
 )
 
-const AGENTS = [
-  { slug: "nelida", name: "Nélida Fortes" },
-  { slug: "jair", name: "Jair Semedo" },
-  { slug: "carla", name: "Carla Évora" },
-]
+/**
+ * T-05 · o vendedor de um link é sempre quem está autenticado.
+ *
+ * O que estava aqui era uma lista de três nomes escrita no código — Nélida,
+ * Jair, Carla — e o construtor deixava escolher qualquer um deles. Duas coisas
+ * erradas ao mesmo tempo: os nomes não vinham de conta nenhuma (um link "de"
+ * uma pessoa que podia nem existir no sistema), e quem estivesse a criar o link
+ * podia atribuí-lo a outra pessoa sem que isso ficasse registado em lado
+ * nenhum — o que num negócio à comissão não é um detalhe.
+ *
+ * O critério é explícito: "o parâmetro `agent` é preenchido a partir da sessão
+ * activa, nunca escolhido" e "sem seletor de vendedor no construtor de links".
+ * A escolha completa volta com o `RBAC`, no sprint seguinte.
+ *
+ * O `slug` sai do email e não de um campo novo: é o que já vai no endereço
+ * (`?agent=`) e o que a fila mostra na coluna de origem.
+ */
+function agentSlug(email: string): string {
+  return (email.split("@")[0] ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+}
 
 const LANGS = [
   { value: "pt", label: "Português" },
@@ -53,7 +74,12 @@ const LANGS = [
   { value: "fr", label: "Français" },
 ]
 
-export function BoTopbarActions() {
+export function BoTopbarActions({
+  viewer,
+}: {
+  /** T-05 · quem está autenticado. O link sai em nome desta pessoa. */
+  viewer: { label: string; email: string }
+}) {
   const [open, setOpen] = useState(false)
 
   /*
@@ -70,7 +96,7 @@ export function BoTopbarActions() {
       <button className="btn btn-primary btn-sm" type="button" onClick={() => setOpen(true)}>
         Criar link
       </button>
-      <LinkDrawer open={open} onClose={() => setOpen(false)} />
+      <LinkDrawer open={open} onClose={() => setOpen(false)} viewer={viewer} />
     </>
   )
 }
@@ -78,11 +104,17 @@ export function BoTopbarActions() {
 export function LinkDrawer({
   open,
   onClose,
+  viewer,
 }: {
   open: boolean
   onClose: () => void
+  viewer: { label: string; email: string }
 }) {
-  const [agent, setAgent] = useState(AGENTS[0].slug)
+  /* T-05 · não é estado: vem da sessão e não muda enquanto a gaveta está
+     aberta. Um `useState` aqui era a porta por onde a escolha voltaria. */
+  const agent = agentSlug(viewer.email)
+  const agentName = viewer.label
+
   const [market, setMarket] = useState(MARKETS[2].name)
   const [lang, setLang] = useState("fr")
   const [currency, setCurrency] = useState("EUR")
@@ -114,8 +146,6 @@ export function LinkDrawer({
   }, [origin, lang, currency, country, agent])
 
   const bare = `${origin || "https://weefly.africa"}/pc`
-
-  const agentName = AGENTS.find((a) => a.slug === agent)?.name ?? ""
 
   const message = useMemo(() => {
     const greeting =
@@ -163,15 +193,15 @@ export function LinkDrawer({
               <span className="rule" />
             </div>
             <div className="fgrid">
+              {/* T-05 · mostrado, não escolhido. O campo continua à vista
+                  porque quem cria o link tem de ver em nome de quem ele sai —
+                  o que sai é a leitura, não a decisão. */}
               <div className="f s6">
                 <label>Vendedor</label>
-                <select value={agent} onChange={(e) => setAgent(e.target.value)}>
-                  {AGENTS.map((a) => (
-                    <option key={a.slug} value={a.slug}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
+                <input value={agentName} disabled />
+                <span className="hint">
+                  a sua conta · <span className="mono">{agent}</span>
+                </span>
               </div>
               <div className="f s6">
                 <label>Mercado</label>

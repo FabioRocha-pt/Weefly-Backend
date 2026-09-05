@@ -62,7 +62,8 @@ import {
   IcUser,
   IcWa,
 } from "@/components/pc/bits"
-import { PcStepper, PcTopbar, type PcLang } from "@/components/pc/chrome"
+import { PcStepper, PcTopbar } from "@/components/pc/chrome"
+import type { Locale } from "@/i18n/config"
 
 /** Um aeroporto como o campo o mostra, depois de escolhido da lista. */
 interface Place {
@@ -93,7 +94,7 @@ export function RequestWizard({
   initialCountry,
   agentSlug,
 }: {
-  initialLang: PcLang
+  initialLang: Locale
   initialCurrency: string
   /**
    * ISO do país que o link fixou (`?country=` ou `?cc=`), já resolvido no
@@ -153,7 +154,7 @@ export function RequestWizard({
   const [special, setSpecial] = useState("")
 
   // ── preferências do link ──────────────────────────────────────────────────
-  const [lang, setLang] = useState<PcLang>(initialLang)
+  const [lang, setLang] = useState<Locale>(initialLang)
   const [currency, setCurrency] = useState(
     CURRENCIES.includes(initialCurrency) ? initialCurrency : "EUR"
   )
@@ -167,7 +168,7 @@ export function RequestWizard({
   const paxSnapshot = useRef<[number, number, number, number] | null>(null)
 
   const dialCode = COUNTRY_BY_ISO[country]?.dial ?? "+238"
-  const localeTag = lang.toLowerCase()
+  const localeTag = lang
 
   const remember = useCallback((place: Place) => {
     setPlaces((current) =>
@@ -473,7 +474,7 @@ export function RequestWizard({
            vazia guardada é um campo que parece respondido. */
         specialRequests: special.trim() || undefined,
         consent: true,
-        locale: lang.toLowerCase() as "pt" | "en" | "fr",
+        locale: lang,
         currency,
         agentSlug,
       })

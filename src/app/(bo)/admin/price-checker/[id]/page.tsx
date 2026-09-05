@@ -6,7 +6,11 @@ import { getPcPayment, listProofs } from "@/lib/pc/payment"
 import { getPublishedProposal } from "@/lib/proposals"
 import { listCaseEvents } from "@/lib/case-events"
 import { listCaseNotifications } from "@/lib/notifications"
-import { listPassengerSeats } from "@/lib/issuance"
+import {
+  listPassengerBaggage,
+  listPassengerSeats,
+  listSegmentIssuance,
+} from "@/lib/issuance"
 import { listTicketDocuments } from "@/lib/tickets/store"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { BoCaseView } from "@/components/bo/case-view"
@@ -46,6 +50,8 @@ export default async function BoCasePage({
     seats,
     documents,
     passengers,
+    segmentIssuance,
+    passengerBaggage,
   ] = await Promise.all([
     getPcPayment(params.id),
     getPublishedProposal(params.id),
@@ -68,6 +74,11 @@ export default async function BoCasePage({
           .order("position")
           .then(({ data }) => (data ?? []) as unknown as CasePassenger[])
       : Promise.resolve([] as CasePassenger[]),
+    /* T-04 · o documento de cada voo e a bagagem de cada passageiro em cada
+       voo. Um bilhete de ida e volta tem um cupão por voo, e sem estas duas
+       leituras o ecrã da emissão só sabia descrever o primeiro. */
+    listSegmentIssuance(params.id),
+    listPassengerBaggage(params.id),
   ])
 
   const proofs = payment ? await listProofs(payment.id) : []
@@ -87,6 +98,8 @@ export default async function BoCasePage({
       notifications={notifications}
       sellers={sellers}
       seats={seats}
+      segmentIssuance={segmentIssuance}
+      passengerBaggage={passengerBaggage}
       hasTicketDocument={documents.some((d) => d.passenger_id === null)}
       initialTab={requestedTab}
       viewer={{ label: access.identity.label, email: access.identity.email }}

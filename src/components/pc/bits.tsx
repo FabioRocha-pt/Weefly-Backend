@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * WeeFly Price Checker — as peças que os nove ecrãs partilham.
  *
@@ -5,12 +7,19 @@
  * em que aparecem e substituí-los por uma biblioteca mudaria o peso do traço em
  * todos os ecrãs de uma vez.
  *
- * Tudo aqui é renderizável no servidor. O que precisa de interação (WhatsApp,
- * contadores, copiar) vive nos componentes de cliente, ao lado.
+ * T-08 · o `"use client"` passou a ser preciso.
+ *
+ * Este ficheiro dizia-se renderizável no servidor, e era — enquanto o texto
+ * estava escrito no código. O resumo do pedido e o tracker têm etiquetas que o
+ * cliente lê ("Tipo de viagem", "Pedido recebido"), e traduzi-las obriga ao
+ * `useT()`, que é um contexto de React e portanto do lado do browser. Os seis
+ * ficheiros que importam estas peças já são todos componentes de cliente, pelo
+ * que a directiva não muda nenhuma fronteira: só a torna explícita.
  */
 
 import type { PcRequestView, PcScreen, PcState } from "@/lib/pc/state"
 import { baggageLabel } from "@/lib/pc/catalog"
+import { useT } from "@/i18n/provider"
 import {
   cityOf,
   fmtDateY,
@@ -362,29 +371,37 @@ export function SummaryRows({
   contact?: { dialCode: string; phone: string; email: string }
   withContact?: boolean
 }) {
-  const rows: [string, string][] = [["Trip type", TRIP_LABEL[request.trip]]]
+  const t = useT()
+  const rows: [string, string][] = [
+    [t("pc.summary.tripType"), TRIP_LABEL[request.trip]],
+  ]
 
   if (request.trip !== "multi") {
-    rows.push(["Departure", fmtDateY(request.departDate)])
-    if (request.trip === "round") rows.push(["Return", fmtDateY(request.returnDate)])
+    rows.push([t("pc.summary.departure"), fmtDateY(request.departDate)])
+    if (request.trip === "round") {
+      rows.push([t("pc.summary.return"), fmtDateY(request.returnDate)])
+    }
   } else {
     request.legs.forEach((leg, i) =>
       rows.push([
-        `Flight ${i + 1}`,
+        t("pc.summary.flight", { n: i + 1 }),
         `${cityOf(leg.origin, request.cities)} → ${cityOf(leg.destination, request.cities)} · ${fmtDateY(leg.date)}`,
       ])
     )
   }
 
-  rows.push(["Passengers", paxFull(request)])
-  rows.push(["Cabin", CABIN_LABEL[request.cabin]])
+  rows.push([t("pc.summary.passengers"), paxFull(request)])
+  rows.push([t("pc.summary.cabin"), CABIN_LABEL[request.cabin]])
   /* VIP-10 · a bagagem é do contrato de campos e por isso aparece no resumo:
      é o cliente a poder verificar o que pediu antes de nos cobrar por isso. */
-  rows.push(["Baggage", baggageLabel(request.baggageHold)])
+  rows.push([t("pc.summary.baggage"), baggageLabel(request.baggageHold)])
 
   if (withContact && contact) {
-    rows.push(["Contact", phoneDisplay(contact.dialCode, contact.phone)])
-    rows.push(["Email", contact.email])
+    rows.push([
+      t("pc.summary.contact"),
+      phoneDisplay(contact.dialCode, contact.phone),
+    ])
+    rows.push([t("pc.summary.email"), contact.email])
   }
 
   return (
@@ -434,21 +451,23 @@ const RANK: Record<PcScreen, number> = {
 }
 
 export function Track({ state }: { state: PcState }) {
+  const t = useT()
+
   if (state.cancelled) {
     return (
       <ul className="track">
         <li className="done">
           <span className="mk">✓</span>
           <div>
-            <b>Request received</b>
+            <b>{t("pc.track.received")}</b>
             <span>{whenLabel(state.request.createdAt)}</span>
           </div>
         </li>
         <li className="stop">
           <span className="mk">×</span>
           <div>
-            <b>Request cancelled</b>
-            <span>At your request</span>
+            <b>{t("pc.track.cancelled")}</b>
+            <span>{t("pc.track.cancelledSub")}</span>
           </div>
         </li>
       </ul>
@@ -461,40 +480,42 @@ export function Track({ state }: { state: PcState }) {
     state.payment?.status === "COMPLETED"
 
   const steps = [
-    { b: "Request received", s: whenLabel(state.request.createdAt) },
+    { b: t("pc.track.received"), s: whenLabel(state.request.createdAt) },
     {
-      b: "Searching for the best fares",
-      s: "Our team is comparing airlines",
-      doneB: "Fares searched",
+      b: t("pc.track.searching"),
+      s: t("pc.track.searchingSub"),
+      doneB: t("pc.track.searched"),
       doneS: state.proposalPublishedAt ? whenLabel(state.proposalPublishedAt) : "",
     },
     {
-      b: "Options sent, your choice",
+      b: t("pc.track.optionsSentChoice"),
       s: offers
-        ? `${offers} option${offers > 1 ? "s" : ""} · valid for a limited time`
-        : "By WhatsApp, email and in this link",
-      nextB: "Options sent",
-      doneB: "Options sent",
+        ? offers === 1
+          ? t("pc.track.optionsOne")
+          : t("pc.track.optionsMany", { count: offers })
+        : t("pc.track.optionsChannels"),
+      nextB: t("pc.track.optionsSent"),
+      doneB: t("pc.track.optionsSent"),
     },
     {
-      b: "Choice and payment",
-      s: "Pick an option and get the instructions",
-      doneB: "Payment confirmed",
-      doneS: "Passenger details received",
+      b: t("pc.track.choiceAndPayment"),
+      s: t("pc.track.choiceSub"),
+      doneB: t("pc.track.paymentConfirmed"),
+      doneS: t("pc.track.detailsReceived"),
       nowS:
         state.screen === "p7b"
           ? paid
-            ? "Payment confirmed — issuing your tickets"
-            : "We are checking your payment"
+            ? t("pc.track.issuingNow")
+            : t("pc.track.checkingNow")
           : state.screen === "p7pay"
-            ? "Send the proof of your payment"
-            : "Send the passport details",
+            ? t("pc.track.sendProofNow")
+            : t("pc.track.sendPassportsNow"),
     },
     {
-      b: "Ticket issued",
+      b: t("pc.track.issued"),
       s: state.issued.issuedAt
         ? whenLabel(state.issued.issuedAt)
-        : "Sent by email and available here",
+        : t("pc.track.issuedSub"),
     },
   ]
 
@@ -512,8 +533,8 @@ export function Track({ state }: { state: PcState }) {
         if (kind === "next" && step.nextB) title = step.nextB
         if (kind === "now" && step.nowS) sub = step.nowS
         if (state.screen === "p8" && i === 2) {
-          title = "Options expired"
-          sub = "Ask for a fresh search, same dates"
+          title = t("pc.track.expired")
+          sub = t("pc.track.expiredSub")
         }
 
         return (

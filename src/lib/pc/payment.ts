@@ -27,6 +27,7 @@ import { applyPaymentStatus, latestPayment } from "@/lib/payments"
 import { logCaseEvent } from "@/lib/case-events"
 import { formatMoney } from "@/lib/proposal-math"
 import {
+  PAY_DUE_HOURS,
   PAY_WINDOW_HOURS,
   PROOF_MAX_BYTES,
   PROOF_MIME,
@@ -350,20 +351,50 @@ export async function savePayInstructions(input: {
   return { ok: true }
 }
 
-/** C-33 · marca o instante em que as instruções saíram para o cliente. */
+/**
+ * C-33 · marca o instante em que as instruções saíram para o cliente.
+ *
+ * T-11 · e é aqui que o prazo de pagamento nasce.
+ *
+ * "O prazo de pagamento tem de ser a data e a hora em que o link foi enviado,
+ * mais uma hora, preenchido automaticamente." O critério diz **enviado**, e é
+ * por isso que o cálculo mora nesta função e não na que grava: entre gravar as
+ * instruções e enviá-las pode passar uma tarde, e um prazo contado da gravação
+ * dava ao cliente menos tempo do que a mensagem lhe promete.
+ *
+ * Um prazo que o agente escreveu à mão não é tocado — é uma decisão comercial
+ * dele, e o critério só pede que o campo deixe de ficar vazio.
+ *
+ * Devolve o prazo em vigor depois desta escrita, e se foi ele que o pôs lá, para
+ * quem chama poder registá-lo.
+ */
 export async function markInstructionsSent(input: {
   paymentId: string
   actorEmail: string
-}): Promise<void> {
+  /** O prazo já gravado, quando existe. */
+  currentDueAt: string | null
+}): Promise<{ sentAt: string; dueAt: string | null; autoFilled: boolean }> {
+  const sentAt = new Date()
+  const autoFilled = !input.currentDueAt
+  const dueAt = autoFilled
+    ? new Date(sentAt.getTime() + PAY_DUE_HOURS * 3600_000).toISOString()
+    : input.currentDueAt
+
   const admin = createAdminClient()
-  if (!admin) return
+  if (!admin) {
+    return { sentAt: sentAt.toISOString(), dueAt, autoFilled: false }
+  }
+
   await admin
     .from("case_payments")
     .update({
-      pay_instructions_sent_at: new Date().toISOString(),
+      pay_instructions_sent_at: sentAt.toISOString(),
       pay_instructions_sent_by_email: input.actorEmail,
+      ...(autoFilled ? { pay_due_at: dueAt } : {}),
     })
     .eq("id", input.paymentId)
+
+  return { sentAt: sentAt.toISOString(), dueAt, autoFilled }
 }
 
 // ── o comprovativo ───────────────────────────────────────────────────────────
@@ -571,6 +602,9 @@ export async function confirmPaymentByAdmin(input: {
     actorEmail: input.actorEmail,
     actorKind: "staff",
     payload: { received, expected: payment.amount },
+    /* T-22 · um pagamento confirma-se uma vez. Dois cliques na caixa não são
+       dois pagamentos, e a matriz de estados já recusa o segundo. */
+    once: `payment_confirmed:${payment.id}`,
   })
 
   return { ok: true }
@@ -761,6 +795,20 @@ export async function enforceExpiry(payment: PcPayment): Promise<ExpiryVerdict> 
     return { expired: true, cause }
   }
 
+  /*
+   * T-22 · uma vez por pagamento, e é a base de dados que o garante.
+   *
+   * O documento dos testes conta-o à letra: `O prazo de pagamento expirou ×22`.
+   * Um prazo expira uma vez. A guarda anterior — só registar quando a transição
+   * de estado aconteceu — fechava o caminho conhecido, e deixava aberto o que
+   * não se conhece: duas passagens do cron ao mesmo tempo, um pagamento que
+   * volta atrás e expira outra vez, um estado novo que a matriz venha a
+   * permitir. A chave fecha-os todos de uma vez, e fecha-os no único sítio onde
+   * duas escritas simultâneas se veem uma à outra.
+   *
+   * Qualificada pelo `payment.id` e não só pelo caso: um pagamento reaberto é
+   * outro pagamento (ver `reopenPayment`), e a expiração dele é notícia nova.
+   */
   await logCaseEvent({
     caseId: payment.case_id,
     kind: "payment_expired",
@@ -770,6 +818,7 @@ export async function enforceExpiry(payment: PcPayment): Promise<ExpiryVerdict> 
       : "O cliente não pagou dentro do prazo",
     actorKind: "system",
     payload: { deadline, cause },
+    once: `payment_expired:${payment.id}`,
   })
 
   return { expired: true, cause }
@@ -855,6 +904,8 @@ export async function expireNow(input: {
     actorId: input.actorId,
     actorEmail: input.actorEmail,
     actorKind: "staff",
+    /* T-22 · fechar duas vezes o mesmo link é um duplo clique, não dois factos. */
+    once: `payment_expired_manual:${input.paymentId}`,
   })
 
   return { ok: true }

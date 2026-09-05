@@ -362,6 +362,24 @@ export function methodLabelPt(id: string | null | undefined): string {
   )
 }
 
+/**
+ * T-17 · a etiqueta na língua de quem lê.
+ *
+ * "Stripe" e "PayPal" são nomes próprios e não se traduzem; o que muda é a
+ * frase à volta deles, que já vem do dicionário. Esta função existe para o
+ * email ao cliente não escrever "Vinti4 / 24" em português dentro de uma frase
+ * em francês — e para o back-office continuar a ler em português sem ter de
+ * pensar nisso.
+ */
+export function methodLabel(
+  id: string | null | undefined,
+  locale: string | null | undefined
+): string {
+  if (!id) return "—"
+  if (locale === "pt") return methodLabelPt(id)
+  return METHOD_LABEL[id as PayMethodId] ?? methodLabelPt(id)
+}
+
 /** Coordenadas bancárias por país. CV para quem paga em Cabo Verde, PT para o resto. */
 export const BANK_DETAILS = {
   CV: {
@@ -395,3 +413,16 @@ export const PROOF_REVIEW_HOURS = 48
 
 /** Quanto tempo o cliente tem para pagar depois de escolher a opção. */
 export const PAY_WINDOW_HOURS = 24
+
+/**
+ * T-11 · o prazo de pagamento, contado a partir do envio das instruções.
+ *
+ * "O prazo tem de ser a data e a hora em que o link de pagamento foi enviado,
+ * mais uma hora." É uma decisão comercial e vive num sítio só: o servidor
+ * calcula-a quando as instruções saem, o back-office mostra-a e o ecrã do
+ * cliente conta a partir dela.
+ *
+ * Distinto de `PAY_WINDOW_HOURS`, que é a validade do link e do preço. Este é a
+ * promessa que vai escrita na mensagem — e é o que o cliente lê.
+ */
+export const PAY_DUE_HOURS = 1

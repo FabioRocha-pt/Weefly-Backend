@@ -3,7 +3,6 @@ import { IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google"
 
 import "@/styles/pc.css"
 import { RoutePreloader } from "@/components/route-preloader"
-import { PcFab, PcFooter } from "@/components/pc/chrome"
 
 /**
  * WeeFly Price Checker — o fluxo público, P1 → P9.
@@ -53,9 +52,16 @@ export default function PriceCheckerLayout({
        */}
       <style>{`:root{--font-jakarta:${jakarta.style.fontFamily};--font-plex-mono:${plexMono.style.fontFamily}}`}</style>
       <RoutePreloader background="#F1F5F9" label="Loading WeeFly" />
+      {/*
+        T-08 · o rodapé e o botão flutuante desceram para dentro das páginas.
+
+        Estavam aqui, e aqui é **fora** do `I18nProvider` — que só existe dentro
+        de `/pc/[token]`, porque só lá se sabe de que caso é a língua. Dois
+        componentes traduzidos renderizados fora do provider escreveriam o nome
+        das chaves no ecrã, que é o defeito que o T-08 manda acabar e não
+        criar. Cada página passa a desenhá-los dentro do seu contexto.
+      */}
       {children}
-      <PcFooter />
-      <PcFab />
     </>
   )
 }

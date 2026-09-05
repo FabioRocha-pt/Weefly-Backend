@@ -51,6 +51,14 @@ export interface BookingCaseRow {
     baggage_hold: number
     /** A moeda em que o cliente pediu a cotação (?currency= do link /pc). */
     currency: string | null
+    /**
+     * T-09 · o texto livre que o cliente escreveu no ecrã de revisão.
+     *
+     * Lido aqui porque é o compositor de propostas que carrega este tipo — e é
+     * exactamente lá que ele faltava: quem cota decidia horários sem saber que
+     * a passageira viaja em cadeira de rodas.
+     */
+    special_requests: string | null
     lead: {
       full_name: string
       email: string
@@ -69,6 +77,7 @@ const CASE_COLUMNS = `
   trip_request:trip_requests (
     id, reference, origin, destination, depart_date, return_date,
     adults, children, infants, baggage_hold, cabin_class, trip_type, currency,
+    special_requests,
     lead:leads (full_name, email, phone_prefix, phone, source_channel, locale)
   )
 `

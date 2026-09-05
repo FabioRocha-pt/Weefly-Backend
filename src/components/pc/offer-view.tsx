@@ -26,6 +26,8 @@ import type { PcState } from "@/lib/pc/state"
 import { baggageLabel, carrierName } from "@/lib/pc/catalog"
 import { cityOf, money, paxFull } from "@/lib/pc/format"
 import { TermIcon } from "@/components/pc/bits"
+import { useT } from "@/i18n/provider"
+import type { Translator } from "@/i18n/translate"
 
 export function selectedOfferOf(state: PcState): Offer | null {
   if (!state.selectedOfferId) return null
@@ -45,33 +47,47 @@ export function legsOfOffer(offer: Offer): {
   return out
 }
 
-/** "Non-stop" · "1 stop in Lisbon" — a versão inglesa de `stopsLabel`. */
+/**
+ * "Directo" · "1 escala em Lisboa" — na língua de quem lê.
+ *
+ * T-08 · o tradutor entra por parâmetro e não por hook porque estas funções são
+ * chamadas de dentro de `map`s e de outras funções puras. Quem não o passa fica
+ * com o inglês, que é o que os ecrãs internos do back-office esperam.
+ */
 export function stopsEn(
   segments: OfferSegment[],
-  cities?: Record<string, string>
+  cities?: Record<string, string>,
+  t?: Translator
 ): string {
   const stops = segments.length - 1
-  if (stops <= 0) return "Non-stop"
+  if (stops <= 0) return t ? t("pc.offer.nonStop") : "Non-stop"
   if (stops === 1) {
     const wait = layoverMinutes(segments[0], segments[1])
     const where = cityOf(segments[0].destination, cities)
-    return wait === null ? `1 stop in ${where}` : `${where} · ${formatDuration(wait)}`
+    if (wait !== null) return `${where} · ${formatDuration(wait)}`
+    return t ? t("pc.offer.oneStopIn", { city: where }) : `1 stop in ${where}`
   }
-  return `${stops} stops`
+  return t ? t("pc.offer.stops", { count: stops }) : `${stops} stops`
 }
 
 export function offerStopsSummary(
   offer: Offer,
-  cities?: Record<string, string>
+  cities?: Record<string, string>,
+  t?: Translator
 ): string {
   const legs = legsOfOffer(offer)
   if (!legs.length) return ""
-  if (legs.every((l) => l.segments.length === 1)) return "Non-stop"
-  if (legs.length === 1) return stopsEn(legs[0].segments, cities)
+  if (legs.every((l) => l.segments.length === 1)) {
+    return t ? t("pc.offer.nonStop") : "Non-stop"
+  }
+  if (legs.length === 1) return stopsEn(legs[0].segments, cities, t)
   const outbound = legs[0].segments.length > 1
   const inbound = legs[1].segments.length > 1
-  if (outbound && inbound) return "1 stop each way"
-  return outbound ? "1 stop out, non-stop back" : "Non-stop out, 1 stop back"
+  if (outbound && inbound) {
+    return t ? t("pc.offer.oneStopEachWay") : "1 stop each way"
+  }
+  if (outbound) return t ? t("pc.offer.oneStopOut") : "1 stop out, non-stop back"
+  return t ? t("pc.offer.oneStopBack") : "Non-stop out, 1 stop back"
 }
 
 /**
@@ -86,15 +102,21 @@ export function offerStopsSummary(
  * alguém escolher outra opção, e escondê-la faria a tarifa mais barata parecer
  * simplesmente a mais barata.
  */
-export function offerTerms(offer: Offer): { ic: string; txt: string; no?: boolean }[] {
+export function offerTerms(
+  offer: Offer,
+  t?: Translator
+): { ic: string; txt: string; no?: boolean }[] {
   const terms: { ic: string; txt: string; no?: boolean }[] = []
 
-  const cabin = bagTerm(offer.baggage_cabin_count, offer.baggage_cabin, "cabin")
+  const cabin = bagTerm(offer.baggage_cabin_count, offer.baggage_cabin, "cabin", t)
   if (cabin) terms.push({ ic: cabin.no ? "no" : "cabin", ...cabin })
 
-  terms.push({ ic: "person", txt: "Personal item 1 · small backpack" })
+  terms.push({
+    ic: "person",
+    txt: t ? t("pc.offer.personalItem") : "Personal item 1 · small backpack",
+  })
 
-  const hold = bagTerm(offer.baggage_hold_count, offer.baggage_hold, "hold")
+  const hold = bagTerm(offer.baggage_hold_count, offer.baggage_hold, "hold", t)
   if (hold) terms.push({ ic: hold.no ? "no" : "hold", ...hold })
 
   /*
@@ -106,7 +128,11 @@ export function offerTerms(offer: Offer): { ic: string; txt: string; no?: boolea
    * maneira, ou numa quarta língua.
    */
   if (offer.non_refundable) {
-    terms.push({ ic: "no", txt: "Non-refundable", no: true })
+    terms.push({
+      ic: "no",
+      txt: t ? t("pc.offer.nonRefundable") : "Non-refundable",
+      no: true,
+    })
   }
   /* A letra pequena, quando existe, aparece a seguir e sem julgar nada. */
   if (offer.refund_policy) {
@@ -126,11 +152,16 @@ export function offerTerms(offer: Offer): { ic: string; txt: string; no?: boolea
 function bagTerm(
   count: number | null,
   legacy: string | null,
-  kind: "cabin" | "hold"
+  kind: "cabin" | "hold",
+  t?: Translator
 ): { txt: string; no?: boolean } | null {
   if (count === null) {
     if (!legacy) return null
-    const label = kind === "cabin" ? "Cabin bag" : "Checked"
+    const label = t
+      ? t(kind === "cabin" ? "pc.offer.cabinBag" : "pc.offer.checked")
+      : kind === "cabin"
+        ? "Cabin bag"
+        : "Checked"
     return { txt: `${label} ${legacy}` }
   }
   return { txt: baggageLabel(count, kind), no: count === 0 }
@@ -140,7 +171,8 @@ function legLabel(
   direction: "ida" | "volta",
   index: number,
   multi: boolean,
-  date: string | null
+  date: string | null,
+  t: Translator
 ): string {
   const day = date ? date.slice(0, 10) : ""
   const pretty = day
@@ -151,8 +183,11 @@ function legLabel(
         timeZone: "UTC",
       })
     : ""
-  if (multi) return `Flight ${index + 1}${pretty ? ` · ${pretty}` : ""}`
-  return `${direction === "ida" ? "Outbound" : "Return"}${pretty ? ` · ${pretty}` : ""}`
+  if (multi) {
+    return `${t("pc.offer.flight", { n: index + 1 })}${pretty ? ` · ${pretty}` : ""}`
+  }
+  const way = t(direction === "ida" ? "pc.offer.outbound" : "pc.offer.return")
+  return `${way}${pretty ? ` · ${pretty}` : ""}`
 }
 
 /** Um sentido: horas, aeroportos, duração e a escala. */
@@ -165,6 +200,7 @@ export function LegStrip({
   label: string
   cities?: Record<string, string>
 }) {
+  const t = useT()
   const first = segments[0]
   const last = segments[segments.length - 1]
   const plus = dayOffset(segments)
@@ -185,7 +221,7 @@ export function LegStrip({
           <span className="d a" />
           {segments.length > 1 && <span className="st" />}
           <span className="d b" />
-          <span className="sp">{stopsEn(segments, cities)}</span>
+          <span className="sp">{stopsEn(segments, cities, t)}</span>
         </div>
         <div className="node r">
           <span className="tm">
@@ -218,6 +254,7 @@ export function OfferCard({
   currency,
   request,
   publishedAt,
+  chosen = false,
   pending,
   onChoose,
 }: {
@@ -227,20 +264,30 @@ export function OfferCard({
   request: PcState["request"]
   /** Quando a proposta foi enviada — a origem da janela de validade. */
   publishedAt: string | null
+  /**
+   * T-02 · esta é a opção que o cliente já escolheu.
+   *
+   * O critério pede as duas coisas: "a opção escolhida é mostrada como tal, e
+   * pode voltar a ser escolhida". Marcada e **não** desactivada — quem voltou às
+   * opções e mudou de ideias tem de conseguir confirmar a mesma, e um botão
+   * cinzento seria o segundo beco sem saída no mesmo ecrã.
+   */
+  chosen?: boolean
   pending: boolean
   onChoose: () => void
 }) {
+  const t = useT()
   const nature = priceNature(offer, publishedAt)
   const guaranteed = nature === "guaranteed"
   const legs = legsOfOffer(offer)
   const multi = request.trip === "multi"
   const category = offer.is_recommended
-    ? "Best option"
+    ? t("pc.offer.best")
     : offer.is_cheapest
-      ? "Cheapest"
+      ? t("pc.offer.cheapest")
       : offer.is_fastest
-        ? "Fastest"
-        : offer.name || "Option"
+        ? t("pc.offer.fastest")
+        : offer.name || t("pc.offer.option")
 
   /*
    * BO-13 · duas linhas e o total, e é esta a mudança.
@@ -263,11 +310,12 @@ export function OfferCard({
     (offer.lock_fee_enabled ? offer.lock_fee : 0)
 
   return (
-    <article className="prop">
+    <article className={`prop${chosen ? " chosen" : ""}`}>
       <div className="prop-band">
         <span className="cat">{category}</span>
+        {chosen && <span className="nat picked">{t("pc.offer.chosen")}</span>}
         <span className={`nat ${NATURE_CLASS[nature]}`}>
-          {NATURE_LABEL[nature]}
+          {t(NATURE_KEY[nature])}
         </span>
       </div>
 
@@ -275,21 +323,25 @@ export function OfferCard({
         <div>
           <div className="tot">{money(total, currency)}</div>
           <div className="brk">
-            Price <b>{money(fare, currency)}</b> + WeeFly service{" "}
-            <b>{money(offer.service_fee, currency)}</b>
+            {t("pc.offer.priceLine", {
+              fare: money(fare, currency),
+              service: money(offer.service_fee, currency),
+            })}
           </div>
         </div>
         <div className="paxn">
           {paxFull(request)}
           <br />
-          total to pay
+          {t("pc.offer.totalToPay")}
         </div>
       </div>
 
       <div className="prop-body">
         <div className="airline">
           {offer.name || carrierName(offer.segments[0]?.carrier_code)}{" "}
-          <span className="tagline">{offerStopsSummary(offer, request.cities)}</span>
+          <span className="tagline">
+            {offerStopsSummary(offer, request.cities, t)}
+          </span>
         </div>
 
         {legs.map((leg, index) => (
@@ -297,12 +349,12 @@ export function OfferCard({
             key={leg.direction}
             segments={leg.segments}
             cities={request.cities}
-            label={legLabel(leg.direction, index, multi, leg.segments[0].depart_at)}
+            label={legLabel(leg.direction, index, multi, leg.segments[0].depart_at, t)}
           />
         ))}
 
         <div className="terms">
-          {offerTerms(offer).map((term, i) => (
+          {offerTerms(offer, t).map((term, i) => (
             <div className={`trow${term.no ? " no" : ""}`} key={i}>
               <span className="ti">
                 <TermIcon kind={term.ic} />
@@ -314,24 +366,26 @@ export function OfferCard({
 
         {offer.agent_note && (
           <p className="notice" style={{ marginTop: 12 }}>
-            <b>Note from the team:</b> {offer.agent_note}
+            <b>{t("pc.offer.teamNote")}</b> {offer.agent_note}
           </p>
         )}
       </div>
 
       <div className="prop-cta">
         <button
-          className="btn btn-primary"
+          className={`btn ${chosen ? "btn-ghost" : "btn-primary"}`}
           type="button"
           disabled={pending}
           onClick={onChoose}
         >
-          {pending ? "Just a moment…" : "Choose this option"}
+          {pending
+            ? t("pc.offer.choosing")
+            : chosen
+              ? t("pc.offer.keep")
+              : t("pc.offer.choose")}
         </button>
         <p className="subnote">
-          {guaranteed
-            ? "You only pay after confirming your choice."
-            : "We reconfirm the amount with the airline before issuing."}
+          {guaranteed ? t("pc.offer.payAfter") : t("pc.offer.reconfirm")}
         </p>
       </div>
     </article>
@@ -345,10 +399,10 @@ export function OfferCard({
  * primeira é uma promessa comercial nossa, que podemos cumprir; a segunda é da
  * companhia, e só ela a pode dar. Chamar às duas a mesma coisa era o erro.
  */
-const NATURE_LABEL: Record<PriceNature, string> = {
-  guaranteed: "Price guaranteed",
-  held: "Price held by WeeFly",
-  indicative: "Subject to reconfirmation",
+const NATURE_KEY: Record<PriceNature, string> = {
+  guaranteed: "pc.offer.natureGuaranteed",
+  held: "pc.offer.natureHeld",
+  indicative: "pc.offer.natureIndicative",
 }
 
 const NATURE_CLASS: Record<PriceNature, string> = {

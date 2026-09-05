@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation"
 
 import { RequestWizard } from "@/components/pc/request-wizard"
-import { ToastHost, type PcLang } from "@/components/pc/chrome"
+import { PcFab, PcFooter, ToastHost } from "@/components/pc/chrome"
 import { CURRENCIES } from "@/lib/pc/catalog"
 import { COUNTRY_BY_ISO, countryOfDial } from "@/lib/countries"
+import { I18nProvider } from "@/i18n/provider"
+import { getDictionary, getLocale } from "@/i18n/server"
+import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/config"
 
 /**
  * /pc — o pedido novo.
@@ -25,8 +28,6 @@ import { COUNTRY_BY_ISO, countryOfDial } from "@/lib/countries"
 
 export const dynamic = "force-dynamic"
 
-const LANGS: PcLang[] = ["EN", "PT", "FR"]
-
 export default function PriceCheckerPage({
   searchParams,
 }: {
@@ -40,7 +41,18 @@ export default function PriceCheckerPage({
   const ref = one("ref").trim()
   if (ref) redirect(`/pc/${encodeURIComponent(ref)}`)
 
-  const lang = one("lang").toUpperCase() as PcLang
+  /*
+   * T-08 · aqui o `?lang=` é a única fonte, e é o que sempre foi.
+   *
+   * Não há caso e não há lead: quem abre este endereço ainda não nos disse nada.
+   * O que existe é o parâmetro que o vendedor pôs no link (`?lang=fr`) e o
+   * cookie de quem já andou pelo site — que é exactamente o que `getLocale`
+   * responde. O que muda em relação a antes é que o formulário passa a ser
+   * traduzido em vez de estar escrito em inglês literal.
+   */
+  const asked = one("lang").toLowerCase()
+  const locale: Locale = isLocale(asked) ? asked : getLocale()
+
   const currency = one("currency").toUpperCase() || one("cur").toUpperCase()
   const agent = one("agent").trim()
 
@@ -53,13 +65,21 @@ export default function PriceCheckerPage({
     countryOfDial(askedDial)
 
   return (
-    <ToastHost>
-      <RequestWizard
-        initialLang={LANGS.includes(lang) ? lang : "EN"}
-        initialCurrency={CURRENCIES.includes(currency) ? currency : "EUR"}
-        initialCountry={country}
-        agentSlug={agent ? agent.slice(0, 40) : null}
-      />
-    </ToastHost>
+    <I18nProvider
+      locale={locale}
+      dictionary={getDictionary(locale)}
+      fallback={locale === DEFAULT_LOCALE ? undefined : getDictionary(DEFAULT_LOCALE)}
+    >
+      <ToastHost>
+        <RequestWizard
+          initialLang={locale}
+          initialCurrency={CURRENCIES.includes(currency) ? currency : "EUR"}
+          initialCountry={country}
+          agentSlug={agent ? agent.slice(0, 40) : null}
+        />
+        <PcFooter />
+        <PcFab />
+      </ToastHost>
+    </I18nProvider>
   )
 }

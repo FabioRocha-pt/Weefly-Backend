@@ -190,6 +190,28 @@ async function editableProposal(
   caseId: string
 ): Promise<{ id: string; currency: string } | { error: string }> {
   const { t } = getI18n()
+
+  /*
+   * T-01 · "a opção de cotar sem reclamar continua disponível. Remova-a por
+   * inteiro — não apenas desactive."
+   *
+   * O `BoClaimGate` fechava o **ecrã**, e a publicação verificava o dono. Tudo o
+   * resto — criar a proposta, acrescentar uma oferta, escrever os trechos, o
+   * preço, duplicar, reordenar, apagar, gravar os campos do bilhete — não
+   * verificava nada. Uma server action é um endpoint: quem souber o nome dela
+   * chama-a sem passar por ecrã nenhum, e era exactamente esse o caminho que
+   * ficava aberto.
+   *
+   * Agora a fechadura está **na única porta por onde todas as escritas passam**.
+   * Uma verificação por action seria oito verificações a manter alinhadas, e a
+   * nona a nascer sem ela.
+   *
+   * O administrador passa, como em `publishProposal`: quem responde pela agência
+   * tem de poder mexer num caso que ficou preso com alguém de férias.
+   */
+  const denied = await requireCaseOwner(caseId)
+  if (denied) return denied
+
   const view = await getProposal(caseId)
   if (!view) return { error: t("errors.caseHasNoProposal") }
   if (view.proposal.status === "publicada") {
@@ -198,6 +220,32 @@ async function editableProposal(
     }
   }
   return { id: view.proposal.id, currency: view.proposal.currency }
+}
+
+/**
+ * T-01 · o caso tem de ter dono, e o dono tem de ser quem está a escrever.
+ *
+ * Devolve `null` quando pode passar, e o erro pronto a devolver quando não.
+ * Escrito assim — e não a devolver um booleano — porque as três respostas
+ * negativas são diferentes e a frase que o agente lê tem de dizer qual delas é:
+ * não tem sessão, o caso não tem dono, ou o caso é de outra pessoa.
+ */
+async function requireCaseOwner(
+  caseId: string
+): Promise<{ error: string } | null> {
+  const { t } = getI18n()
+
+  const access = await getBoAccess()
+  if (!access.ok) return { error: t("errors.sessionExpired") }
+
+  const owner = await caseOwner(caseId)
+  if (!owner) return { error: t("errors.publishNeedsOwner") }
+
+  if (owner !== access.identity.userId && access.identity.role !== "admin") {
+    return { error: t("errors.publishNotOwner") }
+  }
+
+  return null
 }
 
 /**
@@ -222,6 +270,13 @@ export async function initProposal(
 ): Promise<ProposalActionState> {
   const { t } = getI18n()
   if (!caseId) return { error: t("errors.invalidCase") }
+
+  /* T-01 · abrir uma proposta é começar a cotar, e não se cota um caso sem
+     dono. Aqui à mão porque esta é a única escrita que não passa por
+     `editableProposal` — é ela que cria aquilo que as outras editam. */
+  const denied = await requireCaseOwner(caseId)
+  if (denied) return denied
+
   const result = await ensureProposal(caseId, currency)
   if (!result.ok) {
     return {
@@ -1122,6 +1177,13 @@ export async function startRevision(
   caseId: string
 ): Promise<ProposalActionState> {
   const { t } = getI18n()
+
+  /* T-01 · abrir uma revisão é voltar a cotar. Aqui à mão porque uma proposta
+     publicada não passa por `editableProposal` — é precisamente esta acção que
+     a torna editável outra vez. */
+  const denied = await requireCaseOwner(caseId)
+  if (denied) return denied
+
   const view = await getProposal(caseId)
   if (!view) return { error: t("errors.caseHasNoProposal") }
   if (view.proposal.status !== "publicada") {

@@ -17,9 +17,12 @@
  *   · `router.refresh()` volta a correr os Server Components da página aberta e
  *     troca só o que mudou. O estado dos componentes de cliente — o texto do
  *     compositor, a pesquisa da fila — sobrevive, porque não é remontado;
- *   · se o websocket não subir (realtime desligado no projeto, rede a filtrar
- *     websockets), fica uma sondagem de 20 segundos. É a rede de segurança, não
- *     o mecanismo principal.
+ *   · T-03 · **e há sempre um batimento de 4 segundos**, corra o websocket ou
+ *     não. Era uma sondagem de 20 segundos que só arrancava quando o websocket
+ *     falhava a subir — e o modo de falha real é outro: ele diz `SUBSCRIBED` e
+ *     depois não entrega nada, o que do lado do código parece estar tudo bem.
+ *     O batimento pede uma assinatura curta a `/api/bo/pulse` e só manda
+ *     renderizar quando ela muda.
  *
  * O aviso sonoro é por agente e desliga-se com um clique: quem está ao balcão
  * com clientes à frente não quer um sino a cada pedido.
@@ -42,8 +45,21 @@ const TABLES = [
 ]
 
 const SOUND_KEY = "weefly.bo.sound"
-const FALLBACK_MS = 20_000
-const CONNECT_GRACE_MS = 8_000
+
+/**
+ * T-03 · "cada acção do cliente aparece no back-office em 5 segundos, sem
+ * recarregar".
+ *
+ * A sondagem passa de 20 para 4 segundos e deixa de esperar pelo Realtime — a
+ * rede de segurança está sempre de pé, porque foi precisamente ela que não
+ * estava quando o teste correu. Quatro e não cinco para que o atraso máximo
+ * (uma passagem inteira mais o tempo de render) caiba dentro do critério.
+ *
+ * O custo é um pedido a `/api/bo/pulse` de quatro em quatro segundos, que
+ * devolve uma linha de texto. O `router.refresh()` — esse sim caro — só corre
+ * quando a assinatura muda.
+ */
+const PULSE_MS = 4_000
 
 interface Arrival {
   /** Quantos acontecimentos entraram desde o último olhar. */
@@ -126,7 +142,6 @@ export function BoLiveUpdates() {
 
   useEffect(() => {
     const supabase = createClient()
-    let connected = false
 
     const channel = supabase.channel("bo-price-checker")
 
@@ -143,33 +158,73 @@ export function BoLiveUpdates() {
 
     channel.subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        connected = true
         setLive(true)
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-        connected = false
         setLive(false)
       }
     })
 
-    /*
-     * A rede de segurança. Se o websocket não estiver de pé oito segundos
-     * depois de entrar, passa a haver uma sondagem — melhor uma fila com vinte
-     * segundos de atraso do que uma fila parada sem ninguém saber.
-     */
-    let poll: ReturnType<typeof setInterval> | null = null
-    const grace = setTimeout(() => {
-      if (connected) return
-      poll = setInterval(() => {
-        if (connected) return
-        refreshWhenIdle()
-      }, FALLBACK_MS)
-    }, CONNECT_GRACE_MS)
-
     return () => {
-      clearTimeout(grace)
-      if (poll) clearInterval(poll)
       if (timer.current) clearTimeout(timer.current)
       void supabase.removeChannel(channel)
+    }
+  }, [announce, refreshWhenIdle])
+
+  /*
+   * T-03 · o batimento, a correr sempre.
+   *
+   * Estava condicionado a o websocket **não** ter subido em oito segundos. Essa
+   * condição é a razão de o teste ter encontrado um back-office parado: quando
+   * o Realtime diz `SUBSCRIBED` e depois não entrega nada — publicação sem a
+   * tabela, RLS a filtrar, um proxy a matar o socket em silêncio — a sondagem
+   * nunca chegava a arrancar, porque do ponto de vista do código estava tudo
+   * bem.
+   *
+   * Agora corre sempre. Custa um pedido de quatro em quatro segundos que
+   * devolve uma linha de texto; o render novo só acontece quando essa linha
+   * muda, venha a notícia por websocket ou por aqui.
+   */
+  const signature = useRef<string | null>(null)
+
+  useEffect(() => {
+    let stopped = false
+
+    const beat = async () => {
+      /* Um separador em segundo plano não precisa de saber de nada: o
+         `visibilitychange` traz o estado ao voltar. */
+      if (document.hidden) return
+      try {
+        const response = await fetch("/api/bo/pulse", { cache: "no-store" })
+        if (!response.ok || stopped) return
+        const body = (await response.json()) as { signature?: string }
+        if (!body.signature) return
+
+        if (signature.current === null) {
+          signature.current = body.signature
+          return
+        }
+        if (signature.current !== body.signature) {
+          signature.current = body.signature
+          announce(false)
+          refreshWhenIdle()
+        }
+      } catch {
+        /* Rede a falhar: a próxima passagem tenta outra vez. Um back-office sem
+           ligação já tem outros sinais disso. */
+      }
+    }
+
+    void beat()
+    const interval = setInterval(beat, PULSE_MS)
+    const onVisible = () => {
+      if (!document.hidden) void beat()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+
+    return () => {
+      stopped = true
+      clearInterval(interval)
+      document.removeEventListener("visibilitychange", onVisible)
     }
   }, [announce, refreshWhenIdle])
 
@@ -194,7 +249,7 @@ export function BoLiveUpdates() {
             ? sound
               ? "Em tempo real, com aviso sonoro. Clique para silenciar."
               : "Em tempo real, silencioso. Clique para ligar o aviso."
-            : "Sem ligação em tempo real — a fila atualiza a cada 20 segundos."
+            : "Sem websocket — a fila continua a actualizar a cada 4 segundos."
         }
       >
         <span className="dot" />

@@ -28,6 +28,8 @@ const BUCKETS: { id: BoBucket; label: string; tone?: "alert" | "warn" }[] = [
   { id: "a_expirar", label: "Propostas a expirar" },
   { id: "espera_cliente", label: "Espera pelo cliente" },
   { id: "tudo", label: "Tudo" },
+  /* T-21 · o último da fila, porque é o que não tem trabalho dentro. */
+  { id: "fechados", label: "Casos fechados" },
 ]
 
 export default async function BoQueuePage({

@@ -16,7 +16,8 @@
 import { useState } from "react"
 
 import type { PcState } from "@/lib/pc/state"
-import { PcTopbar, type PcLang } from "@/components/pc/chrome"
+import type { Locale } from "@/i18n/config"
+import { PcTopbar } from "@/components/pc/chrome"
 import {
   ScreenP3,
   ScreenP4a,
@@ -32,9 +33,19 @@ import { ScreenP7Pay } from "@/components/pc/screen-payment"
 export function PcScreenRouter({
   state,
   forceView,
+  locale,
 }: {
   state: PcState
   forceView?: string
+  /**
+   * T-08 · a língua que a página resolveu, e não a que está no lead.
+   *
+   * São duas coisas diferentes a partir do momento em que o seletor funciona: o
+   * lead diz em que língua o cliente falou connosco, e isto diz em que língua
+   * ele está a ler agora. O botão do cabeçalho tem de mostrar a segunda — mostrar
+   * a primeira era o botão a discordar do ecrã à volta dele.
+   */
+  locale: Locale
 }) {
   const closed =
     state.payment?.status === "COMPLETED" ||
@@ -56,10 +67,22 @@ export function PcScreenRouter({
 
   return (
     <>
+      {/*
+        T-08 · o seletor passa a mudar a língua de verdade.
+
+        `lang` vinha do lead e `onLangChange` não existia: carregar no botão
+        mostrava um aviso e o ecrã continuava igual. Agora recebe a língua desta
+        renderização e a acção que a grava — no cookie deste pedido e na coluna
+        do lead, para os emails saírem na mesma (ver `setPcLocale`).
+
+        T-14 · a referência vai com ele para a faixa laranja, no canto superior
+        direito, no mesmo sítio e com o mesmo tratamento de todos os emails.
+      */}
       <PcTopbar
         reference={state.request.reference}
         currency={state.request.currency}
-        lang={state.contact.locale.toUpperCase() as PcLang}
+        lang={locale}
+        token={state.token}
       />
 
       {screen === "p3" && <ScreenP3 state={state} />}

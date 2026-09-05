@@ -18,10 +18,12 @@ import { CABIN_LABEL, cityOf, countdown, fmtDate, fmtRange, paxFull, paxTotalOf 
 import { OfferCard } from "@/components/pc/offer-view"
 import { IcWa } from "@/components/pc/bits"
 import { WaButton, useToast } from "@/components/pc/chrome"
+import { useT } from "@/i18n/provider"
 
 export function ScreenP5({ state }: { state: PcState }) {
   const router = useRouter()
   const toast = useToast()
+  const t = useT()
   const [pending, startTransition] = useTransition()
   const [choosing, setChoosing] = useState<string | null>(null)
 
@@ -52,34 +54,56 @@ export function ScreenP5({ state }: { state: PcState }) {
   return (
     <main className="shell view">
       <section className="hero">
-        <span className="eyebrow">Step 4 · choose</span>
+        <span className="eyebrow">{t("pc.options.eyebrow")}</span>
         <h1>
-          {offers.length === 1 ? "One option for " : "Two options for "}
+          {offers.length === 1
+            ? t("pc.options.headingOne")
+            : t("pc.options.headingTwo")}
           <em>
             {cityOf(state.request.origin, state.request.cities)} →{" "}
             {cityOf(state.request.destination, state.request.cities)}
           </em>
         </h1>
         <p>
-          {paxFull(state.request)} · {dates} · {CABIN_LABEL[state.request.cabin]}.
-          Prices are totals, for {count === 1 ? "the passenger" : `all ${count} passengers`}.
+          {t("pc.options.summary", {
+            pax: paxFull(state.request),
+            dates,
+            cabin: CABIN_LABEL[state.request.cabin],
+            who:
+              count === 1
+                ? t("pc.options.whoOne")
+                : t("pc.options.whoMany", { count }),
+          })}
         </p>
       </section>
 
       {instant && (
         <div className="valid">
-          <span className="cl mono">{clock ?? "expired"}</span>
+          <span className="cl mono">{clock ?? t("pc.options.expired")}</span>
           <p>
             <b>
               {anyGuaranteed
-                ? `The fare is guaranteed by the airline until ${clockAt(instant)}.`
-                : `We are holding these prices until ${clockAt(instant)}.`}
+                ? t("pc.options.guaranteedUntil", { time: clockAt(instant) })
+                : t("pc.options.heldUntil", { time: clockAt(instant) })}
             </b>{" "}
             {anyGuaranteed
-              ? "After that we have to reconfirm the amount with the airline."
-              : "This is our own hold, not the airline's — after it we reconfirm the amount before issuing."}
+              ? t("pc.options.guaranteedAfter")
+              : t("pc.options.heldAfter")}
           </p>
         </div>
+      )}
+
+      {/*
+        T-02 · quem já escolheu vê que escolheu, e vê que pode trocar.
+
+        A lista era igual nas duas situações — a primeira visita e o regresso
+        vindo de "Change option". Sem marca nenhuma na opção actual, trocar era
+        um salto no escuro: o cliente não sabia de qual estava a sair.
+      */}
+      {state.selectedOfferId && (
+        <p className="notice" style={{ marginTop: 12 }}>
+          {t("pc.options.alreadyChosen")}
+        </p>
       )}
 
       <div>
@@ -91,14 +115,32 @@ export function ScreenP5({ state }: { state: PcState }) {
             currency={state.quoteCurrency}
             request={state.request}
             publishedAt={state.proposalPublishedAt}
+            chosen={offer.id === state.selectedOfferId}
             pending={pending && choosing === offer.id}
             onChoose={() => {
               setChoosing(offer.id)
               startTransition(async () => {
                 const result = await choosePcOffer(state.token, offer.id)
                 setChoosing(null)
-                if (result.ok) router.refresh()
-                else toast(result.error)
+                if (!result.ok) {
+                  toast(result.error)
+                  return
+                }
+                /*
+                 * T-02 · sair do `?view=p5`, que é o que forçava a lista.
+                 *
+                 * `router.refresh()` recarregava os dados e deixava o endereço
+                 * como estava — e com `view=p5` no endereço a página volta
+                 * sempre à lista das opções. O clique gravava a escolha e o
+                 * ecrã ficava exactamente igual, o que se lê como "o botão não
+                 * faz nada". É este o beco sem saída do relatório.
+                 *
+                 * `replace` e não `push`: o "voltar" do browser tem de levar ao
+                 * ecrã de onde a pessoa veio, e não outra vez à lista.
+                 */
+                toast(t("pc.options.updated"))
+                router.replace(`/pc/${state.token}`)
+                router.refresh()
               })
             }}
           />
@@ -108,11 +150,9 @@ export function ScreenP5({ state }: { state: PcState }) {
       <div className="card tight">
         <WaButton reference={state.request.reference}>
           <IcWa />
-          I have a question about these options
+          {t("pc.options.question")}
         </WaButton>
-        <p className="subnote">
-          Not what you had in mind? Tell us and we search again, no charge.
-        </p>
+        <p className="subnote">{t("pc.options.questionNote")}</p>
       </div>
       <div className="spacer" />
     </main>

@@ -46,10 +46,13 @@ import {
   Track,
 } from "@/components/pc/bits"
 import { CopyButton, WaButton, useToast } from "@/components/pc/chrome"
+import { useT } from "@/i18n/provider"
+import type { Translator } from "@/i18n/translate"
 
 // ── P3 · pedido recebido ─────────────────────────────────────────────────────
 
 export function ScreenP3({ state }: { state: PcState }) {
+  const t = useT()
   const phone = phoneDisplay(state.contact.dialCode, state.contact.phone)
 
   return (
@@ -59,16 +62,17 @@ export function ScreenP3({ state }: { state: PcState }) {
           <IcBigCheck />
         </div>
         <h2>
-          Request received, <em>{state.contact.firstName || "—"}</em>
+          {t("pc.status.receivedHeading")}
+          <em>{state.contact.firstName || "—"}</em>
         </h2>
-        <p>
-          Our team is already searching for the best fare. Keep this link: you
-          can come back any time to see the status of your request.
-        </p>
+        <p>{t("pc.status.receivedBody")}</p>
         <div className="refbox">
-          <span>Your reference</span>
+          <span>{t("pc.status.yourReference")}</span>
           <b className="mono">{state.request.reference}</b>
-          <CopyButton value={state.request.reference} label="Copy reference" />
+          <CopyButton
+            value={state.request.reference}
+            label={t("pc.status.copyReference")}
+          />
         </div>
       </div>
 
@@ -90,22 +94,27 @@ export function ScreenP3({ state }: { state: PcState }) {
           <h3>Request status</h3>
           <span className="rt" style={{ display: "flex", alignItems: "center", gap: 7 }}>
             {state.cancelled ? (
-              <span style={{ color: "var(--ember)", fontWeight: 700 }}>cancelled</span>
+              <span style={{ color: "var(--ember)", fontWeight: 700 }}>
+                {t("pc.status.cancelled")}
+              </span>
             ) : (
               <>
                 <span className="pulse" />
-                in progress
+                {t("pc.status.inProgress")}
               </>
             )}
           </span>
         </div>
         <Track state={state} />
         <p className="eta">
-          We normally reply in <b>under 2 business hours</b>. As soon as your
-          options are ready we will let you know on <b className="mono">{phone}</b>.
+          {t("pc.status.etaBefore")}
+          <b>{t("pc.status.etaBold")}</b>
+          {t("pc.status.etaAfter")}
+          <b className="mono">{phone}</b>.
           <br />
-          You can also <b>come back to this link any time</b> to see the status of
-          your request and whether the answer is ready.
+          {t("pc.status.etaComeBack", {
+            bold: t("pc.status.etaComeBackBold"),
+          })}
         </p>
       </div>
 
@@ -120,19 +129,21 @@ export function ScreenP3({ state }: { state: PcState }) {
 // ── P4a · à espera ───────────────────────────────────────────────────────────
 
 export function ScreenP4a({ state }: { state: PcState }) {
+  const t = useT()
   const phone = phoneDisplay(state.contact.dialCode, state.contact.phone)
 
   return (
     <main className="shell view">
       <section className="hero">
-        <span className="eyebrow">Your request</span>
+        <span className="eyebrow">{t("pc.status.searchingEyebrow")}</span>
         <h1>
-          We are searching for <em>your fares</em>
+          {t("pc.status.searchingBefore")}
+          <em>{t("pc.status.searchingEm")}</em>
         </h1>
         <p>
-          Welcome back{state.contact.firstName ? `, ${state.contact.firstName}` : ""}.
-          Your options are not ready yet. Come back to this link whenever you
-          like: this is always where the answer appears.
+          {t("pc.status.welcomeBack")}
+          {state.contact.firstName ? `, ${state.contact.firstName}` : ""}.{" "}
+          {t("pc.status.searchingBody")}
         </p>
       </section>
 
@@ -167,10 +178,9 @@ export function ScreenP4a({ state }: { state: PcState }) {
         </div>
         <Track state={state} />
         <p className="eta">
-          We normally reply in <b>under 2 business hours</b>. We will let you know
-          on <b className="mono">{phone}</b> and by email. You can also{" "}
-          <b>come back to this link any time</b> to check whether the answer is
-          ready.
+          {t("pc.status.etaBefore")}
+          <b>{t("pc.status.etaBold")}</b>.{" "}
+          {t("pc.status.etaAlso", { phone })}
         </p>
       </div>
 
@@ -183,6 +193,7 @@ export function ScreenP4a({ state }: { state: PcState }) {
 // ── P4b · opções prontas ─────────────────────────────────────────────────────
 
 export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOptions: () => void }) {
+  const t = useT()
   const count = state.offers.length
   /* FB-04 · só é "garantido" o que a companhia está mesmo a segurar. */
   const guaranteed = state.offers.some(
@@ -192,9 +203,10 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
   return (
     <main className="shell view">
       <section className="hero">
-        <span className="eyebrow">Your request</span>
+        <span className="eyebrow">{t("pc.status.searchingEyebrow")}</span>
         <h1>
-          Your options <em>are ready</em>
+          {t("pc.status.readyBefore")}
+          <em>{t("pc.status.readyEm")}</em>
         </h1>
       </section>
 
@@ -212,20 +224,22 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
         </span>
         <div>
           <b>
-            We found {count} option{count === 1 ? "" : "s"} for your trip
+            {count === 1
+              ? t("pc.status.foundOne")
+              : t("pc.status.foundMany", { count })}
           </b>
           <p>
-            We also sent {count === 1 ? "it" : "them"} by WhatsApp and email.
-            {guaranteed
-              ? " One of them has a fare the airline is holding for a limited time."
-              : " Prices are reconfirmed with the airline before issuing."}
+            {count === 1
+              ? t("pc.status.alsoSentOne")
+              : t("pc.status.alsoSentMany")}
+            {guaranteed ? t("pc.status.oneHeld") : t("pc.status.reconfirmed")}
           </p>
         </div>
       </div>
 
       <div className="card tight" style={{ marginTop: 12 }}>
         <button className="btn btn-primary" type="button" onClick={onSeeOptions}>
-          See the options
+          {t("pc.status.seeOptions")}
           <IcNext />
         </button>
       </div>
@@ -248,7 +262,9 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
           <h3>Request status</h3>
           <span className="rt">
             {state.proposalPublishedAt
-              ? `updated at ${clockOf(state.proposalPublishedAt)}`
+              ? t("pc.status.updatedAt", {
+                  time: clockOf(state.proposalPublishedAt),
+                })
               : "—"}
           </span>
         </div>
@@ -262,6 +278,7 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
 // ── P7b · em verificação, ou pago à espera do bilhete ────────────────────────
 
 export function ScreenP7b({ state }: { state: PcState }) {
+  const t = useT()
   const payment = state.payment
   const paid = Boolean(payment?.admin_confirmed) || payment?.status === "COMPLETED"
   const offer = selectedOfferOf(state)
@@ -269,10 +286,13 @@ export function ScreenP7b({ state }: { state: PcState }) {
   const proof = state.proofs[0]
 
   const rows: [string, string][] = [
-    ["Option", offer?.name || "—"],
-    ["Amount", payment ? money(payment.amount, payment.currency) : "—"],
+    [t("pc.status.rowOption"), offer?.name || "—"],
     [
-      "Payment method",
+      t("pc.status.rowAmount"),
+      payment ? money(payment.amount, payment.currency) : "—",
+    ],
+    [
+      t("pc.status.rowMethod"),
       payment?.method
         ? `${METHOD_LABEL[payment.method as PayMethodId] ?? payment.method}${
             payment.pay_provider ? ` · ${payment.pay_provider}` : ""
@@ -280,18 +300,21 @@ export function ScreenP7b({ state }: { state: PcState }) {
         : "—",
     ],
     [
-      "Proof",
+      t("pc.status.rowProof"),
       proof
         ? `${proof.file_name} · ${Math.max(1, Math.round(proof.size_bytes / 1024))} KB`
-        : "not needed for this method",
+        : t("pc.status.rowProofNotNeeded"),
     ],
     [
-      "Passengers",
+      t("pc.status.rowPassengers"),
       state.passengers
         .map((p) => `${p.last_name}/${p.first_name}`.toUpperCase())
         .join(", ") || "—",
     ],
-    ["Sent", whenLabel(payment?.client_declared_paid_at ?? proof?.created_at ?? null)],
+    [
+      t("pc.status.rowSent"),
+      whenLabel(payment?.client_declared_paid_at ?? proof?.created_at ?? null),
+    ],
   ]
 
   return (
@@ -301,22 +324,20 @@ export function ScreenP7b({ state }: { state: PcState }) {
         <h2>
           {paid ? (
             <>
-              Payment confirmed. <em>We are issuing your tickets</em>
+              {t("pc.status.paidHeading")}
+              <em>{t("pc.status.paidHeadingEm")}</em>
             </>
           ) : (
             <>
-              Details received. <em>We are checking the payment</em>
+              {t("pc.status.checkingHeading")}
+              <em>{t("pc.status.checkingHeadingEm")}</em>
             </>
           )}
         </h2>
-        <p>
-          {paid
-            ? "Your payment is confirmed. The tickets are being issued and land in your email and in this link."
-            : "Everything is with our team. As soon as the payment shows up we issue the tickets and they land in your email and in this link."}
-        </p>
+        <p>{paid ? t("pc.status.paidBody") : t("pc.status.checkingBody")}</p>
         <div className="codebox" style={{ justifyContent: "center" }}>
           <div>
-            <span>Request</span>
+            <span>{t("pc.status.request")}</span>
             <b>{state.request.reference}</b>
           </div>
         </div>
@@ -341,27 +362,25 @@ export function ScreenP7b({ state }: { state: PcState }) {
           <h3>Request status</h3>
           <span className="rt" style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span className="pulse" />
-            {paid ? "issuing tickets" : "checking payment"}
+            {paid
+              ? t("pc.status.issuingTickets")
+              : t("pc.status.checkingPayment")}
           </span>
         </div>
         <Track state={state} />
         <p className="eta">
           {paid ? (
-            <>
-              Tickets are issued during business hours. We message you on{" "}
-              <b className="mono">{phone}</b> the moment they are ready.
-            </>
+            t("pc.status.etaIssuing", { phone })
           ) : (
             <>
-              Payments are checked during business hours, <b>usually within 2 hours</b>
-              {payment?.review_deadline_at ? (
-                <>
-                  {" "}
-                  and always within {PROOF_REVIEW_HOURS} hours
-                </>
-              ) : null}
-              . We message you on <b className="mono">{phone}</b> the moment the
-              tickets are issued.
+              {t("pc.status.etaCheckingBefore")}
+              <b>{t("pc.status.etaCheckingBold")}</b>
+              {payment?.review_deadline_at
+                ? t("pc.status.etaCheckingWithin", {
+                    hours: PROOF_REVIEW_HOURS,
+                  })
+                : null}
+              {t("pc.status.etaCheckingAfter", { phone })}
             </>
           )}
         </p>
@@ -370,7 +389,7 @@ export function ScreenP7b({ state }: { state: PcState }) {
       {payment?.proof_status === "rejeitado" && payment.proof_rejected_reason && (
         <div className="card">
           <div className="sechead">
-            <h3>We need another proof</h3>
+            <h3>{t("pc.status.needAnotherProof")}</h3>
           </div>
           <p className="notice">{payment.proof_rejected_reason}</p>
         </div>
@@ -378,7 +397,7 @@ export function ScreenP7b({ state }: { state: PcState }) {
 
       <div className="card">
         <div className="sechead">
-          <h3>What you sent us</h3>
+          <h3>{t("pc.status.whatYouSent")}</h3>
         </div>
         <div className="sumrows">
           <Rows rows={rows} />
@@ -390,7 +409,7 @@ export function ScreenP7b({ state }: { state: PcState }) {
               style={{ width: "100%" }}
               href={`/pc/${state.token}?view=p7`}
             >
-              Go back and correct something
+              {t("pc.status.goBackCorrect")}
             </a>
           </div>
         )}
@@ -407,6 +426,7 @@ export function ScreenP7b({ state }: { state: PcState }) {
 export function ScreenP8({ state }: { state: PcState }) {
   const router = useRouter()
   const toast = useToast()
+  const t = useT()
   const [pending, startTransition] = useTransition()
 
   const lastTotal = state.offers.length
@@ -415,7 +435,7 @@ export function ScreenP8({ state }: { state: PcState }) {
 
   const rows: [string, string][] = [
     [
-      "Dates",
+      t("pc.status.rowDates"),
       state.request.trip === "multi"
         ? state.request.legs.map((l) => fmtDate(l.date)).join(" · ")
         : fmtRange(
@@ -423,10 +443,10 @@ export function ScreenP8({ state }: { state: PcState }) {
             state.request.trip === "round" ? state.request.returnDate : null
           ),
     ],
-    ["Passengers", paxFull(state.request)],
-    ["Cabin", CABIN_LABEL[state.request.cabin]],
+    [t("pc.status.rowPassengers"), paxFull(state.request)],
+    [t("pc.status.rowCabin"), CABIN_LABEL[state.request.cabin]],
     [
-      "Last option",
+      t("pc.status.rowLastOption"),
       state.proposalPublishedAt && lastTotal
         ? `${whenLabel(state.proposalPublishedAt)} · ${money(lastTotal, state.request.currency)}`
         : "—",
@@ -441,15 +461,19 @@ export function ScreenP8({ state }: { state: PcState }) {
         <div className="badge warn">
           <IcExpired />
         </div>
-        <h2>{overdueOnUs ? "This payment window closed" : "These options have expired"}</h2>
+        <h2>
+          {overdueOnUs
+            ? t("pc.status.windowClosed")
+            : t("pc.status.optionsExpired")}
+        </h2>
         <p>
           {overdueOnUs
-            ? "Your proof reached us but we did not confirm it in time, so the price we held expired. This is on us: ask for a fresh search and we prioritise it."
-            : "Airfares change several times a day. Your request is not lost: we run a fresh search with the same dates and let you know again."}
+            ? t("pc.status.windowClosedBody")
+            : t("pc.status.optionsExpiredBody")}
         </p>
         <div className="codebox" style={{ justifyContent: "center" }}>
           <div>
-            <span>Request</span>
+            <span>{t("pc.status.request")}</span>
             <b>{state.request.reference}</b>
           </div>
         </div>
@@ -457,7 +481,7 @@ export function ScreenP8({ state }: { state: PcState }) {
 
       <div className="card">
         <div className="sechead">
-          <h3>What you asked for</h3>
+          <h3>{t("pc.status.whatYouAsked")}</h3>
         </div>
         <div className="sumroute">
           <RouteSummary request={state.request} />
@@ -476,7 +500,7 @@ export function ScreenP8({ state }: { state: PcState }) {
             startTransition(async () => {
               const result = await requestPcResearch(state.token)
               if (result.ok) {
-                toast("We are searching again")
+                toast(t("pc.status.searchingAgain"))
                 router.refresh()
               } else {
                 toast(result.error)
@@ -484,16 +508,16 @@ export function ScreenP8({ state }: { state: PcState }) {
             })
           }
         >
-          {pending ? "Sending…" : "Request a new search"}
+          {pending ? t("pc.status.sending") : t("pc.status.searchAgain")}
         </button>
-        <p className="subnote">We keep the same dates and passengers.</p>
+        <p className="subnote">{t("pc.status.sameDates")}</p>
         <div style={{ marginTop: 12 }}>
           <a
             className="btn btn-ghost btn-sm"
             style={{ width: "100%" }}
             href="/pc"
           >
-            Change the dates instead
+            {t("pc.status.changeDates")}
           </a>
         </div>
         <div style={{ marginTop: 9 }}>
@@ -502,7 +526,7 @@ export function ScreenP8({ state }: { state: PcState }) {
             className="btn btn-ghost btn-sm"
             style={{ width: "100%" }}
           >
-            Message the team
+            {t("pc.status.messageTeam")}
           </WaButton>
         </div>
       </div>
@@ -514,7 +538,7 @@ export function ScreenP8({ state }: { state: PcState }) {
 // ── P9 · emitido ─────────────────────────────────────────────────────────────
 
 export function ScreenP9({ state }: { state: PcState }) {
-  const toast = useToast()
+  const t = useT()
   const offer = selectedOfferOf(state)
 
   return (
@@ -524,19 +548,17 @@ export function ScreenP9({ state }: { state: PcState }) {
           <IcBigCheck size={26} />
         </div>
         <h2>
-          Tickets issued. <em>Have a great trip!</em>
+          {t("pc.status.issuedHeading")}
+          <em>{t("pc.status.issuedHeadingEm")}</em>
         </h2>
-        <p>
-          We also sent them to <b>{state.contact.email}</b>. Keep your reference
-          for anything related to this trip.
-        </p>
+        <p>{t("pc.status.issuedBody", { email: state.contact.email })}</p>
         <div className="codebox">
           <div>
-            <span>Booking reference</span>
+            <span>{t("pc.status.bookingReference")}</span>
             <b>{state.issued.pnr ?? "—"}</b>
           </div>
           <div>
-            <span>WeeFly reference</span>
+            <span>{t("pc.status.weeflyReference")}</span>
             <b style={{ fontSize: 15 }}>{state.request.reference}</b>
           </div>
         </div>
@@ -562,14 +584,14 @@ export function ScreenP9({ state }: { state: PcState }) {
               rel="noreferrer"
             >
               <IcDownload />
-              Download all tickets
+              {t("pc.status.downloadAll")}
             </a>
             <p className="subnote" id="dlSub">
-              One PDF with all{" "}
               {state.passengers.length === 1
-                ? "the ticket"
-                : `${state.passengers.length} tickets`}
-              .
+                ? t("pc.status.onePdfOne")
+                : t("pc.status.onePdfMany", {
+                    count: state.passengers.length,
+                  })}
             </p>
             <div style={{ marginTop: 10 }}>
               <a
@@ -579,21 +601,18 @@ export function ScreenP9({ state }: { state: PcState }) {
                 target="_blank"
                 rel="noreferrer"
               >
-                How to read your ticket · 1 page
+                {t("pc.status.howToRead")}
               </a>
             </div>
           </>
         ) : (
-          <p className="notice">
-            Your tickets are issued and we are preparing the PDF. It appears here
-            within a few minutes — and we email it to you as soon as it is ready.
-          </p>
+          <p className="notice">{t("pc.status.pdfComing")}</p>
         )}
       </div>
 
       <div className="card">
         <div className="sechead">
-          <h3>Tickets by passenger</h3>
+          <h3>{t("pc.status.ticketsByPassenger")}</h3>
           <span className="rt">{paxShort(state.request)}</span>
         </div>
         {state.passengers.map((p, i) => (
@@ -638,7 +657,7 @@ export function ScreenP9({ state }: { state: PcState }) {
       {offer && (
         <div className="card">
           <div className="sechead">
-            <h3>Your ticket, on screen</h3>
+            <h3>{t("pc.status.ticketOnScreen")}</h3>
             <span className="rt mono">{state.issued.pnr ?? "—"}</span>
           </div>
           {[...offer.segments]
@@ -675,43 +694,47 @@ export function ScreenP9({ state }: { state: PcState }) {
                     <span className="mono" style={{ fontSize: 12.5 }}>
                       {state.seats.find(
                         (s) => s.passenger_id === p.id && s.segment_id === segment.id
-                      )?.seat ?? "seat at check-in"}
+                      )?.seat ?? t("pc.status.seatAtCheckIn")}
                     </span>
                   </div>
                 ))}
               </div>
             ))}
           <div className="sumrows" style={{ marginTop: 14 }}>
-            <Rows rows={itineraryRows(state)} />
+            <Rows rows={itineraryRows(state, t)} />
           </div>
         </div>
       )}
 
       <div className="card">
         <div className="sechead">
-          <h3>Before you travel</h3>
+          <h3>{t("pc.status.beforeYouTravel")}</h3>
         </div>
         <div className="sumrows">
           <Rows
             rows={[
-              ["Online check-in opens", "48 h before"],
-              ["At the airport", `3 h before · ${state.request.origin}`],
+              [t("pc.status.checkInOpens"), t("pc.status.checkInValue")],
               [
-                "Baggage included",
+                t("pc.status.atTheAirport"),
+                t("pc.status.atTheAirportValue", {
+                  origin: state.request.origin,
+                }),
+              ],
+              [
+                t("pc.status.baggageIncluded"),
                 /* FB-03 · da contagem. O texto antigo continua a servir as
                    ofertas anteriores à migração 0012; sem nenhum dos dois, a
                    linha manda ler o bilhete em vez de afirmar um número. */
                 offer?.baggage_hold_count != null
                   ? baggageLabel(offer.baggage_hold_count)
-                  : (offer?.baggage_hold ?? "See your ticket"),
+                  : (offer?.baggage_hold ?? t("pc.status.seeYourTicket")),
               ],
-              ["Documents", "Passport valid 6 months beyond the return"],
+              [t("pc.status.documents"), t("pc.status.documentsValue")],
             ]}
           />
         </div>
         <p className="notice" style={{ marginTop: 12 }}>
-          The ticket PDF includes a guide with everything to sort out before you
-          travel, in time order.
+          {t("pc.status.guideNote")}
         </p>
       </div>
 
@@ -721,7 +744,7 @@ export function ScreenP9({ state }: { state: PcState }) {
   )
 }
 
-function itineraryRows(state: PcState): [string, string][] {
+function itineraryRows(state: PcState, t: Translator): [string, string][] {
   const offer = selectedOfferOf(state)
   if (!offer) return []
   const rows: [string, string][] = []
@@ -733,11 +756,11 @@ function itineraryRows(state: PcState): [string, string][] {
     const first = segments[0]
     const last = segments[segments.length - 1]
     rows.push([
-      direction === "ida" ? "Outbound" : "Return",
+      t(direction === "ida" ? "pc.status.outbound" : "pc.status.return"),
       `${first.origin} ${first.depart_at?.slice(11, 16) ?? "--:--"} → ${
         last.destination
       } ${last.arrive_at?.slice(11, 16) ?? "--:--"}${
-        segments.length > 1 ? " · 1 stop" : " · non-stop"
+        segments.length > 1 ? t("pc.status.oneStop") : t("pc.status.nonStop")
       }`,
     ])
   }
@@ -759,6 +782,7 @@ function ContactCard({
 }) {
   const router = useRouter()
   const toast = useToast()
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState("")
   const [pending, startTransition] = useTransition()
@@ -769,9 +793,9 @@ function ContactCard({
     <div className="card tight">
       <WaButton reference={state.request.reference}>
         <IcWa />
-        Message the team on WhatsApp
+        {t("pc.status.messageWhatsApp")}
       </WaButton>
-      <p className="subnote">Opens a chat with your reference already written.</p>
+      <p className="subnote">{t("pc.status.opensChat")}</p>
 
       {showCancel && !cancelled && (
         <>
@@ -782,25 +806,22 @@ function ContactCard({
               type="button"
               onClick={() => setOpen(true)}
             >
-              Cancel request
+              {t("pc.status.cancelRequest")}
             </button>
           </div>
 
           <div className={`cancelpanel${open ? " on" : ""}`}>
-            <h4>Cancel this request?</h4>
-            <p>
-              The team stops searching and the request closes. You can start a new
-              one any time.
-            </p>
+            <h4>{t("pc.status.cancelTitle")}</h4>
+            <p>{t("pc.status.cancelBody")}</p>
             <select value={reason} onChange={(event) => setReason(event.target.value)}>
               <option value="" disabled>
-                Reason (helps us improve)
+                {t("pc.status.cancelReason")}
               </option>
-              <option>I booked somewhere else</option>
-              <option>My plans changed</option>
-              <option>My dates changed</option>
-              <option>It took too long</option>
-              <option>Another reason</option>
+              <option>{t("pc.status.reasonBooked")}</option>
+              <option>{t("pc.status.reasonPlans")}</option>
+              <option>{t("pc.status.reasonDates")}</option>
+              <option>{t("pc.status.reasonSlow")}</option>
+              <option>{t("pc.status.reasonOther")}</option>
             </select>
             <div className="rowbtn">
               <button
@@ -808,7 +829,7 @@ function ContactCard({
                 type="button"
                 onClick={() => setOpen(false)}
               >
-                Keep request
+                {t("pc.status.keepRequest")}
               </button>
               <button
                 className="btn btn-sm danger"
@@ -819,7 +840,7 @@ function ContactCard({
                     const result = await cancelPcRequest(state.token, reason)
                     setOpen(false)
                     if (result.ok) {
-                      toast("Request cancelled")
+                      toast(t("pc.status.cancelledToast"))
                       router.refresh()
                     } else {
                       toast(result.error)
@@ -827,7 +848,7 @@ function ContactCard({
                   })
                 }
               >
-                Yes, cancel
+                {t("pc.status.yesCancel")}
               </button>
             </div>
           </div>
@@ -839,9 +860,10 @@ function ContactCard({
           <div className="cancelled">
             <IcCancelled />
             <div>
-              <b>Request cancelled.</b> Reference{" "}
-              <span className="mono">{state.request.reference}</span> stays in your
-              history. You can start a new request whenever you like.
+              <b>{t("pc.status.cancelledBold")}</b>
+              {t("pc.status.cancelledRest", {
+                reference: state.request.reference,
+              })}
             </div>
           </div>
           <a
@@ -849,7 +871,7 @@ function ContactCard({
             style={{ width: "100%", marginTop: 11 }}
             href="/pc"
           >
-            Start a new request
+            {t("pc.status.startNew")}
           </a>
         </div>
       )}
@@ -866,6 +888,7 @@ function ContactCard({
  * "Instalar" que não instala nada custa mais confiança do que ganha.
  */
 function InstallCard() {
+  const t = useT()
   const [platform, setPlatform] = useState<"ios" | "prompt" | "installed" | null>(null)
   const [deferred, setDeferred] = useState<any>(null)
 
@@ -910,7 +933,7 @@ function InstallCard() {
               strokeLinejoin="round"
             />
           </svg>
-          WeeFly is saved on your device. We will notify you here.
+          {t("pc.install.saved")}
         </div>
       </div>
     )
@@ -921,31 +944,31 @@ function InstallCard() {
       <div className="install">
         <div className="ih">
           <div>
-            <h3>Save WeeFly to your iPhone</h3>
-            <p>Three taps and you get an icon on your home screen.</p>
+            <h3>{t("pc.install.iosTitle")}</h3>
+            <p>{t("pc.install.iosBody")}</p>
           </div>
         </div>
         <p className="why">
-          <b>This is how we reach you first.</b> Once saved, you can get a
-          notification when your options are ready.
+          <b>{t("pc.install.whyBold")}</b>
+          {t("pc.install.iosWhy")}
         </p>
         <div className="tut">
           <div className="tutrow">
             <span className="n">1</span>
             <span className="t">
-              Tap <b>Share</b> in the Safari bar
+              {t("pc.install.step1", { b: t("pc.install.step1b") })}
             </span>
           </div>
           <div className="tutrow">
             <span className="n">2</span>
             <span className="t">
-              Scroll and choose <b>Add to Home Screen</b>
+              {t("pc.install.step2", { b: t("pc.install.step2b") })}
             </span>
           </div>
           <div className="tutrow">
             <span className="n">3</span>
             <span className="t">
-              Confirm with <b>Add</b>
+              {t("pc.install.step3", { b: t("pc.install.step3b") })}
             </span>
           </div>
         </div>
@@ -957,13 +980,13 @@ function InstallCard() {
     <div className="install">
       <div className="ih">
         <div>
-          <h3>Save WeeFly to your phone</h3>
-          <p>It adds an icon to your home screen, like an app. It takes no space.</p>
+          <h3>{t("pc.install.title")}</h3>
+          <p>{t("pc.install.body")}</p>
         </div>
       </div>
       <p className="why">
-        <b>This is how we reach you first.</b> With WeeFly saved, you get a
-        notification the moment your options are ready.
+        <b>{t("pc.install.whyBold")}</b>
+        {t("pc.install.why")}
       </p>
       <button
         className="btn btn-primary"
@@ -978,7 +1001,7 @@ function InstallCard() {
         }}
       >
         <IcDownload />
-        Install in one tap
+        {t("pc.install.install")}
       </button>
     </div>
   )

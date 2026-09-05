@@ -234,6 +234,23 @@ label.fl .req{color:var(--ember);margin-left:2px}
 .banner.warn .ic{background:#fff}
 .banner.warn b{color:var(--warn)}
 .banner.warn p{color:#6B4405}
+/* ── T-12 e T-13 · a janela de pagamento ──
+   O contador vivia dentro de `.banner .ic`, um quadrado de 32×32 feito para um
+   ícone: um `hh:mm:ss` em monospace não cabia lá e transbordava por cima do
+   texto. Aqui o bloco cresce com o conteúdo, a ordem é contador → título →
+   nota, e `sticky` mantém-no à vista enquanto a pessoa desce o ecrã para pagar
+   — que é exactamente o momento em que ele deixava de se ver.
+   `top` acompanha a altura da topbar. */
+.paywin{position:sticky;top:8px;z-index:20;background:var(--warn-tint);border:1px solid rgba(154,91,6,.26);border-radius:12px;padding:13px 14px;margin:16px 0 0}
+.paywin-clock{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:7px}
+.paywin-clock .mono{font-family:var(--font-plex-mono),'IBM Plex Mono',monospace;font-size:26px;font-weight:600;line-height:1.05;letter-spacing:-.01em;color:var(--warn);font-variant-numeric:tabular-nums}
+.paywin-clock .lb{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#9A5B06}
+.paywin b{display:block;font-size:15px;font-weight:800;letter-spacing:-.01em;color:var(--warn)}
+.paywin p{margin:3px 0 0;font-size:13px;line-height:1.5;color:#6B4405}
+.paywin .paywin-due{margin-top:7px;font-size:12.5px}
+@media (prefers-reduced-motion:no-preference){.paywin{transition:box-shadow .2s ease}}
+.paywin:hover{box-shadow:0 6px 18px rgba(154,91,6,.12)}
+
 .eta{background:var(--warn-tint);border-radius:10px;padding:10px 12px;font-size:12.5px;color:#6B4405;margin-top:11px;line-height:1.45}
 .notice{border-radius:10px;padding:12px 13px;font-size:13px;line-height:1.5;background:var(--chalk);color:var(--navy-soft);margin:0}
 .notice b{color:var(--ink)}
@@ -282,6 +299,12 @@ label.fl .req{color:var(--ember);margin-left:2px}
    que a companhia garantiu, cinzento seria dizer que não vale nada. */
 .nat.held{background:rgba(233,167,58,.18);color:#F0C983}
 .nat.ind{background:rgba(255,255,255,.14);color:#C6D0DC}
+/* T-02 · a opção que o cliente já escolheu, marcada e não desactivada.
+   `margin-left:auto` só no primeiro selo da direita, para os dois ficarem
+   encostados um ao outro em vez de se separarem. */
+.prop-band .nat.picked{background:var(--ember);color:#fff}
+.prop-band .nat.picked ~ .nat{margin-left:0}
+.prop.chosen{border-color:var(--ember);box-shadow:0 0 0 2px rgba(239,81,41,.16),var(--shadow)}
 .prop-price{padding:14px 16px;border-bottom:1px solid var(--line-soft);display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
 .prop-price .tot{font-size:29px;font-weight:600;letter-spacing:-.02em;line-height:1;font-family:var(--font-plex-mono),'IBM Plex Mono',monospace}
 .prop-price .brk{font-size:12px;color:var(--muted);line-height:1.45}
@@ -392,6 +415,11 @@ label.fl .req{color:var(--ember);margin-left:2px}
 .mrow{display:flex;gap:9px;margin-top:11px;flex-wrap:wrap}
 .mrow .btn{flex:1;min-width:150px}
 .mdone{display:flex;align-items:center;gap:9px;background:var(--ok-tint);border-radius:9px;padding:10px 12px;font-size:12.5px;color:#0A5A43;font-weight:600;margin-top:11px}
+
+/* T-18 · o campo onde o cliente nos escreve, no ecrã de pagamento. */
+.ta{width:100%;margin-top:11px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-family:inherit;font-size:14.5px;line-height:1.5;resize:vertical;min-height:76px}
+.ta::placeholder{color:#A9B4C4}
+.ta:focus{outline:2px solid var(--navy);outline-offset:-1px;border-color:var(--navy)}
 
 /* ══ P8 / P9 ══ */
 .hero-c{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:28px 20px;margin:16px 0 0;text-align:center}

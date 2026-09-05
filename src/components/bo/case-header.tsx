@@ -39,7 +39,6 @@ import {
   boCloseCase,
   boNotifyClient,
   boReopenCase,
-  boSetSeller,
 } from "@/actions/bo-price-checker"
 import { BoWhatsappLink } from "@/components/bo/whatsapp-link"
 import { countryName, flagOf } from "@/lib/countries"
@@ -85,14 +84,17 @@ export const marketName = (iso: string) =>
 
 export function BoCaseHeader({
   detail,
-  sellers,
+  /* T-06 · a lista continua a chegar, e continua por usar enquanto o `RBAC`
+     não existir. Mantida na assinatura para o dia em que o seletor volte, sem
+     obrigar as duas páginas que a passam a mudar outra vez. */
+  sellers: _sellers,
   active,
   counts,
   onSelect,
 }: {
   detail: BoCaseDetail
   /** BO-14 · lida de `bo_allowlist`, nunca escrita no código. */
-  sellers: BoSellerOption[]
+  sellers?: BoSellerOption[]
   active: BoTabId
   counts: Partial<Record<BoTabId, number>>
   /**
@@ -106,7 +108,6 @@ export function BoCaseHeader({
   const router = useRouter()
   const row = detail.row
   const [pending, startTransition] = useTransition()
-  const [seller, setSeller] = useState(detail.seller.email ?? "")
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [noticeOpen, setNoticeOpen] = useState(false)
@@ -118,22 +119,6 @@ export function BoCaseHeader({
      disso não há nada sobre que avisar: o cliente ainda está à espera da
      primeira resposta, e essa tem um email próprio. */
   const canNotify = row.state !== "novo" && row.state !== "cancelado"
-
-  function assign(email: string) {
-    setSeller(email)
-    setError(null)
-    setNotice(null)
-    startTransition(async () => {
-      const result = await boSetSeller({ caseId: row.caseId, email })
-      if (result.ok) {
-        setNotice(result.notice ?? null)
-        router.refresh()
-      } else {
-        setError(result.error)
-        setSeller(detail.seller.email ?? "")
-      }
-    })
-  }
 
   function sendNotice() {
     setError(null)
@@ -184,36 +169,28 @@ export function BoCaseHeader({
               {marketName(row.market)} · <span className="mono">{row.currency}</span> ·{" "}
               <span className="mono">lang={row.locale}</span>
             </div>
-            {/* BO-14 · o seletor lê da lista de acessos do sistema. Está no
-                cabeçalho e não numa aba porque a pergunta "de quem é este
-                caso?" faz-se em todos os ecrãs dele. */}
+            {/*
+              T-06 · o vendedor é mostrado, não escolhido.
+
+              "Ao criar uma proposta, o vendedor mostrado tem de ser o utilizador
+              activo. Hoje mostra outra coisa." Mostrava — era um seletor com
+              toda a lista de acessos (BO-14), e a pessoa que estava a compor
+              podia pôr o caso em nome de outra sem que isso deixasse rasto onde
+              alguém o fosse ver.
+
+              A lista completa volta com o `RBAC`, que é o que decide quem pode
+              atribuir casos a quem. Até lá o vendedor é quem reclamou o caso —
+              gravado a partir da sessão em `boClaimCase` — e o que este campo
+              faz é dizê-lo.
+
+              A pergunta "de quem é este caso?" continua a ser respondida em
+              todos os ecrãs, que é a razão de isto estar no cabeçalho.
+            */}
             <div className="cm">
               <span className="cm-k">Vendedor</span>
-              <select
-                value={seller}
-                disabled={pending}
-                onChange={(event) => assign(event.target.value)}
-                style={{
-                  background: "var(--raise)",
-                  border: "1px solid var(--line)",
-                  borderRadius: 7,
-                  color: "var(--txt)",
-                  font: "inherit",
-                  padding: "2px 6px",
-                }}
-              >
-                <option value="">sem vendedor</option>
-                {sellers.map((option) => (
-                  <option key={option.email} value={option.email}>
-                    {option.label}
-                  </option>
-                ))}
-                {/* Um vendedor que já não está na lista continua a aparecer:
-                    apagar-lhe o nome do caso seria reescrever o histórico. */}
-                {seller && !sellers.some((s) => s.email === seller) && (
-                  <option value={seller}>{detail.seller.label ?? seller}</option>
-                )}
-              </select>
+              {detail.seller.label ?? detail.seller.email ?? (
+                <span style={{ color: "var(--warn)" }}>sem vendedor</span>
+              )}
             </div>
             <div className="cm">
               <span className="cm-k">Submetido</span>

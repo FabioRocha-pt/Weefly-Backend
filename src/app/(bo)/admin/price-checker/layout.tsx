@@ -112,7 +112,14 @@ export default async function BoPriceCheckerLayout({
                 {/* C-14 · o contador é lido no servidor a cada render, e é o
                     `BoLiveUpdates` que força esse render quando a base muda. */}
                 <BoNotificationBell alerts={feed.alerts} unread={feed.unread} />
-                <BoTopbarActions />
+                {/* T-05 · o construtor de links cria-os em nome de quem está
+                    autenticado, e por isso precisa de saber quem é. */}
+                <BoTopbarActions
+                  viewer={{
+                    label: access.identity.label,
+                    email: access.identity.email,
+                  }}
+                />
                 <BoUserMenu
                   label={access.identity.label}
                   email={access.identity.email}

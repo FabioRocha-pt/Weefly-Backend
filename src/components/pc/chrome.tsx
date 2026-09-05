@@ -7,12 +7,23 @@
  * escrita, copiar, trocar a língua em que a equipa responde.
  */
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  useTransition,
+} from "react"
+import { useRouter } from "next/navigation"
 
+import { setPcLocale } from "@/actions/pc"
 import { WeeFlyLogo } from "@/components/weefly-logo"
 import { CUR, WA_DISPLAY, WA_NUMBER } from "@/lib/pc/catalog"
 import { waLink } from "@/lib/pc/format"
 import { IcWa } from "@/components/pc/bits"
+import { LOCALES, LOCALE_SHORT, type Locale } from "@/i18n/config"
+import { useT } from "@/i18n/provider"
 
 // ── toast ────────────────────────────────────────────────────────────────────
 
@@ -41,14 +52,6 @@ export function ToastHost({ children }: { children: React.ReactNode }) {
 
 // ── topbar ───────────────────────────────────────────────────────────────────
 
-export type PcLang = "EN" | "PT" | "FR"
-
-const LANG_TOAST: Record<PcLang, string> = {
-  EN: "Replies in English",
-  PT: "A equipa responde em português",
-  FR: "L'équipe répond en français",
-}
-
 /**
  * A barra de topo.
  *
@@ -57,23 +60,79 @@ const LANG_TOAST: Record<PcLang, string> = {
  * deixa de ser editável — mudá-la depois de a cotação estar feita mudaria o
  * preço que o cliente já viu — e a língua continua a ser, porque essa é sobre
  * ele e não sobre o preço.
+ *
+ * T-08 · o seletor de língua faz alguma coisa.
+ *
+ * "O cliente escolheu português, a notificação chegou, e o link abriu
+ * inteiramente em inglês. O seletor de língua nesses ecrãs não faz nada." Fazia
+ * mesmo nada: `onLangChange` era opcional, ninguém o passava, e o clique
+ * limitava-se a mostrar um aviso com o nome da língua que não tinha mudado.
+ *
+ * Agora o botão chama `setPcLocale`, que grava a escolha no cookie deste pedido
+ * e na coluna do lead — a segunda porque o critério pede que a mesma língua
+ * mande nos emails e no WhatsApp, e esses saem horas depois sem browser nenhum
+ * do outro lado.
+ *
+ * Sem `token` o botão continua a existir e não grava nada: é o caso do
+ * formulário público, onde ainda não há pedido a que a preferência pertença.
  */
 export function PcTopbar({
   reference,
   currency,
   lang,
+  token,
   onLangChange,
   onCurrencyChange,
 }: {
   reference?: string | null
   currency: string
-  lang: PcLang
-  onLangChange?: (next: PcLang) => void
+  lang: Locale
+  /** O pedido a que esta preferência pertence. Ausente no formulário público. */
+  token?: string
+  onLangChange?: (next: Locale) => void
   onCurrencyChange?: (next: string) => void
 }) {
+  const t = useT()
   const toast = useToast()
-  const cycle = <T,>(list: T[], current: T): T =>
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+
+  const cycle = <T,>(list: readonly T[], current: T): T =>
     list[(list.indexOf(current) + 1) % list.length]
+
+  function switchLanguage() {
+    const next = cycle(LOCALES, lang)
+
+    if (onLangChange) {
+      /*
+       * O formulário público. O estado local existe porque é ele que vai no
+       * pedido quando o cliente submete (a coluna `locale` do lead), mas mudá-lo
+       * sozinho não retraduzia nada: o dicionário é resolvido no servidor, e o
+       * servidor lê o `?lang=`. Por isso as duas coisas — o estado que viaja com
+       * o pedido, e o endereço que faz a página voltar traduzida.
+       */
+      onLangChange(next)
+      const params = new URLSearchParams(window.location.search)
+      params.set("lang", next)
+      router.replace(`${window.location.pathname}?${params.toString()}`)
+      router.refresh()
+      return
+    }
+    if (!token) return
+
+    startTransition(async () => {
+      const result = await setPcLocale(token, next)
+      if (!result.ok) {
+        toast(result.error)
+        return
+      }
+      /* O aviso na língua nova, que é a confirmação mais directa de que a
+         mudança pegou. `refresh()` volta a correr a página do servidor com o
+         cookie já escrito, e os ecrãs saem traduzidos. */
+      toast(t(`pc.langToast.${next}`))
+      router.refresh()
+    })
+  }
 
   return (
     <header className="topbar">
@@ -83,39 +142,40 @@ export function PcTopbar({
           <div className="brandline">Price Checker</div>
         </div>
         <div className="prefs">
+          {/*
+            T-14 · a referência na faixa, em cima e à direita, em monospace e
+            seleccionável. "A mesma posição e o mesmo tratamento em todo o lado"
+            — é a mesma peça que os emails desenham em `emails/shared.ts`.
+          */}
           {reference && (
             <span className="refchip">
-              <span className="k">Request</span>
+              <span className="k">{t("pc.topbar.reference")}</span>
               <span className="v mono">{reference}</span>
             </span>
           )}
           <button
             className="pref"
             type="button"
-            onClick={() => {
-              const next = cycle<PcLang>(["EN", "PT", "FR"], lang)
-              onLangChange?.(next)
-              toast(LANG_TOAST[next])
-            }}
+            disabled={pending}
+            title={t("pc.topbar.languageHint")}
+            onClick={switchLanguage}
           >
-            {lang}
+            {LOCALE_SHORT[lang]}
           </button>
           <button
             className="pref"
             type="button"
             title={
-              onCurrencyChange
-                ? undefined
-                : "The currency is fixed by the quote for this request"
+              onCurrencyChange ? undefined : t("pc.topbar.currencyFixed", { currency })
             }
             onClick={() => {
               if (!onCurrencyChange) {
-                toast("The price is quoted in " + currency + " for this request")
+                toast(t("pc.topbar.currencyFixed", { currency }))
                 return
               }
               const next = cycle(Object.keys(CUR), currency)
               onCurrencyChange(next)
-              toast("Prices now shown in " + next)
+              toast(t("pc.topbar.currencyNow", { currency: next }))
             }}
           >
             {CUR[currency]?.label ?? currency}
@@ -136,7 +196,12 @@ export function PcStepper({ step }: { step: 1 | 2 | 3 }) {
    * mesmo um terceiro — o resumo que se lê antes de enviar — e o pedido só é
    * criado depois de alguém carregar em "confirmar".
    */
-  const labels = ["1 · Trip", "2 · Contact", "3 · Review"]
+  const t = useT()
+  const labels = [
+    `1 · ${t("pc.stepper.trip")}`,
+    `2 · ${t("pc.stepper.contact")}`,
+    `3 · ${t("pc.stepper.review")}`,
+  ]
   return (
     <div className="shell">
       <nav className="steps" aria-label="Progress">
@@ -189,6 +254,7 @@ export function WaButton({
 }
 
 export function PcFab() {
+  const t = useT()
   return (
     <button
       type="button"
@@ -196,17 +262,37 @@ export function PcFab() {
       onClick={() => window.open(waLink(WA_NUMBER), "_blank", "noopener")}
     >
       <IcWa size={21} />
-      <span>Chat with us</span>
+      <span>{t("pc.chat")}</span>
     </button>
   )
 }
 
+/**
+ * T-19 · o número de telefone é um link que abre o WhatsApp.
+ *
+ * "O ecrã do passaporte tem o logótipo e o telefone clicável." O logótipo está
+ * na barra de topo, que o router desenha em todos os ecrãs; o número estava
+ * aqui, em monospace e morto. Num telemóvel, um número que não se pode tocar é
+ * um número que se copia à mão — e o rodapé é o sítio onde alguém encravado no
+ * formulário dos passaportes vai procurar ajuda.
+ *
+ * WhatsApp e não `tel:` porque é onde a equipa atende: o `WA_NUMBER` é a linha
+ * do concierge, e um telefonema para lá toca numa aplicação que ninguém ouve.
+ */
 export function PcFooter() {
   return (
     <footer>
       <div className="foot-in">
         WeeFly Africa · Praia, Cape Verde · <b>weefly.africa</b> ·{" "}
-        <span className="mono">{WA_DISPLAY}</span>
+        <a
+          className="mono"
+          href={waLink(WA_NUMBER)}
+          target="_blank"
+          rel="noreferrer noopener"
+          style={{ color: "inherit", textDecoration: "underline" }}
+        >
+          {WA_DISPLAY}
+        </a>
       </div>
     </footer>
   )
@@ -219,13 +305,14 @@ export function CopyButton({
   value,
   className = "cp",
   label,
-  doneLabel = "Copied",
+  doneLabel,
 }: {
   value: string
   className?: string
   label: string
   doneLabel?: string
 }) {
+  const t = useT()
   const [done, setDone] = useState(false)
 
   useEffect(() => {
@@ -245,7 +332,7 @@ export function CopyButton({
         setDone(true)
       }}
     >
-      {done ? doneLabel : label}
+      {done ? (doneLabel ?? t("pc.copied")) : label}
     </button>
   )
 }
