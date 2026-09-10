@@ -204,7 +204,7 @@ export function PcStepper({ step }: { step: 1 | 2 | 3 }) {
   ]
   return (
     <div className="shell">
-      <nav className="steps" aria-label="Progress">
+      <nav className="steps" aria-label={t("pc.stepper.label")}>
         {labels.map((label, i) => {
           const n = i + 1
           const state = n < step ? " done" : n === step ? " now" : ""
@@ -239,13 +239,14 @@ export function WaButton({
   className?: string
   style?: React.CSSProperties
 }) {
+  const t = useT()
   return (
     <button
       type="button"
       className={className}
       style={style}
       onClick={() =>
-        window.open(waLink(WA_NUMBER, reference), "_blank", "noopener")
+        window.open(waLink(WA_NUMBER, reference, t), "_blank", "noopener")
       }
     >
       {children}
@@ -259,7 +260,7 @@ export function PcFab() {
     <button
       type="button"
       className="fab"
-      onClick={() => window.open(waLink(WA_NUMBER), "_blank", "noopener")}
+      onClick={() => window.open(waLink(WA_NUMBER, null, t), "_blank", "noopener")}
     >
       <IcWa size={21} />
       <span>{t("pc.chat")}</span>
@@ -280,13 +281,14 @@ export function PcFab() {
  * do concierge, e um telefonema para lá toca numa aplicação que ninguém ouve.
  */
 export function PcFooter() {
+  const t = useT()
   return (
     <footer>
       <div className="foot-in">
-        WeeFly Africa · Praia, Cape Verde · <b>weefly.africa</b> ·{" "}
+        {t("pc.footer.place")} · <b>weefly.africa</b> ·{" "}
         <a
           className="mono"
-          href={waLink(WA_NUMBER)}
+          href={waLink(WA_NUMBER, null, t)}
           target="_blank"
           rel="noreferrer noopener"
           style={{ color: "inherit", textDecoration: "underline" }}

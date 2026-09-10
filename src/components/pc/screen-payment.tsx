@@ -43,7 +43,7 @@ import {
 import type { PcPayment } from "@/lib/pc/payment"
 import { countryName } from "@/lib/countries"
 import { money } from "@/lib/pc/format"
-import { IcFile, IcWa, MethodIcon, Rows } from "@/components/pc/bits"
+import { IcFile, IcWa, MethodIcon, Rows, Sentence } from "@/components/pc/bits"
 import { CopyButton, WaButton, useToast } from "@/components/pc/chrome"
 import { PickedOption } from "@/components/pc/picked-option"
 import { useI18n, useT } from "@/i18n/provider"
@@ -179,9 +179,7 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
       <section className="hero">
         <span className="eyebrow">{t("pc.pay.eyebrow")}</span>
         <h1>
-          {t("pc.pay.headingBefore")}
-          <em>{t("pc.pay.headingEm")}</em>
-          {t("pc.pay.headingAfter")}
+          <Sentence text={t("pc.pay.heading")} />
         </h1>
         <p>{t("pc.pay.intro")}</p>
       </section>
@@ -223,9 +221,12 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
                 <span className="ic2">
                   <MethodIcon kind={entry.id} />
                 </span>
+                {/* T-08 · o cartão do método também é texto que o cliente lê.
+                    `entry.t` e `entry.s` continuam no catálogo como o inglês
+                    de recurso; o que vai para o ecrã vem do dicionário. */}
                 <span className="ttl">
-                  <b>{entry.t}</b>
-                  <span>{entry.s}</span>
+                  <b>{t(`pc.pay.method.${entry.id}.title`)}</b>
+                  <span>{t(`pc.pay.method.${entry.id}.sub`)}</span>
                 </span>
                 {/* C-33 · o selo de "Instant" / "No fees" saiu. Nenhuma das
                     cinco vias é instantânea do ponto de vista do cliente: o
@@ -282,9 +283,10 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
           />
         </div>
         <p className="notice" style={{ marginTop: 12 }}>
-          {t("pc.pay.onlyPersonBefore")}
-          <b>{t("pc.pay.onlyPersonBold")}</b>
-          {t("pc.pay.onlyPersonAfter", { hours: PROOF_REVIEW_HOURS })}
+          <Sentence
+            as="b"
+            text={t("pc.pay.onlyPerson", { hours: PROOF_REVIEW_HOURS })}
+          />
         </p>
       </div>
 
@@ -527,13 +529,13 @@ function MethodBody({
   return (
     <>
       <div className="srow" style={{ borderTop: "1px solid var(--line-soft)" }}>
-        <span className="k">Amount to pay</span>
+        <span className="k">{t("pc.pay.amountToPay")}</span>
         <span className="v mono">{money(total, currency)}</span>
       </div>
 
       {link && (
         <div className="srow">
-          <span className="k">{t("pc.pay.paymentLink")}</span>
+          <span className="k">{t("pc.pay.openLink")}</span>
           <span className="v" style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <a
               href={link}
@@ -560,7 +562,7 @@ function MethodBody({
       )}
 
       <div className="srow">
-        <span className="k">Quote our reference</span>
+        <span className="k">{t("pc.pay.quoteOurReference")}</span>
         <span className="v mono">{reference}</span>
       </div>
 

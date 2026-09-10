@@ -51,7 +51,17 @@ export default function PriceCheckerLayout({
        * lá, e o tipo de letra do corpo cairia no system-ui.
        */}
       <style>{`:root{--font-jakarta:${jakarta.style.fontFamily};--font-plex-mono:${plexMono.style.fontFamily}}`}</style>
-      <RoutePreloader background="#F1F5F9" label="Loading WeeFly" />
+      {/*
+        Sprint 3.1 · sem `label`, que cai no "A carregar" por omissão.
+
+        Dizia "Loading WeeFly" em duro, e este layout está **fora** do
+        `I18nProvider` — que cada página monta por dentro, porque é lá que se
+        sabe a língua do caso. Traduzir aqui obrigava a resolver o idioma no
+        layout e a passá-lo às duas rotas para nada: é uma palavra que aparece
+        durante a transição entre ecrãs. O valor por omissão do componente já
+        está em português, que é a língua base.
+      */}
+      <RoutePreloader background="#F1F5F9" />
       {/*
         T-08 · o rodapé e o botão flutuante desceram para dentro das páginas.
 

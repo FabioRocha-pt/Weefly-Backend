@@ -14,9 +14,9 @@ import { useRouter } from "next/navigation"
 import { choosePcOffer } from "@/actions/pc"
 import type { PcState } from "@/lib/pc/state"
 import { customerDeadline, priceNature } from "@/lib/proposal-math"
-import { CABIN_LABEL, cityOf, countdown, fmtDate, fmtRange, paxFull, paxTotalOf } from "@/lib/pc/format"
+import { cabinLabel, cityOf, countdown, fmtDate, fmtRange, paxFull, paxTotalOf } from "@/lib/pc/format"
 import { OfferCard } from "@/components/pc/offer-view"
-import { IcWa } from "@/components/pc/bits"
+import { IcWa, Sentence } from "@/components/pc/bits"
 import { WaButton, useToast } from "@/components/pc/chrome"
 import { useT } from "@/i18n/provider"
 
@@ -43,32 +43,33 @@ export function ScreenP5({ state }: { state: PcState }) {
 
   const dates =
     state.request.trip === "multi"
-      ? state.request.legs.map((l) => fmtDate(l.date)).join(" · ")
+      ? state.request.legs.map((l) => fmtDate(l.date, t)).join(" · ")
       : fmtRange(
           state.request.departDate,
-          state.request.trip === "round" ? state.request.returnDate : null
+          state.request.trip === "round" ? state.request.returnDate : null,
+          t
         )
 
   const count = paxTotalOf(state.request)
+  const route = `${cityOf(state.request.origin, state.request.cities)} → ${cityOf(
+    state.request.destination,
+    state.request.cities
+  )}`
 
   return (
     <main className="shell view">
       <section className="hero">
         <span className="eyebrow">{t("pc.options.eyebrow")}</span>
         <h1>
-          {offers.length === 1
-            ? t("pc.options.headingOne")
-            : t("pc.options.headingTwo")}
-          <em>
-            {cityOf(state.request.origin, state.request.cities)} →{" "}
-            {cityOf(state.request.destination, state.request.cities)}
-          </em>
+          <Sentence
+            text={t("pc.options.heading", { count: offers.length, route })}
+          />
         </h1>
         <p>
           {t("pc.options.summary", {
-            pax: paxFull(state.request),
+            pax: paxFull(state.request, t),
             dates,
-            cabin: CABIN_LABEL[state.request.cabin],
+            cabin: cabinLabel(state.request.cabin, t),
             who:
               count === 1
                 ? t("pc.options.whoOne")

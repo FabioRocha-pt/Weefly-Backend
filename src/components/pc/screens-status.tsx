@@ -15,6 +15,7 @@ import { cancelPcRequest, requestPcResearch } from "@/actions/pc"
 import type { PcState } from "@/lib/pc/state"
 import { selectedOfferOf } from "@/components/pc/offer-view"
 import {
+  cabinLabel,
   clockOf,
   fmtRange,
   fmtDate,
@@ -23,7 +24,6 @@ import {
   paxShort,
   phoneDisplay,
   whenLabel,
-  CABIN_LABEL,
 } from "@/lib/pc/format"
 import {
   METHOD_LABEL,
@@ -42,12 +42,31 @@ import {
   IcWa,
   RouteSummary,
   Rows,
+  Sentence,
   SummaryRows,
   Track,
 } from "@/components/pc/bits"
 import { CopyButton, WaButton, useToast } from "@/components/pc/chrome"
 import { useT } from "@/i18n/provider"
 import type { Translator } from "@/i18n/translate"
+
+/**
+ * Sprint 3.1 · a saudação, com o nome como o cliente o escreveu.
+ *
+ * Duas coisas de uma vez. A regra 2 — `Shutsha`, não `SHUTSHA`: o nome vai para
+ * o ecrã tal como veio do formulário, e o `text-transform` que o punha em
+ * maiúsculas saiu do CSS. E a regra 4 — a frase é uma chave só, com `{name}`
+ * lá dentro, em vez de `"Pedido recebido, "` mais o nome a seguir.
+ *
+ * A variante `…Anon` existe para os casos em que o nome não chegou. São raros
+ * (o formulário exige nome próprio e apelido) mas existem nos casos abertos à
+ * mão pelo back-office, e "Olá , já temos o seu pedido" é pior do que não
+ * cumprimentar ninguém.
+ */
+function greeting(t: Translator, key: string, name: string): string {
+  const clean = name.trim()
+  return clean ? t(key, { name: clean }) : t(`${key}Anon`)
+}
 
 // ── P3 · pedido recebido ─────────────────────────────────────────────────────
 
@@ -62,8 +81,9 @@ export function ScreenP3({ state }: { state: PcState }) {
           <IcBigCheck />
         </div>
         <h2>
-          {t("pc.status.receivedHeading")}
-          <em>{state.contact.firstName || "—"}</em>
+          <Sentence
+            text={greeting(t, "pc.status.receivedHeading", state.contact.firstName)}
+          />
         </h2>
         <p>{t("pc.status.receivedBody")}</p>
         <div className="refbox">
@@ -78,8 +98,8 @@ export function ScreenP3({ state }: { state: PcState }) {
 
       <div className="card">
         <div className="sechead">
-          <h3>Your request</h3>
-          <span className="rt">{whenLabel(state.request.createdAt)}</span>
+          <h3>{t("pc.status.yourRequest")}</h3>
+          <span className="rt">{whenLabel(state.request.createdAt, t)}</span>
         </div>
         <div className="sumroute">
           <RouteSummary request={state.request} />
@@ -91,7 +111,7 @@ export function ScreenP3({ state }: { state: PcState }) {
 
       <div className="card">
         <div className="sechead">
-          <h3>Request status</h3>
+          <h3>{t("pc.status.requestStatus")}</h3>
           <span className="rt" style={{ display: "flex", alignItems: "center", gap: 7 }}>
             {state.cancelled ? (
               <span style={{ color: "var(--ember)", fontWeight: 700 }}>
@@ -107,14 +127,13 @@ export function ScreenP3({ state }: { state: PcState }) {
         </div>
         <Track state={state} />
         <p className="eta">
-          {t("pc.status.etaBefore")}
-          <b>{t("pc.status.etaBold")}</b>
-          {t("pc.status.etaAfter")}
-          <b className="mono">{phone}</b>.
+          <Sentence
+            as="b"
+            text={t("pc.status.eta")}
+            slots={{ phone: <b className="mono">{phone}</b> }}
+          />
           <br />
-          {t("pc.status.etaComeBack", {
-            bold: t("pc.status.etaComeBackBold"),
-          })}
+          <Sentence as="b" text={t("pc.status.etaComeBack")} />
         </p>
       </div>
 
@@ -137,14 +156,9 @@ export function ScreenP4a({ state }: { state: PcState }) {
       <section className="hero">
         <span className="eyebrow">{t("pc.status.searchingEyebrow")}</span>
         <h1>
-          {t("pc.status.searchingBefore")}
-          <em>{t("pc.status.searchingEm")}</em>
+          <Sentence text={t("pc.status.searchingHeading")} />
         </h1>
-        <p>
-          {t("pc.status.welcomeBack")}
-          {state.contact.firstName ? `, ${state.contact.firstName}` : ""}.{" "}
-          {t("pc.status.searchingBody")}
-        </p>
+        <p>{greeting(t, "pc.status.searchingBody", state.contact.firstName)}</p>
       </section>
 
       {/*
@@ -157,8 +171,8 @@ export function ScreenP4a({ state }: { state: PcState }) {
       */}
       <div className="card">
         <div className="sechead">
-          <h3>Your request</h3>
-          <span className="rt">{whenLabel(state.request.createdAt)}</span>
+          <h3>{t("pc.status.yourRequest")}</h3>
+          <span className="rt">{whenLabel(state.request.createdAt, t)}</span>
         </div>
         <div className="sumroute">
           <RouteSummary request={state.request} />
@@ -170,17 +184,15 @@ export function ScreenP4a({ state }: { state: PcState }) {
 
       <div className="card">
         <div className="sechead">
-          <h3>Request status</h3>
+          <h3>{t("pc.status.requestStatus")}</h3>
           <span className="rt" style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span className="pulse" />
-            in progress
+            {t("pc.status.inProgress")}
           </span>
         </div>
         <Track state={state} />
         <p className="eta">
-          {t("pc.status.etaBefore")}
-          <b>{t("pc.status.etaBold")}</b>.{" "}
-          {t("pc.status.etaAlso", { phone })}
+          <Sentence as="b" text={t("pc.status.etaSearching", { phone })} />
         </p>
       </div>
 
@@ -202,11 +214,28 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
 
   return (
     <main className="shell view">
+      {/*
+        Sprint 3.1 · o título é uma frase só, com o nome e a contagem dentro.
+
+        Eram duas chaves no `<h1>` ("As suas opções " + <em>"estão prontas"</em>)
+        e mais duas na caixa verde a repetir a contagem. O cliente lia o número
+        de opções duas vezes e o nome dele em lado nenhum. Agora o `<h1>` diz
+        quem e quantas — uma chave, com plural — e a caixa fica com o que só ela
+        tem para dizer: por onde mais as enviámos, e o que garante o preço.
+      */}
       <section className="hero">
         <span className="eyebrow">{t("pc.status.searchingEyebrow")}</span>
         <h1>
-          {t("pc.status.readyBefore")}
-          <em>{t("pc.status.readyEm")}</em>
+          <Sentence
+            text={
+              state.contact.firstName.trim()
+                ? t("pc.status.readyHeading", {
+                    count,
+                    name: state.contact.firstName.trim(),
+                  })
+                : t("pc.status.readyHeadingAnon", { count })
+            }
+          />
         </h1>
       </section>
 
@@ -225,15 +254,10 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
         <div>
           <b>
             {count === 1
-              ? t("pc.status.foundOne")
-              : t("pc.status.foundMany", { count })}
-          </b>
-          <p>
-            {count === 1
               ? t("pc.status.alsoSentOne")
               : t("pc.status.alsoSentMany")}
-            {guaranteed ? t("pc.status.oneHeld") : t("pc.status.reconfirmed")}
-          </p>
+          </b>
+          <p>{guaranteed ? t("pc.status.oneHeld") : t("pc.status.reconfirmed")}</p>
         </div>
       </div>
 
@@ -247,7 +271,7 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
       {/* FE-06 · o resumo primeiro, o tracker a seguir. */}
       <div className="card">
         <div className="sechead">
-          <h3>Your request</h3>
+          <h3>{t("pc.status.yourRequest")}</h3>
         </div>
         <div className="sumroute">
           <RouteSummary request={state.request} />
@@ -259,7 +283,7 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
 
       <div className="card">
         <div className="sechead">
-          <h3>Request status</h3>
+          <h3>{t("pc.status.requestStatus")}</h3>
           <span className="rt">
             {state.proposalPublishedAt
               ? t("pc.status.updatedAt", {
@@ -313,7 +337,7 @@ export function ScreenP7b({ state }: { state: PcState }) {
     ],
     [
       t("pc.status.rowSent"),
-      whenLabel(payment?.client_declared_paid_at ?? proof?.created_at ?? null),
+      whenLabel(payment?.client_declared_paid_at ?? proof?.created_at ?? null, t),
     ],
   ]
 
@@ -321,18 +345,22 @@ export function ScreenP7b({ state }: { state: PcState }) {
     <main className="shell view">
       <div className="hero-c">
         <div className="badge ok">{paid ? <IcBigCheck size={26} /> : <IcHourglass />}</div>
+        {/*
+          Sprint 3.1 · ecrãs 11 e 13 do desenho, e são estes dois estados.
+
+          "Please wait" era a pior linha do produto: prendia o cliente a um ecrã
+          enquanto a confirmação é feita à mão, do outro lado, em horário de
+          expediente. O texto novo diz-lhe o que estamos a fazer e liberta-o —
+          "não precisa de ficar nesta página".
+        */}
         <h2>
-          {paid ? (
-            <>
-              {t("pc.status.paidHeading")}
-              <em>{t("pc.status.paidHeadingEm")}</em>
-            </>
-          ) : (
-            <>
-              {t("pc.status.checkingHeading")}
-              <em>{t("pc.status.checkingHeadingEm")}</em>
-            </>
-          )}
+          <Sentence
+            text={greeting(
+              t,
+              paid ? "pc.status.paidHeading" : "pc.status.checkingHeading",
+              state.contact.firstName
+            )}
+          />
         </h2>
         <p>{paid ? t("pc.status.paidBody") : t("pc.status.checkingBody")}</p>
         <div className="codebox" style={{ justifyContent: "center" }}>
@@ -346,8 +374,8 @@ export function ScreenP7b({ state }: { state: PcState }) {
       {/* FE-06 · o resumo do pedido antes do tracker, em todos os estados. */}
       <div className="card">
         <div className="sechead">
-          <h3>Your request</h3>
-          <span className="rt">{whenLabel(state.request.createdAt)}</span>
+          <h3>{t("pc.status.yourRequest")}</h3>
+          <span className="rt">{whenLabel(state.request.createdAt, t)}</span>
         </div>
         <div className="sumroute">
           <RouteSummary request={state.request} />
@@ -359,7 +387,7 @@ export function ScreenP7b({ state }: { state: PcState }) {
 
       <div className="card">
         <div className="sechead">
-          <h3>Request status</h3>
+          <h3>{t("pc.status.requestStatus")}</h3>
           <span className="rt" style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span className="pulse" />
             {paid
@@ -372,16 +400,17 @@ export function ScreenP7b({ state }: { state: PcState }) {
           {paid ? (
             t("pc.status.etaIssuing", { phone })
           ) : (
-            <>
-              {t("pc.status.etaCheckingBefore")}
-              <b>{t("pc.status.etaCheckingBold")}</b>
-              {payment?.review_deadline_at
-                ? t("pc.status.etaCheckingWithin", {
-                    hours: PROOF_REVIEW_HOURS,
-                  })
-                : null}
-              {t("pc.status.etaCheckingAfter", { phone })}
-            </>
+            <Sentence
+              as="b"
+              text={
+                payment?.review_deadline_at
+                  ? t("pc.status.etaCheckingDeadline", {
+                      phone,
+                      hours: PROOF_REVIEW_HOURS,
+                    })
+                  : t("pc.status.etaChecking", { phone })
+              }
+            />
           )}
         </p>
       </div>
@@ -437,18 +466,19 @@ export function ScreenP8({ state }: { state: PcState }) {
     [
       t("pc.status.rowDates"),
       state.request.trip === "multi"
-        ? state.request.legs.map((l) => fmtDate(l.date)).join(" · ")
+        ? state.request.legs.map((l) => fmtDate(l.date, t)).join(" · ")
         : fmtRange(
             state.request.departDate,
-            state.request.trip === "round" ? state.request.returnDate : null
+            state.request.trip === "round" ? state.request.returnDate : null,
+            t
           ),
     ],
-    [t("pc.status.rowPassengers"), paxFull(state.request)],
-    [t("pc.status.rowCabin"), CABIN_LABEL[state.request.cabin]],
+    [t("pc.status.rowPassengers"), paxFull(state.request, t)],
+    [t("pc.status.rowCabin"), cabinLabel(state.request.cabin, t)],
     [
       t("pc.status.rowLastOption"),
       state.proposalPublishedAt && lastTotal
-        ? `${whenLabel(state.proposalPublishedAt)} · ${money(lastTotal, state.request.currency)}`
+        ? `${whenLabel(state.proposalPublishedAt, t)} · ${money(lastTotal, state.request.currency)}`
         : "—",
     ],
   ]
@@ -548,8 +578,7 @@ export function ScreenP9({ state }: { state: PcState }) {
           <IcBigCheck size={26} />
         </div>
         <h2>
-          {t("pc.status.issuedHeading")}
-          <em>{t("pc.status.issuedHeadingEm")}</em>
+          <Sentence text={t("pc.status.issuedHeading")} />
         </h2>
         <p>{t("pc.status.issuedBody", { email: state.contact.email })}</p>
         <div className="codebox">
@@ -613,7 +642,7 @@ export function ScreenP9({ state }: { state: PcState }) {
       <div className="card">
         <div className="sechead">
           <h3>{t("pc.status.ticketsByPassenger")}</h3>
-          <span className="rt">{paxShort(state.request)}</span>
+          <span className="rt">{paxShort(state.request, t)}</span>
         </div>
         {state.passengers.map((p, i) => (
           <div className="tk" key={p.id}>
@@ -726,7 +755,7 @@ export function ScreenP9({ state }: { state: PcState }) {
                    ofertas anteriores à migração 0012; sem nenhum dos dois, a
                    linha manda ler o bilhete em vez de afirmar um número. */
                 offer?.baggage_hold_count != null
-                  ? baggageLabel(offer.baggage_hold_count)
+                  ? baggageLabel(offer.baggage_hold_count, "hold", t)
                   : (offer?.baggage_hold ?? t("pc.status.seeYourTicket")),
               ],
               [t("pc.status.documents"), t("pc.status.documentsValue")],
@@ -860,10 +889,12 @@ function ContactCard({
           <div className="cancelled">
             <IcCancelled />
             <div>
-              <b>{t("pc.status.cancelledBold")}</b>
-              {t("pc.status.cancelledRest", {
-                reference: state.request.reference,
-              })}
+              <Sentence
+                as="b"
+                text={t("pc.status.cancelledNote", {
+                  reference: state.request.reference,
+                })}
+              />
             </div>
           </div>
           <a
@@ -949,8 +980,7 @@ function InstallCard() {
           </div>
         </div>
         <p className="why">
-          <b>{t("pc.install.whyBold")}</b>
-          {t("pc.install.iosWhy")}
+          <Sentence as="b" text={t("pc.install.iosWhy")} />
         </p>
         <div className="tut">
           <div className="tutrow">
@@ -985,8 +1015,7 @@ function InstallCard() {
         </div>
       </div>
       <p className="why">
-        <b>{t("pc.install.whyBold")}</b>
-        {t("pc.install.why")}
+        <Sentence as="b" text={t("pc.install.why")} />
       </p>
       <button
         className="btn btn-primary"

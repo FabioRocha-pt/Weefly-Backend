@@ -17,6 +17,20 @@
  * aeroportos vêm de `/api/airports` (nove mil, com o catálogo a viver no
  * servidor) e os países de `lib/countries.ts` (todos, 7 KB porque o campo filtra
  * a cada tecla).
+ *
+ * Sprint 3.1 · T-08 · e o texto também deixou de estar em duro.
+ *
+ * Esta era a metade por fechar do T-08: os ecrãs do link já liam do dicionário,
+ * e este — o formulário público, que é o primeiro que qualquer cliente vê —
+ * continuava escrito em inglês literal, incluindo as mensagens de erro. Um
+ * vendedor mandava `/pc?lang=fr` a um cliente senegalês e o formulário abria em
+ * inglês; o seletor de língua no topo mudava a barra e mais nada.
+ *
+ * Agora tudo o que o cliente lê vem de `pc.trip.*`, `pc.contact.*` e
+ * `pc.review.*`. Os sub-componentes lá em baixo chamam `useT()` cada um por si
+ * em vez de receberem o tradutor por prop: estão todos dentro do
+ * `I18nProvider` que a página monta, e passar `t` por seis níveis de props era
+ * ruído sem nada em troca.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
@@ -43,12 +57,12 @@ import {
   toE164,
 } from "@/lib/countries"
 import {
-  CABIN_LABEL,
-  TRIP_LABEL,
+  cabinLabel,
   daysBetween,
   fmtDate,
   paxFull,
   todayISO,
+  tripLabel,
 } from "@/lib/pc/format"
 import {
   IcBag,
@@ -64,6 +78,7 @@ import {
 } from "@/components/pc/bits"
 import { PcStepper, PcTopbar } from "@/components/pc/chrome"
 import type { Locale } from "@/i18n/config"
+import { useT } from "@/i18n/provider"
 
 /** Um aeroporto como o campo o mostra, depois de escolhido da lista. */
 interface Place {
@@ -106,6 +121,7 @@ export function RequestWizard({
   agentSlug: string | null
 }) {
   const router = useRouter()
+  const t = useT()
   const [pending, startTransition] = useTransition()
 
   /* FE-05 · três passos: viagem, contacto e a revisão antes de submeter. */
@@ -362,22 +378,22 @@ export function RequestWizard({
         nextBad.multi = true
         nextErr.multi =
           outOfOrder && !incomplete
-            ? "Each flight must be on or after the previous one"
-            : "Fill in each flight with origin, destination and date, and use different airports"
+            ? t("pc.trip.error.legOrder")
+            : t("pc.trip.error.legIncomplete")
       }
     } else {
       if (!origin) nextBad.origin = true
       if (!destination) nextBad.dest = true
       if (origin && destination && origin === destination) {
         nextBad.dest = true
-        nextErr.dest = "Choose a different arrival airport"
+        nextErr.dest = t("pc.trip.error.sameAirport")
       }
       if (!depart || (trip === "round" && !ret)) {
         nextBad.dates = true
-        nextErr.dates = "Enter your travel dates"
+        nextErr.dates = t("pc.trip.error.dates")
       } else if (trip === "round" && ret < depart) {
         nextBad.dates = true
-        nextErr.dates = "The return cannot be before the departure"
+        nextErr.dates = t("pc.trip.error.returnBefore")
       }
     }
 
@@ -412,7 +428,7 @@ export function RequestWizard({
     if (cleanName.split(" ").filter(Boolean).length < 2) nextBad.name = true
     if (!e164) {
       nextBad.phone = true
-      nextErr.phone = "Enter a valid number for the country you picked"
+      nextErr.phone = t("pc.contact.phoneErrorCountry")
     }
     if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email.trim())) nextBad.email = true
     if (!consent) nextBad.consent = true
@@ -514,11 +530,11 @@ export function RequestWizard({
       ? ""
       : depart
         ? trip === "round" && ret
-          ? `${fmtDate(depart)}–${fmtDate(ret)}`
-          : fmtDate(depart)
+          ? `${fmtDate(depart, t)}–${fmtDate(ret, t)}`
+          : fmtDate(depart, t)
         : "",
-    paxFull(paxMix),
-    CABIN_LABEL[cabin],
+    paxFull(paxMix, t),
+    cabinLabel(cabin, t),
   ]
     .filter(Boolean)
     .join(" · ")
@@ -536,14 +552,9 @@ export function RequestWizard({
       {/* ═══ P1 · fare request ═══ */}
       <main className="shell view" hidden={step !== 1}>
         <section className="hero">
-          <span className="eyebrow">No commitment · reply on WhatsApp</span>
-          <h1>
-            Let&apos;s find <em>the best fare</em> for your flight
-          </h1>
-          <p>
-            Tell us where you are going. Our team searches several airlines and
-            comes back to you with the best options.
-          </p>
+          <span className="eyebrow">{t("pc.trip.eyebrow")}</span>
+          <h1>{t("pc.trip.title")}</h1>
+          <p>{t("pc.trip.lead")}</p>
         </section>
 
         <div className="card">
@@ -554,7 +565,7 @@ export function RequestWizard({
               open={openPop === "trip"}
               onToggle={setOpenPop}
               icon={<IcSwap size={17} />}
-              label={TRIPS[trip]}
+              label={tripLabel(trip, t)}
             >
               {(Object.keys(TRIPS) as TripKind[]).map((key) => (
                 <button
@@ -571,7 +582,7 @@ export function RequestWizard({
                   <span className="ck">
                     <IcTick />
                   </span>
-                  <span className="tx">{TRIPS[key]}</span>
+                  <span className="tx">{tripLabel(key, t)}</span>
                 </button>
               ))}
             </Selector>
@@ -581,7 +592,7 @@ export function RequestWizard({
               <button
                 type="button"
                 aria-expanded={openPop === "pax"}
-                aria-label={`Passengers · ${paxFull(paxMix)}`}
+                aria-label={t("pc.trip.pax.label", { summary: paxFull(paxMix, t) })}
                 onClick={() => {
                   if (openPop === "pax") return setOpenPop(null)
                   paxSnapshot.current = [adults, children, infSeat, infLap]
@@ -605,8 +616,8 @@ export function RequestWizard({
               </button>
               <div className="pop pax">
                 <Counter
-                  title="Adults"
-                  note="12 and over"
+                  title={t("pc.trip.pax.adults")}
+                  note={t("pc.trip.pax.adultsNote")}
                   value={adults}
                   min={1}
                   max={9}
@@ -619,24 +630,24 @@ export function RequestWizard({
                   }}
                 />
                 <Counter
-                  title="Children"
-                  note="aged 2 to 11"
+                  title={t("pc.trip.pax.children")}
+                  note={t("pc.trip.pax.childrenNote")}
                   value={children}
                   min={0}
                   max={8}
                   onChange={setChildren}
                 />
                 <Counter
-                  title="Infants"
-                  note="in seat"
+                  title={t("pc.trip.pax.infants")}
+                  note={t("pc.trip.pax.infantsSeatNote")}
                   value={infSeat}
                   min={0}
                   max={4}
                   onChange={setInfSeat}
                 />
                 <Counter
-                  title="Infants"
-                  note="on lap · one per adult"
+                  title={t("pc.trip.pax.infants")}
+                  note={t("pc.trip.pax.infantsLapNote")}
                   value={infLap}
                   min={0}
                   max={adults}
@@ -656,10 +667,10 @@ export function RequestWizard({
                       setOpenPop(null)
                     }}
                   >
-                    Cancel
+                    {t("pc.trip.pax.cancel")}
                   </button>
                   <button type="button" className="pri" onClick={() => setOpenPop(null)}>
-                    Done
+                    {t("pc.trip.pax.done")}
                   </button>
                 </div>
               </div>
@@ -670,7 +681,7 @@ export function RequestWizard({
               id="cabin"
               open={openPop === "cabin"}
               onToggle={setOpenPop}
-              label={CABINS[cabin]}
+              label={cabinLabel(cabin, t)}
             >
               {(Object.keys(CABINS) as CabinKind[]).map((key) => (
                 <button
@@ -687,7 +698,7 @@ export function RequestWizard({
                   <span className="ck">
                     <IcTick />
                   </span>
-                  <span className="tx">{CABINS[key]}</span>
+                  <span className="tx">{cabinLabel(key, t)}</span>
                 </button>
               ))}
             </Selector>
@@ -702,7 +713,7 @@ export function RequestWizard({
               open={openPop === "baggage"}
               onToggle={setOpenPop}
               icon={<IcBag size={17} />}
-              label={baggageLabel(baggage)}
+              label={baggageLabel(baggage, "hold", t)}
             >
               {Array.from({ length: MAX_BAGGAGE + 1 }, (_, n) => (
                 <button
@@ -719,7 +730,7 @@ export function RequestWizard({
                   <span className="ck">
                     <IcTick />
                   </span>
-                  <span className="tx">{baggageLabel(n)}</span>
+                  <span className="tx">{baggageLabel(n, "hold", t)}</span>
                 </button>
               ))}
             </Selector>
@@ -731,12 +742,12 @@ export function RequestWizard({
               <div className="routebox">
                 <AirportField
                   id="origin"
-                  label="From"
-                  placeholder="Where from?"
+                  label={t("pc.trip.fromLabel")}
+                  placeholder={t("pc.trip.fromPlaceholder")}
                   value={origin}
                   valueLabel={placeLabel(origin ? places[origin] : undefined)}
                   bad={bad.origin}
-                  error={errText.origin ?? "Choose the departure airport"}
+                  error={errText.origin ?? t("pc.trip.error.origin")}
                   onPick={(place) => {
                     setOrigin(place?.iata ?? null)
                     if (place) remember(place)
@@ -746,8 +757,8 @@ export function RequestWizard({
                 <button
                   className="swap"
                   type="button"
-                  title="Swap"
-                  aria-label="Swap origin and destination"
+                  title={t("pc.trip.swap")}
+                  aria-label={t("pc.trip.swap")}
                   onClick={() => {
                     setOrigin(destination)
                     setDestination(origin)
@@ -759,12 +770,12 @@ export function RequestWizard({
                 </button>
                 <AirportField
                   id="dest"
-                  label="To"
-                  placeholder="Where to?"
+                  label={t("pc.trip.toLabel")}
+                  placeholder={t("pc.trip.toPlaceholder")}
                   value={destination}
                   valueLabel={placeLabel(destination ? places[destination] : undefined)}
                   bad={bad.dest}
-                  error={errText.dest ?? "Choose the arrival airport"}
+                  error={errText.dest ?? t("pc.trip.error.destination")}
                   onPick={(place) => {
                     setDestination(place?.iata ?? null)
                     if (place) remember(place)
@@ -775,7 +786,7 @@ export function RequestWizard({
 
               <div className={`datebox${trip === "oneway" ? " solo" : ""}${bad.dates ? " bad" : ""}`}>
                 <div className="dcell">
-                  <label htmlFor="dep">Departure</label>
+                  <label htmlFor="dep">{t("pc.trip.departure")}</label>
                   <input
                     id="dep"
                     type="date"
@@ -790,7 +801,7 @@ export function RequestWizard({
                 </div>
                 {trip !== "oneway" && (
                   <div className="dcell">
-                    <label htmlFor="ret">Return</label>
+                    <label htmlFor="ret">{t("pc.trip.return")}</label>
                     <input
                       id="ret"
                       type="date"
@@ -806,7 +817,7 @@ export function RequestWizard({
               </div>
               {nights > 0 && (
                 <span className="nights">
-                  {nights} {nights === 1 ? "night at the destination" : "nights at the destination"}
+                  {t("pc.trip.nights", { count: nights })}
                 </span>
               )}
               {bad.dates && (
@@ -823,18 +834,20 @@ export function RequestWizard({
               {legs.map((leg, index) => (
                 <div className="leg" key={index}>
                   <div className="leghead">
-                    <span className="legtag">Flight {index + 1}</span>
+                    <span className="legtag">
+                      {t("pc.trip.leg.title", { n: index + 1 })}
+                    </span>
                     {legs.length > MIN_LEGS && (
                       <button type="button" onClick={() => removeLeg(index)}>
-                        Remove
+                        {t("pc.trip.leg.remove")}
                       </button>
                     )}
                   </div>
                   <div className="routebox">
                     <AirportField
                       id={`o${index}`}
-                      label="From"
-                      placeholder="Where from?"
+                      label={t("pc.trip.fromLabel")}
+                      placeholder={t("pc.trip.fromPlaceholder")}
                       value={leg.origin}
                       valueLabel={placeLabel(leg.origin ? places[leg.origin] : undefined)}
                       onPick={(place) => {
@@ -845,8 +858,8 @@ export function RequestWizard({
                     />
                     <AirportField
                       id={`d${index}`}
-                      label="To"
-                      placeholder="Where to?"
+                      label={t("pc.trip.toLabel")}
+                      placeholder={t("pc.trip.toPlaceholder")}
                       value={leg.destination}
                       valueLabel={placeLabel(
                         leg.destination ? places[leg.destination] : undefined
@@ -860,7 +873,7 @@ export function RequestWizard({
                   </div>
                   <div className="datebox solo" style={{ marginTop: 10 }}>
                     <div className="dcell">
-                      <label htmlFor={`dt${index}`}>Date</label>
+                      <label htmlFor={`dt${index}`}>{t("pc.trip.date")}</label>
                       <input
                         id={`dt${index}`}
                         type="date"
@@ -878,12 +891,11 @@ export function RequestWizard({
 
               {legs.length < MAX_LEGS ? (
                 <button className="addleg" type="button" onClick={addLeg}>
-                  + Add another flight
+                  {t("pc.trip.leg.add")}
                 </button>
               ) : (
                 <p className="subnote" style={{ marginTop: 12 }}>
-                  {MAX_LEGS} flights is the most we can quote in one request. For a
-                  longer trip, message us on WhatsApp.
+                  {t("pc.trip.leg.max", { count: MAX_LEGS })}
                 </p>
               )}
               {bad.multi && (
@@ -896,13 +908,11 @@ export function RequestWizard({
 
           <div className="actions">
             <button className="btn btn-primary" type="button" onClick={goToContact}>
-              Continue
+              {t("pc.trip.submit")}
               <IcNext />
             </button>
           </div>
-          <p className="subnote">
-            You are not buying anything yet. Get the options and decide later.
-          </p>
+          <p className="subnote">{t("pc.trip.footnote")}</p>
         </div>
         <div className="spacer" />
       </main>
@@ -910,17 +920,20 @@ export function RequestWizard({
       {/* ═══ P2 · contact details ═══ */}
       <main className="shell view" hidden={step !== 2}>
         <section className="hero">
-          <span className="eyebrow">Step 2 of 3</span>
-          <h1>
-            Where do we send <em>your options</em>?
-          </h1>
+          <span className="eyebrow">{t("pc.contact.eyebrow")}</span>
+          <h1>{t("pc.contact.title")}</h1>
           <p>{recap || "—"}</p>
         </section>
 
         <div className="card">
           <div className={`f${bad.name ? " bad" : ""}`}>
             <label className="fl" htmlFor="fullname">
-              Full name<span className="req">*</span>
+              {t("pc.contact.nameLabel")}
+              <span className="req">*</span>
+              {/* A dica que faz o passo 8 chegar já certo: um nome escrito
+                  aqui como está no passaporte é um nome que não é preciso
+                  corrigir depois de emitido. */}
+              <span className="walabel"> · {t("pc.contact.nameHint")}</span>
             </label>
             <div className="inp">
               <span className="li">
@@ -928,7 +941,7 @@ export function RequestWizard({
               </span>
               <input
                 id="fullname"
-                placeholder="Your name"
+                placeholder={t("pc.contact.namePlaceholder")}
                 autoComplete="name"
                 value={name}
                 onChange={(event) => {
@@ -937,12 +950,12 @@ export function RequestWizard({
                 }}
               />
             </div>
-            <span className="err">Enter your first and last name</span>
+            <span className="err">{t("pc.contact.nameError")}</span>
           </div>
 
           <div className={`f${bad.phone ? " bad" : ""}`} style={{ marginTop: 14 }}>
             <label className="fl" htmlFor="phone">
-              Phone <span className="walabel">· ideally your WhatsApp number</span>
+              {t("pc.contact.phoneLabel")}
               <span className="req">*</span>
             </label>
             <div className="phone">
@@ -960,7 +973,7 @@ export function RequestWizard({
                 <input
                   id="phone"
                   type="tel"
-                  placeholder="991 44 07"
+                  placeholder={t("pc.contact.phonePlaceholder")}
                   inputMode="tel"
                   autoComplete="tel-national"
                   value={phone}
@@ -974,23 +987,30 @@ export function RequestWizard({
                 </span>
               </div>
             </div>
+            {/*
+              Regra 4 · o número está dentro da frase, não colado ao fim dela.
+
+              Eram duas cadeias com o `{phone}` pelo meio, e o meio de uma frase
+              portuguesa não é o meio de uma frase francesa. São agora duas
+              frases inteiras — uma para antes de haver número, outra para
+              depois — e o número entra como marcador.
+            */}
             <span className="hint">
-              We use this number to send your options and to talk to you.
-              {toE164(dialCode, phone) ? (
-                <>
-                  {" "}
-                  We will save it as <b className="mono">{toE164(dialCode, phone)}</b>.
-                </>
-              ) : null}
+              {toE164(dialCode, phone)
+                ? t("pc.contact.phoneHintSaved", {
+                    phone: toE164(dialCode, phone) ?? "",
+                  })
+                : t("pc.contact.phoneHint")}
             </span>
             <span className="err">
-              {errText.phone || "Enter a valid number, 6 to 15 digits"}
+              {errText.phone || t("pc.contact.phoneError")}
             </span>
           </div>
 
           <div className={`f${bad.email ? " bad" : ""}`} style={{ marginTop: 14 }}>
             <label className="fl" htmlFor="email">
-              Email<span className="req">*</span>
+              {t("pc.contact.emailLabel")}
+              <span className="req">*</span>
             </label>
             <div className="inp">
               <span className="li">
@@ -999,7 +1019,7 @@ export function RequestWizard({
               <input
                 id="email"
                 type="email"
-                placeholder="to receive your ticket"
+                placeholder={t("pc.contact.emailPlaceholder")}
                 autoComplete="email"
                 value={email}
                 onChange={(event) => {
@@ -1008,9 +1028,20 @@ export function RequestWizard({
                 }}
               />
             </div>
-            <span className="err">Enter a valid email</span>
+            <span className="err">{t("pc.contact.emailError")}</span>
           </div>
 
+          {/*
+            Sprint 3.1 · "Registamos a data, a hora e o dispositivo desta
+            autorização" saiu do ecrã.
+
+            O registo **não** saiu: a data, a hora e o dispositivo continuam a
+            ser gravados exactamente como antes, em `actions/pc.ts`, porque é o
+            que prova o consentimento. O que saiu é dizê-lo ao cliente. Era a
+            linha mais comprida do ecrã, imediatamente por baixo de uma caixa
+            que ele tem de marcar para continuar, e lia-se como vigilância no
+            momento em que lhe estamos a pedir confiança.
+          */}
           <label className="consent" htmlFor="consent">
             <input
               type="checkbox"
@@ -1021,17 +1052,11 @@ export function RequestWizard({
                 clear("consent")
               }}
             />
-            <p>
-              I authorise WeeFly to contact me and to process my data for the
-              purposes of this travel request, under the privacy policy.
-              <span className="meta">
-                We record the date, time and device of this authorisation.
-              </span>
-            </p>
+            <p>{t("pc.contact.consent")}</p>
           </label>
           {bad.consent && (
             <span className="err" style={{ marginTop: 8, display: "block" }}>
-              We need this authorisation to continue
+              {t("pc.contact.consentError")}
             </span>
           )}
 
@@ -1045,7 +1070,7 @@ export function RequestWizard({
             <button
               className="btn btn-ghost"
               type="button"
-              aria-label="Back"
+              aria-label={t("pc.contact.back")}
               onClick={() => {
                 setStep(1)
                 window.scrollTo(0, 0)
@@ -1058,7 +1083,7 @@ export function RequestWizard({
               type="button"
               onClick={review}
             >
-              Review my request
+              {t("pc.contact.submit")}
             </button>
           </div>
         </div>
@@ -1076,31 +1101,29 @@ export function RequestWizard({
       */}
       <main className="shell view" hidden={step !== 3}>
         <section className="hero">
-          <span className="eyebrow">Step 3 of 3 · review</span>
-          <h1>
-            Is this <em>the trip you want</em>?
-          </h1>
-          <p>
-            Nothing has been sent yet. Check each line, change what needs
-            changing, and confirm at the bottom.
-          </p>
+          <span className="eyebrow">{t("pc.review.eyebrow")}</span>
+          <h1>{t("pc.review.title")}</h1>
+          <p>{t("pc.review.lead")}</p>
         </section>
 
         <div className="card">
           <ReviewRow
-            label="Trip type"
-            value={TRIP_LABEL[trip]}
+            label={t("pc.review.rowType")}
+            value={tripLabel(trip, t)}
             onEdit={() => goToStep(1)}
           />
           <ReviewRow
-            label="Route"
+            label={t("pc.review.rowRoute")}
             value={
               trip === "multi"
                 ? legs
                     .filter((l) => l.origin && l.destination)
-                    .map(
-                      (l, i) =>
-                        `Flight ${i + 1}: ${cityName(l.origin)} → ${cityName(l.destination)}`
+                    .map((l, i) =>
+                      t("pc.review.leg", {
+                        n: i + 1,
+                        from: cityName(l.origin),
+                        to: cityName(l.destination),
+                      })
                     )
                     .join(" · ")
                 : `${cityName(origin)} → ${cityName(destination)}`
@@ -1108,47 +1131,47 @@ export function RequestWizard({
             onEdit={() => goToStep(1, trip === "multi" ? "o0" : "origin")}
           />
           <ReviewRow
-            label="Dates"
+            label={t("pc.review.rowDates")}
             value={
               trip === "multi"
-                ? legs.map((l) => fmtDate(l.date)).filter(Boolean).join(" · ")
+                ? legs.map((l) => fmtDate(l.date, t)).filter(Boolean).join(" · ")
                 : trip === "round" && ret
-                  ? `${fmtDate(depart)} — ${fmtDate(ret)}`
-                  : fmtDate(depart)
+                  ? `${fmtDate(depart, t)} — ${fmtDate(ret, t)}`
+                  : fmtDate(depart, t)
             }
             onEdit={() => goToStep(1, trip === "multi" ? "dt0" : "dep")}
           />
           <ReviewRow
-            label="Passengers"
-            value={paxFull(paxMix)}
+            label={t("pc.review.rowPax")}
+            value={paxFull(paxMix, t)}
             onEdit={() => goToStep(1, "pcTripBar")}
           />
           <ReviewRow
-            label="Cabin"
-            value={CABIN_LABEL[cabin]}
+            label={t("pc.review.rowCabin")}
+            value={cabinLabel(cabin, t)}
             onEdit={() => goToStep(1, "pcTripBar")}
           />
           <ReviewRow
-            label="Checked bags"
+            label={t("pc.review.rowBags")}
             value={
               baggage === 0
-                ? "None requested"
-                : `${baggage} per passenger`
+                ? t("pc.review.bagsNone")
+                : t("pc.review.bagsPerPassenger", { count: baggage })
             }
             onEdit={() => goToStep(1, "pcTripBar")}
           />
           <ReviewRow
-            label="Name"
+            label={t("pc.review.rowName")}
             value={name.trim().replace(/\s+/g, " ")}
             onEdit={() => goToStep(2, "fullname")}
           />
           <ReviewRow
-            label="Phone"
+            label={t("pc.review.rowPhone")}
             value={toE164(dialCode, phone) ?? `${dialCode} ${phone}`}
             onEdit={() => goToStep(2, "phone")}
           />
           <ReviewRow
-            label="Email"
+            label={t("pc.review.rowEmail")}
             value={email.trim()}
             onEdit={() => goToStep(2, "email")}
           />
@@ -1161,14 +1184,14 @@ export function RequestWizard({
           */}
           <div className="f" style={{ marginTop: 18 }}>
             <label className="fl" htmlFor="special">
-              Anything we should know?{" "}
-              <span className="walabel">· optional, but it helps</span>
+              {t("pc.review.specialLabel")}{" "}
+              <span className="walabel">{t("pc.review.specialOptional")}</span>
             </label>
             <textarea
               id="special"
               rows={4}
               maxLength={1000}
-              placeholder="Don't arrive at night · travelling with my mother, who uses a wheelchair · I must be in Lisbon before 2 pm · we'd rather not connect in Dakar"
+              placeholder={t("pc.review.specialPlaceholder")}
               value={special}
               onChange={(event) => setSpecial(event.target.value)}
               style={{
@@ -1183,8 +1206,7 @@ export function RequestWizard({
               }}
             />
             <span className="hint">
-              Our team reads this before quoting. {1000 - special.length}{" "}
-              characters left.
+              {t("pc.review.specialHint", { count: 1000 - special.length })}
             </span>
           </div>
 
@@ -1198,7 +1220,7 @@ export function RequestWizard({
             <button
               className="btn btn-ghost"
               type="button"
-              aria-label="Back"
+              aria-label={t("pc.review.back")}
               onClick={() => goToStep(2)}
             >
               <IcBack />
@@ -1209,12 +1231,11 @@ export function RequestWizard({
               disabled={pending}
               onClick={submit}
             >
-              {pending ? "Sending…" : "Confirm and send request"}
+              {pending ? t("pc.review.sending") : t("pc.review.submit")}
             </button>
           </div>
           <p className="subnote" style={{ marginTop: 10 }}>
-            No commitment and no payment. We reply with your options within a
-            couple of working hours.
+            {t("pc.review.footnote")}
           </p>
         </div>
         <div className="spacer" />
@@ -1252,6 +1273,7 @@ function ReviewRow({
   value: string
   onEdit: () => void
 }) {
+  const t = useT()
   return (
     <div
       style={{
@@ -1279,7 +1301,7 @@ function ReviewRow({
           textUnderlineOffset: 3,
         }}
       >
-        Change
+        {t("pc.review.change")}
       </button>
     </div>
   )
@@ -1346,6 +1368,7 @@ function CountrySelect({
   localeTag: string
   onPick: (iso: string) => void
 }) {
+  const t = useT()
   const [query, setQuery] = useState("")
   const dial = COUNTRY_BY_ISO[value]?.dial ?? "+238"
 
@@ -1364,7 +1387,9 @@ function CountrySelect({
         type="button"
         className="ccbtn"
         aria-expanded={open}
-        aria-label={`Country code · ${countryName(value, localeTag)}`}
+        aria-label={t("pc.contact.countryLabel", {
+          country: countryName(value, localeTag),
+        })}
         onClick={() => onToggle(open ? null : "cc")}
       >
         <span aria-hidden="true">{flagOf(value)}</span>
@@ -1375,7 +1400,7 @@ function CountrySelect({
         <div style={{ padding: "6px 8px" }}>
           <input
             className="ccsearch"
-            placeholder="Country or code"
+            placeholder={t("pc.contact.countrySearch")}
             value={query}
             autoComplete="off"
             onChange={(event) => setQuery(event.target.value)}
@@ -1383,7 +1408,7 @@ function CountrySelect({
         </div>
         {results.length === 0 && (
           <div style={{ padding: 10, fontSize: 13, color: "#64748B" }}>
-            No country matches that.
+            {t("pc.contact.countryNone")}
           </div>
         )}
         {results.map((entry) => (
@@ -1432,6 +1457,12 @@ function Counter({
   max: number
   onChange: (value: number) => void
 }) {
+  const t = useT()
+  /* O tipo de passageiro entra no rótulo do botão como valor, e não colado a
+     ele: "Menos um: bebés (ao colo)" precisa das duas metades para um leitor de
+     ecrã distinguir os dois contadores de bebés. */
+  const kind = `${title.toLowerCase()} (${note})`
+
   return (
     <div className="cnt">
       <div className="t">
@@ -1441,7 +1472,7 @@ function Counter({
       <div className="stp2">
         <button
           type="button"
-          aria-label={`One fewer ${title.toLowerCase()}`}
+          aria-label={t("pc.trip.pax.fewer", { kind })}
           disabled={value <= min}
           onClick={() => onChange(Math.max(min, value - 1))}
         >
@@ -1450,7 +1481,7 @@ function Counter({
         <span>{value}</span>
         <button
           type="button"
-          aria-label={`One more ${title.toLowerCase()}`}
+          aria-label={t("pc.trip.pax.more", { kind })}
           disabled={value >= max}
           onClick={() => onChange(Math.min(max, value + 1))}
         >
@@ -1492,6 +1523,7 @@ function AirportField({
   error?: string
   onPick: (place: Place | null) => void
 }) {
+  const t = useT()
   const [text, setText] = useState(valueLabel)
   const [open, setOpen] = useState(false)
   const [highlight, setHighlight] = useState(-1)
@@ -1583,7 +1615,7 @@ function AirportField({
         />
       </div>
       <div className="sug" id={`${id}-sug`} role="listbox">
-        {!isSearch && <div className="sgh">Popular right now</div>}
+        {!isSearch && <div className="sgh">{t("pc.trip.airport.popular")}</div>}
         {results.length ? (
           results.map((place, index) => (
             <button
@@ -1615,7 +1647,9 @@ function AirportField({
           ))
         ) : (
           <div style={{ padding: 10, fontSize: 13, color: "#64748B" }}>
-            {loading ? "Searching…" : "No results. Try typing the city name."}
+            {loading
+              ? t("pc.trip.airport.searching")
+              : t("pc.trip.airport.noResults")}
           </div>
         )}
       </div>

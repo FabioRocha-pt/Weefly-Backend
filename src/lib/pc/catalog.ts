@@ -16,6 +16,7 @@
 // ── países, para os campos que pedem um país pelo nome ───────────────────────
 
 import { COUNTRIES } from "@/lib/countries"
+import type { Translator } from "@/i18n/translate"
 
 /**
  * As nacionalidades e os países emissores de passaporte.
@@ -112,13 +113,22 @@ export const MAX_BAGGAGE = 2
  * duas maneiras de o escrever fariam o cliente pensar que são coisas
  * diferentes.
  *
- * Zero tem palavras próprias: "No checked bag" é o que faz alguém escolher
- * outra opção, e "0 checked bags" é uma linha que os olhos saltam.
+ * Zero tem palavras próprias: "Sem bagagem de porão" é o que faz alguém
+ * escolher outra opção, e "0 malas de porão" é uma linha que os olhos saltam.
+ *
+ * Sprint 3.1 · o `t` é opcional pela mesma razão das funções de `format.ts`:
+ * o comparador de ofertas do back-office chama isto e lê em inglês, e o ecrã
+ * do cliente passa o tradutor.
  */
 export function baggageLabel(
   count: number,
-  kind: "cabin" | "hold" = "hold"
+  kind: "cabin" | "hold" = "hold",
+  t?: Translator
 ): string {
+  if (t) {
+    if (count <= 0) return t(kind === "cabin" ? "pc.bags.cabinNone" : "pc.bags.holdNone")
+    return t(kind === "cabin" ? "pc.bags.cabin" : "pc.bags.hold", { count })
+  }
   const noun = kind === "cabin" ? "cabin bag" : "checked bag"
   if (count <= 0) return `No ${noun}`
   return `${count} ${noun}${count === 1 ? "" : "s"}`

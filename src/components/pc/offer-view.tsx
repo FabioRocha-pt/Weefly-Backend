@@ -24,7 +24,7 @@ import {
 } from "@/lib/proposal-math"
 import type { PcState } from "@/lib/pc/state"
 import { baggageLabel, carrierName } from "@/lib/pc/catalog"
-import { cityOf, money, paxFull } from "@/lib/pc/format"
+import { cityOf, fmtDateY, money, paxFull } from "@/lib/pc/format"
 import { TermIcon } from "@/components/pc/bits"
 import { useT } from "@/i18n/provider"
 import type { Translator } from "@/i18n/translate"
@@ -164,7 +164,7 @@ function bagTerm(
         : "Checked"
     return { txt: `${label} ${legacy}` }
   }
-  return { txt: baggageLabel(count, kind), no: count === 0 }
+  return { txt: baggageLabel(count, kind, t), no: count === 0 }
 }
 
 function legLabel(
@@ -174,15 +174,16 @@ function legLabel(
   date: string | null,
   t: Translator
 ): string {
+  /*
+   * Sprint 3.1 · a data do trecho na língua de quem lê.
+   *
+   * Era `toLocaleDateString("en-GB")`, que escrevia "12 Sep 2026" num ecrã em
+   * português. `fmtDateY` corta a string ISO em vez de construir um `Date`, e
+   * por isso continua a não haver fuso nenhum a mexer no dia — que é a razão
+   * pela qual o `timeZone: "UTC"` estava aqui.
+   */
   const day = date ? date.slice(0, 10) : ""
-  const pretty = day
-    ? new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-      })
-    : ""
+  const pretty = day ? fmtDateY(day, t) : ""
   if (multi) {
     return `${t("pc.offer.flight", { n: index + 1 })}${pretty ? ` · ${pretty}` : ""}`
   }
@@ -330,7 +331,7 @@ export function OfferCard({
           </div>
         </div>
         <div className="paxn">
-          {paxFull(request)}
+          {paxFull(request, t)}
           <br />
           {t("pc.offer.totalToPay")}
         </div>

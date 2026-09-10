@@ -19,6 +19,7 @@ import { carrierName } from "@/lib/pc/catalog"
 import { useT } from "@/i18n/provider"
 import {
   cityOf,
+  clockOf,
   countdown,
   fmtDate,
   fmtDateY,
@@ -58,10 +59,11 @@ export function PickedOption({
 
   const dates =
     state.request.trip === "multi"
-      ? state.request.legs.map((l) => fmtDate(l.date)).join(" · ")
+      ? state.request.legs.map((l) => fmtDate(l.date, t)).join(" · ")
       : fmtRange(
           state.request.departDate,
-          state.request.trip === "round" ? state.request.returnDate : null
+          state.request.trip === "round" ? state.request.returnDate : null,
+          t
         )
 
   /* FB-04 · garantido só com retenção real da companhia. Ver `priceNature`. */
@@ -88,7 +90,7 @@ export function PickedOption({
           </div>
           <div className="mt">
             {offer.name || carrierName(offer.segments[0]?.carrier_code)} · {dates} ·{" "}
-            {paxShort(state.request)}
+            {paxShort(state.request, t)}
           </div>
           {/* Trocar de opção é um direito, e por isso é um link e não uma
               conversa com a equipa — enquanto o pagamento não estiver fechado. */}
@@ -101,9 +103,14 @@ export function PickedOption({
         <div className="pr">
           <span className="k">{t("pc.picked.totalToPay")}</span>
           <div className="amt">{money(total, state.quoteCurrency)}</div>
+          {/* Regra 4 · a linha era três nós de JSX com dois valores pelo meio.
+              É agora uma chave com `{fare}` e `{service}` lá dentro, que é o
+              que permite ao francês pôr "de service WeeFly" onde ele cai. */}
           <div className="mt">
-            {money(fare, state.quoteCurrency)} +{" "}
-            {money(service, state.quoteCurrency)} {t("pc.picked.service")}
+            {t("pc.picked.priceLine", {
+              fare: money(fare, state.quoteCurrency),
+              service: money(service, state.quoteCurrency),
+            })}
           </div>
         </div>
       </div>
@@ -129,7 +136,14 @@ export function PickedOption({
             <span className="mono">{clock}</span>
             <span className="lb">{t("pc.picked.left")}</span>
           </div>
-          <b>{t("pc.picked.keepPrice")}</b>
+          {/*
+            T-13 · o rótulo diz agora para que serve o número.
+
+            Era "Complete Booking Process" por cima de um relógio a contar, e o
+            cliente via um número sem saber a que horas ele chega a zero. A
+            frase passa a dizer a hora — a mesma que o contador está a contar.
+          */}
+          <b>{t("pc.picked.keepPrice", { time: clockOf(deadline) })}</b>
           <p>
             {/* A janela de pagamento e a retenção da companhia são dois
                 prazos diferentes, e o texto só fala da segunda quando ela
@@ -138,7 +152,8 @@ export function PickedOption({
             {guaranteed && heldUntil
               ? t("pc.picked.airlineHold", {
                   date: fmtDateY(
-                    new Date(heldUntil).toISOString().slice(0, 10)
+                    new Date(heldUntil).toISOString().slice(0, 10),
+                    t
                   ),
                   time: new Date(heldUntil).toISOString().slice(11, 16),
                 })

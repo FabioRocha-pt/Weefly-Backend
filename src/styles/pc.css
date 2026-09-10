@@ -1,3 +1,20 @@
+/*
+ * WeeFly Price Checker — a folha do mockup.
+ *
+ * Sprint 3.1 · o `text-transform:uppercase` saiu, e é a única linha de CSS que
+ * este sprint toca.
+ *
+ * A regra 1 do sprint é "nada em maiúsculas, nem títulos nem botões", e era
+ * aqui que ela se perdia: dezoito regras punham em capitais tudo o que lhes
+ * passasse pela frente — os rótulos, as etiquetas dos trechos, os selos das
+ * ofertas, a barra da referência. Reescrever a redacção sem mexer nisto dava um
+ * ecrã com o texto novo à mesma em maiúsculas, porque quem manda no fim é o
+ * CSS e não a string.
+ *
+ * O `letter-spacing` ficou como estava. É uma escolha de desenho, foi calibrado
+ * para caps e em minúsculas fica largo — mas apertá-lo é redesenhar, e
+ * redesenhar não é deste sprint.
+ */
 :root{
   --ember:#EE5128; --ember-dk:#CE3F19; --ember-tint:#FEF1EC;
   --navy:#1E2532; --navy-soft:#3A4557; --navy-tint:#EEF1F6;
@@ -29,12 +46,12 @@ input,select{font-family:inherit;font-size:15px}
 .topbar{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:45}
 .topbar-in{max-width:540px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
 .logo{height:24px;width:auto;display:block}
-.brandline{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--ember);line-height:1;margin-top:3px}
+.brandline{font-size:11px;letter-spacing:.14em;font-weight:800;color:var(--ember);line-height:1;margin-top:3px}
 .prefs{margin-left:auto;display:flex;gap:6px;align-items:center}
 .pref{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;color:var(--navy-soft)}
 .pref:hover{border-color:var(--navy-soft)}
 .refchip{display:inline-flex;align-items:center;gap:8px;background:var(--chalk);border:1px solid var(--line);border-radius:999px;padding:5px 6px 5px 11px}
-.refchip .k{font-size:9.5px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.refchip .k{font-size:9.5px;letter-spacing:.10em;color:var(--muted);font-weight:700}
 .refchip .v{font-size:12.5px;font-weight:600;letter-spacing:.05em;background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 9px}
 
 /* ── stepper ── */
@@ -48,7 +65,7 @@ input,select{font-family:inherit;font-size:15px}
 
 /* ── hero ── */
 .hero{padding:22px 0 0}
-.hero .eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.hero .eyebrow{font-size:11px;letter-spacing:.13em;color:var(--muted);font-weight:700}
 h1{font-size:27px;line-height:1.14;letter-spacing:-.025em;font-weight:800;margin:7px 0 0}
 h1 em{font-style:normal;color:var(--ember)}
 .hero p{color:var(--muted);margin:9px 0 0;font-size:14.5px}
@@ -56,7 +73,7 @@ h1 em{font-style:normal;color:var(--ember)}
 .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin:16px 0 0;padding:16px}
 .card.tight{padding:14px 16px}
 .sechead{display:flex;align-items:baseline;gap:8px;margin:0 0 10px}
-.sechead h3{margin:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+.sechead h3{margin:0;font-size:11px;letter-spacing:.12em;font-weight:800;color:var(--muted)}
 .sechead .rt{margin-left:auto;font-size:12px;color:var(--muted);font-weight:600}
 
 /* ══ selectors, Google Flights style ══ */
@@ -110,7 +127,7 @@ h1 em{font-style:normal;color:var(--ember)}
 .datebox{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:10px}
 .datebox .dcell{padding:0;min-width:0}
 .datebox .dcell + .dcell{border-left:1px solid var(--line)}
-.datebox label{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:var(--muted);padding:9px 12px 0}
+.datebox label{display:block;font-size:10.5px;letter-spacing:.06em;font-weight:700;color:var(--muted);padding:9px 12px 0}
 .datebox input{width:100%;border:0;padding:2px 12px 10px;background:none;font-size:14.5px;font-weight:600;color:var(--ink)}
 .datebox input:focus{outline:none}
 .datebox.solo{grid-template-columns:1fr}
@@ -139,12 +156,12 @@ label.fl .req{color:var(--ember);margin-left:2px}
 .sug button.hl .ia{background:#fff}
 .sug .ct{font-size:14px;font-weight:600;display:block}
 .sug .cy{font-size:11.5px;color:var(--muted);display:block}
-.sug .sgh{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--muted);padding:8px 10px 4px}
+.sug .sgh{font-size:10px;letter-spacing:.1em;font-weight:800;color:var(--muted);padding:8px 10px 4px}
 
 .leg{border-top:1px solid var(--line-soft);padding-top:13px;margin-top:13px}
 .leg:first-child{border-top:0;padding-top:0;margin-top:0}
 .leghead{display:flex;align-items:center;gap:8px;margin-bottom:9px}
-.legtag{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+.legtag{font-size:10.5px;letter-spacing:.09em;font-weight:800;color:var(--muted)}
 .leghead button{margin-left:auto;background:none;border:0;font-size:12px;font-weight:700;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
 .addleg{width:100%;border:1px dashed var(--line);background:none;border-radius:10px;padding:11px;font-size:13px;font-weight:700;color:var(--navy-soft);margin-top:12px}
 .addleg:hover{border-color:var(--navy-soft)}
@@ -188,7 +205,7 @@ label.fl .req{color:var(--ember);margin-left:2px}
 .p3top h2 em{font-style:normal;color:var(--ok)}
 .p3top p{margin:8px auto 0;color:var(--muted);max-width:38ch;font-size:14px}
 .refbox{background:var(--chalk);border-radius:12px;padding:13px;margin:16px 0 0}
-.refbox span{font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:700;display:block}
+.refbox span{font-size:10.5px;letter-spacing:.11em;color:var(--muted);font-weight:700;display:block}
 .refbox b{font-size:20px;font-weight:600;letter-spacing:.09em;display:block;margin-top:3px}
 .refbox .cp{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--navy);margin-top:9px}
 
@@ -244,7 +261,7 @@ label.fl .req{color:var(--ember);margin-left:2px}
 .paywin{position:sticky;top:8px;z-index:20;background:var(--warn-tint);border:1px solid rgba(154,91,6,.26);border-radius:12px;padding:13px 14px;margin:16px 0 0}
 .paywin-clock{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:7px}
 .paywin-clock .mono{font-family:var(--font-plex-mono),'IBM Plex Mono',monospace;font-size:26px;font-weight:600;line-height:1.05;letter-spacing:-.01em;color:var(--warn);font-variant-numeric:tabular-nums}
-.paywin-clock .lb{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#9A5B06}
+.paywin-clock .lb{font-size:11px;font-weight:700;letter-spacing:.09em;color:#9A5B06}
 .paywin b{display:block;font-size:15px;font-weight:800;letter-spacing:-.01em;color:var(--warn)}
 .paywin p{margin:3px 0 0;font-size:13px;line-height:1.5;color:#6B4405}
 .paywin .paywin-due{margin-top:7px;font-size:12.5px}
@@ -292,8 +309,8 @@ label.fl .req{color:var(--ember);margin-left:2px}
 
 .prop{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin:14px 0 0;overflow:hidden}
 .prop-band{background:var(--navy);color:#fff;padding:11px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.prop-band .cat{font-size:11px;letter-spacing:.11em;text-transform:uppercase;font-weight:800}
-.prop-band .nat{margin-left:auto;font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;border-radius:6px;padding:4px 8px}
+.prop-band .cat{font-size:11px;letter-spacing:.11em;font-weight:800}
+.prop-band .nat{margin-left:auto;font-size:10px;letter-spacing:.07em;font-weight:800;border-radius:6px;padding:4px 8px}
 .nat.guar{background:rgba(62,190,148,.2);color:#7EE2BC}
 /* FB-04 · "seguro por nós" é o caso normal e tem cor própria: verde seria dizer
    que a companhia garantiu, cinzento seria dizer que não vale nada. */
@@ -316,7 +333,7 @@ label.fl .req{color:var(--ember);margin-left:2px}
 
 .dir{border-top:1px solid var(--line-soft);padding:12px 0}
 .dir:first-of-type{border-top:0;padding-top:0}
-.dirtag{font-size:10px;letter-spacing:.10em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+.dirtag{font-size:10px;letter-spacing:.10em;font-weight:800;color:var(--muted)}
 .strip{display:flex;align-items:center;gap:12px;margin-top:7px}
 .node{flex:0 0 auto;min-width:56px}
 .node .tm{font-family:var(--font-plex-mono),'IBM Plex Mono',monospace;font-size:18px;font-weight:600;display:block;line-height:1.1}
@@ -341,7 +358,7 @@ label.fl .req{color:var(--ember);margin-left:2px}
 
 /* ══ P7 ══ */
 .picked{background:var(--navy);color:#fff;border-radius:var(--r);padding:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:16px 0 0}
-.picked .k{font-size:10px;letter-spacing:.10em;text-transform:uppercase;color:#9FB0C6;font-weight:700}
+.picked .k{font-size:10px;letter-spacing:.10em;color:#9FB0C6;font-weight:700}
 .picked .rt{font-size:16px;font-weight:700;margin-top:3px;letter-spacing:-.01em}
 .picked .mt{font-size:12.5px;color:#B9C6D8;margin-top:2px}
 .picked .pr{margin-left:auto;text-align:right}
@@ -352,7 +369,7 @@ label.fl .req{color:var(--ember);margin-left:2px}
 .bank{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .bk{background:var(--chalk);border-radius:9px;padding:9px 11px;position:relative}
 .bk.wide{grid-column:span 2}
-.bk span{display:block;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.bk span{display:block;font-size:9.5px;letter-spacing:.09em;color:var(--muted);font-weight:700}
 .bk b{display:block;font-size:13.5px;font-weight:600;margin-top:2px;word-break:break-all}
 .bk .cpy{position:absolute;right:8px;top:8px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:10.5px;font-weight:700;color:var(--navy)}
 .drop{border:1.5px dashed var(--line);border-radius:11px;padding:20px;text-align:center;margin-top:12px;width:100%;background:none;display:block}
@@ -371,7 +388,7 @@ label.fl .req{color:var(--ember);margin-left:2px}
 .paxtag.child{background:var(--ember)}
 .paxcard-h b{font-size:14px;font-weight:700}
 .paxcard-h span{font-size:11.5px;color:var(--muted);display:block}
-.paxcard-h .st2{margin-left:auto;font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;border-radius:5px;padding:3px 7px;background:#fff;border:1px solid var(--line);color:var(--muted)}
+.paxcard-h .st2{margin-left:auto;font-size:10px;letter-spacing:.07em;font-weight:800;border-radius:5px;padding:3px 7px;background:#fff;border:1px solid var(--line);color:var(--muted)}
 .paxcard-h .st2.ok{background:var(--ok-tint);border-color:rgba(14,122,91,.3);color:var(--ok)}
 .paxcard-b{padding:13px}
 
@@ -403,7 +420,7 @@ label.fl .req{color:var(--ember);margin-left:2px}
 .m-h .ttl{flex:1;min-width:0}
 .m-h .ttl b{display:block;font-size:14px;font-weight:700}
 .m-h .ttl span{font-size:11.5px;color:var(--muted);display:block}
-.m-h .bg{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;border-radius:5px;padding:3px 7px;background:var(--chalk);color:var(--navy-soft);flex:0 0 auto}
+.m-h .bg{font-size:9.5px;letter-spacing:.07em;font-weight:800;border-radius:5px;padding:3px 7px;background:var(--chalk);color:var(--navy-soft);flex:0 0 auto}
 .m-h .bg.free{background:var(--ok-tint);color:var(--ok)}
 .m-b{display:none;padding:0 13px 13px}
 .m.on .m-b{display:block;border-top:1px solid var(--line-soft);padding-top:13px}
@@ -431,7 +448,7 @@ label.fl .req{color:var(--ember);margin-left:2px}
 .hero-c p{margin:9px auto 0;color:var(--muted);max-width:40ch;font-size:14px}
 .codebox{background:var(--chalk);border-radius:12px;padding:13px;margin:16px 0 0;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .codebox > div{flex:1;min-width:120px}
-.codebox span{font-size:9.5px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-weight:700;display:block}
+.codebox span{font-size:9.5px;letter-spacing:.10em;color:var(--muted);font-weight:700;display:block}
 .codebox b{font-family:var(--font-plex-mono),'IBM Plex Mono',monospace;font-size:19px;font-weight:600;letter-spacing:.09em;display:block;margin-top:2px}
 .tk{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px}
 .tk:last-child{border-bottom:0}
@@ -448,7 +465,7 @@ footer{margin:30px 0 0;padding:18px 0;border-top:1px solid var(--line);backgroun
 .foot-in{max-width:540px;margin:0 auto;padding:0 16px;font-size:12px;color:var(--muted);text-align:center}
 
 .dev{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:50;background:var(--navy);border-radius:999px;padding:6px;display:flex;gap:4px;align-items:center;box-shadow:0 10px 30px -8px rgba(18,22,31,.5);max-width:calc(100% - 130px);overflow-x:auto}
-.dev b{font-size:9.5px;letter-spacing:.10em;text-transform:uppercase;color:#8FA0B8;font-weight:800;padding:0 8px;white-space:nowrap}
+.dev b{font-size:9.5px;letter-spacing:.10em;color:#8FA0B8;font-weight:800;padding:0 8px;white-space:nowrap}
 .dev button{border:0;background:none;color:#B9C6D8;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap}
 .dev button[aria-pressed="true"]{background:#fff;color:var(--navy)}
 .dev button.act{background:rgba(238,81,40,.22);color:#FFB39D}

@@ -26,6 +26,7 @@ import {
   paxShort,
   todayISO,
 } from "@/lib/pc/format"
+import { Sentence } from "@/components/pc/bits"
 import { PickedOption } from "@/components/pc/picked-option"
 import { useToast } from "@/components/pc/chrome"
 import { useT } from "@/i18n/provider"
@@ -169,7 +170,7 @@ export function ScreenP7({ state }: { state: PcState }) {
       if (row.passportExpiry < lastDate)
         e.passportExpiry = t("pc.pax.error.expiresBefore")
       else if (row.passportExpiry < need)
-        e.passportExpiry = t("pc.pax.error.validUntil", { date: fmtDateY(need) })
+        e.passportExpiry = t("pc.pax.error.validUntil", { date: fmtDateY(need, t) })
     }
 
     if (!row.issuingCountry) e.issuingCountry = t("pc.pax.error.required")
@@ -253,9 +254,7 @@ export function ScreenP7({ state }: { state: PcState }) {
       <section className="hero">
         <span className="eyebrow">{t("pc.pax.eyebrow")}</span>
         <h1>
-          {t("pc.pax.headingBefore")}
-          <em>{t("pc.pax.headingEm")}</em>
-          {t("pc.pax.headingAfter")}
+          <Sentence text={t("pc.pax.heading")} />
         </h1>
         <p>{t("pc.pax.intro")}</p>
       </section>
@@ -266,12 +265,11 @@ export function ScreenP7({ state }: { state: PcState }) {
         <div className="sechead">
           <h3>{t("pc.pax.cardTitle")}</h3>
           <span className="rt">
-            {paxShort(state.request)} · {t("pc.pax.asInPassport")}
+            {paxShort(state.request, t)} · {t("pc.pax.asInPassport")}
           </span>
         </div>
         <p className="notice">
-          {t("pc.pax.warnBefore")}
-          <b>{t("pc.pax.warnBold")}</b>
+          <Sentence as="b" text={t("pc.pax.warn")} />
         </p>
 
         {/*

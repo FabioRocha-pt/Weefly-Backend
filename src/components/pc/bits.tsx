@@ -17,20 +17,96 @@
  * que a directiva não muda nenhuma fronteira: só a torna explícita.
  */
 
+import { Fragment } from "react"
+
 import type { PcRequestView, PcScreen, PcState } from "@/lib/pc/state"
 import { baggageLabel } from "@/lib/pc/catalog"
 import { useT } from "@/i18n/provider"
 import {
+  cabinLabel,
   cityOf,
   fmtDateY,
   fmtDate,
-  money,
   paxFull,
   phoneDisplay,
+  tripLabel,
   whenLabel,
-  CABIN_LABEL,
-  TRIP_LABEL,
 } from "@/lib/pc/format"
+
+// ── uma frase, uma chave ─────────────────────────────────────────────────────
+
+/**
+ * Sprint 3.1 · a frase inteira vem do dicionário, com o destaque lá dentro.
+ *
+ * A regra 4 do sprint: "nunca partir uma frase em duas cadeias com o valor pelo
+ * meio". Metade destes ecrãs fazia exactamente isso — `receivedHeading` era
+ * `"Pedido recebido, "` e o nome vinha a seguir num `<em>`, `etaBefore` +
+ * `<b>etaBold</b>` + `etaAfter` eram três chaves para uma frase. Em português
+ * dava para montar; em francês a ordem das palavras é outra e o tradutor não
+ * tem como a mudar, porque a ordem está no JSX e não no texto.
+ *
+ * Aqui a frase é uma chave só e traz duas marcas dentro dela:
+ *
+ *   · `*assim*` — o pedaço em destaque, que sai `<em>` ou `<b>`;
+ *   · `{assim}` — o valor, que pode ser um nó de React (um número em
+ *     monospace, uma ligação) e não apenas texto.
+ *
+ * Um valor que já é texto não precisa de `slots`: passa-se ao `t()` e chega
+ * aqui interpolado. `slots` existe para o que não cabe numa string.
+ */
+const EMPHASIS = /\*([^*]+)\*/g
+const SLOT = /\{(\w+)\}/g
+
+function fill(
+  text: string,
+  slots: Record<string, React.ReactNode> | undefined
+): React.ReactNode {
+  if (!slots) return text
+  const out: React.ReactNode[] = []
+  let last = 0
+  for (const match of Array.from(text.matchAll(SLOT))) {
+    const name = match[1]
+    if (!(name in slots)) continue
+    const at = match.index ?? 0
+    if (at > last) out.push(text.slice(last, at))
+    out.push(<Fragment key={`${name}-${at}`}>{slots[name]}</Fragment>)
+    last = at + match[0].length
+  }
+  if (!out.length) return text
+  if (last < text.length) out.push(text.slice(last))
+  return out
+}
+
+export function Sentence({
+  text,
+  slots,
+  as = "em",
+}: {
+  text: string
+  slots?: Record<string, React.ReactNode>
+  /** `em` é o realce do desenho; `b` é o negrito das notas e dos avisos. */
+  as?: "em" | "b"
+}) {
+  const Mark = as
+  const parts: React.ReactNode[] = []
+  let last = 0
+
+  for (const match of Array.from(text.matchAll(EMPHASIS))) {
+    const at = match.index ?? 0
+    if (at > last) {
+      parts.push(
+        <Fragment key={`t${last}`}>{fill(text.slice(last, at), slots)}</Fragment>
+      )
+    }
+    parts.push(<Mark key={`m${at}`}>{fill(match[1], slots)}</Mark>)
+    last = at + match[0].length
+  }
+  if (last < text.length) {
+    parts.push(<Fragment key={`t${last}`}>{fill(text.slice(last), slots)}</Fragment>)
+  }
+
+  return <>{parts}</>
+}
 
 // ── ícones ───────────────────────────────────────────────────────────────────
 
@@ -325,13 +401,15 @@ export const IcFile = () => (
 // ── a rota, como aparece no resumo ───────────────────────────────────────────
 
 export function RouteSummary({ request }: { request: PcRequestView }) {
+  const t = useT()
+
   if (request.trip === "multi" && request.legs.length) {
     return (
       <>
         {request.legs.map((leg, i) => (
           <div key={leg.position} style={{ flex: 1, minWidth: 110 }}>
             <span className="cy">
-              Flight {i + 1} · {fmtDate(leg.date)}
+              {t("pc.summary.flight", { n: i + 1 })} · {fmtDate(leg.date, t)}
             </span>
             <span className="ia" style={{ fontSize: 15 }}>
               {leg.origin} → {leg.destination}
@@ -373,28 +451,28 @@ export function SummaryRows({
 }) {
   const t = useT()
   const rows: [string, string][] = [
-    [t("pc.summary.tripType"), TRIP_LABEL[request.trip]],
+    [t("pc.summary.tripType"), tripLabel(request.trip, t)],
   ]
 
   if (request.trip !== "multi") {
-    rows.push([t("pc.summary.departure"), fmtDateY(request.departDate)])
+    rows.push([t("pc.summary.departure"), fmtDateY(request.departDate, t)])
     if (request.trip === "round") {
-      rows.push([t("pc.summary.return"), fmtDateY(request.returnDate)])
+      rows.push([t("pc.summary.return"), fmtDateY(request.returnDate, t)])
     }
   } else {
     request.legs.forEach((leg, i) =>
       rows.push([
         t("pc.summary.flight", { n: i + 1 }),
-        `${cityOf(leg.origin, request.cities)} → ${cityOf(leg.destination, request.cities)} · ${fmtDateY(leg.date)}`,
+        `${cityOf(leg.origin, request.cities)} → ${cityOf(leg.destination, request.cities)} · ${fmtDateY(leg.date, t)}`,
       ])
     )
   }
 
-  rows.push([t("pc.summary.passengers"), paxFull(request)])
-  rows.push([t("pc.summary.cabin"), CABIN_LABEL[request.cabin]])
+  rows.push([t("pc.summary.passengers"), paxFull(request, t)])
+  rows.push([t("pc.summary.cabin"), cabinLabel(request.cabin, t)])
   /* VIP-10 · a bagagem é do contrato de campos e por isso aparece no resumo:
      é o cliente a poder verificar o que pediu antes de nos cobrar por isso. */
-  rows.push([t("pc.summary.baggage"), baggageLabel(request.baggageHold)])
+  rows.push([t("pc.summary.baggage"), baggageLabel(request.baggageHold, "hold", t)])
 
   if (withContact && contact) {
     rows.push([
@@ -460,7 +538,7 @@ export function Track({ state }: { state: PcState }) {
           <span className="mk">✓</span>
           <div>
             <b>{t("pc.track.received")}</b>
-            <span>{whenLabel(state.request.createdAt)}</span>
+            <span>{whenLabel(state.request.createdAt, t)}</span>
           </div>
         </li>
         <li className="stop">
@@ -480,12 +558,12 @@ export function Track({ state }: { state: PcState }) {
     state.payment?.status === "COMPLETED"
 
   const steps = [
-    { b: t("pc.track.received"), s: whenLabel(state.request.createdAt) },
+    { b: t("pc.track.received"), s: whenLabel(state.request.createdAt, t) },
     {
       b: t("pc.track.searching"),
       s: t("pc.track.searchingSub"),
       doneB: t("pc.track.searched"),
-      doneS: state.proposalPublishedAt ? whenLabel(state.proposalPublishedAt) : "",
+      doneS: state.proposalPublishedAt ? whenLabel(state.proposalPublishedAt, t) : "",
     },
     {
       b: t("pc.track.optionsSentChoice"),
@@ -514,7 +592,7 @@ export function Track({ state }: { state: PcState }) {
     {
       b: t("pc.track.issued"),
       s: state.issued.issuedAt
-        ? whenLabel(state.issued.issuedAt)
+        ? whenLabel(state.issued.issuedAt, t)
         : t("pc.track.issuedSub"),
     },
   ]
@@ -551,16 +629,11 @@ export function Track({ state }: { state: PcState }) {
   )
 }
 
-// ── o preço de uma opção, em texto ───────────────────────────────────────────
-
-export function priceLine(
-  total: number,
-  fare: number,
-  taxes: number,
-  currency: string
-): string {
-  return `${money(total, currency)} · Fare ${money(fare, currency)} + Taxes ${money(
-    taxes,
-    currency
-  )}`
-}
+/*
+ * Sprint 3.1 · `priceLine` saiu daqui.
+ *
+ * Escrevia "Fare X + Taxes Y" e não tinha um único sítio a chamá-la: o cartão
+ * da opção passou a usar `pc.offer.priceLine` no BO-13, que diz outra coisa
+ * (preço da companhia e serviço WeeFly, porque as taxas estão dentro do
+ * primeiro). Ficou uma frase em inglês no código, sem ecrã por trás.
+ */
