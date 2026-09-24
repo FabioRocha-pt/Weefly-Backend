@@ -311,7 +311,7 @@ table code{font-size:8.5pt}
 table:first-of-type td:first-child{font-weight:700;width:26%}
 `
 
-function page(title, body) {
+function page(title, body, tag) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -323,7 +323,7 @@ function page(title, body) {
 <body>
   <div class="masthead">
     ${logo()}
-    <span class="tag">Concierge · Sprint 3</span>
+    <span class="tag">${escape(tag)}</span>
   </div>
   ${body}
 </body>
@@ -332,9 +332,21 @@ function page(title, body) {
 
 // ── execução ─────────────────────────────────────────────────────────────────
 
-const input = process.argv[2]
+/*
+ * O carimbo do cabeçalho era fixo em "Concierge · Sprint 3". Serviu enquanto
+ * todos os documentos eram de sprint; um manual de servidor com um número de
+ * sprint no topo diz ao leitor que o documento é de outra coisa. O valor por
+ * omissão fica o que era, para os documentos antigos saírem na mesma.
+ */
+const DEFAULT_TAG = "Concierge · Sprint 3"
+
+const flags = process.argv.slice(2).filter((a) => a.startsWith("--"))
+const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"))
+const tag = flags.find((f) => f.startsWith("--tag="))?.slice("--tag=".length) ?? DEFAULT_TAG
+
+const input = positional[0]
 if (!input) {
-  console.error("uso: node scripts/md-to-pdf.mjs <ficheiro.md> [saida.pdf]")
+  console.error("uso: node scripts/md-to-pdf.mjs <ficheiro.md> [saida.pdf] [--tag=…]")
   process.exit(1)
 }
 
@@ -344,16 +356,14 @@ if (!existsSync(inputPath)) {
   process.exit(1)
 }
 
-const outputPath = resolve(
-  process.argv[3] ?? inputPath.replace(/\.md$/i, ".pdf")
-)
+const outputPath = resolve(positional[1] ?? inputPath.replace(/\.md$/i, ".pdf"))
 
 const markdown = readFileSync(inputPath, "utf8")
 const title = (markdown.match(/^#\s+(.*)$/m)?.[1] ?? basename(inputPath)).trim()
 
 const work = mkdtempSync(join(tmpdir(), "weefly-pdf-"))
 const htmlPath = join(work, "doc.html")
-writeFileSync(htmlPath, page(title, convert(markdown)), "utf8")
+writeFileSync(htmlPath, page(title, convert(markdown), tag), "utf8")
 
 const chrome = findChrome()
 
