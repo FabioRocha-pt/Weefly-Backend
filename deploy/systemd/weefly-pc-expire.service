@@ -1,0 +1,23 @@
+# Fecha os pagamentos do Price Checker cujo prazo já passou.
+#
+# Substitui a entrada de `vercel.json`. É um timer de systemd e não uma linha
+# de crontab porque fica com estado e histórico em `systemctl status`, recupera
+# uma hora perdida depois de um reboot (`Persistent=true`), e o token
+# fica num ficheiro só de root em vez de numa linha que outros processos leem.
+#
+#   sudo cp deploy/systemd/weefly-pc-expire.* /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now weefly-pc-expire.timer
+#
+# O ficheiro do token tem uma única linha, PC_CRON_TOKEN=…, com o mesmo valor
+# do `.env.production`.
+
+[Unit]
+Description=WeeFly: expirar pagamentos vencidos do Price Checker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/weefly/pc-cron.env
+ExecStart=/usr/bin/curl -fsS -o /dev/null -H "Authorization: Bearer ${PC_CRON_TOKEN}" https://concierge.weefly.africa/api/pc/expire

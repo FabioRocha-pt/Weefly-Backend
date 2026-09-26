@@ -5,8 +5,8 @@
 | Aplicação | WeeFly Concierge + Price Checker (Next.js 14) |
 | De | `weefly.duckdns.org` |
 | Para | `concierge.weefly.africa` — Elastic IP `52.30.78.0` |
-| Servidor | EC2, fornecido pela equipa do Sarin Ram |
-| Data | 16 de Setembro de 2026 |
+| Servidor | EC2 `t3.medium` (2 vCPU, 4 GB), Ubuntu 24.04, fornecido pela equipa do Sarin Ram |
+| Data | 25 de Setembro de 2026 — revisto depois do reconhecimento e da resposta do Sarin sobre o IAM |
 | Para seguir por | Fábio Rocha |
 
 Este documento é para ser seguido de cima a baixo, numa sessão. Cada parte
@@ -19,33 +19,98 @@ antigo e do gestor de palavras-passe; este ficheiro circula por email.
 
 # Antes de começar
 
-## O que ainda falta pedir ao Sarin
+## O que está confirmado
 
-Três destes são bloqueantes: sem eles não se passa da Parte 1.
+O Sarin respondeu às perguntas e o `recon.sh` correu no servidor a 25 de
+Setembro. Onde os dois discordam, vale o servidor.
 
-| O que falta | Estado | Porque é preciso |
-|---|---|---|
-| Utilizador SSH | **Bloqueante** | `ubuntu`, `ec2-user` ou `admin`, conforme a imagem. Sem isto não há sessão. |
-| RAM da instância | **Bloqueante** | Decide se é preciso swap antes do primeiro build. Ver Parte 3. |
-| Permissão de escrita em `/var/www` | **Bloqueante** | Define onde a aplicação vive e se é preciso `sudo` para cada deploy. |
-| De quem é a conta AWS | Importante | Define se consegues mexer em security groups, redimensionar e tirar snapshots, ou se tens de pedir por email de cada vez. Muda o dia-a-dia durante meses. |
-| Porta 3000 fechada no security group | Importante | Se estiver aberta, a aplicação responde sem passar pelo NGINX nem pelo SSL. |
-| Quem criou o registo DNS de `concierge.weefly.africa` | Importante | O DNS está na GoDaddy e nós não temos acesso. Se o certificado já foi emitido, alguém tem. É a mesma pessoa a quem voltarás a pedir registos. |
-| Acesso sem porta 22 | Recomendado | EC2 Instance Connect ou SSM Session Manager. É a saída para o dia em que o teu IP mudar. |
-
-## O IP a dar-lhes para o whitelisting
-
-| Tipo | Valor |
+| Pergunta | Resposta |
 |---|---|
-| IPv4 | `85.246.221.246/32` |
-| IPv6 | `2001:8a0:574d:4900::/64` |
+| Utilizador SSH | **`ubuntu`**. O Sarin disse `ec2-user`, mas esse é recusado — a imagem é Ubuntu 24.04, não Amazon Linux. |
+| Sistema | Ubuntu 24.04.4 LTS, glibc 2.39, disco de 29 GB ext4 com 25 GB livres, sem IPv6. |
+| Node / PM2 / NGINX | Node 20.20, npm 10.8, PM2 7.0.4, NGINX 1.24, git 2.43 — tudo instalado. |
+| Instância | `t3.medium`, 2 vCPU, 3,7 GB de RAM, ~3,1 GB livres, **sem swap**. Swap autorizado. |
+| Permissões | `sudo` sem password. `/var/www/concierge` já existe, vazia, e pertence ao `ubuntu`. |
+| Conta AWS | É do cliente. Utilizador IAM `weefly-concierge-team` **entregue a 25 de Setembro**, só com acesso à consola, limitado a esta instância. A password está no gestor de palavras-passe, não aqui. |
+| Porta 3000 | Fechada ao público. |
+| HTTPS de saída | Aberto — Supabase, Resend, npm. |
+| DNS de `concierge.weefly.africa` | Criado pela equipa técnica deles. São eles o contacto para registos futuros. |
+| Certificado | Certbot 2.9, `certbot.timer` activo, válido até 30 de Novembro de 2026. O Sarin diz que foi instalado com `dnf`, mas o `dnf` não existe em Ubuntu: é o pacote `apt` `certbot 2.9.0-1`, confirmado no servidor. A renovação funciona na mesma. |
+| PM2 | Um único daemon, do `ubuntu`, sem processos. Nenhum `pm2 startup` registado ainda. |
+| O que já corre | Só o NGINX (80, 443) e o sshd (22). O NGINX serve `/var/www/html`, ainda sem `proxy_pass`. |
+| SSH | Só chave; `PasswordAuthentication no`. Porta 22 aberta a `0.0.0.0/0`. |
+| Agente SSM | Instalado (snap) e activo. Instance profile `AmazonSSMManagedInstanceCore-Concierge` **confirmado no servidor** a 25 de Setembro; o agente autentica-se e está ligado ao Session Manager. |
+| Instância | `i-0152d6578ff6a5801`, região `eu-west-1` (Irlanda), confirmadas pelos metadados da instância. |
+| Snapshots EBS | Não configuradas. Ficam por nossa conta. |
 
-Dá **os dois**. A linha tem IPv6 activo: se o SSH sair por IPv6 e a regra for
-só IPv4, a ligação é recusada sem explicação aparente.
+## Acessos AWS
 
-E avisa-os de que o IPv4 é dinâmico. Quando a operadora o mudar, ficas fora e
-tens de mandar email a pedir. É por isso que a via alternativa da última linha
-da tabela acima importa mais do que parece.
+| O quê | Estado | Próximo passo |
+|---|---|---|
+| Utilizador IAM | **Recebido** a 25 de Setembro | Primeiro login, trocar a password e activar MFA — ver abaixo. |
+| Instance profile | **Confirmado** no servidor | Nada. O log do agente mostra sessões já abertas com `weefly-concierge-team`, às 13:12 e 13:23 UTC de 25 de Setembro — a equipa do Sarin a testar. |
+| Snapshots EBS | Permissão pedida e concedida | Confirmar com uma snapshot real antes da instalação. |
+| Fechar a porta 22 | **Do nosso lado** | O lado técnico do SSM está provado. Falta uma sessão aberta por nós, no browser, com a password já trocada. Depois disso, avisar o Sarin. Recusaram o whitelisting porque o IPv4 é dinâmico. |
+
+O bloqueio deixou de estar do lado do Sarin: a 22 continua aberta a
+`0.0.0.0/0` até nós dizermos que o SSM funciona.
+
+## Verificar o acesso AWS — antes de tudo o resto
+
+**A password chegou por WhatsApp**, junto com o URL e o utilizador. É o mesmo
+problema da chave SSH, com uma diferença: esta dá acesso à consola da conta do
+cliente.
+
+1. **Primeiro login e troca de password.** O URL de consola e o utilizador estão
+no gestor de palavras-passe. Se a AWS não pedir a troca logo no login, troca-a
+em *Security credentials*. Se a troca for recusada por falta de permissão,
+pede ao Sarin que acrescente `iam:ChangePassword` para o próprio utilizador.
+
+2. **MFA** no mesmo ecrã. Se for recusado, pede também esta permissão. Um
+utilizador de consola sem MFA, com uma password que passou por uma conversa,
+não pode ficar assim.
+
+3. **Região.** Escolhe no canto superior direito **Europe (Ireland)
+`eu-west-1`**. A instância é a `i-0152d6578ff6a5801`. Uma região errada mostra
+uma consola vazia, que parece um problema de permissões e não é.
+
+4. **Session Manager.** O lado do servidor já está confirmado: o instance
+profile está ligado e o agente está registado. Em Systems Manager → Fleet
+Manager, a instância aparece como *Online*. Depois, EC2 → a instância → *Connect* → *Session
+Manager* → *Connect*. Se a instância não aparecer, o agente arrancou antes de o
+profile existir. Reinicia-o pela 22, que ainda está aberta:
+
+```bash
+sudo snap restart amazon-ssm-agent
+```
+
+5. **Na sessão, muda logo de utilizador.** O Session Manager entra como
+`ssm-user`, não como `ubuntu`. O PM2, a pasta da aplicação e o `pm2 startup`
+são todos do `ubuntu` (Parte 5):
+
+```bash
+sudo -iu ubuntu
+whoami        # ubuntu
+```
+
+6. **Snapshot de teste.** EC2 → Volumes → o volume da instância → *Create
+snapshot*, com a descrição `antes-da-instalacao`. Serve para confirmar a
+permissão e fica como ponto de partida limpo.
+
+7. **Pedir o fecho da 22.** Com os pontos 4 a 6 confirmados, avisa o Sarin.
+Antes disso, confirma numa sessão SSM que consegues fazer tudo o que vais
+precisar: `git pull`, `nano` do `.env.production` e `pm2`. Depois de fechada,
+não há `scp` nem `ssh`. O `recon.sh` corre colando o conteúdo na sessão.
+
+**Estado verificável:** uma sessão do Session Manager aberta, `whoami` a dar
+`ubuntu`, e uma snapshot em estado *Completed*.
+
+## Até a porta 22 fechar
+
+A porta 22 está aberta à internet. Não é motivo para esperar, mas a Parte 11
+passa a vir **no mesmo dia**, e não "depois de estar a funcionar": trocar a
+chave que viajou por mensagem e confirmar que a autenticação por password está
+desligada.
 
 ---
 
@@ -53,15 +118,14 @@ da tabela acima importa mais do que parece.
 
 ## Tirar as chaves da pasta do repositório
 
-As chaves estão em `E:\Projects\WeeFly\Weefly Backend\`. Não foram para o git —
-o `.gitignore` apanha `*.pem` e `*.ppk`, e está confirmado que nunca foram
-versionadas. Mas a pasta do repositório continua a ser o sítio errado: basta um
-`git add -f`, um zip para mandar a alguém, ou uma sincronização de backup.
+**Feito a 25 de Setembro.** As chaves chegaram à raiz do repositório e já
+estão em `~/.ssh`. Não foram para o git — o `.gitignore` apanha `*.pem` e
+`*.ppk` — mas a pasta do repositório é o sítio errado: basta um `git add -f`,
+um zip para mandar a alguém, ou uma sincronização de backup.
 
 ```bash
 mkdir -p ~/.ssh
-mv "E:/Projects/WeeFly/Weefly Backend/concierge-weefly-key.pem" ~/.ssh/
-mv "E:/Projects/WeeFly/Weefly Backend/concierge-weefly-key.ppk" ~/.ssh/
+mv concierge-weefly-key.pem concierge-weefly-key.ppk ~/.ssh/
 ```
 
 O OpenSSH do Windows recusa a chave se as permissões forem largas, com
@@ -73,46 +137,38 @@ icacls "$USERPROFILE\.ssh\concierge-weefly-key.pem" /inheritance:r /grant:r "$US
 
 ## Entrar
 
-O utilizador depende da imagem. Tenta por esta ordem até uma responder:
-
 ```bash
 ssh -i ~/.ssh/concierge-weefly-key.pem ubuntu@52.30.78.0
-ssh -i ~/.ssh/concierge-weefly-key.pem ec2-user@52.30.78.0
-ssh -i ~/.ssh/concierge-weefly-key.pem admin@52.30.78.0
 ```
 
-Se todas derem `Permission denied (publickey)`, o problema é o utilizador ou o
-whitelisting do IP, não a chave. Se der timeout, é o security group.
+`ec2-user` e `admin` dão `Permission denied (publickey)`; `root` pede que se
+use `ubuntu`.
+
+Com o SSM pronto, a entrada passa a ser pela consola: EC2 → a instância →
+*Connect* → *Session Manager*. Não precisa de chave nem da porta 22. Logo a
+seguir, `sudo -iu ubuntu`.
+
+O utilizador IAM é só de consola, sem access keys, por isso o
+`aws ssm start-session` da linha de comandos não funciona. O browser chega.
 
 ## Reconhecimento
 
-Antes de instalar o que quer que seja, saber o que lá está:
+**Feito a 25 de Setembro** — os resultados estão na tabela do início. Para
+voltar a correr, da tua máquina, sem copiar nada para o servidor:
 
 ```bash
-whoami && pwd
-node -v                    # tem de ser >= 18.17 — a Next 14 não arranca abaixo
-npm -v
-pm2 -v
-nginx -v && sudo nginx -t
-free -h                    # a linha Mem, coluna total — ver Parte 3
-df -h /                    # espaço livre; o node_modules leva ~500 MB
-systemctl list-timers | grep certbot
-cat /etc/os-release | head -2
+ssh -i ~/.ssh/concierge-weefly-key.pem ubuntu@52.30.78.0 'sh -s' < deploy/recon.sh
 ```
 
-Aponta o valor de `free -h`. É o número que decide a Parte 3.
+Só lê. O que interessa para o resto do documento:
 
-Ver também o que o NGINX já tem configurado, sem abrir ficheiros à sorte:
+- Node 20 sobre glibc 2.39 — a Next 14 corre sem instalar nada.
+- O bloco `server` do Certbot está em
+`/etc/nginx/sites-enabled/concierge.weefly.africa`. É esse o ficheiro da Parte 6.
+- Não há swap. A Parte 3 é para fazer.
 
-```bash
-sudo nginx -T | grep -nE "server_name|client_max_body_size|proxy_pass|ssl_certificate "
-```
-
-Isto diz-te o ficheiro de configuração que o Certbot criou e se já existe algum
-`proxy_pass`. Guarda o caminho — vais precisar dele na Parte 6.
-
-**Estado verificável:** tens sessão, sabes a RAM, sabes onde vive a
-configuração do NGINX.
+**Estado verificável:** tens sessão, sabes a versão do sistema, sabes onde vive
+a configuração do NGINX.
 
 ---
 
@@ -163,11 +219,10 @@ O `next build` chega a pedir 1,5 GB. Numa instância pequena é morto pelo kerne
 **sem mensagem nenhuma**: o build pára e não há erro para ler. É a avaria que
 mais tempo faz perder porque não se parece com falta de memória.
 
-| RAM (`free -h`) | O que fazer |
-|---|---|
-| 4 GB ou mais | Nada. Avança. |
-| 2 GB | Criar swap. É apertado sem ele. |
-| 1 GB | Criar swap, obrigatoriamente. |
+A instância tem 4 GB, com cerca de 3,1 livres. Chega para o build. Mesmo
+assim, cria 2 GB de swap: o Sarin autorizou, custa um minuto, e é o que separa
+um build lento de um build morto no dia em que o NGINX, o PM2 e um `npm ci`
+coincidirem.
 
 ```bash
 sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
@@ -289,11 +344,19 @@ npm run build
 
 Se o build parar sem erro, volta à Parte 3.
 
+**O PM2 corre como `ubuntu`, nunca com `sudo`.** A lista de processos do PM2 é
+por utilizador: um `sudo pm2 …` — até um `sudo pm2 list` — arranca um segundo
+daemon em `/root/.pm2`, e o `pm2 startup` acaba registado no utilizador errado.
+Nenhum comando `pm2` leva `sudo` à frente, excepto o que o `pm2 startup`
+imprime. Numa sessão do Session Manager, isto também quer dizer começar com
+`sudo -iu ubuntu`: o `ssm-user` tem o seu próprio PM2, vazio.
+
 ```bash
 mkdir -p logs
 pm2 start ecosystem.config.js
 pm2 save
-pm2 startup                # imprime um comando com sudo — copia-o e corre-o
+pm2 startup                # imprime um comando com sudo — confirma que tem
+                           # "-u ubuntu --hp /home/ubuntu", copia-o e corre-o
 pm2 logs weefly-concierge --lines 40
 ```
 
@@ -324,7 +387,8 @@ O que acontece sem esta alteração: o NGINX corta o pedido com `413` **antes de
 ele chegar à aplicação**. O cliente vê uma falha de upload que nenhum registo da
 aplicação explica, porque o pedido nunca lá chegou.
 
-Abre o ficheiro que encontraste na Parte 1 e garante que o bloco `server` do
+Abre `/etc/nginx/sites-enabled/concierge.weefly.africa`. Hoje o bloco do 443
+serve `/var/www/html` com `try_files`; essa `location /` sai toda. Garante que o bloco `server` do
 443 fica assim:
 
 ```nginx
@@ -402,28 +466,35 @@ back-office — o cron existe para o caso em que ninguém abre nem uma nem outra
 Sem ele, um cliente que só volta ao link daqui a uma semana vê o ecrã de
 pagamento como se o preço ainda valesse.
 
-O token não vai para dentro do `crontab`, que é legível por outros processos.
-Vai para um ficheiro só de root:
+É um timer de systemd e não uma linha de `crontab`: fica registado com estado
+e histórico (`systemctl status`), recupera uma hora perdida depois de um
+reboot, e o token não fica numa linha de crontab. Os dois ficheiros já estão no
+repositório, em
+`deploy/systemd/`. O token vai para um ficheiro só de root, não para dentro da
+unidade:
 
 ```bash
 sudo mkdir -p /etc/weefly
-echo "O_MESMO_VALOR_DE_PC_CRON_TOKEN" | sudo tee /etc/weefly/pc-cron-token
-sudo chmod 600 /etc/weefly/pc-cron-token
+echo "PC_CRON_TOKEN=O_MESMO_VALOR_DO_ENV_PRODUCTION" | sudo tee /etc/weefly/pc-cron.env > /dev/null
+sudo chmod 600 /etc/weefly/pc-cron.env
 
-sudo tee /usr/local/bin/weefly-pc-expire <<'EOF'
-#!/bin/sh
-TOKEN=$(cat /etc/weefly/pc-cron-token)
-curl -fsS -H "Authorization: Bearer $TOKEN" \
-  https://concierge.weefly.africa/api/pc/expire > /dev/null
-EOF
-sudo chmod 700 /usr/local/bin/weefly-pc-expire
-
-sudo crontab -l 2>/dev/null | { cat; echo "0 * * * * /usr/local/bin/weefly-pc-expire"; } | sudo crontab -
+sudo cp /var/www/concierge/deploy/systemd/weefly-pc-expire.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now weefly-pc-expire.timer
 ```
 
-**Estado verificável:** correr `sudo /usr/local/bin/weefly-pc-expire` à mão não
-imprime nada e sai com código 0. Se responder 404, o `PC_CRON_TOKEN` não está no
-`.env.production` ou a aplicação não foi reiniciada depois de o acrescentar.
+**Estado verificável:**
+
+```bash
+sudo systemctl start weefly-pc-expire.service   # corre-o agora, à mão
+systemctl status weefly-pc-expire.service       # "status=0/SUCCESS"
+systemctl list-timers | grep weefly             # a próxima execução está marcada
+```
+
+Se o estado mostrar `curl: (22) … 404`, o `PC_CRON_TOKEN` não está no
+`.env.production` ou a aplicação não foi reiniciada depois de o acrescentar. Se
+mostrar `401`, o valor em `/etc/weefly/pc-cron.env` é diferente do da
+aplicação.
 
 ---
 
@@ -496,7 +567,12 @@ início, falta o Supabase da Parte 7.
 
 ---
 
-# Parte 11 · Segurança, depois de estar a funcionar
+# Parte 11 · Segurança — no mesmo dia
+
+Enquanto a porta 22 estiver aberta à internet, isto não fica para depois.
+
+- **Sem autenticação por password** — confirmado a 25 de Setembro:
+`passwordauthentication no`, `permitrootlogin without-password`.
 
 - **Substituir a chave SSH.** A chave que recebeste viajou por mensagem: está no
 telemóvel de quem a enviou, no histórico da conversa e em todos os backups dessa
@@ -504,22 +580,31 @@ conversa. Deixou de ser privada em qualquer sentido útil.
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/weefly-concierge -C "fabio@bonako"
-ssh-copy-id -i ~/.ssh/weefly-concierge.pub <utilizador>@52.30.78.0
+ssh-copy-id -i ~/.ssh/weefly-concierge.pub ubuntu@52.30.78.0
 ```
 
 Testa a chave nova numa segunda sessão **antes** de fechar a primeira. Só depois
-de entrares com ela é que pedes ao Sarin para remover a original.
+de entrares com ela é que pedes ao Sarin para remover a original. Se a 22 já
+estiver fechada, este passo perde a urgência: a chave deixa de abrir alguma
+coisa. Remove-se a original na mesma, pelo Session Manager, em
+`~/.ssh/authorized_keys`.
 
-- **Porta 3000 fechada** no security group. Só o NGINX lhe fala, por localhost.
+- **Portas abertas:** 443, e 80 para o redireccionamento e a renovação do
+certificado. A 22 fecha assim que o SSM Session Manager funcionar. A 3000 já
+está fechada, confirmado pelo Sarin.
 
-- **Portas abertas:** 443, 80 para redireccionamento e renovação do certificado,
-22 restrita aos IPs da tabela do início.
+- **Renovação do certificado.** O `certbot.timer` está activo e o certificado
+é válido até 30 de Novembro. Falta provar que a renovação passa **depois** de a
+Parte 6 mexer no ficheiro do NGINX:
 
-- **Renovação do certificado:** `systemctl list-timers | grep certbot` tem de
-mostrar um temporizador activo. Um certificado que expira ao domingo derruba o
-site e os links de todos os clientes.
+```bash
+sudo certbot renew --dry-run      # tem de acabar sem erros
+```
 
-- **Snapshot do EBS** depois de tudo configurado. A máquina não guarda dados —
+Um certificado que expira ao domingo derruba o site e os links de todos os
+clientes.
+
+- **Snapshot do EBS** depois de tudo configurado, como a de teste de "Verificar o acesso AWS", com a descrição `app-instalada`. A máquina não guarda dados —
 está tudo no Supabase — mas guarda a configuração, e é essa que custa uma tarde
 a refazer.
 
@@ -549,8 +634,12 @@ nenhum dado vive nestas máquinas.
 
 | Sintoma | Causa provável |
 |---|---|
-| `Permission denied (publickey)` | Utilizador SSH errado, ou o IP ainda não está no whitelisting |
-| Ligação em timeout | Security group, não a chave |
+| `Permission denied (publickey)` | Utilizador diferente de `ubuntu`, ou chave errada |
+| Ligação em timeout | Security group, não a chave — a 22 pode já ter sido fechada a favor do SSM |
+| Consola da AWS vazia, sem a instância | Região errada no canto superior direito |
+| Instância não aparece no Fleet Manager | Agente arrancou antes do instance profile — `sudo snap restart amazon-ssm-agent` |
+| `pm2 list` vazio numa sessão SSM | Estás como `ssm-user` — `sudo -iu ubuntu` |
+| App não volta depois de reboot, mas `sudo pm2 list` mostra-a | PM2 registado como root — Parte 5 |
 | `UNPROTECTED PRIVATE KEY FILE` | Permissões do `.pem` no Windows — Parte 1 |
 | Build pára sem erro | Falta de memória — Parte 3 |
 | Upload de comprovativo falha, sem registo na aplicação | `client_max_body_size` — Parte 6 |

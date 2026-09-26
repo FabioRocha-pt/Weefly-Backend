@@ -1,0 +1,11 @@
+[Unit]
+Description=WeeFly: expirar pagamentos vencidos, de hora a hora
+
+[Timer]
+OnCalendar=hourly
+# Se a máquina estiver desligada à hora certa, corre quando voltar.
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target
