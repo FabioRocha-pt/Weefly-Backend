@@ -16,7 +16,8 @@ import type { PcState } from "@/lib/pc/state"
 import { fareHeldUntil, priceNature } from "@/lib/proposal-math"
 import { selectedOfferOf, offerStopsSummary } from "@/components/pc/offer-view"
 import { carrierName } from "@/lib/pc/catalog"
-import { useT } from "@/i18n/provider"
+import { useI18n, useT } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
 import {
   cityOf,
   clockOf,
@@ -36,6 +37,7 @@ export function PickedOption({
   showWindow?: boolean
 }) {
   const t = useT()
+  const { locale } = useI18n()
   const offer = selectedOfferOf(state)
   const payment = state.payment
 
@@ -163,11 +165,16 @@ export function PickedOption({
             <p className="paywin-due">
               {t("pc.picked.deadline")}{" "}
               <b>
-                {new Date(payment.pay_due_at).toLocaleString(undefined, {
+                {/* T-11 · o mesmo prazo que o email: na língua da página e em hora de
+                   Cabo Verde, com o fuso escrito — e não no relógio de quem
+                   abre o link noutro país. */
+                new Date(payment.pay_due_at).toLocaleString(LOCALE_TAGS[locale], {
                   day: "2-digit",
                   month: "short",
                   hour: "2-digit",
                   minute: "2-digit",
+                  timeZone: "Atlantic/Cape_Verde",
+                  timeZoneName: "short",
                 })}
               </b>{" "}
               {t("pc.picked.sameAsEmail")}

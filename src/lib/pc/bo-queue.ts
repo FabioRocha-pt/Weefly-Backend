@@ -147,6 +147,9 @@ export interface BoQueueRow {
   /** C-04 · quando o trabalho foi concluído. Nulo = ainda aberto. */
   closedAt: string | null
   closedByEmail: string | null
+  /** PRO-10 · porque foi fechado/arquivado. Nulo antes da 0023. */
+  closedReason: string | null
+  closedNote: string | null
   /** C-05 · o estado de cada link, derivado do caso. Ver `deriveLinkState`. */
   links: {
     stage: number
@@ -312,15 +315,23 @@ export async function loadBoQueue(
   }
   if (!admin) return empty
 
-  let query = admin
-    .from("booking_cases")
-    .select(QUEUE_COLUMNS)
-    .order("created_at", { ascending: false })
-    .limit(filters.caseId ? 1 : (filters.limit ?? 300))
+  /* PRO-10 · o motivo do arquivo vem com a 0023. Numa base sem ela o pedido
+     com as colunas novas falha por coluna inexistente (42703), e a fila não
+     pode ficar vazia por isso: repete-se sem elas. */
+  const run = (columns: string) => {
+    let query = admin
+      .from("booking_cases")
+      .select(columns)
+      .order("created_at", { ascending: false })
+      .limit(filters.caseId ? 1 : (filters.limit ?? 300))
+    if (filters.caseId) query = query.eq("id", filters.caseId)
+    return query
+  }
 
-  if (filters.caseId) query = query.eq("id", filters.caseId)
-
-  const { data, error } = await query
+  let { data, error } = await run(
+    QUEUE_COLUMNS.replace("closed_by_email,", "closed_by_email, closed_reason, closed_note,")
+  )
+  if (error?.code === "42703") ({ data, error } = await run(QUEUE_COLUMNS))
 
   if (error) {
     console.error("[bo/pc] fila falhou:", error.message)
@@ -427,6 +438,8 @@ export async function loadBoQueue(
       claimedAt: (raw.claimed_at as string | null) ?? null,
       closedAt: (raw.closed_at as string | null) ?? null,
       closedByEmail: (raw.closed_by_email as string | null) ?? null,
+      closedReason: (raw.closed_reason as string | null) ?? null,
+      closedNote: (raw.closed_note as string | null) ?? null,
       /*
        * C-05 · o estado do link, calculado a partir do caso.
        *

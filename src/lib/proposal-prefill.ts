@@ -18,7 +18,11 @@ import { createAdminClient } from "@/utils/supabase/admin"
 import { getFlightOffers } from "@/lib/amadeus"
 import { DEFAULT_SERVICE_FEE } from "@/lib/pc/catalog"
 import type { FlightSearchInput } from "@/lib/flight-parse"
-import type { AmadeusFlightOffer, FormattedFlightOffer } from "@/types/flights"
+import type {
+  AmadeusBagAllowance,
+  AmadeusFlightOffer,
+  FormattedFlightOffer,
+} from "@/types/flights"
 
 /** Vocabulário de cabina: o do Amadeus não é o da nossa base de dados. */
 const CABIN: Record<string, string> = {
@@ -151,11 +155,86 @@ export async function prefillProposalFromSearch(input: {
     : segmentsFromFormatted(best, offer.id, input.search.cabinClass)
 
   if (rows.length > 0) {
-    const { error } = await admin.from("case_offer_segments").insert(rows)
+    const { data: inserted, error } = await admin
+      .from("case_offer_segments")
+      .insert(rows)
+      .select("id, direction, position")
     if (error) console.error("[prefill] inserção dos trechos falhou:", error)
+
+    if (rawOffer && inserted) {
+      await prefillSegmentBaggage(
+        admin,
+        rawOffer,
+        inserted as { id: string; direction: string; position: number }[]
+      )
+    }
   }
 
   return true
+}
+
+/**
+ * T-10 · a franquia que o Amadeus diz que cada voo inclui.
+ *
+ * Vem em `travelerPricings[].fareDetailsBySegment[]`, por passageiro e por
+ * trecho. Lê-se o do primeiro passageiro — é um adulto em todas as pesquisas
+ * que o concierge faz — porque a linha de `case_offer_segment_baggage` é a
+ * promessa do voo, não a de cada pessoa.
+ *
+ * O Amadeus escreve a franquia de duas maneiras: em peças (`quantity`) ou em
+ * peso (`weight`, o conceito de peso de algumas companhias africanas e
+ * europeias). O segundo passa a uma peça com esse peso, que é como o balcão o
+ * lê. Sem nada escrito, o voo fica sem linha e o compositor pede-a a partir do
+ * pedido do cliente — melhor do que inventar um zero.
+ *
+ * Uma falha aqui não desfaz o rascunho: a bagagem é a parte do rascunho que o
+ * agente confirma de qualquer forma.
+ */
+async function prefillSegmentBaggage(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  offer: AmadeusFlightOffer,
+  inserted: { id: string; direction: string; position: number }[]
+): Promise<void> {
+  const details = offer.travelerPricings?.[0]?.fareDetailsBySegment ?? []
+  if (details.length === 0) return
+  const bySegment = new Map(details.map((d) => [d.segmentId, d]))
+  const target = new Map(inserted.map((r) => [`${r.direction}:${r.position}`, r.id]))
+
+  const kg = (bag: AmadeusBagAllowance | undefined): number | null =>
+    bag?.weight && (!bag.weightUnit || /^KG/i.test(bag.weightUnit))
+      ? Math.min(bag.weight, 50)
+      : null
+  const pieces = (bag: AmadeusBagAllowance | undefined): number | null => {
+    if (!bag) return null
+    if (typeof bag.quantity === "number") return Math.max(0, Math.min(bag.quantity, 9))
+    if (bag.weight) return 1
+    return null
+  }
+
+  const rows: Record<string, unknown>[] = []
+  offer.itineraries.slice(0, 2).forEach((itinerary, index) => {
+    const direction = index === 0 ? "ida" : "volta"
+    itinerary.segments.forEach((segment, position) => {
+      const detail = bySegment.get(segment.id)
+      const segmentId = target.get(`${direction}:${position}`)
+      if (!detail || !segmentId) return
+      const checked = pieces(detail.includedCheckedBags)
+      if (checked === null) return
+      const cabin = pieces(detail.includedCabinBags)
+      rows.push({
+        segment_id: segmentId,
+        personal_item: true,
+        cabin_pieces: cabin ?? 1,
+        cabin_kg: kg(detail.includedCabinBags),
+        checked_pieces: checked,
+        checked_kg: checked > 0 ? kg(detail.includedCheckedBags) : null,
+      })
+    })
+  })
+
+  if (rows.length === 0) return
+  const { error } = await admin.from("case_offer_segment_baggage").insert(rows)
+  if (error) console.error("[prefill] bagagem por voo não gravada:", error)
 }
 
 /** O caminho bom: um trecho por segmento real do itinerário. */

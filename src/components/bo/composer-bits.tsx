@@ -195,6 +195,89 @@ export function CountField({
   )
 }
 
+/**
+ * T-10 · o contador `−` `n` `+` de um bloco de bagagem por voo.
+ *
+ * Primo do `CountField`, e não o mesmo, porque aqui o "por responder" é do
+ * bloco inteiro e não de cada campo: as peças têm sempre número (a coluna da
+ * 0019 é `not null`), e só o peso pode ficar em branco — "a companhia não diz
+ * quanto pesa" é uma resposta diferente de zero quilos.
+ *
+ * `nullable` liga esse branco: o `−` no mínimo volta a "—" em vez de ficar
+ * preso, e o `+` a partir de "—" salta para `start`, que é o valor de balcão
+ * mais comum (8 kg na mão, 23 no porão) — ninguém quer carregar vinte e três
+ * vezes.
+ */
+export function StepField({
+  value,
+  onChange,
+  min = 0,
+  max,
+  step = 1,
+  start,
+  unit,
+  nullable,
+  disabled,
+  id,
+}: {
+  value: number | null
+  onChange: (value: number | null) => void
+  min?: number
+  max: number
+  step?: number
+  start?: number
+  unit?: string
+  nullable?: boolean
+  disabled?: boolean
+  id?: string
+}) {
+  const up = () => {
+    if (value === null) return onChange(Math.min(start ?? min, max))
+    onChange(Math.min(value + step, max))
+  }
+  const down = () => {
+    if (value === null) return
+    const next = value - step
+    if (next < min) return onChange(nullable ? null : min)
+    onChange(next)
+  }
+
+  return (
+    <div
+      id={id}
+      className={cn(
+        inputClass,
+        "flex items-center justify-between gap-2 px-1.5",
+        disabled && "opacity-60"
+      )}
+    >
+      <CountStep
+        label="−"
+        onClick={down}
+        disabled={disabled || value === null || (!nullable && value <= min)}
+      />
+      <span
+        className={cn(
+          "min-w-[2ch] whitespace-nowrap text-center font-mono text-[13px] font-semibold",
+          value === null ? "text-adm-muted" : "text-adm-txt"
+        )}
+      >
+        {value === null ? "—" : value}
+        {unit && value !== null && (
+          <span className="ml-0.5 text-[10.5px] font-normal text-adm-muted">
+            {unit}
+          </span>
+        )}
+      </span>
+      <CountStep
+        label="+"
+        onClick={up}
+        disabled={disabled || (value !== null && value >= max)}
+      />
+    </div>
+  )
+}
+
 function CountStep({
   label,
   onClick,

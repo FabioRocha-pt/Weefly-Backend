@@ -179,7 +179,7 @@ export async function loadTicketData(caseId: string): Promise<TicketLoad> {
   const chosen =
     offers.find((o) => o.id === proposal?.selected_offer_id) ?? offers[0] ?? null
 
-  if (!chosen) return { ok: false, reason: "o caso não tem opção escolhida" }
+  if (!chosen) return { ok: false, reason: "o caso não tem oferta escolhida" }
 
   const passengerRows = ((row.passengers ?? []) as Record<string, any>[]).sort(
     (a, b) => Number(a.position) - Number(b.position)

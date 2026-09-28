@@ -13,9 +13,16 @@
  * back-office.
  */
 
-import type { Offer, OfferSegment, PriceNature } from "@/lib/proposal-math"
+import type {
+  FlightAllowance,
+  Offer,
+  OfferSegment,
+  PriceNature,
+} from "@/lib/proposal-math"
 import {
   dayOffset,
+  flightAllowance,
+  sameAllowance,
   formatDuration,
   layoverMinutes,
   legMinutes,
@@ -108,16 +115,32 @@ export function offerTerms(
 ): { ic: string; txt: string; no?: boolean }[] {
   const terms: { ic: string; txt: string; no?: boolean }[] = []
 
-  const cabin = bagTerm(offer.baggage_cabin_count, offer.baggage_cabin, "cabin", t)
-  if (cabin) terms.push({ ic: cabin.no ? "no" : "cabin", ...cabin })
+  /*
+   * T-10 · com bagagem por voo, e igual em todos, as três linhas de sempre
+   * dizem-no — agora com o peso, e com "em todos os voos" para não deixar
+   * dúvida. Quando os voos diferem, estas linhas saem daqui e a franquia de
+   * cada voo aparece no bloco próprio (`FlightBaggage`): uma frase para a viagem
+   * inteira seria falsa num dos sentidos.
+   */
+  const perFlight = flightAllowances(offer)
+  if (perFlight.mode === "uniform") {
+    /* "Em todos os voos" só quando há mais do que um — num directo só de ida
+       seria uma frase a mais a dizer nada. */
+    terms.push(
+      ...allowanceTerms(perFlight.allowance, t, offer.segments.length > 1)
+    )
+  } else if (perFlight.mode === "legacy") {
+    const cabin = bagTerm(offer.baggage_cabin_count, offer.baggage_cabin, "cabin", t)
+    if (cabin) terms.push({ ic: cabin.no ? "no" : "cabin", ...cabin })
 
-  terms.push({
-    ic: "person",
-    txt: t ? t("pc.offer.personalItem") : "Personal item 1 · small backpack",
-  })
+    terms.push({
+      ic: "person",
+      txt: t ? t("pc.offer.personalItem") : "Personal item 1 · small backpack",
+    })
 
-  const hold = bagTerm(offer.baggage_hold_count, offer.baggage_hold, "hold", t)
-  if (hold) terms.push({ ic: hold.no ? "no" : "hold", ...hold })
+    const hold = bagTerm(offer.baggage_hold_count, offer.baggage_hold, "hold", t)
+    if (hold) terms.push({ ic: hold.no ? "no" : "hold", ...hold })
+  }
 
   /*
    * PC-B · "não reembolsável" vem do campo, não de uma expressão regular.
@@ -165,6 +188,153 @@ function bagTerm(
     return { txt: `${label} ${legacy}` }
   }
   return { txt: baggageLabel(count, kind, t), no: count === 0 }
+}
+
+/**
+ * T-10 · a franquia de cada voo, e se vale a pena mostrá-la voo a voo.
+ *
+ *   · `legacy` — nenhum voo tem linha própria: é uma oferta anterior ao T-10, e
+ *     o cartão continua exactamente como era;
+ *   · `uniform` — todos os voos dizem o mesmo (com a queda para a oferta nos
+ *     que não têm linha): as linhas de sempre chegam, com o peso;
+ *   · `perFlight` — os voos diferem, e o cliente tem de ver cada um.
+ */
+export function flightAllowances(offer: Offer):
+  | { mode: "legacy" }
+  | { mode: "uniform"; allowance: FlightAllowance }
+  | { mode: "perFlight"; flights: { segment: OfferSegment; allowance: FlightAllowance }[] } {
+  const ordered = legsOfOffer(offer).flatMap((leg) => leg.segments)
+  if (ordered.length === 0 || !ordered.some((s) => s.baggage)) {
+    return { mode: "legacy" }
+  }
+  const flights = ordered.map((segment) => ({
+    segment,
+    allowance: flightAllowance(offer, segment),
+  }))
+  const first = flights[0].allowance
+  if (flights.every((f) => sameAllowance(f.allowance, first))) {
+    return { mode: "uniform", allowance: first }
+  }
+  return { mode: "perFlight", flights }
+}
+
+/** "1 mala de porão · 23 kg" — a contagem de sempre, e o peso quando há. */
+function bagWithWeight(
+  pieces: number,
+  kg: number | null,
+  kind: "cabin" | "hold",
+  t?: Translator
+): string {
+  const base = baggageLabel(pieces, kind, t)
+  if (pieces <= 0 || kg === null) return base
+  const weight = t
+    ? t("pc.bags.kg", { count: pieces, kg: String(kg).replace(".", ",") })
+    : `${kg} kg${pieces > 1 ? " each" : ""}`
+  return `${base} · ${weight}`
+}
+
+/**
+ * As linhas de um voo (ou da viagem, quando são iguais em todos).
+ *
+ * Uma contagem nula — um voo sem linha própria numa oferta cuja contagem
+ * também está por responder — não aparece, pela mesma razão de `bagTerm`: zero
+ * é uma afirmação e ninguém a fez.
+ */
+function allowanceTerms(
+  a: FlightAllowance,
+  t?: Translator,
+  everyFlight = false
+): { ic: string; txt: string; no?: boolean }[] {
+  const suffix = everyFlight
+    ? ` · ${t ? t("pc.offer.allFlights") : "on every flight"}`
+    : ""
+  const out: { ic: string; txt: string; no?: boolean }[] = []
+
+  if (a.cabinPieces !== null) {
+    out.push({
+      ic: a.cabinPieces === 0 ? "no" : "cabin",
+      txt: bagWithWeight(a.cabinPieces, a.cabinKg, "cabin", t) + suffix,
+      no: a.cabinPieces === 0,
+    })
+  }
+
+  if (a.personal === false) {
+    out.push({
+      ic: "no",
+      txt: (t ? t("pc.bags.personalNone") : "No personal item") + suffix,
+      no: true,
+    })
+  } else {
+    out.push({
+      ic: "person",
+      txt:
+        (t ? t("pc.offer.personalItem") : "Personal item 1 · small backpack") +
+        (a.personal === true ? suffix : ""),
+    })
+  }
+
+  if (a.checkedPieces !== null) {
+    out.push({
+      ic: a.checkedPieces === 0 ? "no" : "hold",
+      txt: bagWithWeight(a.checkedPieces, a.checkedKg, "hold", t) + suffix,
+      no: a.checkedPieces === 0,
+    })
+  }
+  return out
+}
+
+/**
+ * T-10 · "o cliente vê a franquia de cada voo".
+ *
+ * Só aparece quando os voos diferem — quando são iguais, as linhas das
+ * condições já o dizem com "em todos os voos", e repetir o mesmo bloco quatro
+ * vezes numa ida e volta com escala era ruído. Usa as classes `terms`/`trow`
+ * das condições para não precisar de CSS novo.
+ */
+export function FlightBaggage({
+  offer,
+  cities,
+}: {
+  offer: Offer
+  cities?: Record<string, string>
+}) {
+  const t = useT()
+  const view = flightAllowances(offer)
+  if (view.mode !== "perFlight") return null
+
+  return (
+    <div className="terms" aria-label={t("pc.offer.baggageTitle")}>
+      <div className="trow">
+        <span className="tt">
+          <b>{t("pc.offer.baggageTitle")}</b>
+        </span>
+      </div>
+      {view.flights.map(({ segment, allowance }) => {
+        const flight = [segment.carrier_code, segment.flight_number]
+          .filter(Boolean)
+          .join(" ")
+        const route = `${cityOf(segment.origin, cities)} → ${cityOf(segment.destination, cities)}`
+        return (
+          <div key={segment.id} style={{ marginTop: 8 }}>
+            <div className="trow">
+              <span className="tt">
+                <b>{route}</b>
+                {flight ? ` · ${flight}` : ""}
+              </span>
+            </div>
+            {allowanceTerms(allowance, t).map((term, i) => (
+              <div className={`trow${term.no ? " no" : ""}`} key={i}>
+                <span className="ti">
+                  <TermIcon kind={term.ic} />
+                </span>
+                <span className="tt">{term.txt}</span>
+              </div>
+            ))}
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 function legLabel(
@@ -364,6 +534,9 @@ export function OfferCard({
             </div>
           ))}
         </div>
+
+        {/* T-10 · a franquia voo a voo, quando os voos não dizem o mesmo. */}
+        <FlightBaggage offer={offer} cities={request.cities} />
 
         {offer.agent_note && (
           <p className="notice" style={{ marginTop: 12 }}>

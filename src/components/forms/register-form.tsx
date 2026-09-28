@@ -28,6 +28,7 @@ export function RegisterForm() {
       firstName: "",
       lastName: "",
       email: "",
+      company: "",
       country: "CV",
       phone: "",
       password: "",
@@ -46,6 +47,7 @@ export function RegisterForm() {
     formData.set("password", data.password)
     formData.set("firstName", data.firstName)
     formData.set("lastName", data.lastName)
+    formData.set("company", data.company)
     formData.set("country", data.country)
     formData.set("phone", data.phone ? `${phonePrefix} ${data.phone}` : "")
 
@@ -104,6 +106,22 @@ export function RegisterForm() {
           {form.formState.errors.email && (
             <p className="text-sm text-red-500">
               {t(form.formState.errors.email.message ?? "")}
+            </p>
+          )}
+        </div>
+
+        {/* PRO-09 · Company */}
+        <div className="space-y-2">
+          <Label htmlFor="company">{t("auth.company")}</Label>
+          <Input
+            id="company"
+            autoComplete="organization"
+            placeholder={t("auth.companyPlaceholder")}
+            {...form.register("company")}
+          />
+          {form.formState.errors.company && (
+            <p className="text-sm text-red-500">
+              {t(form.formState.errors.company.message ?? "")}
             </p>
           )}
         </div>

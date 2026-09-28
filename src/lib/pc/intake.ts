@@ -62,6 +62,8 @@ export interface PcIntake {
   locale: string
   currency: string
   agentSlug: string | null
+  /** PRO-06 · a empresa que o link diz. Ver `resolveLinkPartner`. */
+  companySlug?: string | null
   consentIp: string | null
   consentAgent: string | null
 }
@@ -341,6 +343,11 @@ export async function createPriceCheckerCase(
 
     const token = mintToken()
 
+    /* PRO-06 · o caso pertence à empresa do vendedor do link. Sem empresa
+       confirmada, a coluna fica com o default da 0020 (a WeeFly Global) — e
+       numa base sem a 0020 não se manda coluna nenhuma. */
+    const partnerId = await resolveLinkPartner(admin, input.companySlug, input.agentSlug)
+
     const { data: bookingCase, error: caseError } = await admin
       .from("booking_cases")
       .insert({
@@ -348,6 +355,7 @@ export async function createPriceCheckerCase(
         stage: "pedido_recebido",
         trip_request_id: tripRequestId,
         lead_id: leadId,
+        ...(partnerId ? { partner_id: partnerId } : {}),
       })
       .select("id")
       .single()
@@ -408,4 +416,54 @@ export async function createPriceCheckerCase(
 /** Valida um IATA contra o catálogo — o formulário envia texto livre. */
 export function isKnownAirport(ia: string | null | undefined): boolean {
   return isKnownIata(ia)
+}
+
+/**
+ * PRO-06 · a empresa de um link, confirmada.
+ *
+ * O `?company=` vem do endereço, e um endereço edita-se: aceitá-lo tal como
+ * vem deixava qualquer pessoa pôr um pedido na fila de outra empresa. Só vale
+ * se essa empresa estiver activa **e** tiver na allowlist um vendedor activo
+ * cujo slug seja o `?agent=` do mesmo link — que é exactamente o link que o
+ * construtor do back-office gera para essa pessoa.
+ *
+ * Qualquer outra coisa (empresa desconhecida, suspensa, vendedor de outra
+ * empresa, base sem a 0020) devolve nulo, e o caso fica na WeeFly Global.
+ */
+async function resolveLinkPartner(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  companySlug: string | null | undefined,
+  agentSlug: string | null
+): Promise<string | null> {
+  if (!companySlug || !agentSlug) return null
+
+  const { data: partner, error } = await admin
+    .from("partners")
+    .select("id, status")
+    .eq("slug", companySlug)
+    .maybeSingle()
+  if (error || !partner || (partner as { status: string }).status !== "active") return null
+  const partnerId = (partner as { id: string }).id
+
+  const { data: sellers } = await admin
+    .from("bo_allowlist")
+    .select("email")
+    .eq("partner_id", partnerId)
+    .eq("active", true)
+
+  const matches = ((sellers ?? []) as { email: string }[]).some(
+    (row) => sellerSlug(row.email) === agentSlug
+  )
+  return matches ? partnerId : null
+}
+
+/** O mesmo slug que o construtor de links tira do email (`topbar-actions`). */
+function sellerSlug(email: string): string {
+  return (email.split("@")[0] ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
 }

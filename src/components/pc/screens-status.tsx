@@ -120,7 +120,8 @@ export function ScreenP3({ state }: { state: PcState }) {
             ) : (
               <>
                 <span className="pulse" />
-                {t("pc.status.inProgress")}
+                {/* CP-06 · o estado muda a cada passo: aqui, recebido. */}
+                {t("pc.status.stateReceived")}
               </>
             )}
           </span>
@@ -130,7 +131,11 @@ export function ScreenP3({ state }: { state: PcState }) {
           <Sentence
             as="b"
             text={t("pc.status.eta")}
-            slots={{ phone: <b className="mono">{phone}</b> }}
+            slots={{
+              phone: <b className="mono">{phone}</b>,
+              /* CP-10 · o email do próprio cliente, não um "por email". */
+              email: <b>{state.contact.email}</b>,
+            }}
           />
           <br />
           <Sentence as="b" text={t("pc.status.etaComeBack")} />
@@ -187,12 +192,15 @@ export function ScreenP4a({ state }: { state: PcState }) {
           <h3>{t("pc.status.requestStatus")}</h3>
           <span className="rt" style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span className="pulse" />
-            {t("pc.status.inProgress")}
+            {t("pc.status.stateSearching")}
           </span>
         </div>
         <Track state={state} />
         <p className="eta">
-          <Sentence as="b" text={t("pc.status.etaSearching", { phone })} />
+          <Sentence
+            as="b"
+            text={t("pc.status.etaSearching", { phone, email: state.contact.email })}
+          />
         </p>
       </div>
 
@@ -285,11 +293,12 @@ export function ScreenP4b({ state, onSeeOptions }: { state: PcState; onSeeOption
         <div className="sechead">
           <h3>{t("pc.status.requestStatus")}</h3>
           <span className="rt">
+            {t("pc.status.stateReady")}
             {state.proposalPublishedAt
-              ? t("pc.status.updatedAt", {
+              ? ` · ${t("pc.status.updatedAt", {
                   time: clockOf(state.proposalPublishedAt),
-                })
-              : "—"}
+                })}`
+              : ""}
           </span>
         </div>
         <Track state={state} />
@@ -362,7 +371,11 @@ export function ScreenP7b({ state }: { state: PcState }) {
             )}
           />
         </h2>
-        <p>{paid ? t("pc.status.paidBody") : t("pc.status.checkingBody")}</p>
+        <p>
+          {paid
+            ? t("pc.status.paidBody", { email: state.contact.email })
+            : t("pc.status.checkingBody", { phone, email: state.contact.email })}
+        </p>
         <div className="codebox" style={{ justifyContent: "center" }}>
           <div>
             <span>{t("pc.status.request")}</span>
@@ -398,7 +411,7 @@ export function ScreenP7b({ state }: { state: PcState }) {
         <Track state={state} />
         <p className="eta">
           {paid ? (
-            t("pc.status.etaIssuing", { phone })
+            t("pc.status.etaIssuing", { phone, email: state.contact.email })
           ) : (
             <Sentence
               as="b"
@@ -406,9 +419,10 @@ export function ScreenP7b({ state }: { state: PcState }) {
                 payment?.review_deadline_at
                   ? t("pc.status.etaCheckingDeadline", {
                       phone,
+                      email: state.contact.email,
                       hours: PROOF_REVIEW_HOURS,
                     })
-                  : t("pc.status.etaChecking", { phone })
+                  : t("pc.status.etaChecking", { phone, email: state.contact.email })
               }
             />
           )}

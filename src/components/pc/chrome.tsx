@@ -12,6 +12,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   useTransition,
 } from "react"
@@ -97,6 +98,20 @@ export function PcTopbar({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
+  /* T-13 · a altura real da barra, para o contador do pagamento colar por
+     baixo dela e não por trás. Muda com a referência e com a largura. */
+  const barRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const bar = barRef.current
+    if (!bar || typeof ResizeObserver === "undefined") return
+    const root = document.documentElement
+    const apply = () => root.style.setProperty("--topbar-h", `${bar.offsetHeight}px`)
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(bar)
+    return () => observer.disconnect()
+  }, [])
+
   const cycle = <T,>(list: readonly T[], current: T): T =>
     list[(list.indexOf(current) + 1) % list.length]
 
@@ -135,7 +150,7 @@ export function PcTopbar({
   }
 
   return (
-    <header className="topbar">
+    <header className="topbar" ref={barRef}>
       <div className="topbar-in">
         <div>
           <WeeFlyLogo className="logo" />

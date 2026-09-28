@@ -18,6 +18,8 @@ export const registerSchema = z.object({
   firstName: z.string().min(2, "validation.nameMin"),
   lastName: z.string().min(2, "validation.lastNameMin"),
   email: z.string().email("validation.emailInvalid"),
+  /* PRO-09 · a empresa, para quem aprova a conta saber de quem é. */
+  company: z.string().min(2, "validation.companyRequired"),
   country: z.string().min(1, "validation.countryRequired"),
   phone: z.string().min(6, "validation.phoneInvalid"),
   password: z.string().min(8, "validation.passwordMin"),

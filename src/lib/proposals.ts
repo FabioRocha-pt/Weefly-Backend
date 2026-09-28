@@ -23,6 +23,7 @@ import { cache } from "react"
 
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
+import { normalizeBaggage } from "@/lib/proposal-math"
 import type {
   AdminOffer,
   Offer,
@@ -30,15 +31,34 @@ import type {
   Proposal,
 } from "@/lib/proposal-math"
 
-const SEGMENT_COLUMNS = `
-  segments:case_offer_segments (
+const SEGMENT_BASE_COLUMNS = `
     id, direction, position, carrier_code, flight_number, equipment,
     booking_class, cabin, origin, destination, depart_at, arrive_at,
-    terminal_from, terminal_to
+    terminal_from, terminal_to`
+
+/*
+ * T-10 · a bagagem de cada voo vem no mesmo pedido, dentro do trecho.
+ *
+ * É um embed a mais e não uma consulta a mais — o argumento do cabeçalho deste
+ * ficheiro continua de pé. O `unique (segment_id)` da 0019 é o que deixa o
+ * PostgREST tratá-lo como um-para-um; `normalizeBaggage` aceita as duas formas
+ * na mesma, porque nem todas as versões o reconhecem.
+ */
+const SEGMENT_BAGGAGE_EMBED = `,
+    baggage:case_offer_segment_baggage (
+      personal_item, cabin_pieces, cabin_kg, checked_pieces, checked_kg,
+      cabin_dimensions, checked_dimensions, fare_conditions
+    )`
+
+function segmentColumns(withBaggage: boolean): string {
+  return `
+  segments:case_offer_segments (${SEGMENT_BASE_COLUMNS}${withBaggage ? SEGMENT_BAGGAGE_EMBED : ""}
   )
 `
+}
 
-const OFFER_PUBLIC_COLUMNS = `
+function offerPublicColumns(withBaggage: boolean): string {
+  return `
   id, position, name, include_in_proposal,
   is_recommended, is_cheapest, is_fastest,
   fare_name, baggage_cabin, baggage_hold,
@@ -51,10 +71,24 @@ const OFFER_PUBLIC_COLUMNS = `
   lock_fee, lock_fee_enabled, valid_until,
   fare_held_until, fare_held_source, fare_held_ref,
   agent_note,
-  ${SEGMENT_COLUMNS}
+  ${segmentColumns(withBaggage)}
 `
+}
 
-const OFFER_ADMIN_COLUMNS = `${OFFER_PUBLIC_COLUMNS}, cost_total`
+function offerAdminColumns(withBaggage: boolean): string {
+  return `${offerPublicColumns(withBaggage)}, cost_total`
+}
+
+/*
+ * T-10 · uma base sem a tabela da bagagem continua a ler propostas.
+ *
+ * Um embed para uma tabela que não existe faz falhar o pedido inteiro
+ * (PGRST200, "relação não encontrada") — e sem proposta não há compositor nem
+ * ecrã do cliente. Enquanto a 0019 não tiver passado por todas as bases, uma
+ * falha desse género repete a leitura sem o embed, e os voos caem na contagem
+ * da oferta, que é exactamente o que mostravam antes.
+ */
+const BAGGAGE_EMBED_MISSING = new Set(["PGRST200", "42P01", "PGRST205"])
 
 const PROPOSAL_COLUMNS = `
   id, case_id, revision, status, currency, opening_message,
@@ -120,9 +154,11 @@ function sortOffers<T extends { position: number; segments: unknown[] }>(
   return rows
     .map((o) => ({
       ...o,
-      segments: ((o.segments ?? []) as { position: number }[])
+      segments: ((o.segments ?? []) as { position: number; baggage?: unknown }[])
         .slice()
-        .sort((a, b) => a.position - b.position) as T["segments"],
+        .sort((a, b) => a.position - b.position)
+        /* T-10 · objecto ou lista, conforme o PostgREST — ver normalizeBaggage. */
+        .map((s) => ({ ...s, baggage: normalizeBaggage(s.baggage) })) as T["segments"],
     }))
     .sort((a, b) => a.position - b.position)
 }
@@ -150,11 +186,18 @@ export function paxOf(
 async function readProposal(caseId: string): Promise<ProposalRead> {
   const supabase = createClient()
 
-  const { data, error } = await supabase
-    .from("case_proposals")
-    .select(proposalSelect(OFFER_ADMIN_COLUMNS))
-    .eq("case_id", caseId)
-    .maybeSingle()
+  const query = (withBaggage: boolean) =>
+    supabase
+      .from("case_proposals")
+      .select(proposalSelect(offerAdminColumns(withBaggage)))
+      .eq("case_id", caseId)
+      .maybeSingle()
+
+  let { data, error } = await query(true)
+  if (error && BAGGAGE_EMBED_MISSING.has(error.code)) {
+    console.warn("[proposals] bagagem por voo indisponível (0019?):", error.message)
+    ;({ data, error } = await query(false))
+  }
 
   if (error) {
     console.error("[proposals] readProposal failed:", error)
@@ -316,12 +359,19 @@ export async function getPublishedProposal(
   const admin = createAdminClient()
   if (!admin) return null
 
-  const { data, error } = await admin
-    .from("case_proposals")
-    .select(proposalSelect(OFFER_PUBLIC_COLUMNS))
-    .eq("case_id", caseId)
-    .eq("status", "publicada")
-    .maybeSingle()
+  const query = (withBaggage: boolean) =>
+    admin
+      .from("case_proposals")
+      .select(proposalSelect(offerPublicColumns(withBaggage)))
+      .eq("case_id", caseId)
+      .eq("status", "publicada")
+      .maybeSingle()
+
+  let { data, error } = await query(true)
+  if (error && BAGGAGE_EMBED_MISSING.has(error.code)) {
+    console.warn("[proposals] bagagem por voo indisponível (0019?):", error.message)
+    ;({ data, error } = await query(false))
+  }
 
   if (error) {
     console.error("[proposals] getPublishedProposal failed:", error)

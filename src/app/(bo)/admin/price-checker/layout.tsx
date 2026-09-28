@@ -62,6 +62,9 @@ export const metadata: Metadata = {
  */
 const NAV = [
   { label: "Price Checker", href: "/admin/price-checker", current: true },
+  /* PRO-02 · o Concierge é o menu Passagens do módulo Agente. Daqui volta-se
+     ao WeeFly Pro sem voltar a fazer login. */
+  { label: "WeeFly Pro", href: "/modulo", current: false },
 ]
 
 export default async function BoPriceCheckerLayout({
@@ -118,6 +121,12 @@ export default async function BoPriceCheckerLayout({
                   viewer={{
                     label: access.identity.label,
                     email: access.identity.email,
+                    /* PRO-06 · a empresa do link também vem da sessão. A da
+                       WeeFly não vai no endereço: o link dela é o de hoje. */
+                    company:
+                      access.identity.tenant && !access.identity.tenant.isOperator
+                        ? access.identity.tenant.partnerSlug
+                        : null,
                   }}
                 />
                 <BoUserMenu

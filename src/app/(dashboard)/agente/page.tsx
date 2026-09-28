@@ -1,68 +1,36 @@
-import { MessageSquare, Users, Wallet, TrendingUp } from "lucide-react"
-import { StatsCard } from "@/components/dashboard/stats-card"
-import { RequestList } from "@/components/dashboard/request-list"
-import { formatCurrency } from "@/lib/utils"
-import { getCurrentUser } from "@/lib/current-user"
-import { getI18n } from "@/i18n/server"
-import type { DashboardStats, Request } from "@/types"
+import Link from "next/link"
+import { ArrowRight, Car, Home, Lock, Plane, Sparkles, UtensilsCrossed, Users, Wallet } from "lucide-react"
 
-const MOCK_STATS: DashboardStats = {
-  newRequests: 12,
-  clients: 48,
-  wallet: 125000,
-  monthlyCommission: 8500,
+import { getCurrentUser } from "@/lib/current-user"
+import { getProAccount, visibleAgentMenus, type AgentMenu } from "@/lib/pro-account"
+import { AGENT_MENU_HREF } from "@/lib/pro-menus"
+import { getI18n } from "@/i18n/server"
+import { cn } from "@/lib/utils"
+
+/**
+ * PRO-04 · o início do módulo Agente: os menus que a empresa tem ligados.
+ *
+ * Os números que aqui estavam eram inventados (12 pedidos, 48 clientes, uma
+ * carteira de 125 000). Saíram: num produto a ser testado, um número falso é
+ * pior do que nenhum.
+ */
+
+const ICON: Record<AgentMenu, React.ReactNode> = {
+  flights: <Plane className="w-6 h-6" />,
+  cars: <Car className="w-6 h-6" />,
+  houses: <Home className="w-6 h-6" />,
+  experiences: <Sparkles className="w-6 h-6" />,
+  food: <UtensilsCrossed className="w-6 h-6" />,
 }
 
-const MOCK_REQUESTS: Request[] = [
-  {
-    id: "1",
-    clientName: "Maria Santos",
-    clientEmail: "maria@email.com",
-    service: "Aluguer de carro · 3 dias",
-    status: "novo",
-    date: "14 Jul 2026",
-  },
-  {
-    id: "2",
-    clientName: "João Pereira",
-    clientEmail: "joao@email.com",
-    service: "Excursão Cidade Velha · 2 pax",
-    status: "proposta",
-    date: "13 Jul 2026",
-    amount: 15000,
-    commission: 1500,
-  },
-  {
-    id: "3",
-    clientName: "Ana Costa",
-    clientEmail: "ana@email.com",
-    service: "Casa Soleil · 2 semanas",
-    status: "confirmada",
-    date: "12 Jul 2026",
-    amount: 45000,
-    commission: 4500,
-  },
-  {
-    id: "4",
-    clientName: "Pedro Lima",
-    clientEmail: "pedro@email.com",
-    service: "Transfer Aeroporto · ida e volta",
-    status: "proposta",
-    date: "11 Jul 2026",
-    amount: 5000,
-    commission: 500,
-  },
-]
-
-export default async function AgentDashboardPage() {
+export default async function AgentHomePage() {
   const { t } = getI18n()
-  const user = await getCurrentUser()
-  const firstName =
-    user?.firstName || user?.fullName || t("dashboard.fallbackName")
+  const [account, user] = await Promise.all([getProAccount(), getCurrentUser()])
+  const firstName = user?.firstName || user?.fullName || t("dashboard.fallbackName")
+  const menus = account ? visibleAgentMenus(account) : []
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-orange-600 mb-1">
           {t("nav.agentArea")}
@@ -70,38 +38,68 @@ export default async function AgentDashboardPage() {
         <h1 className="text-2xl font-bold text-slate-900">
           {t("dashboard.greeting", { name: firstName })}
         </h1>
-        <p className="text-slate-500 mt-1">{t("dashboard.agentSubtitle")}</p>
+        <p className="text-slate-500 mt-1">{t("pro.agentSubtitle")}</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard
-          title={t("dashboard.statNewRequests")}
-          value={MOCK_STATS.newRequests}
-          icon={<MessageSquare className="w-6 h-6" />}
-          trend={{ value: t("dashboard.statNewRequestsTrend"), isPositive: true }}
-        />
-        <StatsCard
-          title={t("dashboard.statClients")}
-          value={MOCK_STATS.clients}
-          icon={<Users className="w-6 h-6" />}
-          trend={{ value: t("dashboard.statClientsTrend"), isPositive: true }}
-        />
-        <StatsCard
-          title={t("dashboard.statWallet")}
-          value={formatCurrency(MOCK_STATS.wallet)}
-          icon={<Wallet className="w-6 h-6" />}
-        />
-        <StatsCard
-          title={t("dashboard.statCommission")}
-          value={formatCurrency(MOCK_STATS.monthlyCommission)}
-          icon={<TrendingUp className="w-6 h-6" />}
-          trend={{ value: t("dashboard.statCommissionTrend"), isPositive: true }}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {menus.map(({ menu, state }) => {
+          const open = state === "open"
+          return (
+            <Link
+              key={menu}
+              href={AGENT_MENU_HREF[menu]}
+              className={cn(
+                "group rounded-2xl border bg-white p-6 transition-all",
+                open ? "border-slate-200 hover:shadow-md hover:border-slate-300" : "border-dashed border-slate-300"
+              )}
+            >
+              <div className="flex items-start justify-between">
+                <div
+                  className={cn(
+                    "w-12 h-12 rounded-xl flex items-center justify-center",
+                    open ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-slate-400"
+                  )}
+                >
+                  {ICON[menu]}
+                </div>
+                {!open && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                    <Lock className="w-3.5 h-3.5" />
+                    {t("pro.soon")}
+                  </span>
+                )}
+              </div>
+              <h3 className={cn("mt-4 font-bold", open ? "text-slate-900" : "text-slate-400")}>
+                {t(`pro.menu.${menu}`)}
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">{t(`pro.menuBody.${menu}`)}</p>
+              {open && (
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-orange-600">
+                  {t("pro.open")}
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </span>
+              )}
+            </Link>
+          )
+        })}
       </div>
 
-      {/* Requests */}
-      <RequestList requests={MOCK_REQUESTS} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link
+          href="/agente/clientes"
+          className="rounded-2xl border border-slate-200 bg-white p-5 flex items-center gap-4 hover:shadow-md transition-all"
+        >
+          <Users className="w-5 h-5 text-slate-500" />
+          <span className="font-semibold text-slate-900">{t("nav.clients")}</span>
+        </Link>
+        <Link
+          href="/agente/carteira"
+          className="rounded-2xl border border-slate-200 bg-white p-5 flex items-center gap-4 hover:shadow-md transition-all"
+        >
+          <Wallet className="w-5 h-5 text-slate-500" />
+          <span className="font-semibold text-slate-900">{t("nav.wallet")}</span>
+        </Link>
+      </div>
     </div>
   )
 }

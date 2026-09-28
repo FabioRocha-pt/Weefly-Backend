@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
+import { safeNextPath } from "@/lib/safe-next"
+
 /**
  * Route configuration.
  *
@@ -8,7 +10,8 @@ import { NextResponse, type NextRequest } from "next/server"
  * dashboard/onboarding/auth routes, update the lists below.
  */
 const LOGIN_ROUTE = "/login"
-const DASHBOARD_HOME = "/inicio"
+/** PRO-02 · depois do login escolhe-se o módulo. */
+const DASHBOARD_HOME = "/modulo"
 
 /** Auth pages an already-signed-in user should be bounced away from. */
 const AUTH_ROUTES: readonly string[] = ["/login", "/registro"]
@@ -27,6 +30,10 @@ const PROTECTED_PREFIXES: readonly string[] = [
   "/agente",
   "/criar-empresa",
   "/admin",
+  "/modulo",
+  "/conta",
+  "/pendente",
+  "/gestao",
 ]
 
 function matchesPrefix(pathname: string, prefixes: readonly string[]): boolean {
@@ -84,15 +91,21 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = LOGIN_ROUTE
-    url.searchParams.set("redirectedFrom", pathname)
+    /* PRO-01 · o caminho **e** os parâmetros: `/admin/price-checker/abc?tab=pay`
+       tem de voltar a abrir no separador em que estava. */
+    url.search = ""
+    url.searchParams.set("redirectedFrom", `${pathname}${request.nextUrl.search}`)
     return withRefreshedCookies(supabaseResponse, NextResponse.redirect(url))
   }
 
-  // Authenticated user hitting /login or /registro → send to the dashboard.
+  // Authenticated user hitting /login or /registro → send to the dashboard, or
+  // straight back to where they were going (PRO-01: one login for everything).
   if (user && isAuthRoute) {
+    const next = safeNextPath(request.nextUrl.searchParams.get("redirectedFrom"))
     const url = request.nextUrl.clone()
     url.pathname = DASHBOARD_HOME
     url.search = ""
+    if (next) return withRefreshedCookies(supabaseResponse, NextResponse.redirect(new URL(next, request.url)))
     return withRefreshedCookies(supabaseResponse, NextResponse.redirect(url))
   }
 

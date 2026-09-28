@@ -14,7 +14,11 @@ import { z } from "zod"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { boIdentity } from "@/lib/bo-access"
 import { logCaseEvent } from "@/lib/case-events"
-import { markAlertsRead } from "@/lib/bo-alerts"
+import {
+  clearReadAlerts,
+  markAlertsRead,
+  markAllAlertsRead,
+} from "@/lib/bo-alerts"
 import { elapsedSince } from "@/lib/case-status"
 import { parseMoney } from "@/lib/proposal-math"
 import {
@@ -28,6 +32,7 @@ import {
   savePayInstructions,
 } from "@/lib/pc/payment"
 import { sendPaymentInstructionsEmail } from "@/lib/emails/send"
+import { ARCHIVE_REASONS, CLOSED_REASON_LABEL_PT } from "@/lib/pc/archive"
 import {
   METHOD_LABEL_PT,
   PAY_DUE_HOURS,
@@ -369,24 +374,47 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
 /**
  * Marca alertas como vistos por quem está a olhar.
  *
- * Chamada quando a campainha abre. Não devolve nada de útil de propósito: o
- * contador vem do servidor no render seguinte (o `BoLiveUpdates` já força um
- * `router.refresh()`), e devolver o número novo daqui criava uma segunda fonte
- * de verdade para o mesmo valor.
+ * PRO-11 · chamada ao **clicar num aviso**, e só nesse. Abrir a campainha não
+ * marca nada: marcava, e 40 avisos desapareciam de uma vez — um comprovativo
+ * recebido ficava invisível sem ninguém dar por isso.
+ *
+ * Não devolve o contador novo de propósito: vem do servidor no render
+ * seguinte, e devolvê-lo daqui criava uma segunda fonte de verdade.
  */
 export async function boMarkAlertsRead(eventIds: string[]): Promise<BoResult> {
   const identity = await boIdentity()
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
-  /* Um limite, porque isto vem do browser: a campainha carrega 40 e não há
-     razão para aceitar mais do que isso de uma vez. */
+  /* Um limite, porque isto vem do browser. Uma entrada colapsada leva os ids
+     de todas as repetições (a janela é de 400). */
   const ids = eventIds
     .filter((id) => /^[0-9a-f-]{36}$/i.test(id))
-    .slice(0, 60)
+    .slice(0, 400)
 
   await markAlertsRead(identity.userId, ids)
-  revalidatePath("/admin/price-checker")
+  revalidatePath("/admin/price-checker", "layout")
   return { ok: true }
+}
+
+/** PRO-12 · "Marcar todas como lidas". A confirmação é do painel. */
+export async function boMarkAllAlertsRead(): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const n = await markAllAlertsRead(identity.userId)
+  revalidatePath("/admin/price-checker", "layout")
+  return { ok: true, notice: n === 0 ? "Nada por ler." : `${n} marcados como lidos.` }
+}
+
+/** PRO-12 · "Limpar": retira os lidos do painel. A confirmação é do painel. */
+export async function boClearReadAlerts(): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const result = await clearReadAlerts(identity.userId)
+  if (!result.ok) return result
+  revalidatePath("/admin/price-checker", "layout")
+  return { ok: true, notice: "Avisos lidos limpos." }
 }
 
 // ── C-33 · as instruções de pagamento ────────────────────────────────────────
@@ -394,7 +422,7 @@ export async function boMarkAlertsRead(eventIds: string[]): Promise<BoResult> {
 const instructionsSchema = z.object({
   caseId: z.string().uuid(),
   paymentId: z.string().uuid(),
-  method: z.enum(["stripe", "vinti4", "revolut", "instapay", "paypal"]),
+  method: z.enum(["stripe", "vinti4", "revolut", "instapay"]),
   link: z.string().trim().max(600).optional(),
   reference: z.string().trim().max(200).optional(),
   /** `YYYY-MM-DDTHH:mm` do `datetime-local`, ou vazio. */
@@ -499,9 +527,16 @@ export async function boSavePayInstructions(
 
   /* A impressão digital do que vai sair: o mesmo conteúdo duas vezes é um
      aviso só, um conteúdo diferente é uma notícia nova. Ver o `dedupeSuffix`. */
+  /* T-17 · o prazo que o email promete tem de ser o que fica gravado: fixa-se
+     a hora do envio aqui e usa-se nos dois lados. */
+  const sentAt = new Date()
+  const plannedDue =
+    dueAt ?? payment.pay_due_at ?? new Date(sentAt.getTime() + PAY_DUE_HOURS * 3600_000).toISOString()
+
   const outcome = await sendPaymentInstructionsEmail(
     v.caseId,
-    `${v.method}:${link ?? reference}`
+    `${v.method}:${link ?? reference}`,
+    { dueAt: plannedDue }
   )
 
   /*
@@ -517,6 +552,7 @@ export async function boSavePayInstructions(
       paymentId: v.paymentId,
       actorEmail: identity.email,
       currentDueAt: due,
+      sentAt,
     })
     due = stamped.dueAt
     autoFilled = stamped.autoFilled
@@ -655,6 +691,84 @@ export async function boCloseCase(caseId: string): Promise<BoResult> {
 }
 
 /**
+ * PRO-10 · arquivar um caso que se resolveu fora da plataforma.
+ *
+ * Em qualquer estado, ao contrário do `boCloseCase`, e por isso com motivo
+ * obrigatório: um caso fechado antes de emitir tem de dizer porquê, ou o filtro
+ * de fechados vira um sítio onde os casos desaparecem. Fica registado, e só um
+ * administrador reabre.
+ */
+const archiveSchema = z
+  .object({
+    caseId: z.string().uuid(),
+    reason: z.enum(ARCHIVE_REASONS),
+    note: z.string().trim().max(1000).optional(),
+  })
+  .refine((v) => v.reason !== "outro" || (v.note ?? "").length > 0, {
+    message: "Escreva o motivo.",
+    path: ["note"],
+  })
+
+export async function boArchiveCase(input: {
+  caseId: string
+  reason: string
+  note?: string
+}): Promise<BoResult> {
+  const identity = await boIdentity()
+  if (!identity) return { ok: false, error: NOT_ALLOWED }
+
+  const parsed = archiveSchema.safeParse(input)
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.path[0] === "note" ? "Escreva o motivo." : "Escolha um motivo.",
+    }
+  }
+  const v = parsed.data
+
+  const admin = createAdminClient()
+  if (!admin) return { ok: false, error: "Serviço indisponível." }
+
+  const { data: archived, error } = await admin
+    .from("booking_cases")
+    .update({
+      closed_at: new Date().toISOString(),
+      closed_by: identity.userId,
+      closed_by_email: identity.email,
+      closed_reason: v.reason,
+      closed_note: v.note || null,
+    })
+    .eq("id", v.caseId)
+    .is("closed_at", null)
+    .select("id")
+
+  if (error) {
+    if (error.code === "42703") {
+      return { ok: false, error: "Falta aplicar a migração 0023 para arquivar casos." }
+    }
+    return { ok: false, error: error.message }
+  }
+  if (!archived || archived.length === 0) {
+    return { ok: false, error: "Este caso já está fechado." }
+  }
+
+  const label = CLOSED_REASON_LABEL_PT[v.reason] ?? v.reason
+  await logCaseEvent({
+    caseId: v.caseId,
+    kind: "case_archived",
+    title: "Caso arquivado",
+    detail: [label, v.note, `por ${identity.label}`].filter(Boolean).join(" · "),
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+    payload: { reason: v.reason },
+  })
+
+  touch(v.caseId)
+  return { ok: true, notice: "Caso arquivado. Está no filtro Fechados." }
+}
+
+/**
  * C-04 · reabrir, que é o critério "reversível por um administrador".
  *
  * A reversão fica registada — e é por isso que apagar `closed_at` não perde
@@ -674,12 +788,22 @@ export async function boReopenCase(caseId: string): Promise<BoResult> {
   const admin = createAdminClient()
   if (!admin) return { ok: false, error: "Serviço indisponível." }
 
-  const { data: reopened } = await admin
-    .from("booking_cases")
-    .update({ closed_at: null, closed_by: null, closed_by_email: null })
-    .eq("id", caseId)
-    .not("closed_at", "is", null)
-    .select("id")
+  const reopen = (fields: Record<string, null>) =>
+    admin
+      .from("booking_cases")
+      .update(fields)
+      .eq("id", caseId)
+      .not("closed_at", "is", null)
+      .select("id")
+
+  const base = { closed_at: null, closed_by: null, closed_by_email: null }
+  /* PRO-10 · o motivo sai com o fecho. Sem a 0023 as colunas não existem. */
+  let { data: reopened, error: reopenError } = await reopen({
+    ...base,
+    closed_reason: null,
+    closed_note: null,
+  })
+  if (reopenError?.code === "42703") ({ data: reopened } = await reopen(base))
 
   if (!reopened || reopened.length === 0) {
     return { ok: false, error: "Este caso não está fechado." }

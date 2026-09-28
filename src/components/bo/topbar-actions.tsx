@@ -78,7 +78,7 @@ export function BoTopbarActions({
   viewer,
 }: {
   /** T-05 · quem está autenticado. O link sai em nome desta pessoa. */
-  viewer: { label: string; email: string }
+  viewer: { label: string; email: string; company?: string | null }
 }) {
   const [open, setOpen] = useState(false)
 
@@ -108,7 +108,7 @@ export function LinkDrawer({
 }: {
   open: boolean
   onClose: () => void
-  viewer: { label: string; email: string }
+  viewer: { label: string; email: string; company?: string | null }
 }) {
   /* T-05 · não é estado: vem da sessão e não muda enquanto a gaveta está
      aberta. Um `useState` aqui era a porta por onde a escolha voltaria. */
@@ -142,8 +142,11 @@ export function LinkDrawer({
     params.set("currency", currency)
     params.set("country", country)
     if (agent) params.set("agent", agent)
+    /* PRO-06 · a empresa de quem cria o link. O servidor só a aceita se
+       houver um vendedor activo dela com este `agent` (ver `lib/pc/intake`). */
+    if (viewer.company) params.set("company", viewer.company)
     return `${origin || "https://weefly.africa"}/pc?${params.toString()}`
-  }, [origin, lang, currency, country, agent])
+  }, [origin, lang, currency, country, agent, viewer.company])
 
   const bare = `${origin || "https://weefly.africa"}/pc`
 
@@ -162,10 +165,10 @@ export function LinkDrawer({
           : `${greeting} ${agentName} from WeeFly. So I can search the best fares for your trip, fill in the details here — under a minute, no commitment:`
     const closing =
       lang === "pt"
-        ? "Respondo por aqui com as opções."
+        ? "Respondo por aqui com as ofertas."
         : lang === "fr"
-          ? "Je vous réponds ici avec les options."
-          : "I'll reply here with the options."
+          ? "Je vous réponds ici avec les offres."
+          : "I'll reply here with the offers."
     return `${body}\n\n${url}\n\n${closing}`
   }, [lang, agentName, url])
 
@@ -255,7 +258,7 @@ export function LinkDrawer({
             */}
             <p className="note" style={{ marginTop: 9 }}>
               Não há aqui nenhum valor a cobrar: o link de pagamento é gerado
-              automaticamente depois de o cliente escolher uma opção e preencher
+              automaticamente depois de o cliente escolher uma oferta e preencher
               os dados de todos os passageiros. Até aí não há montante nem
               passageiro a quem o cobrar.
             </p>

@@ -72,8 +72,8 @@ export function BoTicketBuilder({
         </div>
         <div className="panel-b">
           <p className="note">
-            O cliente ainda não escolheu uma opção. Os detalhes de emissão
-            pertencem à opção escolhida, e por isso só aparecem depois dela.
+            O cliente ainda não escolheu uma oferta. Os detalhes de emissão
+            pertencem à oferta escolhida, e por isso só aparecem depois dela.
           </p>
         </div>
       </section>
@@ -183,7 +183,7 @@ export function BoTicketBuilder({
           >
             {segments.length === 0 ? (
               <p className="note">
-                Esta opção não tem trechos guardados. Sem eles não há terminais
+                Esta oferta não tem trechos guardados. Sem eles não há terminais
                 nem classe de reserva a preencher.
               </p>
             ) : (

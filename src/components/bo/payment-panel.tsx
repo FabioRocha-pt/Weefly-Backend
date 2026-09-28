@@ -105,7 +105,7 @@ export function BoPaymentPanel({
           <div className="panel-b">
             <p className="note">
               Ainda não há valor a cobrar. O pagamento nasce quando o cliente
-              escolhe uma das opções publicadas.
+              escolhe uma das ofertas publicadas.
             </p>
           </div>
         </aside>
@@ -523,7 +523,7 @@ export function BoPaymentPanel({
               <p className="note">
                 O link do cliente não fica aberto para sempre: o preço que ele viu
                 tem validade. Sem confirmação até ao prazo, o pagamento expira
-                sozinho e o cliente vê o ecrã de opções expiradas, com o botão para
+                sozinho e o cliente vê o ecrã de ofertas expiradas, com o botão para
                 pedir nova pesquisa.
               </p>
 
@@ -664,7 +664,11 @@ function BoPayInstructions({
         method,
         link: wantsLink ? link : undefined,
         reference: wantsRef ? reference : undefined,
-        dueAt: dueAt || undefined,
+        /* T-11 · o `datetime-local` não tem fuso: "14:30" é a hora de quem
+           está a escrever. O servidor corre em UTC e lia-o como UTC — em Cabo
+           Verde cada gravação recuava o prazo uma hora, e registava uma
+           alteração que ninguém fez. O browser sabe o fuso; converte aqui. */
+        dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
         send,
       })
       if (result.ok) {
@@ -769,7 +773,7 @@ function BoPayInstructions({
               value={formatMoney(payment.amount, payment.currency)}
               disabled
             />
-            <span className="hint">vem da opção escolhida</span>
+            <span className="hint">vem da oferta escolhida</span>
           </div>
 
           <div className="f s3">

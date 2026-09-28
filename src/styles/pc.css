@@ -258,7 +258,9 @@ label.fl .req{color:var(--ember);margin-left:2px}
    nota, e `sticky` mantém-no à vista enquanto a pessoa desce o ecrã para pagar
    — que é exactamente o momento em que ele deixava de se ver.
    `top` acompanha a altura da topbar. */
-.paywin{position:sticky;top:8px;z-index:20;background:var(--warn-tint);border:1px solid rgba(154,91,6,.26);border-radius:12px;padding:13px 14px;margin:16px 0 0}
+/* T-13 · colava a 8px do topo, por baixo da topbar (z 45) — ao rolar ficava
+   escondido atrás dela. `--topbar-h` é medida pelo `PcTopbar`. */
+.paywin{position:sticky;top:calc(var(--topbar-h,62px) + 8px);z-index:20;background:var(--warn-tint);border:1px solid rgba(154,91,6,.26);border-radius:12px;padding:13px 14px;margin:16px 0 0}
 .paywin-clock{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:7px}
 .paywin-clock .mono{font-family:var(--font-plex-mono),'IBM Plex Mono',monospace;font-size:26px;font-weight:600;line-height:1.05;letter-spacing:-.01em;color:var(--warn);font-variant-numeric:tabular-nums}
 .paywin-clock .lb{font-size:11px;font-weight:700;letter-spacing:.09em;color:#9A5B06}

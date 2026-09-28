@@ -42,7 +42,7 @@ export function BoFreezePanel({
 
   if (!frozen) return null
 
-  const chosen = offerName || "a opção escolhida"
+  const chosen = offerName || "a oferta escolhida"
 
   return (
     <div className="panel">
@@ -55,7 +55,7 @@ export function BoFreezePanel({
       <div className="panel-b">
         <div className="note warn">
           <b>{chosen} está congelada.</b> O caso já chegou ao pagamento: o preço
-          que o cliente vê é o desta opção, e o valor a cobrar foi calculado a
+          que o cliente vê é o desta oferta, e o valor a cobrar foi calculado a
           partir dela. Editar o itinerário aqui mudaria a viagem por baixo de um
           pagamento em curso.
         </div>

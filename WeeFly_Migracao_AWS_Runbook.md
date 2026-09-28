@@ -49,11 +49,13 @@ Setembro. Onde os dois discordam, vale o servidor.
 |---|---|---|
 | Utilizador IAM | **Recebido** a 25 de Setembro | Primeiro login, trocar a password e activar MFA — ver abaixo. |
 | Instance profile | **Confirmado** no servidor | Nada. O log do agente mostra sessões já abertas com `weefly-concierge-team`, às 13:12 e 13:23 UTC de 25 de Setembro — a equipa do Sarin a testar. |
-| Snapshots EBS | Permissão pedida e concedida | Confirmar com uma snapshot real antes da instalação. |
-| Fechar a porta 22 | **Do nosso lado** | O lado técnico do SSM está provado. Falta uma sessão aberta por nós, no browser, com a password já trocada. Depois disso, avisar o Sarin. Recusaram o whitelisting porque o IPv4 é dinâmico. |
+| Snapshots EBS | **Confirmado** a 27 de Setembro | Nada. `snap-0cf1d2cbab7aa822e` do volume `vol-05567770e7d52d7ff`, *Completed*, 15,4 GB — já com a aplicação instalada, apesar da descrição `antes-da-instalacao`. |
+| Session Manager | **Confirmado por nós** a 27 de Setembro | Nada. O `ssm:StartSession` falhava por faltar o documento `SSM-SessionManagerRunShell` na policy; o Sarin acrescentou-o. Sessão aberta no browser com `weefly-concierge-team`, `sudo -iu ubuntu` funciona. |
+| Chave de deploy do GitHub | **Resolvido** a 27 de Setembro | Nada. A chave `~/.ssh/github-deploy` existia no servidor mas nunca tinha sido registada no repo; adicionada como deploy key `EC2 concierge`, só leitura. `git pull` pela sessão SSM funciona. |
+| Fechar a porta 22 | **Do nosso lado** | O SSM, a snapshot e o `git pull` já funcionam. Falta confirmar a password trocada e o MFA; depois disso, avisar o Sarin. Recusaram o whitelisting porque o IPv4 é dinâmico. |
 
 O bloqueio deixou de estar do lado do Sarin: a 22 continua aberta a
-`0.0.0.0/0` até nós dizermos que o SSM funciona.
+`0.0.0.0/0` até nós lhe dizermos para a fechar.
 
 ## Verificar o acesso AWS — antes de tudo o resto
 
@@ -513,9 +515,20 @@ Depois de o DNS propagar:
 sudo certbot --nginx -d weefly.duckdns.org
 ```
 
-E um bloco que reencaminha tudo, preservando o caminho:
+E um bloco que reencaminha tudo, preservando o caminho e os parâmetros — **nas
+duas portas**. Só na 443, um link antigo em `http://` fica sem resposta. O
+ficheiro completo, com os comandos de instalação e de teste, está em
+`deploy/nginx/weefly-duckdns-redirect.conf` (MIG-01). Manter pelo menos seis
+meses.
 
 ```nginx
+server {
+    listen 80;
+    server_name weefly.duckdns.org;
+    location /.well-known/acme-challenge/ { root /var/www/html; }
+    location / { return 301 https://concierge.weefly.africa$request_uri; }
+}
+
 server {
     listen 443 ssl http2;
     server_name weefly.duckdns.org;

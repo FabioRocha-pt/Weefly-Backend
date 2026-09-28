@@ -8,7 +8,7 @@
  * Eram seis famílias de pagamento ordenadas pelo país, e uma delas — a
  * transferência — pedia comprovativo. O Sprint 3 muda a premissa: "o pagamento
  * acontece fora da plataforma, a validação acontece dentro dela". O cliente
- * escolhe Stripe, Vinti4/24, Revolut, Instapay ou PayPal; a escolha chega ao
+ * escolhe Stripe, Vinti4/24, Revolut ou InstaPay (L-06: o PayPal saiu); a escolha chega ao
  * back-office; um agente monta o link ou a referência à mão e envia-lhos. Sem
  * transferência bancária, que esta fase remove.
  *
@@ -47,6 +47,7 @@ import { IcFile, IcWa, MethodIcon, Rows, Sentence } from "@/components/pc/bits"
 import { CopyButton, WaButton, useToast } from "@/components/pc/chrome"
 import { PickedOption } from "@/components/pc/picked-option"
 import { useI18n, useT } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
 import { methodLabel } from "@/lib/pc/catalog"
 
 export function ScreenP7Pay({ state }: { state: PcState }) {
@@ -212,6 +213,10 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
             outra coisa: que alguém prepara isto à mão, e por isso não é
             instantâneo. */}
         <p className="mnote">{t("pc.pay.chooseNote")}</p>
+        {/* CP-08 */}
+        <p className="mnote">
+          <b>{t("pc.pay.worldwide")}</b>
+        </p>
 
         <div className="mlist">
           {methods.map((entry) => (
@@ -486,12 +491,15 @@ function MethodBody({
      próprio e não se traduz; o que muda é a frase à volta dele. */
   const methodName = methodLabel(method.id, locale)
 
+  /* T-11 · o prazo como o email o escreve: hora de Cabo Verde, fuso à vista. */
   const due = payment.pay_due_at
-    ? new Date(payment.pay_due_at).toLocaleString(undefined, {
+    ? new Date(payment.pay_due_at).toLocaleString(LOCALE_TAGS[locale], {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: "Atlantic/Cape_Verde",
+        timeZoneName: "short",
       })
     : null
 

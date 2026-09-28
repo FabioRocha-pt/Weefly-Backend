@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { LogOut, ChevronDown } from "lucide-react"
+import Link from "next/link"
+import { LogOut, ChevronDown, UserRound, LayoutGrid } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { signOut } from "@/actions/auth"
@@ -49,7 +50,25 @@ export function UserMenu({ user }: { user: UserMenuData | null }) {
               <p className="text-sm text-slate-500 truncate">{user.email}</p>
             </div>
 
-            <form action={signOut}>
+            {/* PRO-13 · o perfil, e PRO-02 · voltar à escolha de módulo. */}
+            <Link
+              href="/conta"
+              onClick={() => setOpen(false)}
+              className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <UserRound className="w-4 h-4" />
+              {t("profile.title")}
+            </Link>
+            <Link
+              href="/modulo"
+              onClick={() => setOpen(false)}
+              className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <LayoutGrid className="w-4 h-4" />
+              {t("pro.switchModule")}
+            </Link>
+
+            <form action={signOut} className="border-t border-slate-100">
               <button
                 type="submit"
                 className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"

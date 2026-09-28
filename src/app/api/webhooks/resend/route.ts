@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto"
 import { NextResponse } from "next/server"
 
 import { recordDeliveryEvent, type NotifyStatus } from "@/lib/notifications"
+import { createAdminClient } from "@/utils/supabase/admin"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -110,5 +111,34 @@ export async function POST(request: Request) {
     error: event.data?.reason ?? null,
   })
 
-  return NextResponse.json({ ok: true, matched })
+  /* PRO-08 · não era um aviso de caso: pode ser um email de conta (registo,
+     recuperação) enviado pelo hook `api/auth/send-email`. */
+  const matchedAuth = matched ? false : await recordAuthEmailEvent(messageId, status, event.data?.reason ?? null)
+
+  return NextResponse.json({ ok: true, matched: matched || matchedAuth })
+}
+
+/** PRO-08 · o estado de entrega de um email de conta (`auth_email_log`, 0024). */
+async function recordAuthEmailEvent(
+  providerMessageId: string,
+  status: NotifyStatus,
+  reason: string | null
+): Promise<boolean> {
+  const admin = createAdminClient()
+  if (!admin) return false
+  const now = new Date().toISOString()
+  const { data, error } = await admin
+    .from("auth_email_log")
+    .update({
+      status: status === "delivered" || status === "bounced" || status === "sent" ? status : "failed",
+      ...(status === "delivered" ? { delivered_at: now } : {}),
+      ...(status === "bounced" ? { failed_at: now } : {}),
+      ...(reason ? { last_error: reason.slice(0, 500) } : {}),
+    })
+    .eq("provider_message_id", providerMessageId)
+    .select("id")
+  /* Sem a 0024 a tabela não existe; um evento de outro email qualquer não é
+     erro nosso. */
+  if (error) return false
+  return (data ?? []).length > 0
 }

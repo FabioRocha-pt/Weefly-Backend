@@ -37,7 +37,17 @@ import { getI18n } from "@/i18n/server"
  * único terminal com saída, e só para os desfechos de reembolso e disputa.
  */
 const ALLOWED: Partial<Record<PaymentStatus, PaymentStatus[]>> = {
-  STARTED: ["PENDING", "AUTHORIZED", "FAILED", "CANCELLED"],
+  /*
+   * MIG-04 · STARTED também expira.
+   *
+   * O manual da WeePay não prevê a passagem, porque lá um pagamento só fica em
+   * STARTED durante segundos. Aqui não: os métodos manuais (Stripe, InstaPay,
+   * Vinti4, Revolut) nascem em STARTED e ficam lá até o comprovativo chegar.
+   * Sem esta saída o prazo passava, a transição era recusada, o pagamento
+   * nunca ficava marcado como tratado — e o cron voltava a pegar nele a cada
+   * hora, para sempre.
+   */
+  STARTED: ["PENDING", "AUTHORIZED", "FAILED", "CANCELLED", "EXPIRED"],
   PENDING: [
     "AUTHORIZED",
     "CAPTURED",

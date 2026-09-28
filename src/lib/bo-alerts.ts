@@ -21,8 +21,18 @@
 
 import { createAdminClient } from "@/utils/supabase/admin"
 
-/** Quantos alertas a campainha carrega. Mais do que isto ninguém lê. */
-const ALERT_LIMIT = 40
+/*
+ * PRO-11 · a janela.
+ *
+ * Eram os últimos 40 acontecimentos, e um aviso por ler saía do painel — e do
+ * contador — só porque chegaram outros 40 depois dele. Agora a janela é larga
+ * (os acontecimentos colapsam por caso e tipo, pelo que 400 linhas dão muito
+ * menos entradas) e o que se mostra é: tudo o que está por ler, e os lidos que
+ * ainda não foram limpos.
+ */
+const EVENT_WINDOW = 400
+/** Quantas entradas o painel desenha. As por ler vêm sempre primeiro. */
+const PANEL_LIMIT = 60
 
 export interface BoAlert {
   id: string
@@ -39,6 +49,9 @@ export interface BoAlert {
   clientName: string | null
   /** Quantas vezes este acontecimento se repetiu neste caso. 1 = uma só. */
   repeated: number
+  /** Todos os acontecimentos colapsados nesta entrada — marcá-la lida marca-os
+      a todos, senão o mais antigo voltava a acender a campainha. */
+  eventIds: string[]
 }
 
 /*
@@ -55,6 +68,8 @@ const ALERT_KINDS = [
   "pay_method_chosen",
   "proof_uploaded",
   "client_declared_paid",
+  /* T-18 · a mensagem que o cliente escreve no ecrã de pagamento. */
+  "client_message",
   "request_cancelled",
   "payment_expired",
 ]
@@ -65,8 +80,29 @@ export interface BoAlertFeed {
 }
 
 export async function loadBoAlerts(userId: string): Promise<BoAlertFeed> {
+  const all = await buildFeed(userId)
+  const unreadFirst = [
+    ...all.filter((a) => a.unread),
+    ...all.filter((a) => !a.unread),
+  ].slice(0, PANEL_LIMIT)
+  /* Por ler primeiro, e dentro de cada metade do mais recente para o mais
+     antigo — a ordem da query. */
+  return { alerts: unreadFirst, unread: all.filter((a) => a.unread).length }
+}
+
+/** Uma coluna que a base ainda não tem: a migração 0021 por aplicar. */
+function isMissingColumn(error: { code?: string; message?: string } | null) {
+  return (
+    !!error &&
+    (error.code === "42703" ||
+      error.code === "PGRST204" ||
+      /cleared_at/.test(error.message ?? ""))
+  )
+}
+
+async function buildFeed(userId: string): Promise<BoAlert[]> {
   const admin = createAdminClient()
-  if (!admin) return { alerts: [], unread: 0 }
+  if (!admin) return []
 
   const { data: rows, error } = await admin
     .from("case_events")
@@ -78,28 +114,47 @@ export async function loadBoAlerts(userId: string): Promise<BoAlertFeed> {
     )
     .in("kind", ALERT_KINDS)
     .order("created_at", { ascending: false })
-    .limit(ALERT_LIMIT)
+    .limit(EVENT_WINDOW)
 
   if (error) {
     console.error("[bo/alerts] leitura falhou:", error.message)
-    return { alerts: [], unread: 0 }
+    return []
   }
 
   const events = (rows ?? []) as Record<string, any>[]
-  if (events.length === 0) return { alerts: [], unread: 0 }
+  if (events.length === 0) return []
 
-  /* As marcas desta pessoa, num pedido só. */
-  const { data: readRows } = await admin
-    .from("bo_alert_reads")
-    .select("event_id")
-    .eq("user_id", userId)
-    .in(
-      "event_id",
-      events.map((e) => String(e.id))
-    )
+  /*
+   * As marcas desta pessoa. Por data e não por uma lista de ids: 400 uuids num
+   * `in(...)` fazem um URL de 15 KB. Uma marca é sempre posterior ao
+   * acontecimento que marca, pelo que "lidas desde o acontecimento mais antigo
+   * da janela" apanha todas as que interessam.
+   */
+  const oldest = String(events[events.length - 1].created_at)
+  let readRows: { event_id: string; cleared_at?: string | null }[] = []
+  {
+    const withCleared = await admin
+      .from("bo_alert_reads")
+      .select("event_id, cleared_at")
+      .eq("user_id", userId)
+      .gte("read_at", oldest)
+    if (!withCleared.error) {
+      readRows = (withCleared.data ?? []) as typeof readRows
+    } else if (isMissingColumn(withCleared.error)) {
+      const plain = await admin
+        .from("bo_alert_reads")
+        .select("event_id")
+        .eq("user_id", userId)
+        .gte("read_at", oldest)
+      readRows = (plain.data ?? []) as typeof readRows
+    } else {
+      console.error("[bo/alerts] marcas falharam:", withCleared.error.message)
+    }
+  }
 
-  const read = new Set(
-    ((readRows ?? []) as { event_id: string }[]).map((r) => r.event_id)
+  const read = new Set(readRows.map((r) => r.event_id))
+  const cleared = new Set(
+    readRows.filter((r) => r.cleared_at).map((r) => r.event_id)
   )
 
   const unwrap = (value: unknown): Record<string, any> | null =>
@@ -109,34 +164,29 @@ export async function loadBoAlerts(userId: string): Promise<BoAlertFeed> {
    * Um caso encravado não afoga a campainha.
    *
    * Descoberto ao olhar para os dados reais: um pagamento em STARTED escrevia
-   * `payment_expired` a cada passagem do cron, e ficou com 292 linhas — 79% de
-   * todos os eventos do sistema. A causa está corrigida em `enforceExpiry`, mas
-   * as linhas que já existem não desaparecem, e a próxima causa parecida também
-   * não vai avisar antes de acontecer.
+   * `payment_expired` a cada passagem do cron, e ficou com 292 linhas. Por isso
+   * a campainha colapsa: de cada par (caso, tipo) fica a ocorrência **mais
+   * recente**, com a contagem ao lado, e a entrada leva os ids de todas — lida
+   * uma, lidas todas.
    *
-   * Por isso a campainha colapsa: de cada par (caso, tipo) fica a ocorrência
-   * **mais recente**, com a contagem ao lado. É a leitura certa mesmo sem o
-   * defeito — "o cliente enviou comprovativo" três vezes é uma notícia com um
-   * número, não três notícias.
-   *
-   * Os acontecimentos ficam todos no registo do caso, que é onde se vai ver o
-   * histórico completo. O que se colapsa é o aviso.
+   * Os limpos (PRO-12) saem antes de colapsar: só se limpa o que já foi lido,
+   * e um acontecimento novo do mesmo par volta a aparecer, por ler.
    */
-  const newestByKey = new Map<string, Record<string, any>>()
-  const repeats = new Map<string, number>()
+  const groups = new Map<string, { newest: Record<string, any>; ids: string[] }>()
 
   for (const event of events) {
+    const id = String(event.id)
+    if (cleared.has(id)) continue
     const key = `${event.case_id}:${event.kind}`
-    repeats.set(key, (repeats.get(key) ?? 0) + 1)
+    const group = groups.get(key)
     /* Os eventos vêm do mais recente para o mais antigo, pelo que o primeiro de
        cada chave é o que fica. */
-    if (!newestByKey.has(key)) newestByKey.set(key, event)
+    if (group) group.ids.push(id)
+    else groups.set(key, { newest: event, ids: [id] })
   }
 
   /* `Array.from` e não spread: o `target` do tsconfig não itera Maps. */
-  const collapsed = Array.from(newestByKey.values())
-
-  const alerts: BoAlert[] = collapsed.map((event) => {
+  return Array.from(groups.values()).map(({ newest: event, ids }) => {
     const trip = unwrap(unwrap(event.booking_case)?.trip_request)
     const lead = unwrap(trip?.lead)
     return {
@@ -148,21 +198,20 @@ export async function loadBoAlerts(userId: string): Promise<BoAlertFeed> {
       actorEmail: (event.actor_email as string | null) ?? null,
       actorKind: (event.actor_kind as BoAlert["actorKind"]) ?? "system",
       createdAt: String(event.created_at),
-      unread: !read.has(String(event.id)),
+      unread: ids.some((id) => !read.has(id)),
       reference: (trip?.reference as string | null) ?? null,
       clientName: (lead?.full_name as string | null) ?? null,
-      repeated: repeats.get(`${event.case_id}:${event.kind}`) ?? 1,
+      repeated: ids.length,
+      eventIds: ids,
     }
   })
-
-  return { alerts, unread: alerts.filter((a) => a.unread).length }
 }
 
 /**
  * Marca alertas como vistos por esta pessoa.
  *
- * `upsert` e não `insert`: abrir a campainha duas vezes é o gesto normal, e a
- * segunda não deve dar erro de chave duplicada. `ignoreDuplicates` mantém a
+ * `upsert` e não `insert`: clicar duas vezes no mesmo aviso é o gesto normal, e
+ * o segundo não deve dar erro de chave duplicada. `ignoreDuplicates` mantém a
  * hora da **primeira** leitura, que é a que interessa.
  */
 export async function markAlertsRead(
@@ -180,4 +229,41 @@ export async function markAlertsRead(
   )
 
   if (error) console.error("[bo/alerts] marcação falhou:", error.message)
+}
+
+/** PRO-12 · "Marcar todas como lidas": tudo o que está por ler na janela. */
+export async function markAllAlertsRead(userId: string): Promise<number> {
+  const all = await buildFeed(userId)
+  const ids = all.filter((a) => a.unread).flatMap((a) => a.eventIds)
+  await markAlertsRead(userId, ids)
+  return ids.length
+}
+
+/**
+ * PRO-12 · "Limpar": retira do painel os avisos já lidos.
+ *
+ * Não apaga a marca de leitura — apagá-la faria o aviso voltar como novo. Põe
+ * `cleared_at` (migração 0021). Os por ler não se tocam: limpar não é ler.
+ */
+export async function clearReadAlerts(
+  userId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = createAdminClient()
+  if (!admin) return { ok: false, error: "Base de dados indisponível." }
+
+  const { error } = await admin
+    .from("bo_alert_reads")
+    .update({ cleared_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .is("cleared_at", null)
+
+  if (!error) return { ok: true }
+  if (isMissingColumn(error)) {
+    return {
+      ok: false,
+      error: "Limpar precisa da migração 0021, que ainda não está aplicada.",
+    }
+  }
+  console.error("[bo/alerts] limpar falhou:", error.message)
+  return { ok: false, error: "Não foi possível limpar os avisos." }
 }

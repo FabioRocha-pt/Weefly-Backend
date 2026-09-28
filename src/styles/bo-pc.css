@@ -52,6 +52,16 @@ input,select,textarea{font-family:inherit;font-size:13px}
 .alert-case{font-size:11.5px;color:var(--txt-2)}
 .alert-meta{font-size:10.5px;color:var(--muted)}
 .alert-x{font-weight:800;color:var(--warn)}
+/* PRO-11 · lido é visivelmente outra coisa, mas continua no painel. */
+.alert-row.unread b::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ember);margin-right:6px;vertical-align:1px}
+.alert-row.read{opacity:.55}
+.alert-row.read b{font-weight:600}
+/* PRO-12 · marcar todas / limpar, com confirmação em linha. */
+.alert-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;font-size:11.5px;color:var(--txt-2)}
+.alert-actions button{background:none;border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700;color:var(--txt-2);cursor:pointer}
+.alert-actions button:hover:not(:disabled){background:var(--raise);color:var(--txt)}
+.alert-actions button:disabled{opacity:.4;cursor:default}
+.alert-notice{font-size:11px;color:var(--muted)}
 
 /* ── BO-01 · o menu da conta ──────────────────────────────────────────────── */
 .who-menu{position:relative}

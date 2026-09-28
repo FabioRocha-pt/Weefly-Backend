@@ -94,11 +94,11 @@ function systemPrompt(channel: Channel, mode: Mode, locale: Locale): string {
      * desmentir — e é o agente que fica a parecer caro.
      */
     lines.push(
-      "Estás a recolher um pedido, não a vender. NUNCA menciones preços, disponibilidade, companhias ou horários concretos: quem prepara as opções é um agente humano, depois de tu recolheres o pedido.",
+      "Estás a recolher um pedido, não a vender. NUNCA menciones preços, disponibilidade, companhias ou horários concretos: quem prepara as ofertas é um agente humano, depois de tu recolheres o pedido.",
       "Assim que tiveres a rota e as datas, confirma o que percebeste e pede o nome e o email para onde enviar a proposta.",
       "Pede o nome e o email numa só mensagem, não um de cada vez. O telefone é opcional — aceita-o se o derem, mas não insistas.",
       "Preenche 'contactReady' apenas quando tiveres nome E email.",
-      "Quando tiveres tudo, agradece e diz que um agente vai preparar as opções e avisar por email. Não prometas prazos concretos."
+      "Quando tiveres tudo, agradece e diz que um agente vai preparar as ofertas e avisar por email. Não prometas prazos concretos."
     )
   }
 

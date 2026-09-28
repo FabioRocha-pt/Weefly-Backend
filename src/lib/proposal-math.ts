@@ -29,6 +29,176 @@ export interface OfferSegment {
   arrive_at: string | null
   terminal_from: string | null
   terminal_to: string | null
+  /**
+   * T-10 · a bagagem que a proposta promete **neste** voo.
+   *
+   * Vem de `case_offer_segment_baggage` (migração 0019), uma linha por trecho.
+   * Nula quando ninguém a respondeu — e aí vale a contagem da oferta
+   * (`baggage_cabin_count` / `baggage_hold_count`), que é o que todas as
+   * propostas anteriores ao T-10 têm. Opcional no tipo porque há quem construa
+   * trechos à mão (a pré-visualização, o concierge) e não tem nada a dizer dela.
+   */
+  baggage?: SegmentBaggage | null
+}
+
+/**
+ * T-10 · a franquia de um voo, em peças × quilos.
+ *
+ * Os nomes são os das colunas da 0019 de propósito: é a mesma forma na base,
+ * no servidor e no browser, e uma tradução de nomes no meio seria um sítio a
+ * mais onde o porão passava a chamar-se mão por engano.
+ *
+ * `personal_item` é um booleano na base e não uma contagem: o artigo pessoal é
+ * por definição um — a mochila debaixo do banco — e o que varia de tarifa para
+ * tarifa é tê-lo ou não. O compositor mostra-o como contador 0/1 para ter a
+ * mesma mão das outras duas linhas.
+ */
+export interface SegmentBaggage {
+  personal_item: boolean
+  cabin_pieces: number
+  /** Por peça. Nulo é "a companhia não indica peso", não zero. */
+  cabin_kg: number | null
+  checked_pieces: number
+  checked_kg: number | null
+  /* Colunas da 0019 que nenhum ecrã escreve ainda. Viajam para que regravar a
+     oferta — que apaga e reinsere os trechos — não as perca pelo caminho. */
+  cabin_dimensions?: string | null
+  checked_dimensions?: string | null
+  fare_conditions?: string | null
+}
+
+/** Os limites dos contadores, iguais no compositor, no servidor e na emissão. */
+export const BAGGAGE_MAX_PIECES = 9
+export const BAGGAGE_MAX_KG = 50
+
+function kgOf(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) return null
+  return Math.min(Math.round(n * 10) / 10, BAGGAGE_MAX_KG)
+}
+
+function piecesOf(value: unknown, fallback: number, max = BAGGAGE_MAX_PIECES): number {
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n) || n < 0) return fallback
+  return Math.min(n, max)
+}
+
+/**
+ * T-10 · a linha da base, na forma do tipo.
+ *
+ * O embed do PostgREST devolve um objecto quando reconhece a relação um-para-um
+ * (o `unique (segment_id)` da 0019) e uma lista quando não a reconhece — depende
+ * da versão. Aceitar as duas formas aqui é mais barato do que descobrir em
+ * produção qual delas o servidor escolheu. O `numeric(5,1)` pode também chegar
+ * como texto.
+ */
+export function normalizeBaggage(raw: unknown): SegmentBaggage | null {
+  const row = (Array.isArray(raw) ? raw[0] : raw) as
+    | Record<string, unknown>
+    | null
+    | undefined
+  if (!row || typeof row !== "object") return null
+  return {
+    personal_item: row.personal_item !== false,
+    cabin_pieces: piecesOf(row.cabin_pieces, 1),
+    cabin_kg: kgOf(row.cabin_kg),
+    checked_pieces: piecesOf(row.checked_pieces, 0),
+    checked_kg: kgOf(row.checked_kg),
+    cabin_dimensions: (row.cabin_dimensions as string | null) ?? null,
+    checked_dimensions: (row.checked_dimensions as string | null) ?? null,
+    fare_conditions: (row.fare_conditions as string | null) ?? null,
+  }
+}
+
+/** Os valores que o servidor aceita gravar, já presos aos limites. */
+export function clampBaggage(input: Partial<SegmentBaggage>): SegmentBaggage {
+  const text = (v: unknown, max: number) =>
+    typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null
+  return {
+    personal_item: input.personal_item !== false,
+    cabin_pieces: piecesOf(input.cabin_pieces, 1),
+    cabin_kg: kgOf(input.cabin_kg),
+    checked_pieces: piecesOf(input.checked_pieces, 0),
+    checked_kg: kgOf(input.checked_kg),
+    cabin_dimensions: text(input.cabin_dimensions, 60),
+    checked_dimensions: text(input.checked_dimensions, 60),
+    fare_conditions: text(input.fare_conditions, 500),
+  }
+}
+
+/**
+ * T-10 · o que um voo inclui, para mostrar, com a queda para a oferta.
+ *
+ * Diferente de `SegmentBaggage` num ponto: aqui cada linha pode estar **por
+ * responder** (nulo). É o que acontece a um voo sem linha própria numa oferta
+ * antiga, que só tem as contagens da oferta — e uma contagem nula da oferta não
+ * pode virar zero ao passar para o voo, porque zero é uma afirmação e ninguém a
+ * fez. `personal` nulo é o "Item pessoal 1" que o cartão sempre mostrou.
+ */
+export interface FlightAllowance {
+  personal: boolean | null
+  cabinPieces: number | null
+  cabinKg: number | null
+  checkedPieces: number | null
+  checkedKg: number | null
+}
+
+export function flightAllowance(
+  offer: Pick<Offer, "baggage_cabin_count" | "baggage_hold_count">,
+  segment: Pick<OfferSegment, "baggage">
+): FlightAllowance {
+  const own = segment.baggage
+  if (own) {
+    return {
+      personal: own.personal_item,
+      cabinPieces: own.cabin_pieces,
+      cabinKg: own.cabin_kg,
+      checkedPieces: own.checked_pieces,
+      checkedKg: own.checked_kg,
+    }
+  }
+  return {
+    personal: null,
+    cabinPieces: offer.baggage_cabin_count,
+    cabinKg: null,
+    checkedPieces: offer.baggage_hold_count,
+    checkedKg: null,
+  }
+}
+
+export function sameAllowance(a: FlightAllowance, b: FlightAllowance): boolean {
+  return (
+    a.personal === b.personal &&
+    a.cabinPieces === b.cabinPieces &&
+    a.cabinKg === b.cabinKg &&
+    a.checkedPieces === b.checkedPieces &&
+    a.checkedKg === b.checkedKg
+  )
+}
+
+/**
+ * T-10 · a contagem da oferta, derivada dos voos.
+ *
+ * `baggage_cabin_count` e `baggage_hold_count` continuam a ser lidos por quem
+ * ainda não sabe de voos — o bilhete em PDF, o ecrã de estado do cliente, o
+ * comparador do concierge. Quando todos os voos têm resposta, a oferta passa a
+ * dizer o **mínimo** entre eles: é a única frase para a viagem inteira que é
+ * verdade em todos os voos. "1 mala" numa ida-com-mala e volta-sem-mala era
+ * exactamente a mentira que o T-10 veio acabar.
+ *
+ * Devolve nulo quando falta resposta a algum voo — e aí fica o que a oferta já
+ * tinha, que é o que esses voos mostram por queda.
+ */
+export function offerCountsFromFlights(
+  flights: (SegmentBaggage | null | undefined)[]
+): { cabin: number; hold: number } | null {
+  if (flights.length === 0 || flights.some((f) => !f)) return null
+  const all = flights as SegmentBaggage[]
+  return {
+    cabin: Math.min(...all.map((f) => f.cabin_pieces)),
+    hold: Math.min(...all.map((f) => f.checked_pieces)),
+  }
 }
 
 export interface Offer {

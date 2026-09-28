@@ -19,8 +19,11 @@ import {
   type AdminOffer,
   type Cabin,
   type OfferDirection,
+  type SegmentBaggage,
   blockerText,
+  clampBaggage,
   offerBlockers,
+  offerCountsFromFlights,
   offerDateChange,
   offerTotal,
 } from "@/lib/proposal-math"
@@ -136,6 +139,15 @@ export interface SegmentDraft {
   arrive_at?: string
   terminal_from?: string
   terminal_to?: string
+  /**
+   * T-10 · a bagagem deste voo, ou nada.
+   *
+   * Ausente é "por responder": o voo não ganha linha em
+   * `case_offer_segment_baggage` e mostra a contagem da oferta, como todas as
+   * propostas anteriores ao T-10. O compositor só a manda depois de alguém ter
+   * mexido no bloco — um valor pré-preenchido do pedido não é uma resposta.
+   */
+  baggage?: Partial<SegmentBaggage> | null
 }
 
 export interface OfferDraft {
@@ -499,18 +511,60 @@ export async function duplicateOffer(
   }
 
   if (segments.length > 0) {
-    await supabase.from("case_offer_segments").insert(
-      segments.map((s) => {
-        const {
-          id: _sid,
-          offer_id: _oid,
-          created_at: _sc,
-          updated_at: _su,
-          ...rest
-        } = s
-        return { ...rest, offer_id: copy.id }
-      })
-    )
+    const { data: copied } = await supabase
+      .from("case_offer_segments")
+      .insert(
+        segments.map((s) => {
+          const {
+            id: _sid,
+            offer_id: _oid,
+            created_at: _sc,
+            updated_at: _su,
+            ...rest
+          } = s
+          return { ...rest, offer_id: copy.id }
+        })
+      )
+      .select("id, direction, position")
+
+    /* T-10 · a cópia leva a bagagem de cada voo. Uma cópia sem ela obrigava a
+       responder de novo, voo a voo, o que a original já dizia — e duplicar
+       existe precisamente para mudar uma coisa e manter o resto. */
+    const { data: sourceBags } = await supabase
+      .from("case_offer_segment_baggage")
+      .select(
+        "segment_id, personal_item, cabin_pieces, cabin_kg, checked_pieces, checked_kg, cabin_dimensions, checked_dimensions, fare_conditions"
+      )
+      .in(
+        "segment_id",
+        segments.map((s) => s.id as string)
+      )
+
+    if (sourceBags && sourceBags.length > 0 && copied) {
+      const placeOf = new Map(
+        segments.map((s) => [s.id as string, `${s.direction}:${s.position}`])
+      )
+      const target = new Map(
+        (copied as { id: string; direction: string; position: number }[]).map(
+          (c) => [`${c.direction}:${c.position}`, c.id]
+        )
+      )
+      const bagRows: Record<string, unknown>[] = []
+      for (const { segment_id, ...bag } of sourceBags as Record<string, unknown>[]) {
+        const place = placeOf.get(segment_id as string)
+        const id = place ? target.get(place) : undefined
+        if (id) bagRows.push({ ...bag, segment_id: id })
+      }
+
+      if (bagRows.length > 0) {
+        const { error: bagError } = await supabase
+          .from("case_offer_segment_baggage")
+          .insert(bagRows)
+        if (bagError) {
+          console.error("[proposals] bagagem da cópia não gravada:", bagError)
+        }
+      }
+    }
   }
 
   touch(caseId)
@@ -627,6 +681,17 @@ export async function saveOffer(
     }
   }
 
+  const segments = (draft.segments ?? [])
+    .slice(0, 24)
+    .filter((s) => s.direction === "ida" || s.direction === "volta")
+
+  /* T-10 · com todos os voos respondidos, a contagem da oferta passa a ser a
+     que eles dizem (o mínimo — ver `offerCountsFromFlights`). Com algum por
+     responder, fica a que o compositor mandou, que é a queda desses voos. */
+  const fromFlights = offerCountsFromFlights(
+    segments.map((s) => (s.baggage ? clampBaggage(s.baggage) : null))
+  )
+
   const { data: updated, error } = await supabase
     .from("case_offers")
     .update({
@@ -635,8 +700,12 @@ export async function saveOffer(
       is_cheapest: flag(draft.is_cheapest),
       is_fastest: flag(draft.is_fastest),
       fare_name: text(draft.fare_name, 120),
-      baggage_cabin_count: count(draft.baggage_cabin_count),
-      baggage_hold_count: count(draft.baggage_hold_count),
+      baggage_cabin_count: fromFlights
+        ? fromFlights.cabin
+        : count(draft.baggage_cabin_count),
+      baggage_hold_count: fromFlights
+        ? fromFlights.hold
+        : count(draft.baggage_hold_count),
       non_refundable: flag(draft.non_refundable),
       times_confirmed: draft.times_confirmed !== false,
       /* C-24 · a data assumida, o motivo, e quem a assumiu. */
@@ -678,13 +747,11 @@ export async function saveOffer(
     return { error: t("errors.offerSaveFailed") }
   }
 
-  const segments = (draft.segments ?? []).slice(0, 24)
   await supabase.from("case_offer_segments").delete().eq("offer_id", offerId)
 
   if (segments.length > 0) {
     const counters: Record<OfferDirection, number> = { ida: 0, volta: 0 }
     const rows = segments
-      .filter((s) => s.direction === "ida" || s.direction === "volta")
       .map((s) => ({
         offer_id: offerId,
         direction: s.direction,
@@ -702,17 +769,65 @@ export async function saveOffer(
         terminal_to: text(s.terminal_to, 40),
       }))
 
-    const { error: segError } = await supabase
+    const { data: inserted, error: segError } = await supabase
       .from("case_offer_segments")
       .insert(rows)
+      .select("id, direction, position")
     if (segError) {
       console.error("[proposals] segment insert failed:", segError)
       return { error: t("errors.offerSavedSegmentsNot") }
     }
+
+    const bagsSaved = await saveSegmentBaggage(
+      supabase,
+      segments,
+      (inserted ?? []) as { id: string; direction: OfferDirection; position: number }[]
+    )
+    if (!bagsSaved) return { error: t("errors.offerSavedSegmentsNot") }
   }
 
   touch(caseId)
   return OK
+}
+
+/**
+ * T-10 · a bagagem de cada voo, a seguir aos trechos.
+ *
+ * Os trechos acabaram de ser apagados e reinseridos, e o `on delete cascade`
+ * da 0019 levou a bagagem com eles — é por isso que ela se escreve aqui e não
+ * num gesto à parte: um id de trecho de antes desta gravação já não existe.
+ *
+ * O par (sentido, posição) é o que liga o rascunho à linha nova, e não a ordem
+ * da resposta do `insert`: a posição é contada aqui, por sentido, da mesma
+ * forma que em `saveOffer`, e é única dentro da oferta.
+ *
+ * Uma falha devolve false, e o compositor mostra o erro e guarda o rascunho no
+ * browser como em qualquer outra gravação falhada. A excepção é a tabela não
+ * existir (a 0019 por aplicar nesta base): aí não há gravação seguinte que o
+ * resolva, e travar o compositor inteiro por causa da bagagem seria pior do que
+ * o voo continuar a mostrar a contagem da oferta, como antes do T-10.
+ */
+async function saveSegmentBaggage(
+  supabase: ReturnType<typeof createClient>,
+  drafts: SegmentDraft[],
+  inserted: { id: string; direction: OfferDirection; position: number }[]
+): Promise<boolean> {
+  const byPlace = new Map(inserted.map((r) => [`${r.direction}:${r.position}`, r.id]))
+  const counters: Record<OfferDirection, number> = { ida: 0, volta: 0 }
+
+  const rows: Record<string, unknown>[] = []
+  for (const draft of drafts) {
+    const segmentId = byPlace.get(`${draft.direction}:${counters[draft.direction]++}`)
+    if (!segmentId || !draft.baggage) continue
+    rows.push({ segment_id: segmentId, ...clampBaggage(draft.baggage) })
+  }
+  if (rows.length === 0) return true
+
+  const { error } = await supabase.from("case_offer_segment_baggage").insert(rows)
+  if (!error) return true
+
+  console.error("[proposals] bagagem por voo não gravada:", error)
+  return ["42P01", "PGRST205"].includes(error.code)
 }
 
 // --- PC-B · o construtor de bilhete, na emissão ------------------------------

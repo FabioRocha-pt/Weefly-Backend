@@ -55,6 +55,8 @@ export default function PriceCheckerPage({
 
   const currency = one("currency").toUpperCase() || one("cur").toUpperCase()
   const agent = one("agent").trim()
+  /* PRO-06 · a empresa do link. Só uma sugestão: quem decide é o intake. */
+  const company = one("company").trim().toLowerCase()
 
   const askedCountry = one("country").trim().toUpperCase()
   const askedDial = one("cc").trim()
@@ -76,6 +78,7 @@ export default function PriceCheckerPage({
           initialCurrency={CURRENCIES.includes(currency) ? currency : "EUR"}
           initialCountry={country}
           agentSlug={agent ? agent.slice(0, 40) : null}
+          companySlug={/^[a-z0-9-]{1,63}$/.test(company) ? company : null}
         />
         <PcFooter />
         <PcFab />

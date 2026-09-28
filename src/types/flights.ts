@@ -71,6 +71,29 @@ export interface AmadeusFlightOffer {
   itineraries: AmadeusItinerary[]
   price: AmadeusPrice
   validatingAirlineCodes: string[]
+  /** T-10 · per-traveler fare detail; carries the included baggage per segment. */
+  travelerPricings?: AmadeusTravelerPricing[]
+}
+
+/** Amadeus expresses an allowance either as a piece count or as a weight. */
+export interface AmadeusBagAllowance {
+  quantity?: number
+  weight?: number
+  weightUnit?: string
+}
+
+export interface AmadeusFareDetailBySegment {
+  /** Matches `AmadeusSegment.id`. */
+  segmentId: string
+  cabin?: string
+  includedCheckedBags?: AmadeusBagAllowance
+  includedCabinBags?: AmadeusBagAllowance
+}
+
+export interface AmadeusTravelerPricing {
+  travelerId: string
+  travelerType?: string
+  fareDetailsBySegment?: AmadeusFareDetailBySegment[]
 }
 
 /** Dictionaries let us resolve carrier/aircraft codes to display names. */

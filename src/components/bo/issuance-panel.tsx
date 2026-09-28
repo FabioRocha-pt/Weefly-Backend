@@ -32,7 +32,13 @@ import type { PcPayment } from "@/lib/pc/payment"
 import type { CasePassenger } from "@/lib/case-status"
 import type { OfferSegment } from "@/lib/proposal-math"
 import type { PassengerBaggage, SegmentIssuance } from "@/lib/issuance"
-import { formatAmountPlain, formatMoney, parseMoney } from "@/lib/proposal-math"
+import {
+  BAGGAGE_MAX_KG,
+  BAGGAGE_MAX_PIECES,
+  formatAmountPlain,
+  formatMoney,
+  parseMoney,
+} from "@/lib/proposal-math"
 import { CARRIERS } from "@/lib/pc/catalog"
 import { CarrierMark } from "@/components/bo/carrier-mark"
 import { BoErrorList, focusField, type BoFieldError } from "@/components/bo/error-list"
@@ -86,18 +92,153 @@ const seatKey = (passengerId: string, segmentId: string) =>
 /** A mesma chave serve a bagagem: um passageiro num voo. */
 const bagKey = seatKey
 
+/*
+ * T-10 · peças e quilos em número, e não em texto.
+ *
+ * O peso era um campo de texto ("23", "23kg", "23,0") e as peças um
+ * `type="number"` que aceitava o que o teclado desse. Passaram a contadores,
+ * como no compositor: `−` `n` `+`. O peso nulo é "sem peso indicado", que é
+ * diferente de zero quilos.
+ */
 interface BagRow {
   checkedPieces: number
-  checkedKg: string
+  checkedKg: number | null
   cabinPieces: number
-  cabinKg: string
+  cabinKg: number | null
 }
 
 const EMPTY_BAG: BagRow = {
   checkedPieces: 0,
-  checkedKg: "",
+  checkedKg: null,
   cabinPieces: 1,
-  cabinKg: "",
+  cabinKg: null,
+}
+
+/**
+ * T-10 · a promessa da proposta, como ponto de partida do facto.
+ *
+ * `case_offer_segment_baggage` é o que a proposta disse que aquele voo inclui;
+ * `case_passenger_baggage` é o que ficou no bilhete. Quem emite parte da
+ * promessa e corrige o que a companhia tiver emitido diferente — em vez de
+ * escrever de novo, passageiro a passageiro, o que já está escrito.
+ */
+function promisedBag(segment: OfferSegment): BagRow | null {
+  const promise = segment.baggage
+  if (!promise) return null
+  return {
+    checkedPieces: promise.checked_pieces,
+    checkedKg: promise.checked_kg,
+    cabinPieces: promise.cabin_pieces,
+    cabinKg: promise.cabin_kg,
+  }
+}
+
+function sameBag(a: BagRow, b: BagRow): boolean {
+  return (
+    a.checkedPieces === b.checkedPieces &&
+    a.checkedKg === b.checkedKg &&
+    a.cabinPieces === b.cabinPieces &&
+    a.cabinKg === b.cabinKg
+  )
+}
+
+/** "1 × 23 kg", "1", "0" — o formato do balcão. */
+function piecesKg(pieces: number, kg: number | null): string {
+  return pieces > 0 && kg !== null ? `${pieces} × ${kg} kg` : String(pieces)
+}
+
+function promiseLabel(segment: OfferSegment): string | null {
+  const p = segment.baggage
+  if (!p) return null
+  return [
+    p.personal_item ? "artigo pessoal" : "sem artigo pessoal",
+    `mão ${piecesKg(p.cabin_pieces, p.cabin_kg)}`,
+    `porão ${piecesKg(p.checked_pieces, p.checked_kg)}`,
+  ].join(" · ")
+}
+
+/**
+ * T-10 · o contador da emissão, no desenho deste ecrã.
+ *
+ * O `StepField` do compositor vive em Tailwind; este ecrã é do `bo-pc.css`, e um
+ * contador com outra cara no meio dos campos dele lia-se como um corpo estranho.
+ * A lógica é a mesma: `nullable` deixa o peso voltar a "—", e o `+` a partir de
+ * "—" salta para o valor de balcão mais comum.
+ */
+function BagStep({
+  value,
+  onChange,
+  max,
+  min = 0,
+  start,
+  unit,
+  nullable,
+  disabled,
+  title,
+}: {
+  value: number | null
+  onChange: (value: number | null) => void
+  max: number
+  min?: number
+  start?: number
+  unit?: string
+  nullable?: boolean
+  disabled?: boolean
+  title: string
+}) {
+  const up = () =>
+    onChange(value === null ? Math.min(start ?? min, max) : Math.min(value + 1, max))
+  const down = () => {
+    if (value === null) return
+    onChange(value - 1 < min ? (nullable ? null : min) : value - 1)
+  }
+  const button: React.CSSProperties = {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    border: "1px solid var(--line)",
+    background: "var(--panel-2)",
+    color: "var(--txt-2)",
+    fontWeight: 700,
+    lineHeight: 1,
+  }
+  return (
+    <div
+      title={title}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        border: "1px solid var(--line)",
+        borderRadius: 8,
+        background: "var(--panel)",
+        padding: "4px 5px",
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      <button
+        type="button"
+        style={button}
+        aria-label={`${title}: menos um`}
+        onClick={down}
+        disabled={disabled || value === null || (!nullable && value <= min)}
+      >
+        −
+      </button>
+      <span className="mono" style={{ minWidth: 40, textAlign: "center", fontSize: 12.5 }}>
+        {value === null ? "—" : `${value}${unit ? ` ${unit}` : ""}`}
+      </span>
+      <button
+        type="button"
+        style={button}
+        aria-label={`${title}: mais um`}
+        onClick={up}
+        disabled={disabled || (value !== null && value >= max)}
+      >
+        +
+      </button>
+    </div>
+  )
 }
 
 /** O rótulo de um voo, como quem emite o reconhece. */
@@ -260,12 +401,21 @@ export function BoIssuancePanel({
 
   const [bags, setBags] = useState<Record<string, BagRow>>(() => {
     const initial: Record<string, BagRow> = {}
+    /* T-10 · primeiro a promessa de cada voo, para todos os passageiros; depois
+       o que já foi gravado na emissão, que manda sobre ela. */
+    for (const segment of segments) {
+      const promise = promisedBag(segment)
+      if (!promise) continue
+      for (const passenger of passengers) {
+        initial[bagKey(passenger.id, segment.id)] = { ...promise }
+      }
+    }
     for (const row of savedBaggage) {
       initial[bagKey(row.passenger_id, row.segment_id)] = {
         checkedPieces: row.checked_pieces,
-        checkedKg: row.checked_kg === null ? "" : String(row.checked_kg),
+        checkedKg: row.checked_kg === null ? null : Number(row.checked_kg),
         cabinPieces: row.cabin_pieces,
-        cabinKg: row.cabin_kg === null ? "" : String(row.cabin_kg),
+        cabinKg: row.cabin_kg === null ? null : Number(row.cabin_kg),
       }
     }
     return initial
@@ -336,10 +486,17 @@ export function BoIssuancePanel({
   if (ordered.length > 0) {
     for (const segment of ordered) {
       const doc = flights[segment.id] ?? EMPTY_DOC
+      /* T-04 · também o cupão, o avião e a classe: sem eles o bilhete sai com
+         buracos no documento. Terminais e lugares ficam de fora de propósito
+         — há aeroportos sem terminais e companhias que só dão lugar no
+         check-in, e exigi-los bloqueava emissões legítimas. */
       const gaps = [
         doc.fareBasis.trim() ? "" : "base tarifária",
         doc.nvb.trim() ? "" : "NVB",
         doc.nva.trim() ? "" : "NVA",
+        doc.couponNumber.trim() ? "" : "cupão",
+        doc.aircraft.trim() ? "" : "avião",
+        doc.cabin.trim() || doc.bookingClass.trim() ? "" : "classe",
       ].filter(Boolean)
       if (gaps.length) {
         errors.push({
@@ -667,21 +824,41 @@ export function BoIssuancePanel({
                         para pagar menos. Um número para os dois sentidos não
                         sabe dizer isso, e o balcão da volta cobra a diferença.
                       */}
+                      {/*
+                        T-10 · o bloco de bagagem de cada voo, por passageiro.
+
+                        Mão e porão em peças × quilos, com contadores. Nasce da
+                        promessa da proposta (`promisedBag`) e a linha de baixo
+                        diz qual era — a amarelo quando o que está a ser emitido
+                        já não é o que foi prometido, que é a diferença que se
+                        vai procurar quando o cliente reclamar no balcão. O
+                        artigo pessoal não tem coluna no bilhete
+                        (`case_passenger_baggage`); lê-se da promessa.
+                      */}
                       {ordered.map((segment) => {
                         const key = seatKey(passenger.id, segment.id)
                         const bag = bags[key] ?? EMPTY_BAG
+                        const promise = promisedBag(segment)
+                        const drifted = promise !== null && !sameBag(bag, promise)
+                        const promised = promiseLabel(segment)
                         return (
-                          <div className="f s4" key={segment.id}>
+                          <div className="f s12" key={segment.id}>
                             <label>
                               {[segment.carrier_code, segment.flight_number]
                                 .filter(Boolean)
-                                .join(" ") || segment.origin}
-                              <br />
+                                .join(" ") || segment.origin}{" "}
                               <span style={{ fontWeight: 400, color: "var(--muted)" }}>
-                                {segment.origin}→{segment.destination}
+                                · {segment.origin}→{segment.destination}
                               </span>
                             </label>
-                            <div style={{ display: "flex", gap: 6 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                flexWrap: "wrap",
+                                alignItems: "center",
+                              }}
+                            >
                               <input
                                 className="mono"
                                 style={{ width: 74 }}
@@ -697,34 +874,53 @@ export function BoIssuancePanel({
                                 }
                                 disabled={issued}
                               />
-                              <input
-                                className="mono"
-                                style={{ width: 56 }}
-                                type="number"
-                                min={0}
-                                max={9}
+                              <span className="hint">mão</span>
+                              <BagStep
+                                title="Peças de mão neste voo"
+                                value={bag.cabinPieces}
+                                onChange={(v) => patchBag(key, { cabinPieces: v ?? 0 })}
+                                max={BAGGAGE_MAX_PIECES}
+                                disabled={issued}
+                              />
+                              <BagStep
+                                title="Peso por peça de mão, em quilos"
+                                value={bag.cabinKg}
+                                onChange={(v) => patchBag(key, { cabinKg: v })}
+                                min={1}
+                                max={BAGGAGE_MAX_KG}
+                                start={8}
+                                unit="kg"
+                                nullable
+                                disabled={issued || bag.cabinPieces === 0}
+                              />
+                              <span className="hint">porão</span>
+                              <BagStep
                                 title="Malas de porão neste voo"
                                 value={bag.checkedPieces}
-                                onChange={(event) =>
-                                  patchBag(key, {
-                                    checkedPieces: Number(event.target.value || 0),
-                                  })
-                                }
+                                onChange={(v) => patchBag(key, { checkedPieces: v ?? 0 })}
+                                max={BAGGAGE_MAX_PIECES}
                                 disabled={issued}
                               />
-                              <input
-                                className="mono"
-                                style={{ width: 66 }}
-                                placeholder="kg"
-                                title="Peso por mala, em quilos"
+                              <BagStep
+                                title="Peso por mala de porão, em quilos"
                                 value={bag.checkedKg}
-                                onChange={(event) =>
-                                  patchBag(key, { checkedKg: event.target.value })
-                                }
-                                disabled={issued}
+                                onChange={(v) => patchBag(key, { checkedKg: v })}
+                                min={1}
+                                max={BAGGAGE_MAX_KG}
+                                start={23}
+                                unit="kg"
+                                nullable
+                                disabled={issued || bag.checkedPieces === 0}
                               />
                             </div>
-                            <span className="hint">lugar · malas · kg</span>
+                            <span
+                              className="hint"
+                              style={drifted ? { color: "#F0C983" } : undefined}
+                            >
+                              {promised
+                                ? `${drifted ? "Diferente da proposta — " : "Proposta: "}${promised}`
+                                : "lugar · mão (peças × kg) · porão (peças × kg)"}
+                            </span>
                           </div>
                         )
                       })}
@@ -735,7 +931,7 @@ export function BoIssuancePanel({
 
               {ordered.length === 0 && passengers.length > 0 && (
                 <p className="note warn">
-                  A opção escolhida não tem trechos gravados, por isso não há onde
+                  A oferta escolhida não tem trechos gravados, por isso não há onde
                   atribuir lugares. Os bilhetes podem ser emitidos à mesma.
                 </p>
               )}
@@ -1122,25 +1318,19 @@ export function BoIssuancePanel({
                            "por atribuir", e gravar zeros seria afirmar que a
                            tarifa não leva mala nenhuma. */
                         baggage: Object.entries(bags)
-                          .filter(
-                            ([, bag]) =>
-                              bag.checkedPieces > 0 ||
-                              bag.checkedKg.trim() !== "" ||
-                              bag.cabinPieces !== EMPTY_BAG.cabinPieces
-                          )
+                          /* T-10 · um par que nasceu da promessa conta como
+                             respondido: a proposta disse o que o voo inclui, e
+                             é isso que fica no bilhete até alguém corrigir. */
+                          .filter(([, bag]) => !sameBag(bag, EMPTY_BAG))
                           .map(([key, bag]) => {
                             const [passengerId, segmentId] = key.split("::")
                             return {
                               passengerId,
                               segmentId,
                               checkedPieces: bag.checkedPieces,
-                              checkedKg: bag.checkedKg.trim()
-                                ? Number(bag.checkedKg.replace(",", "."))
-                                : null,
+                              checkedKg: bag.checkedKg,
                               cabinPieces: bag.cabinPieces,
-                              cabinKg: bag.cabinKg.trim()
-                                ? Number(bag.cabinKg.replace(",", "."))
-                                : null,
+                              cabinKg: bag.cabinKg,
                             }
                           }),
                       })

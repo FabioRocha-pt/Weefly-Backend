@@ -108,6 +108,7 @@ export function RequestWizard({
   initialCurrency,
   initialCountry,
   agentSlug,
+  companySlug = null,
 }: {
   initialLang: Locale
   initialCurrency: string
@@ -119,6 +120,8 @@ export function RequestWizard({
    */
   initialCountry: string | null
   agentSlug: string | null
+  /** PRO-06 · a empresa do link (`?company=`). */
+  companySlug?: string | null
 }) {
   const router = useRouter()
   const t = useT()
@@ -493,6 +496,7 @@ export function RequestWizard({
         locale: lang,
         currency,
         agentSlug,
+        companySlug,
       })
 
       if (!result.ok) {

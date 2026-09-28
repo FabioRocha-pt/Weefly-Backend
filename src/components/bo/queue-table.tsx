@@ -19,6 +19,7 @@ import {
   type BoBucket,
   type BoQueueRow,
 } from "@/lib/pc/bo-queue"
+import { CLOSED_REASON_LABEL_PT } from "@/lib/pc/archive"
 import { elapsedSince } from "@/lib/case-status"
 import { formatMoney } from "@/lib/proposal-math"
 import { countryName } from "@/lib/countries"
@@ -225,7 +226,12 @@ function deadlineNote(row: BoQueueRow): string {
       month: "short",
       timeZone: "Atlantic/Cape_Verde",
     })
-    return `fechado ${when}${row.closedByEmail ? ` · ${row.closedByEmail}` : ""}`
+    /* PRO-10 · o motivo, quando foi arquivado e não emitido. */
+    const why =
+      row.closedReason && row.closedReason !== "emitido"
+        ? ` · ${CLOSED_REASON_LABEL_PT[row.closedReason] ?? row.closedReason}`
+        : ""
+    return `fechado ${when}${why}${row.closedByEmail ? ` · ${row.closedByEmail}` : ""}`
   }
   if (row.state === "emitido") return row.pnr ? `PNR ${row.pnr}` : "emitido"
   if (row.state === "cancelado") return "cancelado"

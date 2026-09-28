@@ -149,7 +149,7 @@ function offerCard(
   const badgeHtml = badges
     .map(
       (b) =>
-        `<span style="display:inline-block;background:${INK};color:#fff;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;border-radius:5px;padding:4px 7px;margin:0 5px 6px 0;">${escapeHtml(b)}</span>`
+        `<span style="display:inline-block;background:${INK};color:#fff;font-size:10px;font-weight:800;letter-spacing:0.06em;border-radius:5px;padding:4px 7px;margin:0 5px 6px 0;">${escapeHtml(b)}</span>`
     )
     .join("")
 
@@ -159,7 +159,7 @@ function offerCard(
       if (!line) return ""
       const label = t(d === "ida" ? "legs.outbound" : "legs.inbound")
       return `<tr>
-        <td style="padding:5px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${MUTED};width:44px;vertical-align:top;">${label}</td>
+        <td style="padding:5px 0;font-size:11px;font-weight:700;letter-spacing:0.06em;color:${MUTED};width:44px;vertical-align:top;">${label}</td>
         <td style="padding:5px 0;font-size:13px;color:${INK};">${escapeHtml(line)}</td>
       </tr>`
     })
@@ -180,7 +180,7 @@ function offerCard(
     </tr>
     <tr>
       <td style="padding:0 18px 16px;border-top:1px solid ${BORDER};">
-        <p style="margin:12px 0 0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${MUTED};">${escapeHtml(t("email.proposalTotalFor", { pax: paxLine(data.pax, t) }))}</p>
+        <p style="margin:12px 0 0;font-size:10px;font-weight:700;letter-spacing:0.07em;color:${MUTED};">${escapeHtml(t("email.proposalTotalFor", { pax: paxLine(data.pax, t) }))}</p>
         <p style="margin:2px 0 0;font-size:20px;font-weight:700;color:${INK};letter-spacing:-0.02em;">${escapeHtml(total)}</p>
       </td>
     </tr>
@@ -244,7 +244,7 @@ export function buildProposalPublishedEmail(
               /* NT-04 · o que mudou vem antes da mensagem de abertura e antes
                  dos cartões: é a primeira pergunta de quem já viu a versão
                  anterior, e enterrá-la debaixo dos preços era escondê-la. */
-              data.revision > 1 && data.changeNote
+              data.changeNote
                 ? `<p style="margin:0 0 16px;background:#FFF6ED;border-left:3px solid ${EMBER_RED};border-radius:0 10px 10px 0;padding:14px 16px;font-size:14px;line-height:1.6;color:${INK};">${escapeHtml(t("email.proposalChanges", { changes: data.changeNote }))}</p>`
                 : ""
             }
@@ -294,7 +294,7 @@ export function buildProposalPublishedEmail(
     t("email.proposalTextHello", { name: data.clientName }),
     "",
     intro,
-    data.revision > 1 && data.changeNote
+    data.changeNote
       ? `\n${t("email.proposalChanges", { changes: data.changeNote })}`
       : "",
     data.openingMessage ? `\n${data.openingMessage}` : "",
@@ -364,16 +364,16 @@ export function buildProposalTeamEmail(data: ProposalTeamEmailData): {
 <body style="margin:0;padding:24px;background:${SURFACE_ALT};font-family:'Plus Jakarta Sans','Segoe UI',system-ui,sans-serif;color:${INK};">
   <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;margin:0 auto;background:#fff;border:1px solid ${BORDER};border-radius:14px;">
     <tr><td style="padding:24px 26px 8px;">
-      <p style="margin:0 0 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.09em;color:${EMBER_RED};">Proposta enviada · revisão R${data.revision}</p>
+      <p style="margin:0 0 4px;font-size:11px;font-weight:800;letter-spacing:0.09em;color:${EMBER_RED};">Proposta enviada · revisão R${data.revision}</p>
       <h1 style="margin:0 0 4px;font-size:19px;font-weight:800;color:${INK};">${escapeHtml(data.clientName)} · ${escapeHtml(data.origin)} → ${escapeHtml(data.destination)}</h1>
       <p style="margin:0 0 18px;font-size:13px;color:${MUTED};">
         ${escapeHtml(paxLine(data.pax, pt))}${data.reference ? ` · ${escapeHtml(data.reference)}` : ""}${data.clientEmail ? ` · ${escapeHtml(data.clientEmail)}` : ""}${data.agentName ? ` · enviada por ${escapeHtml(data.agentName)}` : ""}
       </p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="padding:0 0 6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:${MUTED};">Opção</td>
-          <td style="padding:0 0 6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:${MUTED};text-align:right;">Total</td>
-          <td style="padding:0 0 6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:${MUTED};text-align:right;">Margem</td>
+          <td style="padding:0 0 6px;font-size:10px;font-weight:800;letter-spacing:0.08em;color:${MUTED};">Oferta</td>
+          <td style="padding:0 0 6px;font-size:10px;font-weight:800;letter-spacing:0.08em;color:${MUTED};text-align:right;">Total</td>
+          <td style="padding:0 0 6px;font-size:10px;font-weight:800;letter-spacing:0.08em;color:${MUTED};text-align:right;">Margem</td>
         </tr>
         ${rows}
       </table>

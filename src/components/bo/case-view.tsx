@@ -354,7 +354,7 @@ export function BoCaseView({
                     {proposal.offers.map((offer) => (
                       <div className="orow" key={offer.id}>
                         <div className="oi">
-                          <div className="nm">{offer.name || "Opção sem nome"}</div>
+                          <div className="nm">{offer.name || "Oferta sem nome"}</div>
                           <div className="ms mono">
                             {offer.segments
                               .sort((a, b) => a.position - b.position)
@@ -474,11 +474,11 @@ export function BoCaseView({
         <div className="cols two tabpane">
           <aside className="panel sticky">
             <div className="panel-h">
-              <h3>Opção escolhida</h3>
+              <h3>Oferta escolhida</h3>
             </div>
             <div className="panel-b">
               <Kv
-                k="Opção"
+                k="Oferta"
                 v={
                   proposal?.offers.find(
                     (o) => o.id === proposal.proposal.selected_offer_id

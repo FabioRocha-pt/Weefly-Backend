@@ -298,19 +298,27 @@ function ClientBrief({ bookingCase }: { bookingCase: BookingCaseRow }) {
               Em bloco próprio, com a marca lateral laranja e sem cortar: é a
               frase do cliente, e resumi-la é perder a parte que muda a cotação.
             */}
-            {trip.special_requests && (
-              <div className="mt-3 rounded-[10px] border-l-[3px] border-adm-ember bg-adm-panel-2 p-3">
-                <div className="mb-1.5 text-[10.5px] font-extrabold uppercase tracking-[.1em] text-adm-ember">
-                  {t("admin.briefSpecial")}
-                </div>
-                <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-adm-txt">
-                  {trip.special_requests}
-                </p>
-                <p className="mt-2 text-[11px] text-adm-muted">
-                  {t("admin.briefSpecialNote")}
-                </p>
+            {/* T-09 · sempre visível: vazio diz que está vazio, para quem cota
+                não ficar a perguntar-se se o bloco falhou a carregar. */}
+            <div className="mt-3 rounded-[10px] border-l-[3px] border-adm-ember bg-adm-panel-2 p-3">
+              <div className="mb-1.5 text-[10.5px] font-extrabold uppercase tracking-[.1em] text-adm-ember">
+                {t("admin.briefSpecial")}
               </div>
-            )}
+              {trip.special_requests ? (
+                <>
+                  <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-adm-txt">
+                    {trip.special_requests}
+                  </p>
+                  <p className="mt-2 text-[11px] text-adm-muted">
+                    {t("admin.briefSpecialNote")}
+                  </p>
+                </>
+              ) : (
+                <p className="text-[12.5px] italic text-adm-muted">
+                  {t("admin.briefSpecialEmpty")}
+                </p>
+              )}
+            </div>
 
             {link1?.first_opened_at && (
               <div className="mt-3 flex items-center gap-2 text-xs text-adm-muted">

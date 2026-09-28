@@ -450,7 +450,7 @@ export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome
          : ""
      }
      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">
-       O cliente está à espera das opções no link dele. Reclame o caso para ele
+       O cliente está à espera das ofertas no link dele. Reclame o caso para ele
        sair de "novos sem dono" e componha a proposta — enquanto não for
        publicada, o que ele vê é um ecrã a dizer que estamos a pesquisar.
      </p>
@@ -697,7 +697,13 @@ export async function sendPaymentInstructionsEmail(
    * Quem chama passa o método e a instrução; dois cliques no mesmo botão com o
    * mesmo conteúdo continuam a dar um aviso só, que é o que o NT-04 pede.
    */
-  dedupeSuffix?: string
+  dedupeSuffix?: string,
+  /**
+   * T-17 · o prazo que vai ficar gravado. No primeiro envio o `pay_due_at`
+   * ainda está vazio — é carimbado depois de o email sair (T-11) — e o email
+   * saía sem prazo. Quem chama calcula-o antes e passa-o aqui.
+   */
+  options: { dueAt?: string | null } = {}
 ): Promise<NotifyOutcome> {
   const ctx = await context(caseId)
   if (!ctx) {
@@ -731,14 +737,16 @@ export async function sendPaymentInstructionsEmail(
 
   /* O prazo em hora de Cabo Verde e por extenso: um `2026-09-05T14:30Z` não
      diz a ninguém até quando tem de pagar. */
-  const due = payment?.pay_due_at
+  const dueIso = options.dueAt ?? payment?.pay_due_at ?? null
+  const due = dueIso
     ? new Intl.DateTimeFormat(LOCALE_TAGS[ctx.locale], {
         day: "2-digit",
         month: "long",
         hour: "2-digit",
         minute: "2-digit",
         timeZone: "Atlantic/Cape_Verde",
-      }).format(new Date(payment.pay_due_at))
+        timeZoneName: "short",
+      }).format(new Date(dueIso))
     : null
 
   const rows = [
@@ -811,7 +819,11 @@ export async function sendPaymentInstructionsEmail(
     .filter(Boolean)
     .join("\n")
 
-  return notify({
+  const dedupeKey = dedupeSuffix
+    ? `payment_instructions:${dedupeSuffix}`
+    : "payment_instructions"
+
+  const outcome = await notify({
     caseId,
     channel: "email",
     kind: "payment_instructions",
@@ -822,10 +834,35 @@ export async function sendPaymentInstructionsEmail(
     html,
     text,
     replyTo: teamRecipients(),
-    dedupeKey: dedupeSuffix
-      ? `payment_instructions:${dedupeSuffix}`
-      : "payment_instructions",
+    dedupeKey,
   })
+
+  /*
+   * T-17 · "o link colado pelo agente vai no email **e na mensagem de
+   * WhatsApp**". A mensagem é curta e leva o essencial para pagar a partir do
+   * telemóvel: método, valor, prazo e o próprio link (ou a referência).
+   * Independente do email — um não espera pelo outro, nem o desfaz.
+   */
+  await notify({
+    caseId,
+    channel: "whatsapp",
+    kind: "payment_instructions",
+    audience: "client",
+    to: ctx.clientWhatsApp,
+    locale: ctx.locale,
+    subject,
+    body: [
+      t("email.whatsappPayInstructions", { method, amount }),
+      due ? t("email.whatsappPayDue", { due }) : "",
+      payLink ?? `${t("email.payInstructionsReference")}: ${payReference}`,
+      ctx.reference ? `${t("email.payInstructionsQuote")}: ${ctx.reference}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    dedupeKey,
+  })
+
+  return outcome
 }
 
 // ═══ NT-04 · pagamento confirmado, ao cliente ════════════════════════════════
@@ -858,7 +895,8 @@ export async function sendPaymentConfirmedEmail(
      </p>
      <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${MUTED};">
        ${escapeHtml(t("email.paidNext"))}
-     </p>`,
+     </p>
+     <p style="margin:22px 0 0;">${cta(clientLink(ctx), t("email.paidCta"))}</p>`,
     locale,
     ctx.reference
   )
@@ -874,6 +912,7 @@ export async function sendPaymentConfirmedEmail(
       : "",
     "",
     t("email.paidTextNext"),
+    `${t("email.paidCta")}: ${clientLink(ctx)}`,
     "© WeeFly Africa",
   ]
     .filter(Boolean)
@@ -1011,7 +1050,7 @@ export type ClientAction =
   | "message_sent"
 
 const AGENT_SUBJECT: Record<ClientAction, string> = {
-  offer_selected: "escolheu uma opção",
+  offer_selected: "escolheu uma oferta",
   passengers_submitted: "submeteu os passaportes",
   proof_uploaded: "enviou o comprovativo",
   request_cancelled: "cancelou o pedido",

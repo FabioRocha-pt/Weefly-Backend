@@ -35,11 +35,13 @@ import type { BoCaseDetail } from "@/lib/pc/bo-queue"
 import { BO_STATE_CLASS, BO_STATE_LABEL } from "@/lib/pc/bo-queue"
 import { elapsedSince } from "@/lib/case-status"
 import {
+  boArchiveCase,
   boClearNotifyFlag,
   boCloseCase,
   boNotifyClient,
   boReopenCase,
 } from "@/actions/bo-price-checker"
+import { ARCHIVE_REASONS, CLOSED_REASON_LABEL_PT } from "@/lib/pc/archive"
 import { BoWhatsappLink } from "@/components/bo/whatsapp-link"
 import { countryName, flagOf } from "@/lib/countries"
 
@@ -114,6 +116,10 @@ export function BoCaseHeader({
   const [message, setMessage] = useState("")
   const [byEmail, setByEmail] = useState(true)
   const [byWhatsapp, setByWhatsapp] = useState(true)
+  /* PRO-10 · o formulário de arquivo. */
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [archiveReason, setArchiveReason] = useState<string>("fechado_fora_plataforma")
+  const [archiveNote, setArchiveNote] = useState("")
 
   /* NT-07 · "disponível em qualquer caso a partir da fase de proposta". Antes
      disso não há nada sobre que avisar: o cliente ainda está à espera da
@@ -248,6 +254,18 @@ export function BoCaseHeader({
             </button>
           )}
 
+          {/* PRO-10 · arquivar em qualquer estado, com motivo. */}
+          {row.state !== "fechado" && (
+            <button
+              className="btn btn-sm"
+              type="button"
+              disabled={pending}
+              onClick={() => setArchiveOpen((open) => !open)}
+            >
+              Arquivar…
+            </button>
+          )}
+
           {row.state === "fechado" && (
             <button
               className="btn btn-sm"
@@ -306,6 +324,70 @@ export function BoCaseHeader({
 
       {/* NT-07 · o texto é escrito por uma pessoa. O sistema não inventa avisos
           de mudanças de horário — ver a decisão Q5 do backlog. */}
+      {archiveOpen && row.state !== "fechado" && (
+        <div className="panel" style={{ margin: "12px 0 0" }}>
+          <div className="panel-b">
+            <div className="f s6">
+              <label>Motivo do arquivo · obrigatório</label>
+              <select value={archiveReason} onChange={(e) => setArchiveReason(e.target.value)}>
+                {ARCHIVE_REASONS.map((reason) => (
+                  <option key={reason} value={reason}>
+                    {CLOSED_REASON_LABEL_PT[reason]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="f s12" style={{ marginTop: 10 }}>
+              <label>
+                Nota {archiveReason === "outro" ? "· obrigatória" : "· opcional"}
+              </label>
+              <textarea
+                rows={2}
+                value={archiveNote}
+                onChange={(e) => setArchiveNote(e.target.value)}
+                placeholder="Ex.: fechou por telefone, pagou ao balcão."
+              />
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <button
+                className="btn btn-sm btn-primary"
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      `Arquivar ${row.reference ?? "este caso"}? Sai das filas de trabalho e só um administrador o reabre.`
+                    )
+                  ) {
+                    return
+                  }
+                  startTransition(async () => {
+                    setError(null)
+                    const result = await boArchiveCase({
+                      caseId: row.caseId,
+                      reason: archiveReason,
+                      note: archiveNote,
+                    })
+                    if (result.ok) {
+                      setNotice(result.notice ?? null)
+                      setArchiveOpen(false)
+                      router.refresh()
+                    } else {
+                      setError(result.error)
+                    }
+                  })
+                }}
+              >
+                {pending ? "A arquivar…" : "Arquivar caso"}
+              </button>
+              <button className="btn btn-sm" type="button" onClick={() => setArchiveOpen(false)}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {noticeOpen && (
         <div className="panel" style={{ margin: "12px 0 0" }}>
           <div className="panel-b">

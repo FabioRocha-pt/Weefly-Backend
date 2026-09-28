@@ -12,12 +12,14 @@
  * sítio que o resolve, em vez de aceitar um `caseId` do formulário.
  */
 
+import { createHash } from "crypto"
 import { revalidatePath } from "next/cache"
 import { cookies, headers } from "next/headers"
 import { z } from "zod"
 
 import { LOCALE_COOKIE_MAX_AGE, isLocale } from "@/i18n/config"
-import { PC_LOCALE_COOKIE } from "@/lib/pc/locale"
+import { PC_LOCALE_COOKIE, pcLocale } from "@/lib/pc/locale"
+import { getTranslator, localeForClient } from "@/i18n/server"
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import {
@@ -122,6 +124,14 @@ const requestSchema = z
     locale: z.enum(["pt", "en", "fr"]).default("en"),
     currency: z.string().refine((v) => CURRENCIES.includes(v), "Moeda"),
     agentSlug: z.string().trim().max(40).nullable().optional(),
+    /* PRO-06 · a empresa do link. Validada no intake contra a allowlist. */
+    companySlug: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-z0-9-]{1,63}$/)
+      .nullable()
+      .optional(),
   })
   .superRefine((v, ctx) => {
     const expectedDial = COUNTRY_BY_ISO[v.country]?.dial
@@ -203,6 +213,26 @@ export type PcRequestInput = z.input<typeof requestSchema>
  * responsabilidade de quem chama (localStorage + o URL), porque é a única coisa
  * que lhe devolve o pedido se ele fechar o browser.
  */
+
+/**
+ * T-08 · os erros na língua do cliente, e do dicionário.
+ *
+ * Eram 28 frases em inglês escritas aqui, e um cliente que lia o ecrã em
+ * português recebia "This link is no longer available." — o critério "nenhum
+ * ecrã mistura línguas" falhava justamente no momento em que alguma coisa corre
+ * mal. A língua resolve-se como a da página (`pcLocale`): o `?lang=`, o cookie
+ * deste link, e a guardada no lead.
+ */
+function pcError(
+  key: string,
+  where: { token?: string; stored?: string | null } = {}
+): string {
+  const locale = where.token
+    ? pcLocale({ token: where.token, stored: where.stored ?? null })
+    : localeForClient(where.stored ?? null)
+  return getTranslator(locale)(`pc.errors.${key}`)
+}
+
 export async function submitPcRequest(
   input: PcRequestInput
 ): Promise<PcResultWith<{ token: string; reference: string }>> {
@@ -278,6 +308,7 @@ export async function submitPcRequest(
     locale: v.locale,
     currency: v.currency,
     agentSlug: v.agentSlug ?? null,
+    companySlug: v.companySlug ?? null,
     /* O ecrã de consentimento promete guardar IP e dispositivo. */
     consentIp: ip,
     consentAgent: head.get("user-agent")?.slice(0, 300) ?? null,
@@ -286,7 +317,7 @@ export async function submitPcRequest(
   if (!created) {
     return {
       ok: false,
-      error: "We could not save your request. Please try again in a moment.",
+      error: pcError("saveRequest", { stored: input.locale }),
     }
   }
 
@@ -325,16 +356,23 @@ export async function choosePcOffer(
   offerId: string
 ): Promise<PcResult> {
   const lookup = await loadPcState(token)
-  if (!lookup.ok) return { ok: false, error: "This link is no longer available." }
+  if (!lookup.ok) return { ok: false, error: pcError("linkUnavailable", { token }) }
 
   const state = lookup.state
-  if (state.cancelled) return { ok: false, error: "This request was cancelled." }
+  if (state.cancelled) return { ok: false, error: pcError("requestCancelled", { token, stored: state.contact.locale }) }
   if (state.expiry.expired) {
-    return { ok: false, error: "These options have expired. Ask for a fresh search." }
+    return { ok: false, error: pcError("offersExpired", { token, stored: state.contact.locale }) }
   }
 
   const offer = state.offers.find((o) => o.id === offerId)
-  if (!offer) return { ok: false, error: "That option is not available." }
+  if (!offer) return { ok: false, error: pcError("offerUnavailable", { token, stored: state.contact.locale }) }
+
+  /* T-02 · depois de o pagamento estar confirmado a oferta está paga: trocar
+     já não é uma escolha, é uma alteração que passa pela equipa. O botão
+     some no ecrã; esta é a mesma regra do lado do servidor. */
+  if (state.payment && (state.payment.status === "COMPLETED" || state.payment.admin_confirmed)) {
+    return { ok: false, error: pcError("offerPaid", { token, stored: state.contact.locale }) }
+  }
 
   /*
    * T-02 · trocar de opção não pode deixar o cliente encalhado.
@@ -359,7 +397,7 @@ export async function choosePcOffer(
   const changed = Boolean(previousOfferId) && previousOfferId !== offerId
 
   const recorded = await recordOfferSelection(state.caseId, offerId)
-  if (!recorded) return { ok: false, error: "We could not record your choice." }
+  if (!recorded) return { ok: false, error: pcError("choiceNotRecorded", { token, stored: state.contact.locale }) }
 
   const amount = offerTotal(offer, state.pax)
 
@@ -419,7 +457,7 @@ export async function choosePcOffer(
         caseId: state.caseId,
         kind: "pay_instructions_voided",
         title: "Instruções de pagamento anuladas",
-        detail: `O cliente trocou de opção e o valor passou de ${
+        detail: `O cliente trocou de oferta e o valor passou de ${
           state.payment.amount / 100
         } para ${amount / 100} ${state.quoteCurrency} — o link antigo cobrava o preço errado.`,
         actorKind: "system",
@@ -427,11 +465,20 @@ export async function choosePcOffer(
       })
     }
 
+  }
+
+  /*
+   * T-02 · "a troca fica registada" — sempre, e não só quando já havia um
+   * pagamento. Sem chave: A → B → A são duas trocas, e as duas contam.
+   */
+  if (changed) {
     await logCaseEvent({
       caseId: state.caseId,
       kind: "offer_changed",
-      title: "Cliente trocou de opção",
-      detail: `${state.payment.amount / 100} → ${amount / 100} ${state.quoteCurrency}`,
+      title: "Cliente trocou de oferta",
+      detail: state.payment
+        ? `${state.payment.amount / 100} → ${amount / 100} ${state.quoteCurrency}`
+        : `${offer.name || carrierName(offer.segments[0]?.carrier_code)} · ${amount / 100} ${state.quoteCurrency}`,
       actorKind: "client",
       payload: { from: previousOfferId, to: offerId, amount },
     })
@@ -448,7 +495,7 @@ export async function choosePcOffer(
   const fresh = await logCaseEvent({
     caseId: state.caseId,
     kind: "offer_selected",
-    title: "Cliente escolheu a opção",
+    title: "Cliente escolheu a oferta",
     detail: `${offer.name || carrierName(offer.segments[0]?.carrier_code)} · ${amount / 100} ${recorded.currency}`,
     actorKind: "client",
     payload: { offerId, amount },
@@ -501,14 +548,14 @@ export async function savePcPassengers(
   rows: PcPassengerInput[]
 ): Promise<PcResult> {
   const lookup = await loadPcState(token)
-  if (!lookup.ok) return { ok: false, error: "This link is no longer available." }
+  if (!lookup.ok) return { ok: false, error: pcError("linkUnavailable", { token }) }
 
   const state = lookup.state
   if (!state.selectedOfferId) {
-    return { ok: false, error: "Choose an option first." }
+    return { ok: false, error: pcError("chooseOfferFirst", { token, stored: state.contact.locale }) }
   }
   if (state.payment?.status === "COMPLETED") {
-    return { ok: false, error: "This booking is already paid. Talk to us to change a name." }
+    return { ok: false, error: pcError("paidNoNameChange", { token, stored: state.contact.locale }) }
   }
 
   const expected = paxTotal(state.request)
@@ -530,7 +577,7 @@ export async function savePcPassengers(
   }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Service unavailable." }
+  if (!admin) return { ok: false, error: pcError("unavailable", { token, stored: state.contact.locale }) }
 
   await admin.from("case_passengers").delete().eq("case_id", state.caseId)
 
@@ -553,7 +600,7 @@ export async function savePcPassengers(
 
   if (error) {
     console.error("[pc] passageiros não guardados:", error.message)
-    return { ok: false, error: "We could not save the passenger details." }
+    return { ok: false, error: pcError("passengersNotSaved", { token, stored: state.contact.locale }) }
   }
 
   await admin
@@ -569,12 +616,28 @@ export async function savePcPassengers(
     .eq("stage", 2)
     .neq("status", "submetido")
 
+  /*
+   * T-22 · submeter os mesmos passaportes outra vez (o `?view=p7` deixa) não é
+   * uma notícia nova. A chave é a lista de passaportes: corrigir um número
+   * muda a lista, e essa correcção continua a aparecer.
+   */
+  const passportSet = createHash("sha256")
+    .update(
+      parsed.data
+        .map((p) => `${p.passportNumber.toUpperCase()}|${p.surname}|${p.given}`)
+        .sort()
+        .join(";")
+    )
+    .digest("hex")
+    .slice(0, 16)
+
   await logCaseEvent({
     caseId: state.caseId,
     kind: "passengers_submitted",
     title: "Passaportes submetidos",
     detail: `${parsed.data.length} de ${expected}`,
     actorKind: "client",
+    once: `passengers_submitted:${passportSet}`,
   })
 
   /*
@@ -672,12 +735,12 @@ export async function setPcPayMethod(
   provider: string | null
 ): Promise<PcResult> {
   if (!METHODS.includes(method as PayMethodId)) {
-    return { ok: false, error: "Unknown payment method." }
+    return { ok: false, error: pcError("unknownMethod", { token }) }
   }
 
   const lookup = await loadPcState(token)
   if (!lookup.ok || !lookup.state.payment) {
-    return { ok: false, error: "Nothing to pay yet." }
+    return { ok: false, error: pcError("nothingToPay", { token }) }
   }
 
   const previous = lookup.state.payment.method
@@ -736,14 +799,14 @@ export async function uploadPcProof(
   formData: FormData
 ): Promise<PcResultWith<{ reviewHours: number }>> {
   const lookup = await loadPcState(token)
-  if (!lookup.ok) return { ok: false, error: "This link is no longer available." }
+  if (!lookup.ok) return { ok: false, error: pcError("linkUnavailable", { token }) }
 
   const state = lookup.state
-  if (!state.payment) return { ok: false, error: "Nothing to pay yet." }
+  if (!state.payment) return { ok: false, error: pcError("nothingToPay", { token, stored: state.contact.locale }) }
 
   const file = formData.get("proof")
   if (!(file instanceof File) || file.size === 0) {
-    return { ok: false, error: "Attach the proof of your payment." }
+    return { ok: false, error: pcError("attachProof", { token, stored: state.contact.locale }) }
   }
 
   const method = String(formData.get("method") ?? "") as PayMethodId
@@ -760,14 +823,14 @@ export async function uploadPcProof(
 
   if (!outcome.ok) {
     const message: Record<string, string> = {
-      too_big: "That file is over 8 MB.",
-      bad_type: "Send a JPG, a PNG or a PDF.",
-      no_payment: "Nothing to pay yet.",
-      closed: "This payment is already closed. Talk to us on WhatsApp.",
-      upload_failed: "We could not store the file. Please try again.",
-      unavailable: "Service unavailable.",
+      too_big: pcError("fileTooBig", { token, stored: state.contact.locale }),
+      bad_type: pcError("badFileType", { token, stored: state.contact.locale }),
+      no_payment: pcError("nothingToPay", { token, stored: state.contact.locale }),
+      closed: pcError("paymentClosed", { token, stored: state.contact.locale }),
+      upload_failed: pcError("uploadFailed", { token, stored: state.contact.locale }),
+      unavailable: pcError("unavailable", { token, stored: state.contact.locale }),
     }
-    return { ok: false, error: message[outcome.reason] ?? "Upload failed." }
+    return { ok: false, error: message[outcome.reason] ?? pcError("uploadFailed", { token, stored: state.contact.locale }) }
   }
 
   const admin = createAdminClient()
@@ -815,12 +878,12 @@ export async function declarePcPaid(
   const lookup = await loadPcState(token)
   const payment = lookup.ok ? lookup.state.payment : null
   if (!lookup.ok || !payment) {
-    return { ok: false, error: "Nothing to pay yet." }
+    return { ok: false, error: pcError("nothingToPay", { token }) }
   }
 
   const state = lookup.state
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Service unavailable." }
+  if (!admin) return { ok: false, error: pcError("unavailable", { token, stored: state.contact.locale }) }
 
   const now = new Date().toISOString()
 
@@ -883,10 +946,10 @@ export async function setPcLocale(
   token: string,
   locale: string
 ): Promise<PcResult> {
-  if (!isLocale(locale)) return { ok: false, error: "Unknown language." }
+  if (!isLocale(locale)) return { ok: false, error: pcError("unknownLanguage", { token }) }
 
   const lookup = await loadPcState(token)
-  if (!lookup.ok) return { ok: false, error: "This link is no longer available." }
+  if (!lookup.ok) return { ok: false, error: pcError("linkUnavailable", { token }) }
 
   const state = lookup.state
 
@@ -945,14 +1008,14 @@ export async function sendPcMessage(
 ): Promise<PcResult> {
   const body = message.trim()
   if (body.length < 2) {
-    return { ok: false, error: "Write your message first." }
+    return { ok: false, error: pcError("writeMessage", { token }) }
   }
   if (body.length > 2000) {
-    return { ok: false, error: "That message is too long — 2000 characters max." }
+    return { ok: false, error: pcError("messageTooLong", { token }) }
   }
 
   const lookup = await loadPcState(token)
-  if (!lookup.ok) return { ok: false, error: "This link is no longer available." }
+  if (!lookup.ok) return { ok: false, error: pcError("linkUnavailable", { token }) }
 
   const state = lookup.state
 
@@ -981,18 +1044,18 @@ export async function cancelPcRequest(
   reason: string
 ): Promise<PcResult> {
   const lookup = await loadPcState(token)
-  if (!lookup.ok) return { ok: false, error: "This link is no longer available." }
+  if (!lookup.ok) return { ok: false, error: pcError("linkUnavailable", { token }) }
 
   const state = lookup.state
   if (state.payment?.status === "COMPLETED") {
     return {
       ok: false,
-      error: "This booking is paid. Talk to us on WhatsApp before cancelling.",
+      error: pcError("paidNoCancel", { token, stored: state.contact.locale }),
     }
   }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Service unavailable." }
+  if (!admin) return { ok: false, error: pcError("unavailable", { token, stored: state.contact.locale }) }
 
   await admin
     .from("booking_cases")
@@ -1029,11 +1092,11 @@ export async function cancelPcRequest(
 /** P8 · "quero uma nova pesquisa, com as mesmas datas". */
 export async function requestPcResearch(token: string): Promise<PcResult> {
   const lookup = await loadPcState(token)
-  if (!lookup.ok) return { ok: false, error: "This link is no longer available." }
+  if (!lookup.ok) return { ok: false, error: pcError("linkUnavailable", { token }) }
 
   const state = lookup.state
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Service unavailable." }
+  if (!admin) return { ok: false, error: pcError("unavailable", { token, stored: state.contact.locale }) }
 
   /* O caso volta à fila em "pedido_recebido": é isso que ele é outra vez — algo
      à espera de ser cotado. As propostas antigas ficam, e é o back-office que

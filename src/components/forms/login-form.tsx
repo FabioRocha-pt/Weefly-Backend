@@ -16,7 +16,7 @@ import { signIn } from "@/actions/auth"
 import { useT } from "@/i18n/provider"
 import { translateMessage } from "@/i18n/translate"
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string | null }) {
   const t = useT()
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -33,13 +33,15 @@ export function LoginForm() {
   const rememberMe = form.watch("rememberMe")
 
   // On valid input, hand off to the server action, which signs in and (on
-  // success) redirects to /inicio. Only errors return here.
+  // success) redirects back to `next` (PRO-01) or to the module chooser.
+  // Only errors return here.
   const onSubmit = async (data: LoginFormData) => {
     setServerError(null)
 
     const formData = new FormData()
     formData.set("email", data.email)
     formData.set("password", data.password)
+    if (next) formData.set("next", next)
 
     const result = await signIn(formData)
     if (result?.error) {

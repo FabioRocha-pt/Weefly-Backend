@@ -213,7 +213,8 @@ export const CURRENCIES = Object.keys(CUR)
  *
  * Sem transferência bancária — decisão confirmada, "removed from this phase".
  */
-export type PayMethodId = "stripe" | "vinti4" | "revolut" | "instapay" | "paypal"
+/* L-06 · quatro métodos: Stripe, InstaPay, Vinti4, Revolut. O PayPal saiu. */
+export type PayMethodId = "stripe" | "vinti4" | "revolut" | "instapay"
 
 /** O que o agente fornece: um endereço, uma referência, ou qualquer dos dois. */
 export type PaySupply = "link" | "reference" | "either"
@@ -256,7 +257,7 @@ export const MOMO_BY_COUNTRY: Record<string, string[]> = {
 }
 
 export const MOMO_COUNTRIES = Object.keys(MOMO_BY_COUNTRY)
-export const LINK_PROVIDERS = ["Revolut", "Wise", "PayPal", "Other"]
+export const LINK_PROVIDERS = ["Revolut", "Wise", "Other"]
 
 export interface PayMethod {
   id: PayMethodId
@@ -272,7 +273,7 @@ export interface PayMethod {
 }
 
 /**
- * Os cinco métodos, na ordem em que o cliente os vê.
+ * Os quatro métodos, na ordem em que o cliente os vê (L-06).
  *
  * O catálogo deixou de depender do país. Um cliente da diáspora em França e um
  * cliente na Praia escolhem da mesma lista, porque nenhuma destas vias é
@@ -308,19 +309,11 @@ export const PAY_METHODS: PayMethod[] = [
   },
   {
     id: "instapay",
-    t: "Instapay",
+    t: "InstaPay",
     s: "Referência de pagamento",
     supply: "reference",
-    fieldPt: "Referência Instapay",
+    fieldPt: "Referência InstaPay",
     samplePt: "INSTA-000-000",
-  },
-  {
-    id: "paypal",
-    t: "PayPal",
-    s: "Conta ou cartão",
-    supply: "link",
-    fieldPt: "Link PayPal",
-    samplePt: "https://paypal.me/…",
   },
 ]
 
@@ -333,8 +326,7 @@ export const METHOD_LABEL: Record<PayMethodId, string> = {
   stripe: "Card via Stripe",
   vinti4: "Vinti4 / 24",
   revolut: "Revolut",
-  instapay: "Instapay",
-  paypal: "PayPal",
+  instapay: "InstaPay",
 }
 
 /** As mesmas etiquetas em português, para o back-office. */
@@ -342,8 +334,7 @@ export const METHOD_LABEL_PT: Record<PayMethodId, string> = {
   stripe: "Stripe",
   vinti4: "Vinti4 / 24",
   revolut: "Revolut",
-  instapay: "Instapay",
-  paypal: "PayPal",
+  instapay: "InstaPay",
 }
 
 /**
@@ -362,6 +353,8 @@ export const LEGACY_METHOD_LABEL_PT: Record<string, string> = {
   momo: "Mobile money (método antigo)",
   local: "Métodos locais (método antigo)",
   cash: "Presencial (método antigo)",
+  /* L-06 · saiu dos ecrãs; os casos que o escolheram continuam a lê-lo. */
+  paypal: "PayPal (método retirado)",
 }
 
 /** A etiqueta de qualquer método, novo ou antigo. Nunca devolve vazio. */
@@ -375,7 +368,7 @@ export function methodLabelPt(id: string | null | undefined): string {
 /**
  * T-17 · a etiqueta na língua de quem lê.
  *
- * "Stripe" e "PayPal" são nomes próprios e não se traduzem; o que muda é a
+ * "Stripe" e "Revolut" são nomes próprios e não se traduzem; o que muda é a
  * frase à volta deles, que já vem do dicionário. Esta função existe para o
  * email ao cliente não escrever "Vinti4 / 24" em português dentro de uma frase
  * em francês — e para o back-office continuar a ler em português sem ter de

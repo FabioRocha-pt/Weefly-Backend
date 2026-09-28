@@ -35,6 +35,10 @@ yarn-error.log*
 .env
 .env*.local
 .env.production*
+# Cópias de env sem o ponto inicial, como env.production.extra, escapam às
+# regras acima. Os vídeos são gravações de ecrã e mostram a conta AWS.
+env.*
+*.mp4
 # O .env.example deixou de ser versionado: era o ficheiro onde as credenciais
 # acabavam por ser escritas à mão enquanto se testava, e um ficheiro de exemplo
 # que às vezes tem segredos reais é um ficheiro de segredos. As variáveis a

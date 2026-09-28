@@ -373,8 +373,10 @@ export async function markInstructionsSent(input: {
   actorEmail: string
   /** O prazo já gravado, quando existe. */
   currentDueAt: string | null
+  /** A hora do envio, quando quem chama já a fixou (o email leva o prazo). */
+  sentAt?: Date
 }): Promise<{ sentAt: string; dueAt: string | null; autoFilled: boolean }> {
-  const sentAt = new Date()
+  const sentAt = input.sentAt ?? new Date()
   const autoFilled = !input.currentDueAt
   const dueAt = autoFilled
     ? new Date(sentAt.getTime() + PAY_DUE_HOURS * 3600_000).toISOString()

@@ -20,6 +20,13 @@ import { cache } from "react"
 
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
+import {
+  ALLOWLIST_TENANT_COLUMNS,
+  tenantFromRow,
+  tenantMayEnter,
+  type AllowlistTenantRow,
+  type Tenant,
+} from "@/lib/tenancy"
 
 /** Contas convidadas de origem. Ver `bo_allowlist` na migração 0009. */
 const FALLBACK_EMAILS = ["fapi.rocha@gmail.com", "gocgo2008@gmail.com"]
@@ -38,6 +45,11 @@ export interface BoIdentity {
   email: string
   label: string
   role: "admin" | "manager"
+  /**
+   * O parceiro da conta (TEN-06). Nulo só numa base sem a migração 0020, onde
+   * o único parceiro que existe é o operador.
+   */
+  tenant: Tenant | null
 }
 
 export type BoAccess =
@@ -69,25 +81,31 @@ export const getBoAccess = cache(async (): Promise<BoAccess> => {
   const admin = createAdminClient()
 
   if (admin) {
-    const { data, error } = await admin
-      .from("bo_allowlist")
-      .select("email, label, role, active")
-      .ilike("email", email)
-      .maybeSingle()
+    const { data, error } = await readAllowlistRow(admin, email)
 
     // Erro de tabela ausente (migração 0009 não aplicada) cai no fallback.
     if (!error) {
-      if (!data || !(data as { active: boolean }).active) {
+      if (!data || !data.active) {
         return { ok: false, reason: "not_allowed", email }
       }
-      const row = data as { label: string | null; role: "admin" | "manager" }
+
+      const tenant = data.tenant
+      if (tenant) {
+        const gate = tenantMayEnter(tenant)
+        if (!gate.ok) {
+          console.warn(`[bo] ${email} recusado: ${gate.why}`)
+          return { ok: false, reason: "not_allowed", email }
+        }
+      }
+
       return {
         ok: true,
         identity: {
           userId: user.id,
           email,
-          label: row.label ?? email,
-          role: row.role,
+          label: data.label ?? email,
+          role: data.role,
+          tenant,
         },
       }
     }
@@ -99,9 +117,66 @@ export const getBoAccess = cache(async (): Promise<BoAccess> => {
 
   return {
     ok: true,
-    identity: { userId: user.id, email, label: email, role: "admin" },
+    identity: { userId: user.id, email, label: email, role: "admin", tenant: null },
   }
 })
+
+interface AllowlistRow {
+  label: string | null
+  role: "admin" | "manager"
+  active: boolean
+  tenant: Tenant | null
+}
+
+/**
+ * A linha da allowlist, com o parceiro quando a 0020 já está aplicada.
+ *
+ * Duas leituras e não uma porque o `main` e o `mvp2` partilham a mesma base:
+ * enquanto a 0020 não correr em produção, pedir `partner_id` dá erro de coluna
+ * inexistente, e esse erro não pode trancar a equipa fora. Nessa base só há um
+ * parceiro — o operador — e `tenant` fica nulo. Quando a 0020 estiver aplicada
+ * em todo o lado, a segunda leitura sai.
+ */
+async function readAllowlistRow(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  email: string
+): Promise<{ data: AllowlistRow | null; error: unknown }> {
+  const rich = await admin
+    .from("bo_allowlist")
+    .select(`label, role, active, ${ALLOWLIST_TENANT_COLUMNS}`)
+    .ilike("email", email)
+    .maybeSingle()
+
+  if (!rich.error) {
+    if (!rich.data) return { data: null, error: null }
+    const row = rich.data as unknown as AllowlistTenantRow & Omit<AllowlistRow, "tenant">
+    return {
+      data: { label: row.label, role: row.role, active: row.active, tenant: tenantFromRow(row) },
+      error: null,
+    }
+  }
+
+  // Só o "ainda não existe" recua para a leitura antiga. Qualquer outro erro
+  // é devolvido como erro: recuar nele deixaria entrar sem parceiro uma conta
+  // que, com a 0020 aplicada, seria recusada.
+  if (!isSchemaNotMigrated(rich.error)) return { data: null, error: rich.error }
+
+  const legacy = await admin
+    .from("bo_allowlist")
+    .select("label, role, active")
+    .ilike("email", email)
+    .maybeSingle()
+
+  if (legacy.error) return { data: null, error: legacy.error }
+  if (!legacy.data) return { data: null, error: null }
+  const row = legacy.data as Omit<AllowlistRow, "tenant">
+  return { data: { ...row, tenant: null }, error: null }
+}
+
+/** 42703: coluna inexistente. PGRST200: relação `partners` desconhecida. */
+function isSchemaNotMigrated(error: { code?: string } | null): boolean {
+  return error?.code === "42703" || error?.code === "PGRST200"
+}
 
 /**
  * Para as server actions: devolve a identidade ou null.

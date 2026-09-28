@@ -325,13 +325,6 @@ const METHOD_PATHS: Record<string, JSX.Element> = {
       <path d="M5.8 7.2h6.4M5.8 10.4h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </>
   ),
-  /* PayPal — as duas setas sobrepostas do símbolo, simplificadas. */
-  paypal: (
-    <>
-      <path d="M5.4 14.4l1.8-9.8h3.4a2.7 2.7 0 010 5.4H7.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 14.4l.6-3.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </>
-  ),
   transfer: (
     <>
       <path d="M2.5 7L9 3l6.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />

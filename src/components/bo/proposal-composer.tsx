@@ -63,6 +63,9 @@ import {
   type OfferSegment,
   type PaxCounts,
   type Proposal,
+  type SegmentBaggage,
+  BAGGAGE_MAX_KG,
+  BAGGAGE_MAX_PIECES,
   flightCodes,
   formatAmountPlain,
   formatDuration,
@@ -85,7 +88,6 @@ import {
 } from "@/lib/proposal-math"
 import {
   Check2,
-  CountField,
   Field,
   Flag,
   IconButton,
@@ -93,6 +95,7 @@ import {
   MoneyInput,
   PriceRow,
   Section,
+  StepField,
   inputClass,
   useAirportNames,
 } from "@/components/bo/composer-bits"
@@ -164,6 +167,101 @@ interface SegmentState {
   arrive_at: string
   terminal_from: string
   terminal_to: string
+  /* T-10 · a bagagem deste voo. Ver `BaggageState`. */
+  baggage: BaggageState
+}
+
+/**
+ * T-10 · o bloco de bagagem de um voo, como está no ecrã.
+ *
+ * Todos os blocos mostram números — mesmo os que ninguém respondeu — porque um
+ * bloco em branco obrigava a carregar cinco vezes para dizer o que a tarifa diz
+ * quase sempre. O que distingue uma resposta de um palpite é `answered`:
+ *
+ *   · `from: "flight"` — veio da linha gravada deste voo, ou alguém mexeu;
+ *   · `from: "offer"` — oferta anterior ao T-10: os números são as contagens da
+ *     oferta, que é o que o cliente já lê por queda;
+ *   · `from: "request"` — oferta nova: os números são o pedido do cliente (uma
+ *     mão, o porão que ele pediu), com a marca amarela *do pedido* (C-28).
+ *
+ * Um bloco por responder **não é gravado**: não sai em `draftOf`, o voo não ganha
+ * linha na base e continua a cair na contagem da oferta. Um valor que só veio
+ * do pedido não é uma promessa da companhia, e escrevê-lo tornava-o uma.
+ */
+interface BaggageState {
+  personal: number
+  cabinPieces: number
+  cabinKg: number | null
+  checkedPieces: number
+  checkedKg: number | null
+  /* Sem ecrã ainda; viajam para não se perderem na regravação dos trechos. */
+  cabinDimensions: string | null
+  checkedDimensions: string | null
+  fareConditions: string | null
+  answered: boolean
+  from: "flight" | "offer" | "request"
+}
+
+/** O peso com que o `+` a partir de "—" começa: o de balcão mais comum. */
+const START_KG = { cabin: 8, checked: 23 }
+
+function savedBaggage(row: SegmentBaggage): BaggageState {
+  return {
+    personal: row.personal_item ? 1 : 0,
+    cabinPieces: row.cabin_pieces,
+    cabinKg: row.cabin_kg,
+    checkedPieces: row.checked_pieces,
+    checkedKg: row.checked_kg,
+    cabinDimensions: row.cabin_dimensions ?? null,
+    checkedDimensions: row.checked_dimensions ?? null,
+    fareConditions: row.fare_conditions ?? null,
+    answered: true,
+    from: "flight",
+  }
+}
+
+/**
+ * T-10 · o bloco de um voo sem linha própria.
+ *
+ * Primeiro a oferta (é o que o cliente já lê hoje por queda, e o bloco tem de
+ * mostrar o mesmo); só sem nada na oferta é que entra o pedido do cliente —
+ * `baggage_hold` do link 1 (VIP-10) — com uma mala de mão e o artigo pessoal,
+ * que é o que quase todas as tarifas de economia incluem.
+ */
+function seedBaggage(
+  offer: { baggage_cabin_count: number | null; baggage_hold_count: number | null },
+  requestedBaggage: number
+): BaggageState {
+  const fromOffer =
+    offer.baggage_cabin_count !== null || offer.baggage_hold_count !== null
+  return {
+    personal: 1,
+    cabinPieces: offer.baggage_cabin_count ?? 1,
+    cabinKg: null,
+    checkedPieces: fromOffer
+      ? (offer.baggage_hold_count ?? 0)
+      : Math.max(0, Math.min(requestedBaggage, BAGGAGE_MAX_PIECES)),
+    checkedKg: null,
+    cabinDimensions: null,
+    checkedDimensions: null,
+    fareConditions: null,
+    answered: false,
+    from: fromOffer ? "offer" : "request",
+  }
+}
+
+function baggageDraft(state: BaggageState): SegmentBaggage | null {
+  if (!state.answered) return null
+  return {
+    personal_item: state.personal > 0,
+    cabin_pieces: state.cabinPieces,
+    cabin_kg: state.cabinKg,
+    checked_pieces: state.checkedPieces,
+    checked_kg: state.checkedKg,
+    cabin_dimensions: state.cabinDimensions,
+    checked_dimensions: state.checkedDimensions,
+    fare_conditions: state.fareConditions,
+  }
 }
 
 interface OfferState {
@@ -250,7 +348,7 @@ function dropLocalDraft(caseId: string, offerId: string) {
   }
 }
 
-function fromAdminOffer(offer: AdminOffer): OfferState {
+function fromAdminOffer(offer: AdminOffer, requestedBaggage = 0): OfferState {
   return {
     id: offer.id,
     name: offer.name ?? "",
@@ -299,6 +397,9 @@ function fromAdminOffer(offer: AdminOffer): OfferState {
         arrive_at: localMoment(s.arrive_at),
         terminal_from: s.terminal_from ?? "",
         terminal_to: s.terminal_to ?? "",
+        baggage: s.baggage
+          ? savedBaggage(s.baggage)
+          : seedBaggage(offer, requestedBaggage),
       })),
   }
 }
@@ -333,7 +434,11 @@ function draftOf(state: OfferState): OfferDraft {
     fare_held_ref: state.fare_held_ref,
     agent_note: state.agent_note,
     segments: state.segments.map(
-      ({ key: _key, ...rest }): SegmentDraft => rest
+      ({ key: _key, baggage, ...rest }): SegmentDraft => ({
+        ...rest,
+        /* T-10 · só o que alguém respondeu. Ver `BaggageState`. */
+        baggage: baggageDraft(baggage),
+      })
     ),
   }
 }
@@ -392,6 +497,7 @@ function asOffer(state: OfferState, position: number): Offer {
         arrive_at: s.arrive_at || null,
         terminal_from: s.terminal_from || null,
         terminal_to: s.terminal_to || null,
+        baggage: baggageDraft(s.baggage),
       })
     ),
   }
@@ -422,7 +528,10 @@ const BLOCKER_TARGET: Record<string, string> = {
   "blockers.childFare": "offer-price-child",
 }
 
-function emptySegment(direction: OfferDirection): SegmentState {
+function emptySegment(
+  direction: OfferDirection,
+  baggage: BaggageState
+): SegmentState {
   return {
     key: nextKey(),
     direction,
@@ -437,6 +546,7 @@ function emptySegment(direction: OfferDirection): SegmentState {
     arrive_at: "",
     terminal_from: "",
     terminal_to: "",
+    baggage,
   }
 }
 
@@ -479,7 +589,7 @@ export function BoProposalComposer({
   const published = proposal.status === "publicada"
 
   const [offers, setOffers] = useState<OfferState[]>(() =>
-    serverOffers.map(fromAdminOffer)
+    serverOffers.map((o) => fromAdminOffer(o, requestedBaggage))
   )
   const [openId, setOpenId] = useState<string | null>(
     () => serverOffers[0]?.id ?? null
@@ -497,7 +607,7 @@ export function BoProposalComposer({
 
   const snapshots = useRef<Record<string, string>>(
     Object.fromEntries(
-      serverOffers.map((o) => [o.id, JSON.stringify(draftOf(fromAdminOffer(o)))])
+      serverOffers.map((o) => [o.id, JSON.stringify(draftOf(fromAdminOffer(o, requestedBaggage)))])
     )
   )
 
@@ -508,7 +618,7 @@ export function BoProposalComposer({
    * (é onde o vendedor está a escrever) e fica.
    */
   useEffect(() => {
-    const incoming = serverOffers.map(fromAdminOffer)
+    const incoming = serverOffers.map((o) => fromAdminOffer(o, requestedBaggage))
     const sameSet =
       incoming.length === offers.length &&
       incoming.every((o, i) => o.id === offers[i]?.id)
@@ -774,6 +884,146 @@ export function BoProposalComposer({
   )
 }
 
+// --- T-10 · a bagagem de um voo ---------------------------------------------
+
+/**
+ * O bloco de bagagem de um trecho: artigo pessoal, mão e porão, em peças ×
+ * quilos, com contadores e nunca texto livre (FB-03 continua de pé: "1 peça,
+ * 8 kg", "uma mala" e "sim" não se comparam entre si).
+ *
+ * As etiquetas estão escritas aqui e não nos dicionários: o back-office é em
+ * português, e estas não saem para o cliente — o ecrã dele tem as suas, em
+ * `pc.bags.*` e `pc.offer.*`.
+ */
+function SegmentBaggageBlock({
+  baggage,
+  requestedBaggage,
+  multi,
+  disabled,
+  onChange,
+  onCopyToAll,
+}: {
+  baggage: BaggageState
+  requestedBaggage: number
+  multi: boolean
+  disabled: boolean
+  onChange: (changes: Partial<BaggageState>) => void
+  onCopyToAll: () => void
+}) {
+  const fromRequest = !baggage.answered && baggage.from === "request"
+  /* VIP-10 · o que o cliente pediu, ao lado do que a tarifa dá. Menos do que o
+     pedido não é um erro — é uma tarifa mais barata — mas tem de se ver. */
+  const short = requestedBaggage > 0 && baggage.checkedPieces < requestedBaggage
+
+  return (
+    <div className="col-span-12 rounded-lg border border-adm-line-soft bg-adm-panel p-2.5">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-[.07em] text-adm-txt-2">
+          Bagagem neste voo
+        </span>
+        {baggage.answered ? (
+          <span className="text-[10.5px] text-adm-muted">peças × kg por peça</span>
+        ) : (
+          <span
+            className="rounded-[4px] border border-adm-warn/45 bg-adm-warn/[.16] px-1 py-px text-[9.5px] font-bold text-[#F0C983]"
+            title={
+              baggage.from === "offer"
+                ? "Estes valores são a contagem antiga da oferta, para a viagem inteira. O cliente vê-os assim até alguém confirmar este voo."
+                : "Estes valores vieram do pedido do cliente. Enquanto ninguém os confirmar, não são gravados e o cliente não os vê."
+            }
+          >
+            ! {baggage.from === "offer" ? "da oferta" : "do pedido"} · por confirmar
+          </span>
+        )}
+        <div className="ml-auto flex gap-1.5">
+          {!baggage.answered && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange({})}
+              className="rounded-md border border-adm-warn/50 bg-adm-panel-2 px-2 py-1 text-[11px] font-bold text-[#F0C983] transition-colors hover:bg-adm-raise disabled:opacity-50"
+            >
+              Confirmar
+            </button>
+          )}
+          {multi && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={onCopyToAll}
+              className="rounded-md border border-adm-line bg-adm-panel-2 px-2 py-1 text-[11px] font-bold text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt disabled:opacity-50"
+            >
+              Aplicar a todos os voos
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-12 gap-2.5">
+        <Field label="Artigo pessoal" span={2} hint="mochila, debaixo do banco">
+          <StepField
+            value={baggage.personal}
+            onChange={(v) => onChange({ personal: v ?? 0 })}
+            max={1}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Mão · peças" span={2}>
+          <StepField
+            value={baggage.cabinPieces}
+            onChange={(v) => onChange({ cabinPieces: v ?? 0 })}
+            max={BAGGAGE_MAX_PIECES}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Mão · kg" span={2} hint="— sem peso indicado">
+          <StepField
+            value={baggage.cabinKg}
+            onChange={(v) => onChange({ cabinKg: v })}
+            min={1}
+            max={BAGGAGE_MAX_KG}
+            start={START_KG.cabin}
+            unit="kg"
+            nullable
+            disabled={disabled || baggage.cabinPieces === 0}
+          />
+        </Field>
+        <Field
+          label="Porão · peças"
+          span={3}
+          prefilled={fromRequest}
+          hint={
+            requestedBaggage > 0
+              ? short
+                ? `O cliente pediu ${requestedBaggage}`
+                : `Pedido: ${requestedBaggage}`
+              : undefined
+          }
+        >
+          <StepField
+            value={baggage.checkedPieces}
+            onChange={(v) => onChange({ checkedPieces: v ?? 0 })}
+            max={BAGGAGE_MAX_PIECES}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Porão · kg" span={3} hint="— sem peso indicado">
+          <StepField
+            value={baggage.checkedKg}
+            onChange={(v) => onChange({ checkedKg: v })}
+            min={1}
+            max={BAGGAGE_MAX_KG}
+            start={START_KG.checked}
+            unit="kg"
+            nullable
+            disabled={disabled || baggage.checkedPieces === 0}
+          />
+        </Field>
+      </div>
+    </div>
+  )
+}
+
 // --- Oferta aberta -----------------------------------------------------------
 
 function OpenOffer({
@@ -838,7 +1088,37 @@ function OpenOffer({
   }))
 
   function addSegment() {
-    onPatch({ segments: [...offer.segments, emptySegment(leg)] })
+    /* T-10 · o voo novo herda a bagagem do último desta oferta — uma escala
+       na mesma tarifa quase sempre leva a mesma franquia — e fica no mesmo
+       estado de resposta dele. Sem voo anterior, nasce do pedido. */
+    const last = offer.segments[offer.segments.length - 1]
+    const baggage = last
+      ? { ...last.baggage }
+      : seedBaggage(offer, requestedBaggage)
+    onPatch({ segments: [...offer.segments, emptySegment(leg, baggage)] })
+  }
+
+  /** T-10 · mexer num bloco é respondê-lo. */
+  function patchBaggage(key: string, changes: Partial<BaggageState>) {
+    const segment = offer.segments.find((s) => s.key === key)
+    if (!segment) return
+    onPatchSegment(key, {
+      baggage: { ...segment.baggage, ...changes, answered: true, from: "flight" },
+    })
+  }
+
+  /** T-10 · "igual em todos os voos", que é o caso mais comum. */
+  function copyBaggageToAll(key: string) {
+    const source = offer.segments.find((s) => s.key === key)
+    if (!source) return
+    const baggage: BaggageState = {
+      ...source.baggage,
+      answered: true,
+      from: "flight",
+    }
+    onPatch({
+      segments: offer.segments.map((s) => ({ ...s, baggage: { ...baggage } })),
+    })
   }
 
   function removeSegment(key: string) {
@@ -1234,6 +1514,15 @@ function OpenOffer({
                       </span>
                     </div>
                   </div>
+
+                  <SegmentBaggageBlock
+                    baggage={segment.baggage}
+                    requestedBaggage={requestedBaggage}
+                    multi={offer.segments.length > 1}
+                    disabled={disabled}
+                    onChange={(changes) => patchBaggage(segment.key, changes)}
+                    onCopyToAll={() => copyBaggageToAll(segment.key)}
+                  />
                 </div>
               </div>
             )
@@ -1260,25 +1549,18 @@ function OpenOffer({
         */}
         <Section title={t("admin.composerConditions")}>
           <div className="grid grid-cols-12 gap-2.5">
-            {/* FB-03 · contadores em vez de texto livre.
-                "1 peça, 8 kg", "uma mala", "8kg" e "sim" eram todos respostas
-                válidas ao mesmo campo, e nenhuma delas se compara com outra —
-                que é a única coisa que o ecrã do cliente faz com este valor. */}
-            <Field label={t("admin.composerBaggageCabin")} span={4}>
-              <CountField
-                value={offer.baggage_cabin_count}
-                onChange={(v) => onPatch({ baggage_cabin_count: v })}
-              />
-            </Field>
-            <Field label={t("admin.composerBaggageHold")} span={4}>
-              <CountField
-                value={offer.baggage_hold_count}
-                onChange={(v) => onPatch({ baggage_hold_count: v })}
-                /* VIP-10 · o que o cliente pediu, ao lado do que a tarifa dá.
-                   Uma proposta com menos bagagem do que a pedida não é um erro
-                   — é uma tarifa mais barata — mas tem de ser uma escolha. */
-                requested={requestedBaggage}
-              />
+            {/* T-10 · a bagagem saiu daqui para dentro de cada voo.
+
+                Havia dois contadores para a viagem inteira (FB-03), e o T-10
+                explica porque não chegam: "um cliente pode deliberadamente ir
+                com mais bagagem e voltar com menos para reduzir o custo". Cada
+                trecho do itinerário tem agora o seu bloco — artigo pessoal, mão
+                e porão, em peças × quilos. A contagem da oferta continua na
+                base, derivada dos voos ao gravar, para quem ainda a lê. */}
+            <Field label="Bagagem" span={8}>
+              <p className="flex h-[38px] items-center text-[12px] text-adm-muted">
+                Por voo, no bloco de bagagem de cada trecho do itinerário.
+              </p>
             </Field>
             {/* PC-B · "não reembolsável" passa a caixa.
                 Era uma frase em texto livre, e o cartão do cliente decidia se a

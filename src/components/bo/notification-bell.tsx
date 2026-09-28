@@ -20,6 +20,11 @@
  *     link, o que é o gesto de quem trabalha uma fila;
  *   · **lido e não lido persistem por utilizador** — `bo_alert_reads`, uma linha
  *     por par pessoa/acontecimento (migração 0016);
+ *   · PRO-11 · **abrir o painel não marca nada**. Cada aviso fica lido quando
+ *     se clica nele, o contador desce um a um, e os lidos ficam no painel,
+ *     esbatidos, até alguém os limpar;
+ *   · PRO-12 · "Marcar todas como lidas" e "Limpar" (tira os lidos), as duas
+ *     com confirmação;
  *   · **o contador actualiza sem recarregar a página** — o `BoLiveUpdates` já
  *     chama `router.refresh()` quando a base muda, e isto lê do servidor. Não
  *     há aqui temporizador nenhum, de propósito: um segundo relógio ao lado do
@@ -31,16 +36,21 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import type { BoAlert } from "@/lib/bo-alerts"
-import { boMarkAlertsRead } from "@/actions/bo-price-checker"
+import {
+  boClearReadAlerts,
+  boMarkAlertsRead,
+  boMarkAllAlertsRead,
+} from "@/actions/bo-price-checker"
 
 /** O que cada acontecimento é, escrito para quem atende. */
 const ALERT_LABEL: Record<string, string> = {
   request_submitted: "Pedido novo submetido",
-  offer_selected: "O cliente escolheu uma opção",
+  offer_selected: "O cliente escolheu uma oferta",
   passengers_submitted: "Passaportes submetidos",
   pay_method_chosen: "O cliente escolheu como pagar",
   proof_uploaded: "Comprovativo enviado",
   client_declared_paid: "O cliente diz que pagou",
+  client_message: "Mensagem do cliente",
   request_cancelled: "O cliente cancelou o pedido",
   payment_expired: "O prazo de pagamento expirou",
 }
@@ -63,9 +73,27 @@ export function BoNotificationBell({
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [, startTransition] = useTransition()
+  const [pending, startTransition] = useTransition()
+  /* O que foi lido neste separador e o servidor ainda não devolveu. Faz o
+     contador descer no próprio clique, sem esperar pelo refresh. */
+  const [readHere, setReadHere] = useState<Set<string>>(() => new Set())
+  /* PRO-12 · a acção à espera de confirmação, se alguma. */
+  const [asking, setAsking] = useState<"all" | "clear" | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const box = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
+
+  /* Quando o servidor devolve a lista nova, as marcas locais já lá estão. */
+  useEffect(() => {
+    setReadHere(new Set())
+  }, [alerts])
+
+  const isUnread = (alert: BoAlert) => alert.unread && !readHere.has(alert.id)
+  const unreadNow = Math.max(
+    0,
+    unread - alerts.filter((a) => a.unread && readHere.has(a.id)).length
+  )
+  const readCount = alerts.filter((a) => !isUnread(a)).length
 
   /* Fechar: clique fora e Escape. O foco volta ao botão, porque quem navega por
      teclado ficava de outra forma no fim da página — o mesmo que o menu da
@@ -90,23 +118,37 @@ export function BoNotificationBell({
     }
   }, [open])
 
+  /*
+   * PRO-11 · abrir **não** marca nada.
+   *
+   * Marcava, com a ideia de que abrir era ler. Com 40 avisos, abrir o painel
+   * fazia-os desaparecer todos de uma vez — e um pedido novo ou um comprovativo
+   * ficava invisível sem ninguém dar por isso. Lido é o que se clicou.
+   */
   function toggle() {
-    const next = !open
-    setOpen(next)
+    setOpen((was) => !was)
+    setAsking(null)
+    setNotice(null)
+  }
 
-    /*
-     * Marcar como visto ao **abrir**, e não ao clicar numa entrada.
-     *
-     * Abrir a campainha é o gesto de as ler: quem a abre vê as dez linhas de
-     * uma vez. Marcar só a que ele clica deixaria as outras nove a contar para
-     * sempre, e o contador passaria a ser um número que nunca desce.
-     */
-    if (!next) return
-    const fresh = alerts.filter((a) => a.unread).map((a) => a.id)
-    if (fresh.length === 0) return
-
+  function readOne(alert: BoAlert) {
+    setOpen(false)
+    if (!isUnread(alert)) return
+    setReadHere((prev) => new Set(prev).add(alert.id))
     startTransition(async () => {
-      await boMarkAlertsRead(fresh)
+      await boMarkAlertsRead(alert.eventIds)
+      router.refresh()
+    })
+  }
+
+  function confirmAsked() {
+    const action = asking
+    setAsking(null)
+    if (!action) return
+    startTransition(async () => {
+      const result =
+        action === "all" ? await boMarkAllAlertsRead() : await boClearReadAlerts()
+      setNotice(result.ok ? (result.notice ?? null) : result.error)
       router.refresh()
     })
   }
@@ -116,7 +158,7 @@ export function BoNotificationBell({
       <button
         ref={trigger}
         className="bell"
-        title={unread > 0 ? `${unread} avisos por ver` : "Avisos"}
+        title={unreadNow > 0 ? `${unreadNow} avisos por ver` : "Avisos"}
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -132,7 +174,9 @@ export function BoNotificationBell({
         </svg>
         {/* O contador só existe quando há alguma coisa para contar. Um "0"
             pendurado é ruído com a forma de informação. */}
-        {unread > 0 && <span className="bell-n">{unread > 99 ? "99+" : unread}</span>}
+        {unreadNow > 0 && (
+          <span className="bell-n">{unreadNow > 99 ? "99+" : unreadNow}</span>
+        )}
       </button>
 
       {open && (
@@ -142,13 +186,50 @@ export function BoNotificationBell({
             <span className="mono">
               {alerts.length === 0
                 ? "nada por agora"
-                : `${alerts.length} · ${unread} por ver`}
+                : `${alerts.length} · ${unreadNow} por ver`}
             </span>
+            {alerts.length > 0 && (
+              <div className="alert-actions">
+                {asking ? (
+                  <>
+                    <span>
+                      {asking === "all"
+                        ? `Marcar ${unreadNow} como lidos?`
+                        : `Limpar ${readCount} já lidos?`}
+                    </span>
+                    <button type="button" disabled={pending} onClick={confirmAsked}>
+                      Sim
+                    </button>
+                    <button type="button" onClick={() => setAsking(null)}>
+                      Não
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      disabled={pending || unreadNow === 0}
+                      onClick={() => setAsking("all")}
+                    >
+                      Marcar todas como lidas
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pending || readCount === 0}
+                      onClick={() => setAsking("clear")}
+                    >
+                      Limpar lidas
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+            {notice && <span className="alert-notice">{notice}</span>}
           </div>
 
           {alerts.length === 0 ? (
             <p className="alert-empty">
-              Quando um cliente escolher uma opção, submeter passaportes ou
+              Quando um cliente escolher uma oferta, submeter passaportes ou
               enviar um comprovativo, aparece aqui.
             </p>
           ) : (
@@ -157,9 +238,9 @@ export function BoNotificationBell({
                 <Link
                   key={alert.id}
                   role="menuitem"
-                  className={`alert-row${alert.unread ? " unread" : ""}`}
+                  className={`alert-row${isUnread(alert) ? " unread" : " read"}`}
                   href={`/admin/price-checker/${alert.caseId}`}
-                  onClick={() => setOpen(false)}
+                  onClick={() => readOne(alert)}
                 >
                   <b>
                     {ALERT_LABEL[alert.kind] ?? alert.title}

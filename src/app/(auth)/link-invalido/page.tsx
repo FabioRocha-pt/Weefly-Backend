@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { AlertTriangle } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { SignupEmailActions } from "@/components/auth/signup-email-actions"
 import { Card, CardContent } from "@/components/ui/card"
 import { getI18n } from "@/i18n/server"
 
@@ -25,10 +25,9 @@ export default function LinkInvalidoPage() {
           {/* Description */}
           <p className="text-slate-600 mb-8 max-w-sm">{t("auth.invalidBody")}</p>
 
-          {/* Send new link button */}
-          <Button className="bg-orange-600 hover:bg-orange-700 mb-6">
-            {t("auth.invalidCta")}
-          </Button>
+          {/* PRO-08 · o botão existia e não fazia nada. Agora pede o email e
+              reenvia o link de ativação. */}
+          <SignupEmailActions email={null} askEmail />
 
           {/* Help text */}
           <p className="text-sm text-slate-500">
