@@ -1,0 +1,50 @@
+{
+  "bo": {
+    "adminCases": {
+      "nav": "Cases",
+      "title": "Cases across all partners",
+      "subtitle": "By partner, then by ministry. What each partner has in progress and what it has issued.",
+      "readOnly": "Read only. To change another partner's case, open it and use “Intervene” — it is recorded.",
+      "partner": "Partner",
+      "status": "Status",
+      "ministries": "Ministries",
+      "cases": "Cases",
+      "issued": "Issued",
+      "operator": "operator",
+      "noMinistry": "No ministry (retail)",
+      "partnerSubtitle": "{count} case(s), most recent first.",
+      "departure": "Departure",
+      "return": "Return",
+      "openInConcierge": "Open in Concierge",
+      "intervening": "Intervention in progress: {reason}",
+      "readOnlyCase": "Read only. Nothing on this screen changes the case.",
+      "client": "Client",
+      "contact": "Contact",
+      "pax": "Adults · children · infants",
+      "issuedAt": "Issued on",
+      "carrier": "Airline · consolidator",
+      "created": "Created",
+      "passengers": "Passengers",
+      "payments": "Payments",
+      "history": "History",
+      "intervene": {
+        "button": "Intervene in this case",
+        "explain": "You will work on another partner's case for 4 hours. The reason is recorded and shows in the case history the partner sees.",
+        "reasonPlaceholder": "Why? (e.g. partner asked by email)",
+        "confirm": "Intervene and open",
+        "cancel": "Cancel"
+      },
+      "banner": {
+        "title": "WeeFly Admin intervention until {until}",
+        "end": "End intervention"
+      },
+      "errors": {
+        "reasonMissing": "Write the reason for the intervention.",
+        "notAllowed": "Only WeeFly Admin can intervene.",
+        "invalid": "Invalid data.",
+        "notFound": "Case not found.",
+        "unavailable": "Could not record it right now. Try again."
+      }
+    }
+  }
+}

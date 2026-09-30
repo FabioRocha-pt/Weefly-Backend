@@ -38,6 +38,7 @@ import {
 import { recordOfferSelection, syncPaymentToOffer } from "@/lib/proposals"
 import { offerTotal } from "@/lib/proposal-math"
 import { logCaseEvent } from "@/lib/case-events"
+import { foldName, syncMinistryTravellers } from "@/lib/travellers"
 import {
   CURRENCIES,
   MAX_LEGS,
@@ -125,6 +126,8 @@ const requestSchema = z
     locale: z.enum(["pt", "en", "fr"]).default("en"),
     currency: z.string().refine((v) => CURRENCIES.includes(v), "Moeda"),
     agentSlug: z.string().trim().max(40).nullable().optional(),
+    /* MIN-01 · o token do link do ministério. Resolvido no intake. */
+    ministryToken: z.string().trim().regex(/^[A-Za-z0-9_-]{16,64}$/).optional(),
     /* PRO-06 · a empresa do link. Validada no intake contra a allowlist. */
     companySlug: z
       .string()
@@ -310,6 +313,7 @@ export async function submitPcRequest(
     currency: v.currency,
     agentSlug: v.agentSlug ?? null,
     companySlug: v.companySlug ?? null,
+    ministryToken: v.ministryToken ?? null,
     /* TEN-04 · o parceiro do subdomínio, lido dos cabeçalhos — nunca do
        formulário. */
     hostPartnerSlug: hostPartnerSlug(),
@@ -513,6 +517,31 @@ export async function choosePcOffer(
     await notifyAgent(state.caseId, "offer_selected", offerName)
   }
 
+  /*
+   * MIN-07 · "Se o saldo não cobrir, a secretária vê uma mensagem clara e a
+   * Alô é avisada." A mensagem é o ecrã do ministério (`fundsCover`); o aviso
+   * é este acontecimento, que acende a campainha e a fila do parceiro.
+   */
+  if (state.ministry) {
+    const admin = createAdminClient()
+    const { data: bc } = await admin!.from("booking_cases").select("organisation_id").eq("id", state.caseId).maybeSingle()
+    const orgId = (bc as { organisation_id: string | null } | null)?.organisation_id
+    if (orgId) {
+      const { data: balance } = await admin!.rpc("organisation_balance", { p_org: orgId })
+      if (balance != null && Number(balance) < amount) {
+        await logCaseEvent({
+          caseId: state.caseId,
+          kind: "ministry_insufficient_funds",
+          title: "Saldo da bolsa não cobre a opção escolhida",
+          detail: `${Number(balance) / 100} disponível · ${amount / 100} ${state.quoteCurrency} escolhido`,
+          actorKind: "system",
+          payload: { balance: Number(balance), amount },
+          once: `ministry_insufficient_funds:${offerId}`,
+        })
+      }
+    }
+  }
+
   revalidatePath(`/pc/${token}`)
   revalidatePath("/admin/price-checker")
   revalidatePath(`/admin/price-checker/${state.caseId}`)
@@ -537,9 +566,151 @@ const passengerSchema = z.object({
     .regex(/^[A-Za-z0-9]{5,12}$/, "5 to 12 letters or digits"),
   passportExpiry: isoDate,
   issuingCountry: z.string().refine((v) => NATIONALITIES.includes(v), "Issuing country"),
+  /* MIN-03 · só para apoio operacional; pedidos só num caso de ministério. */
+  phone: z
+    .string()
+    .trim()
+    .max(24)
+    .refine((v) => v === "" || /^\+?[0-9][0-9 ()-]{5,22}$/.test(v), "Phone")
+    .optional(),
+  email: z
+    .string()
+    .trim()
+    .max(200)
+    .refine((v) => v === "" || /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(v), "Email")
+    .optional(),
 })
 
 export type PcPassengerInput = z.input<typeof passengerSchema>
+
+export interface PcKnownTraveller {
+  title: string | null
+  given: string
+  surname: string
+  dob: string | null
+  sex: string | null
+  nationality: string | null
+  passportNumber: string | null
+  passportExpiry: string | null
+  issuingCountry: string | null
+  phone: string | null
+  email: string | null
+}
+
+/**
+ * MIN-03 · "escrever um nome que coincide com um viajante anterior oferece
+ * reutilizar os dados".
+ *
+ * Só num caso de ministério, e só entre os casos desse ministério. A procura é
+ * pelo nome inteiro (nomes próprios e apelidos, sem maiúsculas nem acentos): o
+ * browser não recebe a lista dos viajantes, só a ficha que coincide com o que
+ * a secretária já escreveu.
+ */
+export async function findMinistryTraveller(
+  token: string,
+  given: string,
+  surname: string
+): Promise<{ ok: true; traveller: PcKnownTraveller | null } | { ok: false }> {
+  const g = foldName(given)
+  const sn = foldName(surname)
+  if (g.length < 2 || sn.length < 2) return { ok: true, traveller: null }
+
+  const lookup = await loadPcState(token)
+  if (!lookup.ok || !lookup.state.ministry) return { ok: false }
+  const admin = createAdminClient()
+  if (!admin) return { ok: false }
+
+  const { data: bc } = await admin
+    .from("booking_cases")
+    .select("organisation_id")
+    .eq("id", lookup.state.caseId)
+    .maybeSingle()
+  const orgId = (bc as { organisation_id: string | null } | null)?.organisation_id
+  if (!orgId) return { ok: false }
+
+  /* DAT-01 · a ficha do ministério primeiro: é o que o ministério sabe da
+     pessoa hoje, com as correcções feitas no backoffice. */
+  const { data: cards, error: cardsError } = await admin
+    .from("ministry_travellers")
+    .select("title, first_name, last_name, gender, birth_date, nationality, passport_number, passport_expiry, issuing_country, phone, email")
+    .eq("organisation_id", orgId)
+    .ilike("last_name", surname.trim())
+    .order("updated_at", { ascending: false })
+    .limit(20)
+  if (!cardsError) {
+    const card = ((cards ?? []) as Record<string, any>[]).find(
+      (r) => foldName(r.first_name) === g && foldName(r.last_name) === sn
+    )
+    if (card) {
+      return {
+        ok: true,
+        traveller: {
+          title: card.title ?? null,
+          given: card.first_name,
+          surname: card.last_name,
+          dob: card.birth_date ?? null,
+          sex: card.gender ?? null,
+          nationality: card.nationality ?? null,
+          passportNumber: card.passport_number ?? null,
+          passportExpiry: card.passport_expiry ?? null,
+          issuingCountry: card.issuing_country ?? null,
+          phone: card.phone ?? null,
+          email: card.email ?? null,
+        },
+      }
+    }
+  }
+
+  const { data } = await admin
+    .from("case_passengers")
+    .select(
+      "title, first_name, last_name, gender, birth_date, nationality, passport_number, passport_expiry, issuing_country, updated_at, case:booking_cases!inner(id, organisation_id)"
+    )
+    .eq("case.organisation_id", orgId)
+    .neq("case_id", lookup.state.caseId)
+    .ilike("last_name", surname.trim())
+    .order("updated_at", { ascending: false })
+    .limit(20)
+
+  const rows = (data ?? []) as Record<string, any>[]
+  const hit = rows.find((r) => foldName(r.first_name) === g && foldName(r.last_name) === sn)
+  if (!hit) return { ok: true, traveller: null }
+
+  /* O contacto numa leitura à parte: a 0029 pode ainda não estar aplicada. */
+  let phone: string | null = null
+  let email: string | null = null
+  const { data: contact } = await admin
+    .from("case_passengers")
+    .select("phone, email, case:booking_cases!inner(organisation_id)")
+    .eq("case.organisation_id", orgId)
+    .ilike("last_name", surname.trim())
+    .ilike("first_name", given.trim())
+    .not("phone", "is", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (contact) {
+    phone = (contact as { phone: string | null }).phone
+    email = (contact as { email: string | null }).email
+  }
+
+  return {
+    ok: true,
+    traveller: {
+      title: hit.title ?? null,
+      given: hit.first_name,
+      surname: hit.last_name,
+      dob: hit.birth_date ?? null,
+      sex: hit.gender ?? null,
+      nationality: hit.nationality ?? null,
+      passportNumber: hit.passport_number ?? null,
+      passportExpiry: hit.passport_expiry ?? null,
+      issuingCountry: hit.issuing_country ?? null,
+      phone,
+      email,
+    },
+  }
+}
 
 /**
  * Grava os passaportes. Substitui o conjunto inteiro em cada gravação.
@@ -599,12 +770,42 @@ export async function savePcPassengers(
       passport_number: p.passportNumber.toUpperCase(),
       passport_expiry: p.passportExpiry,
       issuing_country: p.issuingCountry,
+      /* A 0029 pode ainda não estar aplicada: fora de um ministério as colunas
+         nem se mencionam. */
+      ...(state.ministry ? { phone: p.phone || null, email: p.email?.toLowerCase() || null } : {}),
     }))
   )
 
   if (error) {
     console.error("[pc] passageiros não guardados:", error.message)
     return { ok: false, error: pcError("passengersNotSaved", { token, stored: state.contact.locale }) }
+  }
+
+  /* DAT-01 · num ministério, cada passageiro vira (ou actualiza) a ficha do
+     ministério, para o pedido seguinte. */
+  if (state.ministry) {
+    const { data: bc } = await admin.from("booking_cases").select("organisation_id").eq("id", state.caseId).maybeSingle()
+    const orgId = (bc as { organisation_id: string | null } | null)?.organisation_id
+    if (orgId) {
+      await syncMinistryTravellers(admin, {
+        organisationId: orgId,
+        caseId: state.caseId,
+        byEmail: state.contact.email || null,
+        passengers: parsed.data.map((p) => ({
+          title: p.title ?? null,
+          firstName: p.given,
+          lastName: p.surname,
+          gender: p.sex,
+          birthDate: p.dob,
+          nationality: p.nationality,
+          passportNumber: p.passportNumber,
+          passportExpiry: p.passportExpiry,
+          issuingCountry: p.issuingCountry,
+          phone: p.phone || null,
+          email: p.email || null,
+        })),
+      })
+    }
   }
 
   await admin
@@ -657,7 +858,23 @@ export async function savePcPassengers(
    * nunca vem do formulário. E a descrição leva a referência do caso, porque é
    * ela que aparece no extrato de quem paga.
    */
-  const chosen = state.offers.find((o) => o.id === state.selectedOfferId)
+  /*
+   * MIN-07 · num ministério não há pagamento do lado de quem pede: a bolsa já
+   * cobre, e é o agente que confirma o pagamento externo e liberta a emissão
+   * (PAR-07). Abrir aqui uma janela de 48 h punha um prazo a correr e um
+   * "pague agora" à frente da secretária, sem nada para ela pagar.
+   */
+  const chosen = state.ministry ? undefined : state.offers.find((o) => o.id === state.selectedOfferId)
+  if (state.ministry) {
+    await logCaseEvent({
+      caseId: state.caseId,
+      kind: "ministry_ready_to_issue",
+      title: "Pronto a emitir · confirmar o pagamento externo",
+      detail: state.ministry.fundsCover === false ? "O saldo da bolsa não cobre a opção" : state.ministry.name,
+      actorKind: "system",
+      once: `ministry_ready_to_issue:${passportSet}`,
+    })
+  }
   if (chosen) {
     const amount = offerTotal(chosen, state.pax)
     const description = [

@@ -3,6 +3,7 @@ import Link from "next/link"
 import { formatAmount } from "@/lib/case-status"
 import { ministryLink } from "@/lib/emails/ministry-welcome"
 import type { OrganisationDetail, AlertRecipient } from "@/lib/b2g"
+import { passportExpiringSoon, type Traveller } from "@/lib/travellers"
 import { LOCALE_TAGS } from "@/i18n/config"
 import type { Translator } from "@/i18n/translate"
 import {
@@ -29,6 +30,7 @@ export function OrganisationDetailView({
   mode,
   canManage,
   recipients,
+  travellers = [],
   t,
   locale,
 }: {
@@ -37,6 +39,8 @@ export function OrganisationDetailView({
   mode: "partner" | "admin"
   canManage: boolean
   recipients: AlertRecipient[]
+  /** DAT-01 · as fichas dos viajantes do ministério. */
+  travellers?: Traveller[]
   t: Translator
   locale: "pt" | "en"
 }) {
@@ -46,7 +50,9 @@ export function OrganisationDetailView({
   const link = org.linkToken ? ministryLink(partner, { slug: org.slug, link_token: org.linkToken }) : ""
   const below = org.threshold != null && org.balance < org.threshold
   const writable = mode === "partner" && canManage
-  const caseHref = (id: string) => (mode === "partner" ? `/admin/price-checker/${id}` : null)
+  /* ADM-04 · no Admin, o caso abre em leitura. */
+  const caseHref = (id: string) => (mode === "partner" ? `/admin/price-checker/${id}` : `/gestao/casos/c/${id}`)
+  const expiring = travellers.filter((tr) => passportExpiringSoon(tr.passportExpiry)).length
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -217,6 +223,56 @@ export function OrganisationDetailView({
             </p>
           )}
         </div>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+          {t("bo.travellers.title")} · {travellers.length}
+          {expiring > 0 && <span className="ml-2 normal-case text-amber-700">⚠ {t("bo.travellers.expiringCount", { count: expiring })}</span>}
+        </h2>
+        {travellers.length === 0 ? (
+          <p className="text-sm text-slate-500">{t("bo.travellers.empty")}</p>
+        ) : (
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">{t("bo.travellers.name")}</th>
+                  <th className="px-4 py-3">{t("bo.travellers.passport")}</th>
+                  <th className="px-4 py-3">{t("bo.travellers.expiry")}</th>
+                  <th className="px-4 py-3">{t("bo.travellers.contact")}</th>
+                  <th className="px-4 py-3">{t("bo.travellers.updated")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {travellers.map((tr) => {
+                  const soon = passportExpiringSoon(tr.passportExpiry)
+                  const name = `${tr.lastName}/${tr.firstName}`.toUpperCase()
+                  return (
+                    <tr key={tr.id}>
+                      <td className="px-4 py-2 font-medium">
+                        {mode === "partner" ? (
+                          <Link href={`/agente/ministerios/${org.id}/viajantes/${tr.id}`} className="text-orange-700 hover:underline">
+                            {name}
+                          </Link>
+                        ) : (
+                          name
+                        )}
+                      </td>
+                      <td className="px-4 py-2 font-mono">{tr.passportNumber ?? "—"}</td>
+                      <td className={`px-4 py-2 font-mono ${soon ? "text-amber-700 font-semibold" : ""}`}>
+                        {tr.passportExpiry ?? "—"}
+                        {soon ? ` ⚠ ${t("bo.travellers.expiringSoon")}` : ""}
+                      </td>
+                      <td className="px-4 py-2 text-slate-600">{[tr.phone, tr.email].filter(Boolean).join(" · ") || "—"}</td>
+                      <td className="px-4 py-2 text-slate-600">{dt.format(new Date(tr.updatedAt))}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="space-y-2">

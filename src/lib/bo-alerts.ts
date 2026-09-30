@@ -73,6 +73,10 @@ const ALERT_KINDS = [
   "client_message",
   "request_cancelled",
   "payment_expired",
+  /* MIN-07 · a bolsa do ministério não cobre a opção que a secretária aceitou. */
+  "ministry_insufficient_funds",
+  /* MIN-07 · passageiros completos num ministério: falta o pagamento externo. */
+  "ministry_ready_to_issue",
 ]
 
 export interface BoAlertFeed {

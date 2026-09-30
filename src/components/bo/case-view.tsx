@@ -1150,6 +1150,19 @@ function PassengerCard({
           <span className="k">{t("bo.caseView.pax.ticket")}</span>
           <span className="v mono">{passenger.ticket_number ?? "—"}</span>
         </div>
+        {/* MIN-03 · só para apoio operacional — não vai para o bilhete. */}
+        {(passenger.phone || passenger.email) && (
+          <>
+            <div>
+              <span className="k">{t("bo.caseView.pax.phone")}</span>
+              <span className="v mono">{passenger.phone ?? "—"}</span>
+            </div>
+            <div>
+              <span className="k">{t("bo.caseView.pax.email")}</span>
+              <span className="v">{passenger.email ?? "—"}</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

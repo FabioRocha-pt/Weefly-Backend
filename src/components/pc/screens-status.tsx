@@ -932,8 +932,18 @@ function ContactCard({
  * Safari funcionam sempre. Fora disso a caixa não é mostrada — um botão
  * "Instalar" que não instala nada custa mais confiança do que ganha.
  */
-function InstallCard() {
-  const t = useT()
+export function InstallCard({ appName }: { appName?: string } = {}) {
+  const tt = useT()
+  /* MIN-06 · na aplicação do ministério o convite fala dela, não da WeeFly:
+     as frases que dizem o nome vêm de `ministry.install`, os passos do Safari
+     são os mesmos. */
+  const OWN = ["saved", "iosTitle", "iosWhy", "title", "why"]
+  const t: typeof tt = (key, vars) => {
+    const leaf = key.startsWith("pc.install.") ? key.slice(11) : null
+    return appName && leaf && OWN.includes(leaf)
+      ? tt(`ministry.install.${leaf}`, { ...vars, name: appName })
+      : tt(key, vars)
+  }
   const [platform, setPlatform] = useState<"ios" | "prompt" | "installed" | null>(null)
   const [deferred, setDeferred] = useState<any>(null)
 

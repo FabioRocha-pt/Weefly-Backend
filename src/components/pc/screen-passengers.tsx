@@ -16,7 +16,7 @@
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
-import { savePcPassengers } from "@/actions/pc"
+import { findMinistryTraveller, savePcPassengers, type PcKnownTraveller } from "@/actions/pc"
 import type { PcState } from "@/lib/pc/state"
 import { NATIONALITIES } from "@/lib/pc/catalog"
 import {
@@ -45,6 +45,9 @@ interface PaxRow {
   passportNumber: string
   passportExpiry: string
   issuingCountry: string
+  /* MIN-03 · só num caso de ministério, e só para apoio operacional. */
+  phone: string
+  email: string
 }
 
 const KIND_KEY: Record<Kind, string> = {
@@ -83,6 +86,7 @@ export function ScreenP7({ state }: { state: PcState }) {
   const [pending, startTransition] = useTransition()
 
   const kinds = useMemo(() => seatKinds(state.request), [state.request])
+  const ministry = Boolean(state.ministry)
 
   /* Já preenchido? Recomeça do que está guardado. O primeiro passageiro nasce
      com o nome de quem submeteu o pedido — é a pessoa que está a preencher. */
@@ -101,6 +105,8 @@ export function ScreenP7({ state }: { state: PcState }) {
           passportNumber: saved.passport_number ?? "",
           passportExpiry: saved.passport_expiry ?? "",
           issuingCountry: saved.issuing_country ?? "",
+          phone: saved.phone ?? "",
+          email: saved.email ?? "",
         }
       }
       const blank: PaxRow = {
@@ -114,8 +120,11 @@ export function ScreenP7({ state }: { state: PcState }) {
         passportNumber: "",
         passportExpiry: "",
         issuingCountry: "",
+        phone: "",
+        email: "",
       }
-      if (index === 0 && state.contact.fullName) {
+      /* Num ministério quem preenche é a secretária, não o viajante. */
+      if (index === 0 && state.contact.fullName && !ministry) {
         const parts = state.contact.fullName.trim().split(/\s+/)
         blank.surname = parts.length > 1 ? parts[parts.length - 1] : ""
         blank.given = parts.slice(0, Math.max(1, parts.length - 1)).join(" ")
@@ -123,6 +132,50 @@ export function ScreenP7({ state }: { state: PcState }) {
       return blank
     })
   )
+
+  /* MIN-03 · a ficha de um viajante anterior do ministério, por passageiro. */
+  const [known, setKnown] = useState<Record<number, PcKnownTraveller | null>>({})
+  const [asked, setAsked] = useState<Record<number, string>>({})
+
+  const lookupKnown = (index: number) => {
+    if (!ministry) return
+    const row = rows[index]
+    const key = `${row.given.trim()}|${row.surname.trim()}`.toLowerCase()
+    if (row.given.trim().length < 2 || row.surname.trim().length < 2 || asked[index] === key) return
+    setAsked((a) => ({ ...a, [index]: key }))
+    void findMinistryTraveller(state.token, row.given, row.surname).then((result) => {
+      /* Só se oferece o que acrescenta: a mesma ficha já preenchida não. */
+      const hit = result.ok ? result.traveller : null
+      const same = hit?.passportNumber && hit.passportNumber === row.passportNumber.trim().toUpperCase()
+      setKnown((k) => ({ ...k, [index]: same ? null : hit }))
+    })
+  }
+
+  const applyKnown = (index: number) => {
+    const hit = known[index]
+    if (!hit) return
+    setRows((current) =>
+      current.map((row, i) =>
+        i === index
+          ? {
+              ...row,
+              title: row.kind === "adult" ? (hit.title ?? row.title) : row.title,
+              given: hit.given,
+              surname: hit.surname,
+              dob: hit.dob ?? row.dob,
+              sex: hit.sex ?? row.sex,
+              nationality: hit.nationality ?? row.nationality,
+              passportNumber: hit.passportNumber ?? row.passportNumber,
+              passportExpiry: hit.passportExpiry ?? row.passportExpiry,
+              issuingCountry: hit.issuingCountry ?? row.issuingCountry,
+              phone: hit.phone ?? row.phone,
+              email: hit.email ?? row.email,
+            }
+          : row
+      )
+    )
+    setKnown((k) => ({ ...k, [index]: null }))
+  }
 
   const [ack, setAck] = useState(false)
   const [showErrors, setShowErrors] = useState(false)
@@ -174,6 +227,12 @@ export function ScreenP7({ state }: { state: PcState }) {
     }
 
     if (!row.issuingCountry) e.issuingCountry = t("pc.pax.error.required")
+
+    /* MIN-03 · opcionais; se escritos, têm de servir para chegar à pessoa. */
+    if (row.phone.trim() && !/^\+?[0-9][0-9 ()-]{5,22}$/.test(row.phone.trim()))
+      e.phone = t("pc.pax.error.phoneFormat")
+    if (row.email.trim() && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(row.email.trim()))
+      e.email = t("pc.pax.error.emailFormat")
     return e
   }
 
@@ -232,6 +291,7 @@ export function ScreenP7({ state }: { state: PcState }) {
           passportNumber: row.passportNumber.trim(),
           passportExpiry: row.passportExpiry,
           issuingCountry: row.issuingCountry,
+          ...(ministry ? { phone: row.phone.trim(), email: row.email.trim() } : {}),
         }))
       )
 
@@ -333,6 +393,29 @@ export function ScreenP7({ state }: { state: PcState }) {
                   </span>
                 </div>
                 <div className="paxcard-b">
+                  {known[index] && (
+                    <div className="notice" role="status" style={{ marginBottom: 10 }}>
+                      <b>{t("pc.pax.reuse.found", { name: `${known[index]!.given} ${known[index]!.surname}` })}</b>
+                      <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          style={{ width: "auto" }}
+                          onClick={() => applyKnown(index)}
+                        >
+                          {t("pc.pax.reuse.apply")}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{ width: "auto" }}
+                          onClick={() => setKnown((k) => ({ ...k, [index]: null }))}
+                        >
+                          {t("pc.pax.reuse.dismiss")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className="pgrid">
                     {isAdult && (
                       <Field
@@ -368,6 +451,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                         placeholder={t("pc.pax.field.asInPassport")}
                         value={row.given}
                         onChange={(event) => patch(index, "given", event.target.value)}
+                        onBlur={() => lookupKnown(index)}
                       />
                     </Field>
 
@@ -381,6 +465,7 @@ export function ScreenP7({ state }: { state: PcState }) {
                         placeholder={t("pc.pax.field.asInPassport")}
                         value={row.surname}
                         onChange={(event) => patch(index, "surname", event.target.value)}
+                        onBlur={() => lookupKnown(index)}
                       />
                     </Field>
 
@@ -495,6 +580,45 @@ export function ScreenP7({ state }: { state: PcState }) {
                         ))}
                       </select>
                     </Field>
+
+                    {ministry && (
+                      <>
+                        <p className="hi" style={{ gridColumn: "1 / -1", margin: "4px 0 0" }}>
+                          {t("pc.pax.contactNote")}
+                        </p>
+                        <Field
+                          cls="c6"
+                          optional
+                          label={t("pc.pax.field.phone")}
+                          error={showErrors ? errors.phone : undefined}
+                          id={`pax${index}-phone`}
+                        >
+                          <input
+                            type="tel"
+                            inputMode="tel"
+                            autoComplete="off"
+                            placeholder="+238 …"
+                            value={row.phone}
+                            onChange={(event) => patch(index, "phone", event.target.value)}
+                          />
+                        </Field>
+                        <Field
+                          cls="c6"
+                          optional
+                          label={t("pc.pax.field.email")}
+                          error={showErrors ? errors.email : undefined}
+                          id={`pax${index}-email`}
+                        >
+                          <input
+                            type="email"
+                            inputMode="email"
+                            autoComplete="off"
+                            value={row.email}
+                            onChange={(event) => patch(index, "email", event.target.value)}
+                          />
+                        </Field>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -550,9 +674,12 @@ function Field({
   hint,
   error,
   id,
+  optional = false,
   children,
 }: {
   cls: string
+  /** MIN-03 · sem o asterisco: os contactos não são obrigatórios. */
+  optional?: boolean
   label: string
   hint?: string
   error?: string
@@ -564,7 +691,7 @@ function Field({
     <div id={id} className={`ff ${cls}${error ? " bad" : ""}`}>
       <label>
         {label}
-        <span className="req">*</span>
+        {!optional && <span className="req">*</span>}
       </label>
       {children}
       {hint && <span className="hi">{hint}</span>}

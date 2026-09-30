@@ -70,6 +70,11 @@ export interface PcIntake {
    * `companySlug`.
    */
   hostPartnerSlug?: string | null
+  /**
+   * MIN-01 · o token do link do ministério. Quando resolve, o caso é desse
+   * ministério e do parceiro dele — e ganha a tudo o resto.
+   */
+  ministryToken?: string | null
   consentIp: string | null
   consentAgent: string | null
 }
@@ -299,7 +304,9 @@ export async function createPriceCheckerCase(
      * `partner_id` de cada uma, e um caso do Alô com o lead e o pedido na
      * WeeFly ficava invisível na fila do Alô.
      */
+    const ministry = await resolveMinistry(admin, input.ministryToken)
     const partnerId =
+      ministry?.partnerId ??
       (await resolveHostPartner(admin, input.hostPartnerSlug)) ??
       (await resolveLinkPartner(admin, input.companySlug, input.agentSlug)) ??
       (await operatorPartnerId(admin))
@@ -375,6 +382,7 @@ export async function createPriceCheckerCase(
         trip_request_id: tripRequestId,
         lead_id: leadId,
         ...(partnerId ? { partner_id: partnerId } : {}),
+        ...(ministry ? { organisation_id: ministry.organisationId } : {}),
       })
       .select("id")
       .single()
@@ -474,6 +482,28 @@ async function resolveLinkPartner(
     (row) => sellerSlug(row.email) === agentSlug
   )
   return matches ? partnerId : null
+}
+
+/** MIN-01 · o ministério do link, activo e de um parceiro activo. */
+async function resolveMinistry(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  token: string | null | undefined
+): Promise<{ organisationId: string; partnerId: string } | null> {
+  if (!token) return null
+  const { data } = await admin
+    .from("organisations")
+    .select("id, partner_id, active, partner:partners(status)")
+    .eq("link_token", token)
+    .maybeSingle()
+  const row = data as {
+    id: string
+    partner_id: string
+    active: boolean
+    partner: { status: string } | { status: string }[] | null
+  } | null
+  const partner = Array.isArray(row?.partner) ? row?.partner[0] : row?.partner
+  if (!row || !row.active || partner?.status !== "active") return null
+  return { organisationId: row.id, partnerId: row.partner_id }
 }
 
 /** TEN-04 · o parceiro do subdomínio, se existir e estiver activo. */

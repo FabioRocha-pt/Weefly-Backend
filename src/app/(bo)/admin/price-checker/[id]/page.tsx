@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 
 import { getBoAccess, listBoSellers } from "@/lib/bo-access"
 import { loadBoCase } from "@/lib/pc/bo-queue"
-import { caseInScope, getBoScope } from "@/lib/bo-scope"
+import { caseInScope, getBoScope, liveIntervention, scopeForCase } from "@/lib/bo-scope"
 import { listExternalPayments } from "@/lib/b2g"
 import { formatAmount } from "@/lib/case-status"
 import type { BoIdentity } from "@/lib/bo-access"
@@ -19,7 +19,9 @@ import {
 import { listTicketDocuments } from "@/lib/tickets/store"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { BoCaseView } from "@/components/bo/case-view"
+import { InterventionBanner } from "@/components/admin/intervention"
 import type { CasePassenger } from "@/lib/case-status"
+import { withPassengerContacts } from "@/lib/pc/passenger-contacts"
 
 /**
  * B3 · a ficha do caso.
@@ -44,7 +46,8 @@ export default async function BoCasePage({
   /* TEN-03 · um caso de outro parceiro, aberto pelo endereço, não existe. */
   if (!(await caseInScope(params.id))) notFound()
 
-  const detail = await loadBoCase(await getBoScope(), params.id)
+  /* ADM-04 · durante uma intervenção, a ficha lê-se no parceiro do caso. */
+  const detail = await loadBoCase(await scopeForCase(params.id), params.id)
   if (!detail) notFound()
 
   const admin = createAdminClient()
@@ -81,6 +84,8 @@ export default async function BoCasePage({
           .eq("case_id", params.id)
           .order("position")
           .then(({ data }) => (data ?? []) as unknown as CasePassenger[])
+          /* MIN-03 · o contacto de cada passageiro, quando o há. */
+          .then((rows) => withPassengerContacts(admin, params.id, rows))
       : Promise.resolve([] as CasePassenger[]),
     /* T-04 · o documento de cada voo e a bagagem de cada passageiro em cada
        voo. Um bilhete de ida e volta tem um cupão por voo, e sem estas duas
@@ -102,8 +107,16 @@ export default async function BoCasePage({
     ? searchParams.aba[0]
     : searchParams.aba
 
+  /* ADM-04 · a intervenção em curso fica à vista enquanto durar. */
+  const intervention = await liveIntervention(params.id)
+
   return (
     <>
+      {intervention && (
+        <div className="page" style={{ paddingBottom: 0 }}>
+          <InterventionBanner caseId={params.id} reason={intervention.reason} expiresAt={intervention.expiresAt} />
+        </div>
+      )}
       {external && (
         <div className="page" style={{ paddingBottom: 0 }}>
           <ExternalPaymentPanel

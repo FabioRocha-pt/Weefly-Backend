@@ -133,6 +133,8 @@
         "noAccents": "without accents",
         "ok": "OK",
         "ticket": "Ticket",
+        "phone": "Phone (support)",
+        "email": "Email (support)",
         "type": {
           "adult": "Adult",
           "child": "Child",
@@ -334,7 +336,11 @@
       "payment_reopened": "Payment reopened",
       "payment_expired_manual": "Payment link closed manually",
       "external_payment_confirmed": "External payment confirmed",
-      "external_payment_reversed": "External payment reversed"
+      "external_payment_reversed": "External payment reversed",
+      "ministry_insufficient_funds": "Ministry budget does not cover the chosen option",
+      "ministry_ready_to_issue": "Ready to issue · confirm the external payment",
+      "admin_intervention": "WeeFly Admin intervention",
+      "admin_intervention_ended": "WeeFly Admin intervention ended"
     }
   }
 }

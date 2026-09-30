@@ -1405,7 +1405,9 @@
         "select": "Select",
         "asInPassport": "As in the passport",
         "complete": "Complete",
-        "toFill": "To fill in"
+        "toFill": "To fill in",
+        "phone": "Traveller's phone",
+        "email": "Traveller's email"
       },
       "sex": {
         "f": "Female",
@@ -1420,10 +1422,18 @@
         "infantAge": "An infant is under 2 on the travel date",
         "passportFormat": "5 to 12 letters or digits",
         "expiresBefore": "This passport expires before the trip",
-        "validUntil": "Must be valid until {date}"
+        "validUntil": "Must be valid until {date}",
+        "phoneFormat": "Check the number, with the country code",
+        "emailFormat": "Check the email"
       },
       "heading": "Who is *travelling*?",
-      "warn": "Write the names exactly as they appear in the passport. *Once issued, correcting a name means a new ticket at the airline's full price.*"
+      "warn": "Write the names exactly as they appear in the passport. *Once issued, correcting a name means a new ticket at the airline's full price.*",
+      "contactNote": "For operational support only: this is how the team reaches the traveller if there is a delay, a cancellation or a gate change — and how the traveller reaches the team. It does not go to the airline or on the ticket.",
+      "reuse": {
+        "found": "{name} has travelled with this ministry before. Reuse the details?",
+        "apply": "Reuse the details",
+        "dismiss": "No, someone else"
+      }
     },
     "status": {
       "receivedHeading": "Hi *{name}*, we have your request",
@@ -1885,6 +1895,41 @@
       "subject": "WeeFly Pro · confirmation",
       "body": "Use the button or the code below to continue.",
       "cta": "Continue"
+    }
+  },
+  "ministry": {
+    "tabs": {
+      "label": "Navigation",
+      "new": "New request",
+      "trips": "My tickets"
+    },
+    "trips": {
+      "title": "My tickets",
+      "current": "Active trip",
+      "archive": "Archive",
+      "none": "No trips yet. New requests appear here.",
+      "balance": "Available balance"
+    },
+    "status": {
+      "active": "In progress",
+      "issued": "Issued",
+      "used": "Used",
+      "expired": "Expired",
+      "cancelled": "Cancelled"
+    },
+    "pay": {
+      "title": "Nothing to pay on this side",
+      "body": "The option is accepted and the passenger details are with {partner}. {ministry} pays {partner} directly: issuance goes ahead with no further step from you, and the tickets appear under My tickets.",
+      "insufficientTitle": "The available balance does not cover this option",
+      "insufficientBody": "{partner} has been notified and will contact {ministry} to sort it out. Nothing is issued until then — the fare may change if the proposal expires.",
+      "help": "Talk to {partner}"
+    },
+    "install": {
+      "saved": "{name} is saved on your device.",
+      "iosTitle": "Save {name} on your iPhone",
+      "iosWhy": "*It always opens in the right place.* With the icon on your home screen you never need to look for the link in your email.",
+      "title": "Save {name} on your phone",
+      "why": "*It always opens in the right place.* With the icon on your home screen you never need to look for the link in your email."
     }
   }
 }

@@ -1,0 +1,66 @@
+{
+  "bo": {
+    "travellers": {
+      "title": "Traveller records",
+      "expiringCount": "{count} passport(s) expiring",
+      "empty": "No records yet. They are created when the secretary fills in the passengers of a request.",
+      "name": "Name",
+      "passport": "Passport",
+      "expiry": "Expiry",
+      "contact": "Contact (support)",
+      "updated": "Updated",
+      "expiringSoon": "under 6 months",
+      "expiringBanner": "The passport expires on {date}: less than six months away.",
+      "alertSent": "secretary notified on {when}",
+      "history": "Change history",
+      "sources": {
+        "case": "Secretary's request",
+        "backoffice": "Back office",
+        "import": "Imported from cases"
+      },
+      "fromCase": "see the case",
+      "columns": {
+        "title": "Title",
+        "first_name": "Given names",
+        "last_name": "Surnames",
+        "gender": "Sex",
+        "birth_date": "Date of birth",
+        "nationality": "Nationality",
+        "passport_number": "Passport",
+        "passport_expiry": "Expiry",
+        "issuing_country": "Issuing country",
+        "phone": "Phone",
+        "email": "Email"
+      },
+      "fields": {
+        "title": "Title",
+        "firstName": "Given names",
+        "lastName": "Surnames",
+        "birthDate": "Date of birth",
+        "gender": "Sex",
+        "nationality": "Nationality",
+        "passportNumber": "Passport number",
+        "passportExpiry": "Passport expiry",
+        "issuingCountry": "Issuing country",
+        "phone": "Phone",
+        "email": "Email"
+      },
+      "contactNote": "Phone and email are for operational support only: reaching the traveller during a disruption. They do not go to the airline or on the ticket.",
+      "saving": "Saving…",
+      "save": "Save record",
+      "saved": "Saved. The change is in the history.",
+      "errors": {
+        "date": "Invalid date.",
+        "country": "Pick a country from the list.",
+        "name": "Given name and surname, as in the passport.",
+        "passport": "The passport has 5 to 12 letters or digits.",
+        "phone": "Check the phone number, with the country code.",
+        "email": "Check the email.",
+        "notFound": "Record not found.",
+        "invalid": "Invalid data.",
+        "unavailable": "Could not save right now. Try again.",
+        "duplicatePassport": "Another record in this ministry already has this passport."
+      }
+    }
+  }
+}

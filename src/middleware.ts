@@ -21,8 +21,10 @@ export async function middleware(request: NextRequest) {
   }
 
   /* O /pc passa aqui só pela verificação do endereço: a autorização do cliente
-     é o token, não uma sessão — ver o `matcher`. */
-  if (request.nextUrl.pathname === "/pc" || request.nextUrl.pathname.startsWith("/pc/")) {
+     é o token, não uma sessão — ver o `matcher`. O /m (MIN-01, a aplicação do
+     ministério) é igual: a secretária nunca tem sessão. */
+  const path = request.nextUrl.pathname
+  if (path === "/pc" || path.startsWith("/pc/") || path.startsWith("/m/")) {
     return NextResponse.next()
   }
 

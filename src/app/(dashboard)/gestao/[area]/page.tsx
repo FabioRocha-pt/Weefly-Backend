@@ -1,16 +1,16 @@
 import { notFound } from "next/navigation"
-import { BarChart3, Coins, Landmark } from "lucide-react"
+import { Coins, Landmark } from "lucide-react"
 
 import { SectionPlaceholder } from "@/components/dashboard/section-placeholder"
 import { getBoI18n } from "@/i18n/bo-server"
 
 /**
- * Os menus do Admin que ainda não têm conteúdo. Estão na navegação, como a
+ * Os menus do Admin que ainda não têm conteúdo (Números saiu com o ADM-03;
+ * Receita espera pelo ADM-07). Estão na navegação, como a
  * tabela do Bloco B pede, e dizem de que item são e porque esperam.
  */
 const AREAS: Record<string, { icon: React.ReactNode }> = {
   b2g: { icon: <Landmark className="w-8 h-8 text-orange-600" /> },
-  numeros: { icon: <BarChart3 className="w-8 h-8 text-orange-600" /> },
   receita: { icon: <Coins className="w-8 h-8 text-orange-600" /> },
 }
 

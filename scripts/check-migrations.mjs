@@ -89,6 +89,10 @@ const CHECKS = [
   { migration: "0028", table: "case_external_payments", column: "paid_on", need: "PAR-07 · pagamento externo" },
   { migration: "0028", table: "alert_recipients", column: "side", need: "ADM-06 · destinatários dos alertas" },
   { migration: "0028", table: "organisations", column: "link_token", need: "PAR-02 · o link do ministério" },
+  { migration: "0029", table: "case_passengers", column: "phone", need: "MIN-03 · o contacto do passageiro" },
+  { migration: "0030", table: "ministry_travellers", column: "expiry_alerted_for", need: "DAT-01 · DAT-02 · as fichas dos viajantes" },
+  { migration: "0030", table: "ministry_traveller_changes", column: "after", need: "DAT-01 · o histórico das fichas" },
+  { migration: "0030", table: "admin_interventions", column: "expires_at", need: "ADM-04 · intervir num parceiro" },
 ]
 
 /* O PostgREST devolve PGRST205 quando não conhece a tabela e o código do

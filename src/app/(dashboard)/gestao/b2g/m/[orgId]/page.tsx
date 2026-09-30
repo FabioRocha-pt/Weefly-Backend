@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 
 import { getBoScope } from "@/lib/bo-scope"
 import { listAlertRecipients, loadOrganisation } from "@/lib/b2g"
+import { listTravellers } from "@/lib/travellers"
 import { getBoI18n } from "@/i18n/bo-server"
 import { OrganisationDetailView } from "@/components/b2g/org-detail"
 
@@ -25,6 +26,10 @@ export default async function B2gOrganisationPage({ params }: { params: { orgId:
   const { t, locale } = await getBoI18n()
   const recipients = await listAlertRecipients(p.id)
 
+  /* DAT-01 · as fichas dos viajantes do ministério. */
+  const scopeForList = scope
+  const travellers = scopeForList ? await listTravellers(scopeForList, detail.org.id) : []
+
   return (
     <div className="space-y-4">
       <div className="max-w-6xl mx-auto">
@@ -38,6 +43,7 @@ export default async function B2gOrganisationPage({ params }: { params: { orgId:
         mode="admin"
         canManage
         recipients={recipients}
+        travellers={travellers}
         t={t}
         locale={locale}
       />

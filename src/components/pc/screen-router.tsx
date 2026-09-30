@@ -29,6 +29,7 @@ import {
 import { ScreenP5 } from "@/components/pc/screen-options"
 import { ScreenP7 } from "@/components/pc/screen-passengers"
 import { ScreenP7Pay } from "@/components/pc/screen-payment"
+import { ScreenMinistryPay } from "@/components/pc/screen-ministry"
 
 export function PcScreenRouter({
   state,
@@ -92,7 +93,8 @@ export function PcScreenRouter({
       )}
       {screen === "p5" && <ScreenP5 state={state} />}
       {screen === "p7" && <ScreenP7 state={state} />}
-      {screen === "p7pay" && <ScreenP7Pay state={state} />}
+      {/* MIN-07 · num ministério não há pagamento do lado de quem pede. */}
+      {screen === "p7pay" && (state.ministry ? <ScreenMinistryPay state={state} /> : <ScreenP7Pay state={state} />)}
       {screen === "p7b" && <ScreenP7b state={state} />}
       {screen === "p8" && <ScreenP8 state={state} />}
       {screen === "p9" && <ScreenP9 state={state} />}

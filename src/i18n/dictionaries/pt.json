@@ -1405,7 +1405,9 @@
         "select": "Escolher",
         "asInPassport": "Como no passaporte",
         "complete": "Completo",
-        "toFill": "Por preencher"
+        "toFill": "Por preencher",
+        "phone": "Telefone do viajante",
+        "email": "Email do viajante"
       },
       "sex": {
         "f": "Feminino",
@@ -1420,10 +1422,18 @@
         "infantAge": "Um bebé tem menos de 2 anos na data da viagem",
         "passportFormat": "5 a 12 letras ou algarismos",
         "expiresBefore": "Este passaporte expira antes da viagem",
-        "validUntil": "Tem de ser válido até {date}"
+        "validUntil": "Tem de ser válido até {date}",
+        "phoneFormat": "Confirme o número, com o indicativo",
+        "emailFormat": "Confirme o email"
       },
       "heading": "Quem *viaja*?",
-      "warn": "Escreva os nomes exactamente como aparecem no passaporte. *Depois de emitido, corrigir um nome obriga a um bilhete novo, ao preço total da companhia.*"
+      "warn": "Escreva os nomes exactamente como aparecem no passaporte. *Depois de emitido, corrigir um nome obriga a um bilhete novo, ao preço total da companhia.*",
+      "contactNote": "Só para apoio operacional: é por aqui que a equipa chega ao viajante se houver um atraso, um cancelamento ou uma mudança de porta — e o viajante à equipa. Não vai para a companhia nem para o bilhete.",
+      "reuse": {
+        "found": "{name} já viajou com este ministério. Reutilizar os dados?",
+        "apply": "Reutilizar os dados",
+        "dismiss": "Não, é outra pessoa"
+      }
     },
     "status": {
       "receivedHeading": "Olá *{name}*, já temos o seu pedido",
@@ -1885,6 +1895,41 @@
       "subject": "WeeFly Pro · confirmação",
       "body": "Use o botão ou o código abaixo para continuar.",
       "cta": "Continuar"
+    }
+  },
+  "ministry": {
+    "tabs": {
+      "label": "Navegação",
+      "new": "Novo pedido",
+      "trips": "Minhas passagens"
+    },
+    "trips": {
+      "title": "Minhas passagens",
+      "current": "Viagem ativa",
+      "archive": "Arquivo",
+      "none": "Ainda não há viagens. Os pedidos novos aparecem aqui.",
+      "balance": "Saldo disponível"
+    },
+    "status": {
+      "active": "Em curso",
+      "issued": "Emitida",
+      "used": "Usada",
+      "expired": "Expirada",
+      "cancelled": "Cancelada"
+    },
+    "pay": {
+      "title": "Não há nada a pagar deste lado",
+      "body": "A opção está aceite e os dados dos passageiros estão com a {partner}. O pagamento é feito pelo {ministry} diretamente à {partner}: a emissão segue sem mais nenhum passo da sua parte, e as passagens aparecem em Minhas passagens.",
+      "insufficientTitle": "O saldo disponível não cobre esta opção",
+      "insufficientBody": "A {partner} já foi avisada e vai contactar o {ministry} para resolver. Nada é emitido até lá — a tarifa pode mudar se o prazo da proposta terminar.",
+      "help": "Falar com a {partner}"
+    },
+    "install": {
+      "saved": "{name} está guardado no seu dispositivo.",
+      "iosTitle": "Guarde {name} no seu iPhone",
+      "iosWhy": "*Abre sempre no sítio certo.* Com o ícone no ecrã principal não precisa de procurar o link no email.",
+      "title": "Guarde {name} no seu telemóvel",
+      "why": "*Abre sempre no sítio certo.* Com o ícone no ecrã principal não precisa de procurar o link no email."
     }
   }
 }

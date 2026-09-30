@@ -7,6 +7,7 @@ import {
   Building,
   Car,
   Coins,
+  FolderSearch,
   Handshake,
   Landmark,
   UserCog,
@@ -14,6 +15,7 @@ import {
   Home,
   Lock,
   Plane,
+  Receipt,
   ShieldCheck,
   Sparkles,
   Store,
@@ -81,7 +83,10 @@ const ADMIN_NAV: NavItem[] = [
   { labelKey: "pro.adminUsers", href: "/gestao/utilizadores", icon: <UserCog className="w-5 h-5" /> },
   { labelKey: "pro.adminPartners", href: "/gestao/parceiros", icon: <Handshake className="w-5 h-5" /> },
   { labelKey: "pro.adminB2g", href: "/gestao/b2g", icon: <Landmark className="w-5 h-5" /> },
-  { labelKey: "pro.adminNumbers", href: "/gestao/numeros", icon: <BarChart3 className="w-5 h-5" />, soon: true },
+  /* ADM-04 · os casos de todos os parceiros, em leitura. */
+  { labelKey: "bo.adminCases.nav", href: "/gestao/casos", icon: <FolderSearch className="w-5 h-5" /> },
+  /* ADM-03 · a análise consolidada. */
+  { labelKey: "pro.adminNumbers", href: "/gestao/numeros", icon: <BarChart3 className="w-5 h-5" /> },
   { labelKey: "pro.adminRevenue", href: "/gestao/receita", icon: <Coins className="w-5 h-5" />, soon: true },
 ]
 
@@ -91,6 +96,13 @@ const MINISTRIES_ITEM: NavItem = {
   labelKey: "bo.b2g.list.title",
   href: "/agente/ministerios",
   icon: <Landmark className="w-5 h-5" />,
+}
+
+/* PAR-08 · o acompanhamento financeiro, para o Admin do parceiro. */
+const FINANCE_ITEM: NavItem = {
+  labelKey: "bo.finance.nav",
+  href: "/agente/financas",
+  icon: <Receipt className="w-5 h-5" />,
 }
 
 /* ADM-02 · o Admin do parceiro gere a equipa dele a partir do Agente. */
@@ -140,7 +152,7 @@ export function Sidebar({ modules, agentMenus, companyName, canManageTeam, sells
             items: [
               ...AGENT_TOOLS,
               ...(sellsB2g ? [MINISTRIES_ITEM] : []),
-              ...(canManageTeam ? [TEAM_ITEM] : []),
+              ...(canManageTeam ? [FINANCE_ITEM, TEAM_ITEM] : []),
             ],
           },
         ]

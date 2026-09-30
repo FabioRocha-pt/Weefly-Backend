@@ -1405,7 +1405,9 @@
         "select": "Choisir",
         "asInPassport": "Comme sur le passeport",
         "complete": "Complet",
-        "toFill": "À remplir"
+        "toFill": "À remplir",
+        "phone": "Téléphone du voyageur",
+        "email": "E-mail du voyageur"
       },
       "sex": {
         "f": "Féminin",
@@ -1420,10 +1422,18 @@
         "infantAge": "Un bébé a moins de 2 ans à la date du voyage",
         "passportFormat": "5 à 12 lettres ou chiffres",
         "expiresBefore": "Ce passeport expire avant le voyage",
-        "validUntil": "Doit être valable jusqu'au {date}"
+        "validUntil": "Doit être valable jusqu'au {date}",
+        "phoneFormat": "Vérifiez le numéro, avec l'indicatif",
+        "emailFormat": "Vérifiez l'e-mail"
       },
       "heading": "Qui *voyage* ?",
-      "warn": "Écrivez les noms exactement comme ils figurent sur le passeport. *Une fois le billet émis, corriger un nom impose un nouveau billet, au plein tarif de la compagnie.*"
+      "warn": "Écrivez les noms exactement comme ils figurent sur le passeport. *Une fois le billet émis, corriger un nom impose un nouveau billet, au plein tarif de la compagnie.*",
+      "contactNote": "Uniquement pour l'assistance opérationnelle : c'est ainsi que l'équipe joint le voyageur en cas de retard, d'annulation ou de changement de porte — et que le voyageur joint l'équipe. Rien n'est transmis à la compagnie ni imprimé sur le billet.",
+      "reuse": {
+        "found": "{name} a déjà voyagé avec ce ministère. Réutiliser ses données ?",
+        "apply": "Réutiliser les données",
+        "dismiss": "Non, une autre personne"
+      }
     },
     "status": {
       "receivedHeading": "Bonjour *{name}*, nous avons bien votre demande",
@@ -1885,6 +1895,41 @@
       "subject": "WeeFly Pro · confirmation",
       "body": "Utilisez le bouton ou le code ci-dessous pour continuer.",
       "cta": "Continuer"
+    }
+  },
+  "ministry": {
+    "tabs": {
+      "label": "Navigation",
+      "new": "Nouvelle demande",
+      "trips": "Mes billets"
+    },
+    "trips": {
+      "title": "Mes billets",
+      "current": "Voyage en cours",
+      "archive": "Archives",
+      "none": "Aucun voyage pour l'instant. Les nouvelles demandes apparaissent ici.",
+      "balance": "Solde disponible"
+    },
+    "status": {
+      "active": "En cours",
+      "issued": "Émis",
+      "used": "Utilisé",
+      "expired": "Expiré",
+      "cancelled": "Annulé"
+    },
+    "pay": {
+      "title": "Rien à payer de ce côté",
+      "body": "L'option est acceptée et les données des passagers sont chez {partner}. {ministry} paie {partner} directement : l'émission suit sans autre étape de votre part, et les billets apparaissent dans Mes billets.",
+      "insufficientTitle": "Le solde disponible ne couvre pas cette option",
+      "insufficientBody": "{partner} a été prévenu et va contacter {ministry} pour régler la situation. Rien n'est émis d'ici là — le tarif peut changer si la proposition expire.",
+      "help": "Parler à {partner}"
+    },
+    "install": {
+      "saved": "{name} est enregistré sur votre appareil.",
+      "iosTitle": "Enregistrez {name} sur votre iPhone",
+      "iosWhy": "*Elle s'ouvre toujours au bon endroit.* Avec l'icône sur l'écran d'accueil, plus besoin de chercher le lien dans vos e-mails.",
+      "title": "Enregistrez {name} sur votre téléphone",
+      "why": "*Elle s'ouvre toujours au bon endroit.* Avec l'icône sur l'écran d'accueil, plus besoin de chercher le lien dans vos e-mails."
     }
   }
 }

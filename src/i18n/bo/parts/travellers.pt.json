@@ -1,0 +1,66 @@
+{
+  "bo": {
+    "travellers": {
+      "title": "Fichas dos viajantes",
+      "expiringCount": "{count} passaporte(s) a expirar",
+      "empty": "Ainda não há fichas. Nascem quando a secretária preenche os passageiros de um pedido.",
+      "name": "Nome",
+      "passport": "Passaporte",
+      "expiry": "Validade",
+      "contact": "Contacto (apoio)",
+      "updated": "Actualizada",
+      "expiringSoon": "menos de 6 meses",
+      "expiringBanner": "O passaporte expira a {date}: menos de seis meses.",
+      "alertSent": "secretária avisada a {when}",
+      "history": "Histórico de alterações",
+      "sources": {
+        "case": "Pedido da secretária",
+        "backoffice": "Backoffice",
+        "import": "Importada dos casos"
+      },
+      "fromCase": "ver o caso",
+      "columns": {
+        "title": "Tratamento",
+        "first_name": "Nomes próprios",
+        "last_name": "Apelidos",
+        "gender": "Sexo",
+        "birth_date": "Nascimento",
+        "nationality": "Nacionalidade",
+        "passport_number": "Passaporte",
+        "passport_expiry": "Validade",
+        "issuing_country": "País emissor",
+        "phone": "Telefone",
+        "email": "Email"
+      },
+      "fields": {
+        "title": "Tratamento",
+        "firstName": "Nomes próprios",
+        "lastName": "Apelidos",
+        "birthDate": "Data de nascimento",
+        "gender": "Sexo",
+        "nationality": "Nacionalidade",
+        "passportNumber": "Número do passaporte",
+        "passportExpiry": "Validade do passaporte",
+        "issuingCountry": "País emissor",
+        "phone": "Telefone",
+        "email": "Email"
+      },
+      "contactNote": "O telefone e o email são só para apoio operacional: chegar ao viajante numa perturbação. Não vão para a companhia nem para o bilhete.",
+      "saving": "A guardar…",
+      "save": "Guardar ficha",
+      "saved": "Guardada. A alteração ficou no histórico.",
+      "errors": {
+        "date": "Data inválida.",
+        "country": "Escolha um país da lista.",
+        "name": "Nome e apelido, como no passaporte.",
+        "passport": "O passaporte tem 5 a 12 letras ou dígitos.",
+        "phone": "Confirme o telefone, com o indicativo.",
+        "email": "Confirme o email.",
+        "notFound": "Ficha não encontrada.",
+        "invalid": "Dados inválidos.",
+        "unavailable": "Não foi possível guardar agora. Tente de novo.",
+        "duplicatePassport": "Já existe outra ficha neste ministério com este passaporte."
+      }
+    }
+  }
+}

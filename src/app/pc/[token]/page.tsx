@@ -4,6 +4,7 @@ import { loadPcState, touchLink } from "@/lib/pc/state"
 import { pcLocale } from "@/lib/pc/locale"
 import { PcBrandProvider, PcFab, PcFooter, ToastHost } from "@/components/pc/chrome"
 import { brandCssVars, clientBrandForCase, toClientBrand } from "@/lib/brand"
+import { MinistryTabBar } from "@/components/ministry/tab-bar"
 import { PcScreenRouter } from "@/components/pc/screen-router"
 import { I18nProvider } from "@/i18n/provider"
 import { getDictionary } from "@/i18n/server"
@@ -96,6 +97,13 @@ export default async function PriceCheckerCasePage({
           <PcScreenRouter state={state} forceView={view} locale={locale} />
           <PcFooter />
           <PcFab />
+          {/* MIN-01 · num caso de ministério, a barra da aplicação continua lá. */}
+          {state.ministry?.appPath && (
+            <>
+              <style>{".fab{bottom:calc(88px + env(safe-area-inset-bottom))!important}"}</style>
+              <MinistryTabBar base={state.ministry.appPath} />
+            </>
+          )}
         </ToastHost>
       </PcBrandProvider>
     </I18nProvider>

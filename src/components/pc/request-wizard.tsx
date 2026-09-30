@@ -109,6 +109,7 @@ export function RequestWizard({
   initialCountry,
   agentSlug,
   companySlug = null,
+  ministry = null,
 }: {
   initialLang: Locale
   initialCurrency: string
@@ -122,6 +123,16 @@ export function RequestWizard({
   agentSlug: string | null
   /** PRO-06 · a empresa do link (`?company=`). */
   companySlug?: string | null
+  /**
+   * MIN-01 · o pedido feito dentro da aplicação do ministério. Quem pede é
+   * conhecido (a secretária do ministério): o contacto vem preenchido e o
+   * passo dele salta-se. O `token` é o do link do ministério, e é o servidor
+   * que o resolve — o ministério e o parceiro nunca vêm do browser.
+   */
+  ministry?: {
+    token: string
+    contact: { name: string; email: string; country: string; phone: string }
+  } | null
 }) {
   const router = useRouter()
   const t = useT()
@@ -156,11 +167,14 @@ export function RequestWizard({
   const [places, setPlaces] = useState<Record<string, Place>>({})
 
   // ── P2 ────────────────────────────────────────────────────────────────────
-  const [name, setName] = useState("")
-  const [country, setCountry] = useState(initialCountry ?? DEFAULT_COUNTRY)
-  const [phone, setPhone] = useState("")
-  const [email, setEmail] = useState("")
+  const [name, setName] = useState(ministry?.contact.name ?? "")
+  const [country, setCountry] = useState(ministry?.contact.country || initialCountry || DEFAULT_COUNTRY)
+  const [phone, setPhone] = useState(ministry?.contact.phone ?? "")
+  const [email, setEmail] = useState(ministry?.contact.email ?? "")
   const [consent, setConsent] = useState(false)
+  /* MIN-01 · o rascunho do ministério não se mistura com o de um particular
+     no mesmo browser. */
+  const draftKey = ministry ? `${DRAFT_KEY}:m:${ministry.token.slice(0, 10)}` : DRAFT_KEY
 
   /*
    * FE-05 · o campo dos pedidos especiais.
@@ -208,7 +222,7 @@ export function RequestWizard({
     let codes: string[] = []
 
     try {
-      const raw = window.localStorage.getItem(DRAFT_KEY)
+      const raw = window.localStorage.getItem(draftKey)
       if (raw) {
         const d = JSON.parse(raw)
         if (typeof d === "object" && d) {
@@ -277,7 +291,7 @@ export function RequestWizard({
       name, phone, email, country,
     }
     try {
-      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+      window.localStorage.setItem(draftKey, JSON.stringify(draft))
     } catch {
       /* modo privado sem quota — o formulário continua a funcionar */
     }
@@ -410,8 +424,27 @@ export function RequestWizard({
       return
     }
 
+    /* MIN-01 · no ministério, quem pede já é conhecido: com o contacto
+       completo, o passo do contacto salta-se e vai-se à revisão. */
+    if (ministry && ministryContactComplete()) {
+      setConsent(true)
+      setServerError(null)
+      setStep(3)
+      window.scrollTo(0, 0)
+      return
+    }
+
     setStep(2)
     window.scrollTo(0, 0)
+  }
+
+  function ministryContactComplete(): boolean {
+    const cleanName = name.trim().replace(/\s+/g, " ")
+    return (
+      cleanName.split(" ").filter(Boolean).length >= 2 &&
+      Boolean(toE164(dialCode, phone)) &&
+      /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email.trim())
+    )
   }
 
   /**
@@ -497,6 +530,7 @@ export function RequestWizard({
         currency,
         agentSlug,
         companySlug,
+        ministryToken: ministry?.token,
       })
 
       if (!result.ok) {
@@ -505,7 +539,7 @@ export function RequestWizard({
       }
 
       try {
-        window.localStorage.removeItem(DRAFT_KEY)
+        window.localStorage.removeItem(draftKey)
         /* O token é o endereço permanente do pedido. Guardado para quem voltar
            a /pc sem o link — é o que lhe devolve o pedido em vez de o obrigar a
            preencher tudo outra vez. */

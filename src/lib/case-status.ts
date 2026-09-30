@@ -253,6 +253,9 @@ export interface CasePassenger {
   ticket_number?: string | null
   seat_outbound?: string | null
   seat_inbound?: string | null
+  /* Migração 0029 · MIN-03 — só para apoio operacional. */
+  phone?: string | null
+  email?: string | null
 }
 
 export interface CasePayment {

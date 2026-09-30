@@ -82,8 +82,54 @@ export const caseInScope = cache(async (caseId: string): Promise<boolean> => {
     console.error("[bo/scope] caso ilegível:", error.message)
     return false
   }
-  return Boolean(data)
+  if (data) return true
+
+  /* ADM-04 · o caso de outro parceiro abre-se ao Admin WeeFly só durante uma
+     intervenção explícita e registada. */
+  return Boolean(scope.partnerId && (await liveIntervention(caseId)))
 })
+
+export interface LiveIntervention {
+  id: string
+  partnerId: string
+  reason: string
+  expiresAt: string
+}
+
+/**
+ * ADM-04 · "Só leitura por defeito. Intervir exige uma ação explícita, que
+ * fica registada." A intervenção em curso desta sessão neste caso, se houver.
+ * Só o Admin WeeFly (o RLS da 0030 não mostra a tabela a mais ninguém).
+ */
+export const liveIntervention = cache(async (caseId: string): Promise<LiveIntervention | null> => {
+  if (!UUID.test(caseId)) return null
+  const scope = await getBoScope()
+  if (!scope?.identity.profile?.crossPartner) return null
+  const { data, error } = await scope.db
+    .from("admin_interventions")
+    .select("id, partner_id, reason, expires_at")
+    .eq("case_id", caseId)
+    .eq("user_id", scope.identity.userId)
+    .is("ended_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("expires_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return null
+  const r = data as { id: string; partner_id: string; reason: string; expires_at: string }
+  return { id: r.id, partnerId: r.partner_id, reason: r.reason, expiresAt: r.expires_at }
+})
+
+/**
+ * O âmbito com que se lê a ficha de um caso: o da sessão, ou — durante uma
+ * intervenção — o do parceiro do caso, para que a fila e a ficha o encontrem.
+ */
+export async function scopeForCase(caseId: string): Promise<BoScope | null> {
+  const scope = await getBoScope()
+  if (!scope) return null
+  const intervention = await liveIntervention(caseId)
+  return intervention ? { ...scope, partnerId: intervention.partnerId } : scope
+}
 
 /**
  * Para as server actions sobre um caso: a identidade, se o caso estiver na

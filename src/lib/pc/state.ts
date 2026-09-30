@@ -28,6 +28,7 @@ import {
   type TripKind,
 } from "@/lib/pc/catalog"
 import { cityNames } from "@/lib/airports"
+import { withPassengerContacts } from "@/lib/pc/passenger-contacts"
 import { countryForLocale, countryOfDial } from "@/lib/countries"
 import {
   enforceExpiry,
@@ -165,6 +166,18 @@ export interface PcState {
   expiry: { expired: boolean; cause: "client_never_paid" | "review_overdue" | null }
   issued: PcIssuedView
   cancelled: boolean
+  /**
+   * MIN-07 · o caso é de um ministério: não há pagamento do lado de quem pede
+   * (o ministério paga à Alô fora da plataforma, e a bolsa cobre). `fundsCover`
+   * diz se o saldo cobre a opção escolhida; nulo antes de escolher.
+   */
+  ministry: {
+    name: string
+    partnerName: string
+    /** O caminho de volta à aplicação do ministério (a barra inferior). */
+    appPath: string | null
+    fundsCover: boolean | null
+  } | null
 }
 
 export type PcLookup =
@@ -193,8 +206,9 @@ export async function loadPcState(token: string): Promise<PcLookup> {
   const { data: raw, error: readError } = await admin
     .from("booking_cases")
     .select(
-      `id, token, stage, created_at, pnr, issued_at,
-       partner:partners (status),
+      `id, token, stage, created_at, pnr, issued_at, organisation_id,
+       partner:partners (status, commercial_name),
+       organisation:organisations (name, slug, link_token),
        links:case_links (id, stage, status),
        trip_request:trip_requests (
          id, reference, trip_type, origin, destination, depart_date, return_date,
@@ -332,7 +346,9 @@ export async function loadPcState(token: string): Promise<PcLookup> {
   const selectedOfferId = published?.proposal.selected_offer_id ?? null
   const selectedAt = published?.proposal.selected_at ?? null
 
-  const passengers = (passengerResult.data ?? []) as unknown as CasePassenger[]
+  let passengers = (passengerResult.data ?? []) as unknown as CasePassenger[]
+  /* MIN-03 · o contacto de cada passageiro só se pede num caso de ministério. */
+  if (row.organisation_id) passengers = await withPassengerContacts(admin, caseId, passengers)
 
   let payment = loadedPayment
   let expiry: PcState["expiry"] = { expired: false, cause: null }
@@ -389,6 +405,24 @@ export async function loadPcState(token: string): Promise<PcLookup> {
         .filter((id): id is string => Boolean(id)),
     },
     cancelled,
+    ministry: null,
+  }
+
+  /* MIN-07 · o ministério e a bolsa: se já há opção escolhida, se o saldo a
+     cobre. O saldo não vai para o browser — só a resposta sim ou não. */
+  const organisation = unwrap(row.organisation)
+  if (organisation) {
+    let fundsCover: boolean | null = null
+    if (selectedOfferId && totals[selectedOfferId] != null && row.organisation_id) {
+      const { data: balance } = await admin.rpc("organisation_balance", { p_org: row.organisation_id })
+      fundsCover = balance != null ? Number(balance) >= Number(totals[selectedOfferId]) : null
+    }
+    state.ministry = {
+      name: String(organisation.name),
+      partnerName: String(unwrap(row.partner)?.commercial_name ?? ""),
+      appPath: organisation.link_token ? `/m/${organisation.slug}/${organisation.link_token}` : null,
+      fundsCover,
+    }
   }
 
   state.screen = screenFor(state)

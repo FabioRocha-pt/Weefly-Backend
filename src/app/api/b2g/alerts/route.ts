@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { checkAllBudgetAlerts } from "@/lib/budget-alerts"
+import { checkPassportExpiries } from "@/lib/passport-alerts"
 
 /**
  * PAR-05 · o cron diário dos alertas de saldo.
@@ -9,6 +10,8 @@ import { checkAllBudgetAlerts } from "@/lib/budget-alerts"
  * dia." É esta rota que faz a repetição; o "uma vez por dia" é da base de
  * dados (`budget_alerts` único por ministério e dia), pelo que corrê-la duas
  * vezes no mesmo dia não manda nada a mais.
+ *
+ * DAT-02 · no mesmo passo, os passaportes a expirar (uma vez por validade).
  *
  * Mesma autorização do `/api/pc/expire`: `PC_CRON_TOKEN`, no cabeçalho.
  *
@@ -27,5 +30,6 @@ export async function GET(request: NextRequest) {
   if (provided !== secret) return new NextResponse("Unauthorized", { status: 401 })
 
   const result = await checkAllBudgetAlerts()
-  return NextResponse.json({ ok: true, ...result }, { headers: { "cache-control": "no-store" } })
+  const passports = await checkPassportExpiries()
+  return NextResponse.json({ ok: true, ...result, passports }, { headers: { "cache-control": "no-store" } })
 }

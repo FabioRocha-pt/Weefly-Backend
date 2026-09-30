@@ -69,6 +69,21 @@ function useWaNumber(): string | null {
   return (brand.whatsapp ?? "").replace(/\D/g, "") || null
 }
 
+/**
+ * MIN-04 · a mensagem do WhatsApp leva o ministério à frente, quando o ecrã é
+ * de um ministério: "abre com o nome do ministério e a referência já escritos".
+ */
+function useWaHref() {
+  const brand = usePcBrand()
+  const org = brand?.organisation?.name ?? null
+  return (number: string, reference: string | null | undefined, t: Parameters<typeof waLink>[2]) => {
+    const url = waLink(number, reference, t)
+    if (!org) return url
+    const [base, text = ""] = url.split("?text=")
+    return `${base}?text=${encodeURIComponent(`${org} · `)}${text}`
+  }
+}
+
 function BrandLogo() {
   const brand = usePcBrand()
   if (brand?.kind !== "partner") return <WeeFlyLogo className="logo" />
@@ -325,6 +340,7 @@ export function WaButton({
 }) {
   const t = useT()
   const number = useWaNumber()
+  const href = useWaHref()
   if (!number) return null
   return (
     <button
@@ -332,7 +348,7 @@ export function WaButton({
       className={className}
       style={style}
       onClick={() =>
-        window.open(waLink(number, reference, t), "_blank", "noopener")
+        window.open(href(number, reference, t), "_blank", "noopener")
       }
     >
       {children}
@@ -343,12 +359,13 @@ export function WaButton({
 export function PcFab() {
   const t = useT()
   const number = useWaNumber()
+  const href = useWaHref()
   if (!number) return null
   return (
     <button
       type="button"
       className="fab"
-      onClick={() => window.open(waLink(number, null, t), "_blank", "noopener")}
+      onClick={() => window.open(href(number, null, t), "_blank", "noopener")}
     >
       <IcWa size={21} />
       <span>{t("pc.chat")}</span>
