@@ -98,7 +98,7 @@ Substitui o estado da manhã do mesmo dia.
 
 As migrações `0026` a `0030` estão aplicadas. Confirmado com `node scripts/check-migrations.mjs`: *Tudo aplicado*.
 
-Os testes de isolamento entre parceiros existem para cada bloco: `test_tenancy`, `test_rbac`, `test_b2g` e, novo, `test_travellers`. Este último testa o histórico, que não se altera, o passaporte único, as fichas que a Beta não vê e as intervenções que só o Admin lê. **O `test_travellers` ainda não correu**: precisa do Docker Desktop (`bash supabase/tests/run.sh`).
+Os testes de isolamento entre parceiros existem para cada bloco: `test_tenancy`, `test_rbac`, `test_b2g` e, novo, `test_travellers`. Este último testa o histórico, que não se altera, o passaporte único, as fichas que a Beta não vê e as intervenções que só o Admin lê. **Correram todos**, num Postgres de teste com as 30 migrações aplicadas duas vezes seguidas (`bash supabase/tests/run.sh`): tudo OK.
 
 ---
 

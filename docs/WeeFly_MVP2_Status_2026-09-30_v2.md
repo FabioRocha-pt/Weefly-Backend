@@ -98,7 +98,7 @@ Replaces the status from the morning of the same day.
 
 Migrations `0026` to `0030` are applied. Confirmed with `node scripts/check-migrations.mjs`: *All applied*.
 
-Partner-isolation tests exist for every block: `test_tenancy`, `test_rbac`, `test_b2g` and, new, `test_travellers`. The new one tests that the history cannot be altered, that a passport is unique per ministry, that Beta cannot see Alô's records, and that only Admin reads interventions. **`test_travellers` has not run yet**: it needs Docker Desktop (`bash supabase/tests/run.sh`).
+Partner-isolation tests exist for every block: `test_tenancy`, `test_rbac`, `test_b2g` and, new, `test_travellers`. The new one tests that the history cannot be altered, that a passport is unique per ministry, that Beta cannot see Alô's records, and that only Admin reads interventions. **All of them ran**, on a test Postgres with all 30 migrations applied twice in a row (`bash supabase/tests/run.sh`): all OK.
 
 ---
 
