@@ -3,6 +3,10 @@ import { notFound } from "next/navigation"
 import { getBoAccess, listBoSellers } from "@/lib/bo-access"
 import { loadBoCase } from "@/lib/pc/bo-queue"
 import { caseInScope, getBoScope } from "@/lib/bo-scope"
+import { listExternalPayments } from "@/lib/b2g"
+import { formatAmount } from "@/lib/case-status"
+import type { BoIdentity } from "@/lib/bo-access"
+import { ExternalPaymentPanel } from "@/components/b2g/b2g-forms"
 import { getPcPayment, listProofs } from "@/lib/pc/payment"
 import { getPublishedProposal } from "@/lib/proposals"
 import { listCaseEvents } from "@/lib/case-events"
@@ -87,11 +91,32 @@ export default async function BoCasePage({
 
   const proofs = payment ? await listProofs(payment.id) : []
 
+  /*
+   * PAR-07 · um caso de ministério paga-se fora da plataforma: o painel do
+   * pagamento externo, com o saldo da bolsa ao lado. Só quando o caso tem
+   * ministério — o retalho continua exactamente como estava.
+   */
+  const external = await loadExternalPanel(params.id, access.identity)
+
   const requestedTab = Array.isArray(searchParams.aba)
     ? searchParams.aba[0]
     : searchParams.aba
 
   return (
+    <>
+      {external && (
+        <div className="page" style={{ paddingBottom: 0 }}>
+          <ExternalPaymentPanel
+            caseId={params.id}
+            orgName={external.orgName}
+            balance={formatAmount(external.balance, external.currency)}
+            currency={external.currency}
+            suggestedAmount={payment ? String(payment.amount / 100) : ""}
+            payments={external.payments}
+            canReverse={external.canReverse}
+          />
+        </div>
+      )}
     <BoCaseView
       detail={detail}
       payment={payment}
@@ -108,5 +133,44 @@ export default async function BoCasePage({
       initialTab={requestedTab}
       viewer={{ label: access.identity.label, email: access.identity.email }}
     />
+    </>
   )
+}
+
+async function loadExternalPanel(caseId: string, identity: BoIdentity) {
+  const scope = await getBoScope()
+  if (!scope) return null
+  const { data } = await scope.db
+    .from("booking_cases")
+    .select("organisation:organisations(id, name, currency)")
+    .eq("id", caseId)
+    .maybeSingle()
+  const raw = (data as { organisation: unknown } | null)?.organisation
+  const org = (Array.isArray(raw) ? raw[0] : raw) as { id: string; name: string; currency: string } | null
+  if (!org) return null
+
+  const [{ data: movements }, payments] = await Promise.all([
+    scope.db.from("budget_movements").select("delta").eq("organisation_id", org.id),
+    listExternalPayments(caseId),
+  ])
+  const balance = ((movements ?? []) as { delta: number }[]).reduce((s, m) => s + Number(m.delta), 0)
+
+  return {
+    orgName: org.name,
+    currency: org.currency,
+    balance,
+    canReverse: Boolean(identity.profile && identity.profile.manageUsers !== "none"),
+    payments: payments.map((p) => ({
+      id: p.id,
+      amount: formatAmount(p.amount, p.currency),
+      paidOn: p.paidOn,
+      method: p.method,
+      reference: p.reference,
+      confirmedByEmail: p.confirmedByEmail,
+      confirmedAt: p.confirmedAt,
+      reversedAt: p.reversedAt,
+      reversedByEmail: p.reversedByEmail,
+      reversalReason: p.reversalReason,
+    })),
+  }
 }

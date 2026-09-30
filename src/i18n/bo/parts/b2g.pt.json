@@ -1,0 +1,195 @@
+{
+  "bo": {
+    "b2g": {
+      "list": {
+        "title": "Ministérios",
+        "subtitle": "Os ministérios que a sua empresa serve: a secretária, o link, a bolsa e os pedidos.",
+        "new": "Novo ministério",
+        "empty": "Ainda não há ministérios.",
+        "ministry": "Ministério",
+        "threshold": "Limite",
+        "lastAlert": "Último alerta"
+      },
+      "form": {
+        "name": "Nome do ministério",
+        "slug": "Identificador no endereço",
+        "logo": "Brasão (URL da imagem)",
+        "secretaryName": "Nome da secretária",
+        "secretaryEmail": "Email da secretária",
+        "secretaryPhone": "Telefone da secretária",
+        "thresholdAmount": "Limite de alerta (valor)",
+        "thresholdPercent": "Limite de alerta (% do último reforço)",
+        "secretarySeesBalance": "A secretária vê o saldo da bolsa (decisão O2)",
+        "save": "Guardar",
+        "create": "Criar ministério",
+        "cancel": "Cancelar"
+      },
+      "detail": {
+        "edit": "Editar",
+        "inactive": "inactivo",
+        "balance": "Saldo da bolsa",
+        "threshold": "Limite de alerta: {value}",
+        "noThreshold": "Sem limite de alerta",
+        "below": "Abaixo do limite",
+        "secretary": "Secretária",
+        "secretarySees": "Vê o saldo",
+        "secretaryNotSees": "Não vê o saldo",
+        "requests": "Pedidos",
+        "lastAlert": "Último alerta: {when}",
+        "noAlerts": "Nenhum alerta enviado",
+        "link": "Link do ministério",
+        "noLink": "Sem link",
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "rotate": "Regenerar link",
+        "rotateConfirm": "Regenerar o link? O actual deixa de funcionar de imediato, e a secretária recebe o novo por email.",
+        "linkSince": "Link em vigor desde {when}",
+        "accountActive": "activa",
+        "accountSuspended": "suspensa"
+      },
+      "secretary": {
+        "change": "Trocar de secretária",
+        "explain": "A conta que sai é suspensa, não apagada. A nova herda o ministério e o histórico, o link é regenerado e o antigo deixa de funcionar.",
+        "confirm": "Trocar de secretária? O link actual deixa de funcionar.",
+        "submit": "Trocar"
+      },
+      "secretaryReplaced": "Substituída por uma nova secretária",
+      "budget": {
+        "title": "Bolsa",
+        "amount": "Valor ({currency})",
+        "documentRef": "Referência do documento",
+        "reason": "Nota (opcional)",
+        "credit": "Registar reforço",
+        "creditConfirm": "Registar um reforço de {amount}?",
+        "thresholdHint": "Em valor ou em percentagem do último reforço. Vazio: sem alertas."
+      },
+      "adjust": {
+        "title": "Corrigir o saldo",
+        "open": "Corrigir o saldo…",
+        "explain": "Uma correcção entra como movimento, com o seu nome e o motivo. Não apaga nada.",
+        "amount": "Valor ({currency}), com sinal",
+        "reason": "Motivo",
+        "confirm": "Corrigir o saldo em {amount}? Fica registado com o seu nome.",
+        "submit": "Corrigir"
+      },
+      "history": {
+        "title": "Histórico da bolsa",
+        "empty": "Ainda não há movimentos.",
+        "date": "Data",
+        "kind": "Tipo",
+        "value": "Valor",
+        "reference": "Referência",
+        "who": "Quem registou",
+        "kinds": {
+          "credit": "Reforço",
+          "debit": "Passagem",
+          "reversal": "Estorno",
+          "adjustment": "Correcção"
+        }
+      },
+      "alerts": {
+        "title": "Alertas de saldo",
+        "empty": "Nenhum alerta enviado.",
+        "line": "saldo {balance} · limite {threshold} · {email} email(s) · {whatsapp} WhatsApp"
+      },
+      "recipients": {
+        "title": "Quem recebe os alertas",
+        "none": "Ninguém configurado (decisão O1): os alertas ficam registados e não saem.",
+        "allMinistries": "Todos os ministérios",
+        "name": "Nome",
+        "add": "Acrescentar",
+        "remove": "Retirar",
+        "side": {
+          "partner": "Parceiro",
+          "weefly": "WeeFly"
+        }
+      },
+      "cases": {
+        "title": "Casos do ministério",
+        "empty": "Ainda não há pedidos.",
+        "reference": "Referência",
+        "route": "Percurso",
+        "stage": "Etapa",
+        "external": "Pago à parte",
+        "created": "Pedido em"
+      },
+      "external": {
+        "title": "Pagamento externo",
+        "balance": "saldo da bolsa",
+        "explain": "O ministério paga fora da plataforma. Confirmar regista o pagamento, desconta da bolsa e liberta a emissão.",
+        "paidOn": "Data do pagamento",
+        "methodLabel": "Método",
+        "reference": "Referência",
+        "confirm": "Confirmar pagamento externo",
+        "confirmConfirm": "Confirmar {amount}? Desconta da bolsa do ministério.",
+        "confirmedLine": "Confirmado: {amount}, pago a {date} por {method}, confirmado por {by}",
+        "reversalReason": "Motivo da reversão",
+        "reverse": "Reverter",
+        "reverseConfirm": "Reverter o pagamento? O saldo é reposto e a emissão volta a ficar presa.",
+        "reversedLine": "Revertido: {amount}, por {by} — {reason}",
+        "method": {
+          "transfer": "Transferência",
+          "deposit": "Depósito",
+          "cheque": "Cheque",
+          "comfort_letter": "Carta conforto",
+          "other": "Outro"
+        }
+      },
+      "admin": {
+        "title": "B2G",
+        "subtitle": "Todas as vendas ao Estado, de todos os parceiros. Só leitura por defeito.",
+        "noPartners": "Nenhum parceiro vende ao Estado ainda.",
+        "partner": "Parceiro",
+        "status": "Estado",
+        "ministries": "Ministérios",
+        "issued": "Total emitido",
+        "balances": "Soma dos saldos",
+        "statusValue": {
+          "active": "Activo",
+          "suspended": "Suspenso"
+        },
+        "readOnly": "Só leitura. Intervir (corrigir um saldo) pede confirmação e motivo, e fica registado."
+      },
+      "wallet": {
+        "subtitle": "O saldo da bolsa de cada ministério, só para consulta."
+      },
+      "errors": {
+        "onlyManagers": "Só um administrador gere ministérios e bolsas.",
+        "onlyWeefly": "Só um Admin WeeFly corrige saldos.",
+        "invalid": "Dados inválidos.",
+        "nameMissing": "Falta o nome.",
+        "slugShape": "O identificador só leva minúsculas, números e hífen.",
+        "slugTaken": "Já existe um ministério com esse identificador.",
+        "emailInvalid": "Email inválido.",
+        "percentRange": "A percentagem vai de 0 a 100.",
+        "notFound": "Não encontrado.",
+        "amountMissing": "Falta o valor.",
+        "documentMissing": "Falta a referência do documento.",
+        "reasonMissing": "Escreva o motivo.",
+        "dateInvalid": "Data inválida.",
+        "unavailable": "Serviço indisponível.",
+        "caseHasNoMinistry": "Este caso não é de um ministério.",
+        "alreadyConfirmed": "O pagamento externo deste caso já foi confirmado.",
+        "insufficient": "Saldo insuficiente: a bolsa do ministério não cobre esta passagem. Nada foi registado.",
+        "nothingToReverse": "Não há pagamento externo para reverter.",
+        "secretaryDenied": "Não pode criar a conta da secretária neste parceiro.",
+        "recipientChannel": "Indique um email ou um WhatsApp."
+      },
+      "notice": {
+        "saved": "Ministério guardado.",
+        "created": "Ministério criado, com link.",
+        "welcomeSent": "O email de boas-vindas foi enviado.",
+        "welcomeFailed": "O email de boas-vindas não saiu: {reason}",
+        "linkRotated": "Link regenerado. O anterior já não funciona.",
+        "secretaryChanged": "Secretária trocada. O link antigo já não funciona.",
+        "credited": "Reforço registado.",
+        "adjusted": "Saldo corrigido e registado.",
+        "thresholdSaved": "Limite guardado.",
+        "externalConfirmed": "Pagamento externo confirmado. Descontado da bolsa; a emissão está livre.",
+        "externalReversed": "Pagamento externo revertido. O saldo foi reposto.",
+        "recipientSaved": "Destinatário acrescentado.",
+        "recipientRemoved": "Destinatário retirado."
+      }
+    }
+  }
+}

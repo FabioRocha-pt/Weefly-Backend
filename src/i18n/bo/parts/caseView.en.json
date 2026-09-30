@@ -332,7 +332,9 @@
       "payment_extended": "Payment deadline extended",
       "payment_expired": "Payment link expired",
       "payment_reopened": "Payment reopened",
-      "payment_expired_manual": "Payment link closed manually"
+      "payment_expired_manual": "Payment link closed manually",
+      "external_payment_confirmed": "External payment confirmed",
+      "external_payment_reversed": "External payment reversed"
     }
   }
 }

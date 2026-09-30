@@ -29,6 +29,7 @@ const TITLE_KEYS: Record<string, string> = {
   "/gestao/numeros": "pro.adminNumbers",
   "/gestao/receita": "pro.adminRevenue",
   "/agente/equipa": "nav.team",
+  "/agente/ministerios": "bo.b2g.list.title",
   "/conta": "profile.title",
 }
 
@@ -39,6 +40,7 @@ export function DashboardShell({
   companyName,
   canManageTeam,
   poweredByWeefly,
+  sellsB2g,
   children,
 }: {
   user: UserMenuData | null
@@ -48,9 +50,10 @@ export function DashboardShell({
   canManageTeam?: boolean
   /** TEN-05 · o parceiro da conta tem o interruptor ligado. */
   poweredByWeefly?: boolean
+  sellsB2g?: boolean
   children: React.ReactNode
 }) {
-  const nav = { modules, agentMenus, companyName, canManageTeam }
+  const nav = { modules, agentMenus, companyName, canManageTeam, sellsB2g }
   const t = useT()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)

@@ -80,10 +80,18 @@ const ADMIN_NAV: NavItem[] = [
   { labelKey: "pro.adminAccounts", href: "/gestao/contas", icon: <Building className="w-5 h-5" /> },
   { labelKey: "pro.adminUsers", href: "/gestao/utilizadores", icon: <UserCog className="w-5 h-5" /> },
   { labelKey: "pro.adminPartners", href: "/gestao/parceiros", icon: <Handshake className="w-5 h-5" /> },
-  { labelKey: "pro.adminB2g", href: "/gestao/b2g", icon: <Landmark className="w-5 h-5" />, soon: true },
+  { labelKey: "pro.adminB2g", href: "/gestao/b2g", icon: <Landmark className="w-5 h-5" /> },
   { labelKey: "pro.adminNumbers", href: "/gestao/numeros", icon: <BarChart3 className="w-5 h-5" />, soon: true },
   { labelKey: "pro.adminRevenue", href: "/gestao/receita", icon: <Coins className="w-5 h-5" />, soon: true },
 ]
+
+/* PAR-02 · os ministérios, num menu próprio enquanto a decisão O3 não disser
+   se ficam dentro de Cliente. Só para quem vende ao Estado. */
+const MINISTRIES_ITEM: NavItem = {
+  labelKey: "bo.b2g.list.title",
+  href: "/agente/ministerios",
+  icon: <Landmark className="w-5 h-5" />,
+}
 
 /* ADM-02 · o Admin do parceiro gere a equipa dele a partir do Agente. */
 const TEAM_ITEM: NavItem = {
@@ -98,11 +106,13 @@ interface SidebarProps {
   companyName: string | null
   /** ADM-02 · mostra "Equipa" no Agente (perfil Admin do parceiro). */
   canManageTeam?: boolean
+  /** PAR-02 · o parceiro vende ao Estado (B2G). */
+  sellsB2g?: boolean
   /** When provided, renders as a mobile drawer that can be closed. */
   onClose?: () => void
 }
 
-export function Sidebar({ modules, agentMenus, companyName, canManageTeam, onClose }: SidebarProps) {
+export function Sidebar({ modules, agentMenus, companyName, canManageTeam, sellsB2g, onClose }: SidebarProps) {
   const t = useT()
   const pathname = usePathname()
 
@@ -125,7 +135,14 @@ export function Sidebar({ modules, agentMenus, companyName, canManageTeam, onClo
               soon: state === "soon",
             })),
           },
-          { titleKey: "pro.agentTools", items: canManageTeam ? [...AGENT_TOOLS, TEAM_ITEM] : AGENT_TOOLS },
+          {
+            titleKey: "pro.agentTools",
+            items: [
+              ...AGENT_TOOLS,
+              ...(sellsB2g ? [MINISTRIES_ITEM] : []),
+              ...(canManageTeam ? [TEAM_ITEM] : []),
+            ],
+          },
         ]
       : mode === "admin"
         ? [{ items: ADMIN_NAV }]

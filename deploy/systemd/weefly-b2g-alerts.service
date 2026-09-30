@@ -1,0 +1,20 @@
+# PAR-05 · os alertas de saldo das bolsas dos ministérios, uma vez por dia.
+#
+# "Repete-se enquanto o saldo estiver abaixo do limite, no máximo uma vez por
+# dia." A repetição é este timer; o "uma vez por dia" é da base de dados.
+#
+#   sudo cp deploy/systemd/weefly-b2g-alerts.* /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now weefly-b2g-alerts.timer
+#
+# Usa o mesmo ficheiro do token do `weefly-pc-expire` (/etc/weefly/pc-cron.env).
+
+[Unit]
+Description=WeeFly: alertas de saldo das bolsas dos ministérios (PAR-05), uma vez por dia
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/weefly/pc-cron.env
+ExecStart=/usr/bin/curl -fsS -o /dev/null -H "Authorization: Bearer ${PC_CRON_TOKEN}" https://concierge.weefly.africa/api/b2g/alerts

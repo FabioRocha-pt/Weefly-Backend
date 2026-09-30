@@ -45,6 +45,7 @@ export default async function DashboardLayout({
         agentMenus={visibleAgentMenus(account)}
         companyName={account.partner?.name ?? null}
         canManageTeam={account.profile?.manageUsers === "own_partner"}
+        sellsB2g={Boolean(account.partner?.channels.includes("B2G"))}
         poweredByWeefly={Boolean(account.partner && !account.partner.isOperator && account.partner.poweredByWeefly)}
       >
         {children}

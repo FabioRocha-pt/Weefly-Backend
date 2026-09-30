@@ -67,6 +67,8 @@ export interface ProPartner {
   isOperator: boolean
   /** TEN-05 · o interruptor do "Powered by WeeFly". */
   poweredByWeefly: boolean
+  /** A quem vende: B2C, B2G. */
+  channels: string[]
 }
 
 export interface ProAccount {
@@ -95,7 +97,7 @@ export interface ProAccount {
 const MASTER_FALLBACK = ["dominik@weefly.africa"]
 
 export const PARTNER_COLUMNS =
-  "id, slug, commercial_name, sell_mode, supply_enabled, sell_enabled, agent_menus, is_operator, powered_by_weefly"
+  "id, slug, commercial_name, sell_mode, supply_enabled, sell_enabled, agent_menus, is_operator, powered_by_weefly, channels"
 
 export interface PartnerRow {
   id: string
@@ -107,6 +109,7 @@ export interface PartnerRow {
   agent_menus: string[] | null
   is_operator: boolean
   powered_by_weefly?: boolean | null
+  channels?: string[] | null
 }
 
 export function partnerFromRow(row: PartnerRow): ProPartner {
@@ -122,6 +125,7 @@ export function partnerFromRow(row: PartnerRow): ProPartner {
     ),
     isOperator: row.is_operator,
     poweredByWeefly: row.powered_by_weefly !== false,
+    channels: row.channels ?? [],
   }
 }
 

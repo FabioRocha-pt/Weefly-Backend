@@ -332,7 +332,9 @@
       "payment_extended": "Prazo de pagamento estendido",
       "payment_expired": "Link de pagamento expirado",
       "payment_reopened": "Pagamento reaberto",
-      "payment_expired_manual": "Link de pagamento fechado à mão"
+      "payment_expired_manual": "Link de pagamento fechado à mão",
+      "external_payment_confirmed": "Pagamento externo confirmado",
+      "external_payment_reversed": "Pagamento externo revertido"
     }
   }
 }

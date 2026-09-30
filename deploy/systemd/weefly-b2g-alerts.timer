@@ -1,0 +1,12 @@
+[Unit]
+Description=WeeFly: alertas de saldo, todos os dias às 08:00 de Cabo Verde
+
+[Timer]
+# 08:00 em Cabo Verde (UTC-1) são 09:00 UTC.
+OnCalendar=*-*-* 09:00:00 UTC
+# Se a máquina estiver desligada à hora certa, corre quando voltar.
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

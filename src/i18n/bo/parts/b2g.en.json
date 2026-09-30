@@ -1,0 +1,195 @@
+{
+  "bo": {
+    "b2g": {
+      "list": {
+        "title": "Ministries",
+        "subtitle": "The ministries your company serves: the secretary, the link, the budget and the requests.",
+        "new": "New ministry",
+        "empty": "No ministries yet.",
+        "ministry": "Ministry",
+        "threshold": "Threshold",
+        "lastAlert": "Last alert"
+      },
+      "form": {
+        "name": "Ministry name",
+        "slug": "Address identifier",
+        "logo": "Coat of arms (image URL)",
+        "secretaryName": "Secretary's name",
+        "secretaryEmail": "Secretary's email",
+        "secretaryPhone": "Secretary's phone",
+        "thresholdAmount": "Alert threshold (amount)",
+        "thresholdPercent": "Alert threshold (% of the last top-up)",
+        "secretarySeesBalance": "The secretary sees the budget balance (decision O2)",
+        "save": "Save",
+        "create": "Create ministry",
+        "cancel": "Cancel"
+      },
+      "detail": {
+        "edit": "Edit",
+        "inactive": "inactive",
+        "balance": "Budget balance",
+        "threshold": "Alert threshold: {value}",
+        "noThreshold": "No alert threshold",
+        "below": "Below the threshold",
+        "secretary": "Secretary",
+        "secretarySees": "Sees the balance",
+        "secretaryNotSees": "Does not see the balance",
+        "requests": "Requests",
+        "lastAlert": "Last alert: {when}",
+        "noAlerts": "No alerts sent",
+        "link": "Ministry link",
+        "noLink": "No link",
+        "copy": "Copy",
+        "copied": "Copied",
+        "rotate": "Regenerate link",
+        "rotateConfirm": "Regenerate the link? The current one stops working immediately, and the secretary receives the new one by email.",
+        "linkSince": "Link in force since {when}",
+        "accountActive": "active",
+        "accountSuspended": "suspended"
+      },
+      "secretary": {
+        "change": "Change secretary",
+        "explain": "The outgoing account is suspended, not deleted. The new one inherits the ministry and its history, the link is regenerated and the old one stops working.",
+        "confirm": "Change secretary? The current link will stop working.",
+        "submit": "Change"
+      },
+      "secretaryReplaced": "Replaced by a new secretary",
+      "budget": {
+        "title": "Budget",
+        "amount": "Amount ({currency})",
+        "documentRef": "Document reference",
+        "reason": "Note (optional)",
+        "credit": "Record top-up",
+        "creditConfirm": "Record a top-up of {amount}?",
+        "thresholdHint": "As an amount or as a percentage of the last top-up. Empty: no alerts."
+      },
+      "adjust": {
+        "title": "Correct the balance",
+        "open": "Correct the balance…",
+        "explain": "A correction is recorded as a movement, with your name and the reason. Nothing is deleted.",
+        "amount": "Amount ({currency}), signed",
+        "reason": "Reason",
+        "confirm": "Correct the balance by {amount}? It is recorded under your name.",
+        "submit": "Correct"
+      },
+      "history": {
+        "title": "Budget history",
+        "empty": "No movements yet.",
+        "date": "Date",
+        "kind": "Type",
+        "value": "Amount",
+        "reference": "Reference",
+        "who": "Recorded by",
+        "kinds": {
+          "credit": "Top-up",
+          "debit": "Ticket",
+          "reversal": "Reversal",
+          "adjustment": "Correction"
+        }
+      },
+      "alerts": {
+        "title": "Balance alerts",
+        "empty": "No alerts sent.",
+        "line": "balance {balance} · threshold {threshold} · {email} email(s) · {whatsapp} WhatsApp"
+      },
+      "recipients": {
+        "title": "Who receives the alerts",
+        "none": "Nobody configured (decision O1): alerts are recorded and not sent.",
+        "allMinistries": "All ministries",
+        "name": "Name",
+        "add": "Add",
+        "remove": "Remove",
+        "side": {
+          "partner": "Partner",
+          "weefly": "WeeFly"
+        }
+      },
+      "cases": {
+        "title": "Ministry cases",
+        "empty": "No requests yet.",
+        "reference": "Reference",
+        "route": "Route",
+        "stage": "Stage",
+        "external": "Paid externally",
+        "created": "Requested on"
+      },
+      "external": {
+        "title": "External payment",
+        "balance": "budget balance",
+        "explain": "The ministry pays outside the platform. Confirming records the payment, deducts it from the budget and releases issuance.",
+        "paidOn": "Payment date",
+        "methodLabel": "Method",
+        "reference": "Reference",
+        "confirm": "Confirm external payment",
+        "confirmConfirm": "Confirm {amount}? It is deducted from the ministry's budget.",
+        "confirmedLine": "Confirmed: {amount}, paid on {date} by {method}, confirmed by {by}",
+        "reversalReason": "Reason for reversal",
+        "reverse": "Reverse",
+        "reverseConfirm": "Reverse the payment? The balance is restored and issuance is blocked again.",
+        "reversedLine": "Reversed: {amount}, by {by} — {reason}",
+        "method": {
+          "transfer": "Bank transfer",
+          "deposit": "Deposit",
+          "cheque": "Cheque",
+          "comfort_letter": "Comfort letter",
+          "other": "Other"
+        }
+      },
+      "admin": {
+        "title": "B2G",
+        "subtitle": "Every sale to government, from every partner. Read-only by default.",
+        "noPartners": "No partner sells to government yet.",
+        "partner": "Partner",
+        "status": "Status",
+        "ministries": "Ministries",
+        "issued": "Total issued",
+        "balances": "Sum of balances",
+        "statusValue": {
+          "active": "Active",
+          "suspended": "Suspended"
+        },
+        "readOnly": "Read-only. Intervening (correcting a balance) asks for confirmation and a reason, and is recorded."
+      },
+      "wallet": {
+        "subtitle": "Each ministry's budget balance, for reference only."
+      },
+      "errors": {
+        "onlyManagers": "Only an administrator manages ministries and budgets.",
+        "onlyWeefly": "Only a WeeFly admin corrects balances.",
+        "invalid": "Invalid data.",
+        "nameMissing": "The name is missing.",
+        "slugShape": "The identifier only takes lowercase letters, numbers and hyphens.",
+        "slugTaken": "A ministry with that identifier already exists.",
+        "emailInvalid": "Invalid email.",
+        "percentRange": "The percentage goes from 0 to 100.",
+        "notFound": "Not found.",
+        "amountMissing": "The amount is missing.",
+        "documentMissing": "The document reference is missing.",
+        "reasonMissing": "Write the reason.",
+        "dateInvalid": "Invalid date.",
+        "unavailable": "Service unavailable.",
+        "caseHasNoMinistry": "This case does not belong to a ministry.",
+        "alreadyConfirmed": "This case's external payment has already been confirmed.",
+        "insufficient": "Insufficient balance: the ministry's budget does not cover this ticket. Nothing was recorded.",
+        "nothingToReverse": "There is no external payment to reverse.",
+        "secretaryDenied": "You cannot create the secretary's account for this partner.",
+        "recipientChannel": "Enter an email or a WhatsApp number."
+      },
+      "notice": {
+        "saved": "Ministry saved.",
+        "created": "Ministry created, with a link.",
+        "welcomeSent": "The welcome email was sent.",
+        "welcomeFailed": "The welcome email did not go out: {reason}",
+        "linkRotated": "Link regenerated. The previous one no longer works.",
+        "secretaryChanged": "Secretary changed. The old link no longer works.",
+        "credited": "Top-up recorded.",
+        "adjusted": "Balance corrected and recorded.",
+        "thresholdSaved": "Threshold saved.",
+        "externalConfirmed": "External payment confirmed. Deducted from the budget; issuance is released.",
+        "externalReversed": "External payment reversed. The balance has been restored.",
+        "recipientSaved": "Recipient added.",
+        "recipientRemoved": "Recipient removed."
+      }
+    }
+  }
+}
