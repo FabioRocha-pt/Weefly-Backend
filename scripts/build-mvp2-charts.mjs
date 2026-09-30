@@ -4,6 +4,10 @@
  *   node scripts/build-mvp2-charts.mjs pt
  *   node scripts/build-mvp2-charts.mjs en
  *
+ * Um terceiro argumento dá uma versão aos ficheiros (`… pt v2` →
+ * `mvp2-progresso-v2.svg`), para que um documento novo não mude as imagens
+ * de um documento já enviado.
+ *
  * Os números vivem aqui, num sítio só: o documento e o diagrama não podem
  * discordar. Mudar um item de estado é mudar `BLOCKS`.
  */
@@ -11,7 +15,8 @@
 import { writeFileSync, mkdirSync } from "node:fs"
 
 const LANG = process.argv[2] === "en" ? "en" : "pt"
-const SUFFIX = LANG === "en" ? "-en" : ""
+const VERSION = process.argv[3] ? `-${process.argv[3]}` : ""
+const SUFFIX = `${VERSION}${LANG === "en" ? "-en" : ""}`
 
 /* Uma rampa só (a brasa da marca), do mais escuro ao mais claro: feito → em
    curso → por fazer. É uma ordem, não três categorias; os números vão sempre
@@ -19,15 +24,16 @@ const SUFFIX = LANG === "en" ? "-en" : ""
 const C = { done: "#C23A17", part: "#F39A7D", todo: "#D3D8DE", ink: "#1A222E", muted: "#5A6270" }
 const FONT = `font-family="Jakarta, 'Segoe UI', system-ui, sans-serif"`
 
-// [nome PT, nome EN, feito, em curso, por fazer]
+// [nome PT, nome EN, feito, falta confirmar, bloqueado]
+// Estado a 30 de setembro, fim do dia (commit f0aac44).
 const BLOCKS = [
   ["Domínios · MIG-02", "Domains · MIG-02", 1, 0, 0],
-  ["A · Separação entre parceiros", "A · Partner separation", 3, 0, 3],
-  ["B · Admin WeeFly", "B · WeeFly Admin", 3, 2, 4],
-  ["Backoffice PT/EN · I18N-01", "Back office PT/EN · I18N-01", 0, 0, 1],
-  ["C · Backoffice da Alô", "C · Alô back office", 0, 1, 7],
-  ["D · Aplicação do ministério", "D · Ministry app", 0, 0, 7],
-  ["E · Fichas dos passageiros", "E · Passenger records", 0, 0, 3],
+  ["A · Separação entre parceiros", "A · Partner separation", 6, 0, 0],
+  ["B · Admin WeeFly", "B · WeeFly Admin", 7, 2, 0],
+  ["Backoffice PT/EN · I18N-01", "Back office PT/EN · I18N-01", 1, 0, 0],
+  ["C · Backoffice da Alô", "C · Alô back office", 6, 2, 0],
+  ["D · Aplicação do ministério", "D · Ministry app", 7, 0, 0],
+  ["E · Fichas dos passageiros", "E · Passenger records", 2, 0, 1],
 ]
 
 const sum = (i) => BLOCKS.reduce((n, b) => n + b[i], 0)
@@ -38,25 +44,25 @@ const pct = (v) => Math.round((v / N) * 100)
 const T =
   LANG === "en"
     ? {
-        done: "Done and live",
-        part: "In progress",
-        todo: "To do",
-        doneShort: "Done",
-        head: "of MVP 2 done and live",
-        sub: `${total.done} of ${N} items · ${pct(total.done + total.part / 2)}% counting in-progress items as half`,
+        done: "Built",
+        part: "To confirm",
+        todo: "Blocked",
+        doneShort: "Built",
+        head: "of MVP 2 built",
+        sub: `${total.done} of ${N} items · ${pct(total.done + total.part / 2)}% counting items to confirm as half`,
         items: "items",
-        aria: `MVP 2: ${total.done} of ${N} items done, ${total.part} in progress, ${total.todo} to do`,
+        aria: `MVP 2: ${total.done} of ${N} items built, ${total.part} to confirm, ${total.todo} blocked`,
         blocksAria: "Items done per MVP 2 block",
       }
     : {
-        done: "Feito e no ar",
-        part: "Em curso",
-        todo: "Por fazer",
-        doneShort: "Feito",
-        head: "do MVP 2 feito e no ar",
-        sub: `${total.done} de ${N} itens · ${pct(total.done + total.part / 2)}% contando os que estão em curso a meio`,
+        done: "Construído",
+        part: "Falta confirmar",
+        todo: "Bloqueado",
+        doneShort: "Construído",
+        head: "do MVP 2 construído",
+        sub: `${total.done} de ${N} itens · ${pct(total.done + total.part / 2)}% contando os por confirmar a meio`,
         items: "itens",
-        aria: `MVP 2: ${total.done} de ${N} itens feitos, ${total.part} em curso, ${total.todo} por fazer`,
+        aria: `MVP 2: ${total.done} de ${N} itens construídos, ${total.part} por confirmar, ${total.todo} bloqueados`,
         blocksAria: "Itens feitos por bloco do MVP 2",
       }
 
