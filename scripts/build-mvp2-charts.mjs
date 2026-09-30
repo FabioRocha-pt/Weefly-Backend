@@ -25,7 +25,7 @@ const C = { done: "#C23A17", part: "#F39A7D", todo: "#D3D8DE", ink: "#1A222E", m
 const FONT = `font-family="Jakarta, 'Segoe UI', system-ui, sans-serif"`
 
 // [nome PT, nome EN, feito, falta confirmar, bloqueado]
-// Estado a 30 de setembro, fim do dia (commit f0aac44).
+// Estado a 30 de setembro, 22:45 — f0aac44 no ar no EC2 (v3).
 const BLOCKS = [
   ["Domínios · MIG-02", "Domains · MIG-02", 1, 0, 0],
   ["A · Separação entre parceiros", "A · Partner separation", 6, 0, 0],
@@ -44,25 +44,25 @@ const pct = (v) => Math.round((v / N) * 100)
 const T =
   LANG === "en"
     ? {
-        done: "Built",
+        done: "Done and live",
         part: "To confirm",
         todo: "Blocked",
-        doneShort: "Built",
-        head: "of MVP 2 built",
+        doneShort: "Done",
+        head: "of MVP 2 done and live",
         sub: `${total.done} of ${N} items · ${pct(total.done + total.part / 2)}% counting items to confirm as half`,
         items: "items",
-        aria: `MVP 2: ${total.done} of ${N} items built, ${total.part} to confirm, ${total.todo} blocked`,
+        aria: `MVP 2: ${total.done} of ${N} items done and live, ${total.part} to confirm, ${total.todo} blocked`,
         blocksAria: "Items done per MVP 2 block",
       }
     : {
-        done: "Construído",
+        done: "Feito e no ar",
         part: "Falta confirmar",
         todo: "Bloqueado",
-        doneShort: "Construído",
-        head: "do MVP 2 construído",
+        doneShort: "Feito",
+        head: "do MVP 2 feito e no ar",
         sub: `${total.done} de ${N} itens · ${pct(total.done + total.part / 2)}% contando os por confirmar a meio`,
         items: "itens",
-        aria: `MVP 2: ${total.done} de ${N} itens construídos, ${total.part} por confirmar, ${total.todo} bloqueados`,
+        aria: `MVP 2: ${total.done} de ${N} itens feitos e no ar, ${total.part} por confirmar, ${total.todo} bloqueados`,
         blocksAria: "Itens feitos por bloco do MVP 2",
       }
 
