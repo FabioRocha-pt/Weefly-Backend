@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { getBoAccess } from "@/lib/bo-access"
 import { BoLanguageSetting } from "@/components/bo/language-setting"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /**
  * BO-01 · as Definições, o destino da entrada no menu do avatar.
@@ -25,56 +26,55 @@ export default async function BoSettingsPage() {
   if (!access.ok) return null // O layout já mostrou a página de sem acesso.
 
   const { label, email, role } = access.identity
+  const { t } = await getBoI18n()
 
   return (
     <div className="page">
       <div className="head">
         <div>
-          <h1>Definições</h1>
+          <h1>{t("bo.shell.settings.title")}</h1>
           <p>
-            A sua conta neste back-office e as preferências que vão passar a
-            viver aqui.
+            {t("bo.shell.settings.intro")}
           </p>
         </div>
         <div className="head-actions">
           <Link className="btn btn-sm" href="/admin/price-checker">
-            Voltar à fila
+            {t("bo.shell.settings.backToQueue")}
           </Link>
         </div>
       </div>
 
       <div className="panel" style={{ maxWidth: 620, marginTop: 18 }}>
         <div className="panel-h">
-          <h3>A conta</h3>
+          <h3>{t("bo.shell.settings.account")}</h3>
         </div>
         <div className="panel-b">
           <dl className="set-list">
             <div>
-              <dt>Nome</dt>
+              <dt>{t("bo.shell.settings.name")}</dt>
               <dd>{label}</dd>
             </div>
             <div>
-              <dt>Email</dt>
+              <dt>{t("bo.shell.settings.email")}</dt>
               <dd className="mono">{email}</dd>
             </div>
             <div>
-              <dt>Perfil</dt>
+              <dt>{t("bo.shell.settings.profile")}</dt>
               {/* C-20 · um serviço, um perfil. Ver o comentário em
                   `components/bo/user-menu.tsx`. */}
               <dd>WeeFly Concierge</dd>
             </div>
           </dl>
           <p className="note" style={{ marginTop: 14 }}>
-            O acesso a este back-office é dado <b>por email, uma conta de cada
-            vez</b>. Para acrescentar ou revogar alguém, fala com quem administra
-            — não há nada a mudar aqui.
+            {t("bo.shell.settings.accessBefore")} <b>{t("bo.shell.settings.accessBold")}</b>
+            {t("bo.shell.settings.accessAfter")}
           </p>
         </div>
       </div>
 
       <div className="panel" style={{ maxWidth: 620, marginTop: 14 }}>
         <div className="panel-h">
-          <h3>Preferências</h3>
+          <h3>{t("bo.shell.settings.preferences")}</h3>
         </div>
         <div className="panel-b">
           {/* I18N-01 · a língua do back-office. As outras preferências (avisos,

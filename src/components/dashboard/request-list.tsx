@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Request } from "@/types"
 import { Calendar, Send, Eye } from "lucide-react"
-import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /** A cor do crachá; a palavra vem de `requestListStatus.<estado>`. */
 const STATUS_VARIANT: Record<Request["status"], "novo" | "proposta" | "confirmada"> = {
@@ -19,8 +19,8 @@ interface RequestListProps {
   dark?: boolean
 }
 
-export function RequestList({ requests, dark }: RequestListProps) {
-  const { t } = getI18n()
+export async function RequestList({ requests, dark }: RequestListProps) {
+  const { t } = await getBoI18n()
 
   return (
     <Card className={cn("border-0 shadow-sm", dark ? "bg-gray-800" : "bg-white")}>

@@ -25,6 +25,8 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { boProposeNewDates } from "@/actions/bo-price-checker"
+import { useI18n } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
 
 const dmy = (iso: string | null | undefined): string => {
   if (!iso) return "—"
@@ -67,6 +69,7 @@ export function BoDatesPanel({
   locked: boolean
   lockedReason: string
 }) {
+  const { t, locale } = useI18n()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [depart, setDepart] = useState(day(departDate))
@@ -107,7 +110,7 @@ export function BoDatesPanel({
         reason,
       })
       if (result.ok) {
-        setNotice(result.notice ?? "Datas atualizadas.")
+        setNotice(result.notice ?? t("bo.caseView.dates.updated"))
         setReason("")
         router.refresh()
       } else {
@@ -119,26 +122,26 @@ export function BoDatesPanel({
   return (
     <div className="panel">
       <div className="panel-h">
-        <h3>Rota e datas</h3>
+        <h3>{t("bo.caseView.dates.title")}</h3>
         <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-          as datas vêm do pedido e são editáveis
+          {t("bo.caseView.dates.subtitle")}
         </span>
       </div>
       <div className="panel-b">
         <div className="fgrid">
           <div className="f s3">
-            <label>Origem</label>
+            <label>{t("bo.caseView.dates.origin")}</label>
             <input className="mono" value={origin} readOnly disabled />
           </div>
           <div className="f s3">
-            <label>Destino</label>
+            <label>{t("bo.caseView.dates.destination")}</label>
             <input className="mono" value={destination} readOnly disabled />
           </div>
           <div className="f s3">
             <label>
-              Ida{" "}
+              {t("bo.caseView.dates.depart")}{" "}
               {depart !== day(departDate) && (
-                <span style={{ color: "var(--warn)", fontWeight: 700 }}>· alterada</span>
+                <span style={{ color: "var(--warn)", fontWeight: 700 }}>{t("bo.caseView.dates.changed")}</span>
               )}
             </label>
             <input
@@ -147,13 +150,13 @@ export function BoDatesPanel({
               disabled={locked || pending}
               onChange={(event) => setDepart(event.target.value)}
             />
-            <span className="hint">pedido: {dmy(departDate)}</span>
+            <span className="hint">{t("bo.caseView.dates.requested", { date: dmy(departDate) })}</span>
           </div>
           <div className="f s3">
             <label>
-              Volta{" "}
+              {t("bo.caseView.dates.return")}{" "}
               {roundTrip && ret !== day(returnDate) && (
-                <span style={{ color: "var(--warn)", fontWeight: 700 }}>· alterada</span>
+                <span style={{ color: "var(--warn)", fontWeight: 700 }}>{t("bo.caseView.dates.changed")}</span>
               )}
             </label>
             <input
@@ -164,34 +167,33 @@ export function BoDatesPanel({
               onChange={(event) => setRet(event.target.value)}
             />
             <span className="hint">
-              {roundTrip ? `pedido: ${dmy(returnDate)}` : "viagem só de ida"}
+              {roundTrip ? t("bo.caseView.dates.requested", { date: dmy(returnDate) }) : t("bo.caseView.dates.oneWayOnly")}
             </span>
           </div>
         </div>
 
         <p className="note" style={{ marginTop: 11 }}>
-          A origem e o destino não são editáveis por nenhum perfil do
-          back-office: uma rota diferente é um pedido diferente. Tipo de viagem:{" "}
+          {t("bo.caseView.dates.routeNote")}{" "}
           <b>{tripLabel}</b>.
         </p>
 
         {changed && (
           <div className="note warn" style={{ marginTop: 11 }}>
-            <b>Pedido original do cliente:</b>{" "}
+            <b>{t("bo.caseView.dates.originalRequest")}</b>{" "}
             <span className="mono">
               {dmy(original.departDate)}
               {original.returnDate ? ` – ${dmy(original.returnDate)}` : ""}
             </span>
             <br />
-            Alterado por {original.changedBy ?? "equipa"}
+            {t("bo.caseView.dates.changedBy", { who: original.changedBy ?? t("bo.caseView.common.team") })}
             {original.changedAt
-              ? ` em ${new Date(original.changedAt).toLocaleString("pt-PT", {
+              ? ` ${t("bo.caseView.dates.changedAt", { date: new Date(original.changedAt).toLocaleString(LOCALE_TAGS[locale], {
                   day: "2-digit",
                   month: "short",
                   hour: "2-digit",
                   minute: "2-digit",
                   timeZone: "Atlantic/Cape_Verde",
-                })}`
+                }) })}`
               : ""}
             {original.reason ? ` — “${original.reason}”` : ""}
           </div>
@@ -225,22 +227,21 @@ export function BoDatesPanel({
           >
             <div className="fgrid">
               <div className="f s12">
-                <label>Motivo · obrigatório para gravar</label>
+                <label>{t("bo.caseView.dates.reasonLabel")}</label>
                 <textarea
-                  placeholder="O que aconteceu, na frase que o cliente vai ler. Ex.: não há lugares em classe económica no dia 14; a primeira data com lugar é 16."
+                  placeholder={t("bo.caseView.dates.reasonPlaceholder")}
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
                 />
                 <span className="hint">
-                  Esta frase vai no email ao cliente e fica no registo do caso.
-                  Uma proposta já publicada volta a rascunho numa revisão nova.
+                  {t("bo.caseView.dates.reasonHint")}
                 </span>
               </div>
             </div>
 
             {invalidRange && (
               <div className="note bad" style={{ marginTop: 10 }}>
-                A volta não pode ser antes da ida.
+                {t("bo.caseView.dates.invalidRange")}
               </div>
             )}
 
@@ -257,7 +258,7 @@ export function BoDatesPanel({
                 disabled={pending || !depart || reasonMissing || invalidRange}
                 onClick={submit}
               >
-                {pending ? "A gravar…" : "Gravar datas e avisar o cliente"}
+                {pending ? t("bo.caseView.dates.saving") : t("bo.caseView.dates.save")}
               </button>
               <button
                 className="btn btn-sm"
@@ -265,7 +266,7 @@ export function BoDatesPanel({
                 disabled={pending}
                 onClick={reset}
               >
-                Repor as datas do pedido
+                {t("bo.caseView.dates.reset")}
               </button>
               {reasonMissing && (
                 <span
@@ -275,7 +276,7 @@ export function BoDatesPanel({
                     color: "var(--warn)",
                   }}
                 >
-                  Escreva o motivo para poder gravar.
+                  {t("bo.caseView.dates.reasonMissing")}
                 </span>
               )}
             </div>

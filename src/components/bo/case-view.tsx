@@ -36,6 +36,9 @@ import {
   type BoSellerOption,
   type BoTabId,
 } from "@/components/bo/case-header"
+import { useI18n, useT } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
+import { translateOr, type Translator } from "@/i18n/translate"
 
 type TabId = BoTabId
 
@@ -57,19 +60,38 @@ function defaultTab(detail: BoCaseDetail): TabId {
   }
 }
 
-/** C-05 · as três etapas de link, com o nome que a equipa lhes dá. */
-const LINK_STAGE_LABEL: Record<number, string> = {
-  1: "1 · Pedido",
-  2: "2 · Proposta",
-  3: "3 · Pagamento",
+/*
+ * I18N-01 · o tipo de viagem e a classe chegam já escritos em português
+ * (`TRIP_LABEL_PT` / `CABIN_LABEL_PT` em bo-queue). O código volta a sair da
+ * etiqueta, para o ecrã a poder mostrar na língua do agente.
+ */
+const TRIP_CODE_BY_LABEL: Record<string, string> = {
+  "Ida e volta": "round",
+  "Só ida": "oneway",
+  "Multi-destino": "multi",
 }
 
-const LINK_STATE_LABEL: Record<LinkState, string> = {
-  bloqueado: "bloqueado",
-  aberto: "aberto",
-  submetido: "submetido",
-  expirado: "expirado",
-  fechado: "fechado",
+const CABIN_CODE_BY_LABEL: Record<string, string> = {
+  "Económica": "economy",
+  "Económica premium": "premium",
+  "Executiva": "business",
+  "Primeira": "first",
+}
+
+const tripText = (t: Translator, label: string) =>
+  TRIP_CODE_BY_LABEL[label] ? t(`bo.caseView.trip.${TRIP_CODE_BY_LABEL[label]}`) : label
+
+const cabinText = (t: Translator, label: string) =>
+  CABIN_CODE_BY_LABEL[label] ? t(`bo.caseView.cabin.${CABIN_CODE_BY_LABEL[label]}`) : label
+
+/** O título do acontecimento na língua de quem lê; o guardado se não houver chave. */
+const eventTitle = (t: Translator, event: CaseEvent) => {
+  /* `seller_assigned` guarda dois títulos: atribuído e removido. */
+  const kind =
+    event.kind === "seller_assigned" && event.title === "Vendedor removido"
+      ? "seller_removed"
+      : event.kind
+  return translateOr(t, `bo.events.${kind}`, event.title)
 }
 
 const LINK_STATE_TONE: Record<LinkState, string> = {
@@ -80,15 +102,22 @@ const LINK_STATE_TONE: Record<LinkState, string> = {
   fechado: "var(--muted)",
 }
 
-const dt = (iso: string | null | undefined, withTime = true): string => {
+const formatDt = (tag: string, iso: string | null | undefined, withTime = true): string => {
   if (!iso) return "—"
-  return new Date(iso).toLocaleString("pt-PT", {
+  return new Date(iso).toLocaleString(tag, {
     day: "2-digit",
     month: "short",
     year: "numeric",
     ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
     timeZone: "Atlantic/Cape_Verde",
   })
+}
+
+/** As datas na língua do agente, sempre na hora de Cabo Verde. */
+function useDt() {
+  const { locale } = useI18n()
+  return (iso: string | null | undefined, withTime = true) =>
+    formatDt(LOCALE_TAGS[locale], iso, withTime)
 }
 
 export function BoCaseView({
@@ -128,8 +157,11 @@ export function BoCaseView({
   initialTab?: string
   viewer: { label: string; email: string }
 }) {
+  const t = useT()
+  const dt = useDt()
+  const { locale } = useI18n()
   const [tab, setTab] = useState<TabId>(
-    BO_TABS.some((t) => t.id === initialTab)
+    BO_TABS.some((entry) => entry.id === initialTab)
       ? (initialTab as TabId)
       : defaultTab(detail)
   )
@@ -158,7 +190,7 @@ export function BoCaseView({
         <div className="cols two tabpane">
           <aside className="panel sticky">
             <div className="panel-h">
-              <h3>Pedido do cliente</h3>
+              <h3>{t("bo.caseView.request.title")}</h3>
             </div>
             <div className="panel-b">
               <div className="routebox">
@@ -172,31 +204,34 @@ export function BoCaseView({
                   <div className="city">{row.destination}</div>
                 </div>
               </div>
-              <Kv k="Tipo" v={detail.trip.tripLabel} />
-              <Kv k="Ida" v={dt(row.departDate, false)} mono />
-              {row.returnDate && <Kv k="Volta" v={dt(row.returnDate, false)} mono />}
+              <Kv k={t("bo.caseView.request.type")} v={tripText(t, detail.trip.tripLabel)} />
+              <Kv k={t("bo.caseView.request.depart")} v={dt(row.departDate, false)} mono />
+              {row.returnDate && <Kv k={t("bo.caseView.request.return")} v={dt(row.returnDate, false)} mono />}
               {detail.trip.datesChangedAt && (
                 <Kv
-                  k="Datas alteradas"
-                  v={`${dt(detail.trip.datesChangedAt)} · ${detail.trip.datesChangedBy ?? "equipa"}`}
+                  k={t("bo.caseView.request.datesChanged")}
+                  v={`${dt(detail.trip.datesChangedAt)} · ${detail.trip.datesChangedBy ?? t("bo.caseView.common.team")}`}
                 />
               )}
-              <Kv k="Adultos" v={String(detail.trip.adults)} mono />
-              <Kv k="Crianças 2–11" v={String(detail.trip.children)} mono />
+              <Kv k={t("bo.caseView.request.adults")} v={String(detail.trip.adults)} mono />
+              <Kv k={t("bo.caseView.request.children")} v={String(detail.trip.children)} mono />
               <Kv
-                k="Bebés"
-                v={`${detail.trip.infantsInSeat} c/ assento · ${detail.trip.infantsOnLap} colo`}
+                k={t("bo.caseView.request.infants")}
+                v={t("bo.caseView.request.infantsValue", {
+                  seat: detail.trip.infantsInSeat,
+                  lap: detail.trip.infantsOnLap,
+                })}
                 mono
               />
-              <Kv k="Classe" v={detail.trip.cabinLabel} />
+              <Kv k={t("bo.caseView.request.cabin")} v={cabinText(t, detail.trip.cabinLabel)} />
               {/* VIP-10 · o que o cliente pediu em malas. Aqui e no contador da
                   oferta, para que quem cota não tenha de adivinhar. */}
               <Kv
-                k="Bagagem de porão"
+                k={t("bo.caseView.request.baggageHold")}
                 v={
                   detail.trip.baggageHold === 0
-                    ? "Não pediu"
-                    : `${detail.trip.baggageHold} mala${detail.trip.baggageHold === 1 ? "" : "s"}`
+                    ? t("bo.caseView.request.baggageNone")
+                    : t("bo.caseView.request.bags", { count: detail.trip.baggageHold })
                 }
                 mono
               />
@@ -205,7 +240,7 @@ export function BoCaseView({
                   {detail.trip.legs.map((leg) => (
                     <Kv
                       key={leg.position}
-                      k={`Voo ${leg.position}`}
+                      k={t("bo.caseView.request.flight", { n: leg.position })}
                       v={`${leg.origin} → ${leg.destination} · ${dt(leg.date, false)}`}
                       mono
                     />
@@ -225,7 +260,7 @@ export function BoCaseView({
               */}
               {detail.trip.specialRequests && (
                 <div className="note warn" style={{ marginTop: 13 }}>
-                  <b>Pedidos especiais do cliente</b>
+                  <b>{t("bo.caseView.request.specialRequestsClient")}</b>
                   <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>
                     {detail.trip.specialRequests}
                   </p>
@@ -237,24 +272,24 @@ export function BoCaseView({
           <main className="stack">
             <div className="panel">
               <div className="panel-h">
-                <h3>Contacto</h3>
+                <h3>{t("bo.caseView.contact.title")}</h3>
               </div>
               <div className="panel-b">
                 <div className="fgrid">
                   <div className="f s6">
-                    <label>Nome completo</label>
+                    <label>{t("bo.caseView.contact.fullName")}</label>
                     <input value={row.clientName} readOnly />
                   </div>
                   <div className="f s6">
-                    <label>Telefone · WhatsApp</label>
+                    <label>{t("bo.caseView.contact.phone")}</label>
                     <input className="mono" value={row.clientPhone} readOnly />
                   </div>
                   <div className="f s6">
-                    <label>Email</label>
+                    <label>{t("bo.caseView.common.email")}</label>
                     <input value={row.clientEmail} readOnly />
                   </div>
                   <div className="f s6">
-                    <label>Consentimento</label>
+                    <label>{t("bo.caseView.contact.consent")}</label>
                     <input
                       value={[
                         dt(detail.trip.consentAt),
@@ -276,7 +311,7 @@ export function BoCaseView({
               destination={row.destination}
               departDate={row.departDate}
               returnDate={row.returnDate}
-              tripLabel={detail.trip.tripLabel}
+              tripLabel={tripText(t, detail.trip.tripLabel)}
               roundTrip={Boolean(row.returnDate) || detail.trip.tripLabel === "Ida e volta"}
               original={{
                 departDate: detail.trip.originalDepartDate,
@@ -288,8 +323,8 @@ export function BoCaseView({
               locked={row.state === "emitido" || row.state === "pago_sem_bilhete"}
               lockedReason={
                 row.state === "emitido"
-                  ? "Caso emitido: mudar datas é uma reemissão, e passa pela companhia."
-                  : "O cliente já pagou. Fale com ele antes de mexer nas datas."
+                  ? t("bo.caseView.datesLock.issued")
+                  : t("bo.caseView.datesLock.paid")
               }
             />
 
@@ -303,7 +338,7 @@ export function BoCaseView({
         <div className="cols two tabpane">
           <aside className="panel sticky">
             <div className="panel-h">
-              <h3>Pedido</h3>
+              <h3>{t("bo.caseView.proposals.asideTitle")}</h3>
             </div>
             <div className="panel-b">
               <div className="routebox">
@@ -315,15 +350,15 @@ export function BoCaseView({
                   <div className="iata mono">{row.destination}</div>
                 </div>
               </div>
-              <Kv k="Datas" v={`${dt(row.departDate, false)}${row.returnDate ? ` – ${dt(row.returnDate, false)}` : ""}`} mono />
-              <Kv k="Passageiros" v={row.paxLabel} />
-              <Kv k="Classe" v={detail.trip.cabinLabel} />
-              <Kv k="Moeda" v={row.currency} mono />
+              <Kv k={t("bo.caseView.proposals.dates")} v={`${dt(row.departDate, false)}${row.returnDate ? ` – ${dt(row.returnDate, false)}` : ""}`} mono />
+              <Kv k={t("bo.caseView.proposals.passengers")} v={row.paxLabel} />
+              <Kv k={t("bo.caseView.request.cabin")} v={cabinText(t, detail.trip.cabinLabel)} />
+              <Kv k={t("bo.caseView.proposals.currency")} v={row.currency} mono />
               {/* FE-05 · também aqui: compor a proposta é o momento em que os
                   pedidos especiais mudam o que se escreve. */}
               {detail.trip.specialRequests && (
                 <div className="note warn" style={{ marginTop: 12 }}>
-                  <b>Pedidos especiais</b>
+                  <b>{t("bo.caseView.proposals.specialRequests")}</b>
                   <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>
                     {detail.trip.specialRequests}
                   </p>
@@ -336,25 +371,24 @@ export function BoCaseView({
           <main className="stack">
             <div className="panel">
               <div className="panel-h">
-                <h3>Propostas publicadas</h3>
+                <h3>{t("bo.caseView.proposals.published")}</h3>
                 <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-                  {proposal ? `revisão R${proposal.proposal.revision}` : "sem proposta"}
+                  {proposal
+                    ? t("bo.caseView.proposals.revision", { n: proposal.proposal.revision })
+                    : t("bo.caseView.proposals.none")}
                 </span>
               </div>
               <div className="panel-b">
                 {!proposal ? (
                   <p className="note">
-                    Ainda não há proposta publicada. Compõe-se no separador
-                    Propostas — itinerário, preço e pré-visualização do cartão que
-                    o cliente vai ver — e o cliente só vê o resultado depois de
-                    publicares.
+                    {t("bo.caseView.proposals.emptyNote")}
                   </p>
                 ) : (
                   <>
                     {proposal.offers.map((offer) => (
                       <div className="orow" key={offer.id}>
                         <div className="oi">
-                          <div className="nm">{offer.name || "Oferta sem nome"}</div>
+                          <div className="nm">{offer.name || t("bo.caseView.proposals.unnamedOffer")}</div>
                           <div className="ms mono">
                             {offer.segments
                               .sort((a, b) => a.position - b.position)
@@ -383,13 +417,15 @@ export function BoCaseView({
                               borderColor: "var(--line)",
                             }}
                           >
-                            retida ({offer.fare_held_source}) até{" "}
-                            {dt(offer.fare_held_until)}
+                            {t("bo.caseView.proposals.heldUntil", {
+                              source: offer.fare_held_source,
+                              date: dt(offer.fare_held_until),
+                            })}
                           </span>
                         )}
                         {proposal.proposal.selected_offer_id === offer.id && (
                           <span className="flag" aria-pressed="true">
-                            escolhida
+                            {t("bo.caseView.proposals.chosen")}
                           </span>
                         )}
                         {/* BO-13 · o mesmo total que o cliente vê, calculado
@@ -412,7 +448,9 @@ export function BoCaseView({
                     ))}
                     {proposal.proposal.selected_at && (
                       <p className="note" style={{ marginTop: 12 }}>
-                        O cliente escolheu em {dt(proposal.proposal.selected_at)}.
+                        {t("bo.caseView.proposals.clientChoseAt", {
+                          date: dt(proposal.proposal.selected_at),
+                        })}
                       </p>
                     )}
                   </>
@@ -442,11 +480,11 @@ export function BoCaseView({
                       className="btn btn-sm btn-primary"
                       href={`/admin/price-checker/${row.caseId}/ofertas`}
                     >
-                      {proposal ? "Editar proposta" : "Criar proposta"}
+                      {proposal ? t("bo.caseView.proposals.edit") : t("bo.caseView.proposals.create")}
                     </Link>
                   )}
                   <Link className="btn btn-sm" href={`/pc/${row.token}`} target="_blank">
-                    Ver como o cliente vê
+                    {t("bo.caseView.proposals.viewAsClient")}
                   </Link>
                 </div>
               </div>
@@ -474,43 +512,45 @@ export function BoCaseView({
         <div className="cols two tabpane">
           <aside className="panel sticky">
             <div className="panel-h">
-              <h3>Oferta escolhida</h3>
+              <h3>{t("bo.caseView.pax.chosenOffer")}</h3>
             </div>
             <div className="panel-b">
               <Kv
-                k="Oferta"
+                k={t("bo.caseView.pax.offer")}
                 v={
                   proposal?.offers.find(
                     (o) => o.id === proposal.proposal.selected_offer_id
                   )?.name ?? "—"
                 }
               />
-              <Kv k="Rota" v={`${row.origin} → ${row.destination}`} mono />
+              <Kv k={t("bo.caseView.pax.route")} v={`${row.origin} → ${row.destination}`} mono />
               <Kv
-                k="Total"
+                k={t("bo.caseView.pax.total")}
                 v={row.amount ? formatMoney(row.amount, row.currency) : "—"}
                 mono
               />
-              <Kv k="Escolhida em" v={dt(proposal?.proposal.selected_at)} />
+              <Kv k={t("bo.caseView.pax.chosenAt")} v={dt(proposal?.proposal.selected_at)} />
             </div>
           </aside>
           <main className="stack">
             <div className="panel">
               <div className="panel-h">
-                <h3>Dados submetidos pelo cliente</h3>
+                <h3>{t("bo.caseView.pax.submittedTitle")}</h3>
                 <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-                  {passengers.length} de{" "}
-                  {detail.trip.adults +
-                    detail.trip.children +
-                    detail.trip.infantsInSeat +
-                    detail.trip.infantsOnLap}{" "}
-                  completos
+                  {t("bo.caseView.pax.completeCount", {
+                    done: passengers.length,
+                    total:
+                      detail.trip.adults +
+                      detail.trip.children +
+                      detail.trip.infantsInSeat +
+                      detail.trip.infantsOnLap,
+                  })}
                 </span>
               </div>
               <div className="panel-b">
                 {passengers.length === 0 ? (
                   <p className="note">
-                    O cliente ainda não submeteu os passaportes.
+                    {t("bo.caseView.pax.none")}
                   </p>
                 ) : (
                   <>
@@ -543,7 +583,7 @@ export function BoCaseView({
           caseId={row.caseId}
           reference={row.reference}
           currency={row.currency}
-          market={marketName(row.market)}
+          market={marketName(row.market, LOCALE_TAGS[locale])}
           payment={payment}
           proofs={proofs}
           state={row.state}
@@ -593,13 +633,13 @@ export function BoCaseView({
         <div className="cols two tabpane">
           <aside className="panel sticky">
             <div className="panel-h">
-              <h3>Canais</h3>
+              <h3>{t("bo.caseView.com.channels")}</h3>
             </div>
             <div className="panel-b">
-              <Kv k="WhatsApp" v={row.clientPhone} mono />
-              <Kv k="Email" v={row.clientEmail} />
-              <Kv k="Idioma" v={row.locale} mono />
-              <Kv k="Link do cliente" v={`/pc/${row.token.slice(0, 8)}…`} mono />
+              <Kv k={t("bo.caseView.common.whatsapp")} v={row.clientPhone} mono />
+              <Kv k={t("bo.caseView.common.email")} v={row.clientEmail} />
+              <Kv k={t("bo.caseView.com.language")} v={row.locale} mono />
+              <Kv k={t("bo.caseView.com.clientLink")} v={`/pc/${row.token.slice(0, 8)}…`} mono />
 
               {/*
                 C-05 · o estado de cada link, e a última vez que o cliente o abriu.
@@ -621,25 +661,29 @@ export function BoCaseView({
                     marginBottom: 7,
                   }}
                 >
-                  Estado dos links
+                  {t("bo.caseView.com.linksState")}
                 </div>
                 {row.links.length === 0 ? (
-                  <p className="note">Este caso não tem links.</p>
+                  <p className="note">{t("bo.caseView.com.noLinks")}</p>
                 ) : (
                   row.links.map((link) => (
                     <div className="kv" key={link.stage}>
                       <span className="kv-k">
-                        {LINK_STAGE_LABEL[link.stage] ?? `Etapa ${link.stage}`}
+                        {translateOr(
+                          t,
+                          `bo.caseView.com.stage.${link.stage}`,
+                          t("bo.caseView.com.stageN", { n: link.stage })
+                        )}
                       </span>
                       <span
                         className="kv-v"
                         style={{ color: LINK_STATE_TONE[link.state] }}
                       >
-                        {LINK_STATE_LABEL[link.state]}
+                        {t(`bo.caseView.com.linkState.${link.state}`)}
                         {link.lastOpenedAt
-                          ? ` · aberto ${dt(link.lastOpenedAt)}`
+                          ? ` · ${t("bo.caseView.com.openedAt", { date: dt(link.lastOpenedAt) })}`
                           : link.state === "aberto"
-                            ? " · nunca aberto"
+                            ? ` · ${t("bo.caseView.com.neverOpened")}`
                             : ""}
                         {link.openCount > 1 ? ` · ${link.openCount}×` : ""}
                       </span>
@@ -651,9 +695,7 @@ export function BoCaseView({
                     de saber que a base de dados diz outra coisa. */}
                 {row.links.some((link) => link.drifted) && (
                   <p className="note warn" style={{ marginTop: 9 }}>
-                    O estado gravado de um destes links não corresponde ao estado
-                    do caso. O que está acima é o do caso, que é o que vale. A
-                    linha do registo diz quando divergiram.
+                    {t("bo.caseView.com.drifted")}
                   </p>
                 )}
               </div>
@@ -670,17 +712,17 @@ export function BoCaseView({
             */}
             <div className="panel">
               <div className="panel-h">
-                <h3>Avisos enviados</h3>
+                <h3>{t("bo.caseView.com.sent")}</h3>
                 <span
                   style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}
                 >
-                  {notifications.length} envio{notifications.length === 1 ? "" : "s"}
+                  {t("bo.caseView.com.sends", { count: notifications.length })}
                 </span>
               </div>
               <div className="panel-b">
                 {notifications.length === 0 ? (
                   <p className="note">
-                    Ainda não saiu nenhum aviso deste caso.
+                    {t("bo.caseView.com.noneSent")}
                   </p>
                 ) : (
                   notifications.map((entry) => (
@@ -692,7 +734,7 @@ export function BoCaseView({
 
             <div className="panel">
               <div className="panel-h">
-                <h3>O que o cliente fez</h3>
+                <h3>{t("bo.caseView.com.clientDid")}</h3>
               </div>
               <div className="panel-b">
                 <div className="log">
@@ -726,29 +768,28 @@ export function BoCaseView({
         <div className="cols two tabpane">
           <aside className="panel sticky">
             <div className="panel-h">
-              <h3>Este caso</h3>
+              <h3>{t("bo.caseView.log.thisCase")}</h3>
             </div>
             <div className="panel-b">
-              <Kv k="Criado" v={dt(row.submittedAt)} />
-              <Kv k="Última alteração" v={dt(row.updatedAt)} />
-              <Kv k="Token do link" v={row.token} mono />
+              <Kv k={t("bo.caseView.log.created")} v={dt(row.submittedAt)} />
+              <Kv k={t("bo.caseView.log.updated")} v={dt(row.updatedAt)} />
+              <Kv k={t("bo.caseView.log.token")} v={row.token} mono />
               <p className="note" style={{ marginTop: 12 }}>
-                Nada é apagado. Cada acontecimento do caso deixa uma linha, com
-                quem o provocou.
+                {t("bo.caseView.log.nothingDeleted")}
               </p>
             </div>
           </aside>
           <main className="panel">
             <div className="panel-h">
-              <h3>Histórico completo</h3>
+              <h3>{t("bo.caseView.log.history")}</h3>
               <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-                hora local de Cabo Verde
+                {t("bo.caseView.log.cvTime")}
               </span>
             </div>
             <div className="panel-b">
               <div className="log">
                 {events.length === 0 ? (
-                  <p className="note">Sem registos.</p>
+                  <p className="note">{t("bo.caseView.log.empty")}</p>
                 ) : (
                   events.map((event) => <LogRow key={event.id} event={event} />)
                 )}
@@ -773,6 +814,7 @@ export function BoCaseView({
  * que já não é de quem está a olhar.
  */
 function ClaimAndQuote({ caseId }: { caseId: string }) {
+  const t = useT()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -795,7 +837,7 @@ function ClaimAndQuote({ caseId }: { caseId: string }) {
           })
         }}
       >
-        {pending ? "A reclamar…" : "Reclamar e cotar"}
+        {pending ? t("bo.caseView.proposals.claiming") : t("bo.caseView.proposals.claimAndQuote")}
       </button>
       {error && (
         <span className="note bad" style={{ width: "100%" }}>
@@ -822,15 +864,6 @@ function Kv({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
  * o servidor do destinatário aceitou, `bounced` que recusou de vez. São três
  * coisas diferentes e só a segunda responde a "chegou?".
  */
-const DELIVERY_LABEL: Record<string, string> = {
-  queued: "na fila",
-  sent: "enviado",
-  delivered: "entregue",
-  bounced: "devolvido",
-  failed: "falhou",
-  skipped: "não enviado",
-}
-
 const DELIVERY_TONE: Record<string, string> = {
   queued: "var(--muted)",
   sent: "var(--blue)",
@@ -840,26 +873,9 @@ const DELIVERY_TONE: Record<string, string> = {
   skipped: "var(--muted)",
 }
 
-const NOTIFICATION_KIND: Record<string, string> = {
-  request_received: "Pedido recebido",
-  team_new_request: "Pedido novo (equipa)",
-  proposal_published: "Proposta publicada",
-  team_proposal_published: "Proposta publicada (equipa)",
-  offer_selected: "Escolha registada",
-  payment_instructions: "Instruções de pagamento",
-  payment_confirmed: "Pagamento confirmado",
-  tickets_issued: "Bilhetes emitidos",
-  dates_proposed: "Novas datas propostas",
-  manual: "Aviso escrito pela equipa",
-  team_proof_uploaded: "Comprovativo recebido (equipa)",
-  team_payment_declared: "Cliente diz que pagou (equipa)",
-  agent_offer_selected: "Cliente escolheu (agente)",
-  agent_passengers_submitted: "Passaportes submetidos (agente)",
-  agent_proof_uploaded: "Comprovativo enviado (agente)",
-  agent_request_cancelled: "Pedido cancelado (agente)",
-}
-
 function NotificationRow({ entry }: { entry: CaseNotification }) {
+  const t = useT()
+  const dt = useDt()
   const when = entry.delivered_at ?? entry.sent_at ?? entry.created_at
   return (
     <div
@@ -867,7 +883,7 @@ function NotificationRow({ entry }: { entry: CaseNotification }) {
       style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}
     >
       <span style={{ flex: 1 }}>
-        <b>{NOTIFICATION_KIND[entry.kind] ?? entry.kind}</b>
+        <b>{translateOr(t, `bo.caseView.com.notificationKind.${entry.kind}`, entry.kind)}</b>
         {" · "}
         <span className="mono" style={{ fontSize: 11 }}>
           {entry.channel}
@@ -901,7 +917,7 @@ function NotificationRow({ entry }: { entry: CaseNotification }) {
           whiteSpace: "nowrap",
         }}
       >
-        {DELIVERY_LABEL[entry.status] ?? entry.status}
+        {translateOr(t, `bo.caseView.com.delivery.${entry.status}`, entry.status)}
         {entry.attempts > 1 ? ` · ${entry.attempts}×` : ""}
       </span>
     </div>
@@ -909,10 +925,12 @@ function NotificationRow({ entry }: { entry: CaseNotification }) {
 }
 
 function LogRow({ event }: { event: CaseEvent }) {
+  const t = useT()
+  const { locale } = useI18n()
   return (
     <div className="logrow">
       <span className="t mono">
-        {new Date(event.created_at).toLocaleString("pt-PT", {
+        {new Date(event.created_at).toLocaleString(LOCALE_TAGS[locale], {
           day: "2-digit",
           month: "2-digit",
           hour: "2-digit",
@@ -921,7 +939,7 @@ function LogRow({ event }: { event: CaseEvent }) {
         })}
       </span>
       <div>
-        <b>{event.title}</b>
+        <b>{eventTitle(t, event)}</b>
         <span>{event.detail ?? event.actor_email ?? ""}</span>
       </div>
     </div>
@@ -942,6 +960,7 @@ function PassportWarnings({
   passengers: CasePassenger[]
   returnDate: string
 }) {
+  const t = useT()
   const warnings: string[] = []
 
   passengers.forEach((p, index) => {
@@ -950,14 +969,14 @@ function PassportWarnings({
       needed.setMonth(needed.getMonth() + 6)
       if (Date.parse(p.passport_expiry) < needed.getTime()) {
         warnings.push(
-          `P${index + 1} tem passaporte válido só até ${p.passport_expiry} — menos de 6 meses após o regresso.`
+          t("bo.caseView.warnings.passportShort", { n: index + 1, date: p.passport_expiry })
         )
       }
     }
     const raw = `${p.first_name} ${p.last_name}`
     if (/[^\x20-\x7E]/.test(raw)) {
       warnings.push(
-        `P${index + 1} tem acentos no nome (${raw}) — o bilhete precisa da versão sem acentos.`
+        t("bo.caseView.warnings.accents", { n: index + 1, name: raw })
       )
     }
   })
@@ -965,14 +984,14 @@ function PassportWarnings({
   if (!warnings.length) {
     return (
       <p className="note ok" style={{ marginBottom: 13 }}>
-        Sem avisos automáticos: validades e nomes passam as verificações.
+        {t("bo.caseView.warnings.none")}
       </p>
     )
   }
 
   return (
     <div className="note warn" style={{ marginBottom: 13 }}>
-      <b>Verifique antes de emitir:</b>
+      <b>{t("bo.caseView.warnings.checkBeforeIssue")}</b>
       <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
         {warnings.map((warning) => (
           <li key={warning}>{warning}</li>
@@ -1003,6 +1022,8 @@ function FareAgeWarnings({
   bookedAt: string
   departDate: string
 }) {
+  const t = useT()
+  const dt = useDt()
   if (!departDate) return null
 
   const booking = bookedAt.slice(0, 10)
@@ -1023,37 +1044,30 @@ function FareAgeWarnings({
 
   if (changes.length === 0) return null
 
-  const label: Record<string, string> = {
-    infant: "bebé",
-    child: "criança",
-    adult: "adulto",
-  }
+  const label = (type: string) => translateOr(t, `bo.caseView.fareAge.type.${type}`, type)
 
   return (
     <div className="note bad" style={{ marginBottom: 13 }}>
-      <b>Muda de tarifa antes de partir:</b>
+      <b>{t("bo.caseView.fareAge.title")}</b>
       <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
         {changes.map((entry) => (
           <li key={entry.tag}>
-            {entry.tag} {entry.name} faz {entry.change.turns} anos antes de{" "}
-            {dt(departDate, false)} — na data da viagem já é{" "}
-            <b>{label[entry.change.to]}</b> e não {label[entry.change.from]}.
+            {t("bo.caseView.fareAge.lineStart", {
+              tag: entry.tag,
+              name: entry.name,
+              turns: entry.change.turns,
+              date: dt(departDate, false),
+            })}{" "}
+            <b>{label(entry.change.to)}</b>{" "}
+            {t("bo.caseView.fareAge.lineMid", { from: label(entry.change.from) })}{" "}
             {entry.change.to === "adult"
-              ? " A tarifa de criança não é válida para este voo."
-              : " Passa a ocupar lugar próprio."}
+              ? t("bo.caseView.fareAge.adultTail")
+              : t("bo.caseView.fareAge.seatTail")}
           </li>
         ))}
       </ul>
     </div>
   )
-}
-
-const TYPE_LABEL: Record<string, string> = {
-  adult: "Adulto",
-  child: "Criança",
-  infant: "Bebé",
-  infant_seat: "Bebé c/ assento",
-  infant_lap: "Bebé de colo",
 }
 
 function PassengerCard({
@@ -1065,6 +1079,7 @@ function PassengerCard({
   index: number
   lastDate: string
 }) {
+  const t = useT()
   const flaggedExpiry = (() => {
     if (!passenger.passport_expiry || !lastDate) return false
     const needed = new Date(lastDate)
@@ -1082,53 +1097,57 @@ function PassengerCard({
         </span>
         <b>{`${passenger.last_name}/${passenger.first_name}`.toUpperCase()}</b>
         <span className="st state st-n" style={{ marginLeft: "auto" }}>
-          {TYPE_LABEL[passenger.passenger_type] ?? passenger.passenger_type}
-          {index === 0 ? " · titular" : ""}
+          {translateOr(t, `bo.caseView.pax.type.${passenger.passenger_type}`, passenger.passenger_type)}
+          {index === 0 ? ` · ${t("bo.caseView.pax.holder")}` : ""}
         </span>
       </div>
       <div className="paxgrid">
         <div>
-          <span className="k">Nascimento</span>
+          <span className="k">{t("bo.caseView.pax.birth")}</span>
           <span className="v mono">{passenger.birth_date ?? "—"}</span>
         </div>
         <div>
-          <span className="k">Sexo</span>
+          <span className="k">{t("bo.caseView.pax.sex")}</span>
           <span className="v">
-            {passenger.gender === "f" ? "Feminino" : passenger.gender === "m" ? "Masculino" : "—"}
+            {passenger.gender === "f"
+              ? t("bo.caseView.pax.female")
+              : passenger.gender === "m"
+                ? t("bo.caseView.pax.male")
+                : "—"}
           </span>
         </div>
         <div>
-          <span className="k">Nacionalidade</span>
+          <span className="k">{t("bo.caseView.pax.nationality")}</span>
           <span className="v">{passenger.nationality ?? "—"}</span>
         </div>
         <div>
-          <span className="k">Passaporte</span>
+          <span className="k">{t("bo.caseView.pax.passport")}</span>
           <span className="v mono">{passenger.passport_number ?? "—"}</span>
         </div>
         <div>
-          <span className="k">Válido até</span>
+          <span className="k">{t("bo.caseView.pax.validUntil")}</span>
           <span className={`v mono${flaggedExpiry ? " flagged" : ""}`}>
             {passenger.passport_expiry ?? "—"}
             {flaggedExpiry ? " ⚠" : ""}
           </span>
         </div>
         <div>
-          <span className="k">País emissor</span>
+          <span className="k">{t("bo.caseView.pax.issuingCountry")}</span>
           <span className="v">{passenger.issuing_country ?? "—"}</span>
         </div>
         <div>
-          <span className="k">Nome para bilhete</span>
+          <span className="k">{t("bo.caseView.pax.ticketName")}</span>
           <span className={`v${accent ? " flagged" : ""}`}>
             {accent
               ? `${passenger.first_name} ${passenger.last_name}`
                   .normalize("NFD")
                   .replace(/[̀-ͯ]/g, "")
-                  .toUpperCase() + " · sem acentos"
-              : "OK"}
+                  .toUpperCase() + ` · ${t("bo.caseView.pax.noAccents")}`
+              : t("bo.caseView.pax.ok")}
           </span>
         </div>
         <div>
-          <span className="k">Bilhete</span>
+          <span className="k">{t("bo.caseView.pax.ticket")}</span>
           <span className="v mono">{passenger.ticket_number ?? "—"}</span>
         </div>
       </div>

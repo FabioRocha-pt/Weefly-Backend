@@ -13,6 +13,8 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { boSaveNote } from "@/actions/bo-price-checker"
+import { useI18n } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
 
 export function BoNoteForm({
   caseId,
@@ -22,6 +24,7 @@ export function BoNoteForm({
   notes: { id: string; body: string; author_email: string | null; created_at: string }[]
 }) {
   const router = useRouter()
+  const { t, locale } = useI18n()
   const [pending, startTransition] = useTransition()
   const [body, setBody] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -29,21 +32,20 @@ export function BoNoteForm({
   return (
     <div className="panel">
       <div className="panel-h">
-        <h3>Notas internas</h3>
+        <h3>{t("bo.queue.notes.title")}</h3>
         <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-          só a equipa vê
+          {t("bo.queue.notes.teamOnly")}
         </span>
       </div>
       <div className="panel-b">
         <div className="f">
           <textarea
-            placeholder="O que ficou combinado no WhatsApp. Só a equipa vê."
+            placeholder={t("bo.queue.notes.placeholder")}
             value={body}
             onChange={(event) => setBody(event.target.value)}
           />
           <span className="hint">
-            A conversa de WhatsApp não fica guardada no sistema. Registe aqui o que
-            importa para o caso.
+            {t("bo.queue.notes.hint")}
           </span>
         </div>
 
@@ -71,7 +73,7 @@ export function BoNoteForm({
               })
             }}
           >
-            {pending ? "A guardar…" : "Guardar no caso"}
+            {pending ? t("bo.queue.notes.saving") : t("bo.queue.notes.save")}
           </button>
         </div>
 
@@ -80,7 +82,7 @@ export function BoNoteForm({
             {notes.map((note) => (
               <div className="logrow" key={note.id}>
                 <span className="t mono">
-                  {new Date(note.created_at).toLocaleString("pt-PT", {
+                  {new Date(note.created_at).toLocaleString(LOCALE_TAGS[locale], {
                     day: "2-digit",
                     month: "2-digit",
                     hour: "2-digit",
@@ -89,7 +91,7 @@ export function BoNoteForm({
                   })}
                 </span>
                 <div>
-                  <b>{note.author_email ?? "equipa"}</b>
+                  <b>{note.author_email ?? t("bo.queue.notes.team")}</b>
                   <span>{note.body}</span>
                 </div>
               </div>

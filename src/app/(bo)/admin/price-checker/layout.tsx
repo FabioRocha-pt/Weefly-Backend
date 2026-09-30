@@ -13,8 +13,10 @@ import { loadBoAlerts } from "@/lib/bo-alerts"
 import { BoUserMenu } from "@/components/bo/user-menu"
 import { BoLiveUpdates } from "@/components/bo/live-updates"
 import { LinkBaseProvider } from "@/components/bo/link-base"
+import { PoweredByWeefly } from "@/components/powered-by"
 import { I18nProvider } from "@/i18n/provider"
 import { getBoI18n } from "@/i18n/bo-server"
+import type { Translator } from "@/i18n/translate"
 import { partnerSiteUrl } from "@/lib/site-url"
 
 /**
@@ -94,10 +96,10 @@ export default async function BoPriceCheckerLayout({
   return (
     <I18nProvider locale={i18n.locale} dictionary={i18n.dictionary} fallback={i18n.fallback}>
       <style>{`:root{--font-jakarta:${jakarta.style.fontFamily};--font-plex-mono:${plexMono.style.fontFamily}}`}</style>
-      <RoutePreloader background="#141A24" label="A carregar o back-office" />
+      <RoutePreloader background="#141A24" label={i18n.t("bo.shell.loading")} />
 
       {!access.ok ? (
-        <NoAccess email={access.email} />
+        <NoAccess email={access.email} t={i18n.t} />
       ) : (
         /* MIG-02 · os links copiados saem do endereço configurado, e do
            parceiro da sessão. */
@@ -159,6 +161,8 @@ export default async function BoPriceCheckerLayout({
           {/* BO-03 · a fila deixa de esperar por um F5. Ver o componente. */}
           <BoLiveUpdates partnerId={access.identity.tenant?.partnerId ?? null} />
           {children}
+          {/* TEN-05 · o back-office de um parceiro diz de onde vem. */}
+          {access.identity.tenant?.poweredByWeefly && <PoweredByWeefly />}
         </LinkBaseProvider>
       )}
     </I18nProvider>
@@ -171,33 +175,32 @@ export default async function BoPriceCheckerLayout({
  * Diz qual é o email, porque o erro mais comum não é falta de permissão — é ter
  * entrado com a conta errada.
  */
-function NoAccess({ email }: { email?: string }) {
+function NoAccess({ email, t }: { email?: string; t: Translator }) {
   return (
     <div className="page">
       <div className="head">
         <div>
-          <h1>Sem acesso ao Price Checker</h1>
+          <h1>{t("bo.shell.noAccess.title")}</h1>
           <p>
-            A conta <b className="mono">{email ?? "—"}</b> não está na lista de
-            acessos deste back-office.
+            {t("bo.shell.noAccess.bodyBefore")} <b className="mono">{email ?? "—"}</b>{" "}
+            {t("bo.shell.noAccess.bodyAfter")}
           </p>
         </div>
       </div>
       <div className="panel" style={{ maxWidth: 560 }}>
         <div className="panel-h">
-          <h3>Como se resolve</h3>
+          <h3>{t("bo.shell.noAccess.howTitle")}</h3>
         </div>
         <div className="panel-b">
           <p className="note">
-            O acesso é dado por email, uma conta de cada vez. Se devia ter acesso,
-            peça a quem administra a sua empresa para o criar em{" "}
-            <b>Admin › Utilizadores e permissões</b> (ou em <b>Agente › Equipa</b>,
-            no caso de um parceiro). Se a conta foi suspensa, é aí que se
-            reactiva.
+            {t("bo.shell.noAccess.howBefore")}{" "}
+            <b>{t("bo.shell.noAccess.howAdminPath")}</b> {t("bo.shell.noAccess.howOr")}{" "}
+            <b>{t("bo.shell.noAccess.howAgentPath")}</b>
+            {t("bo.shell.noAccess.howAfter")}
           </p>
           <div style={{ marginTop: 14 }}>
             <Link className="btn btn-sm" href="/inicio">
-              Voltar ao início
+              {t("bo.shell.noAccess.back")}
             </Link>
           </div>
         </div>

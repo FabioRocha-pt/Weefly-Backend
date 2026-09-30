@@ -21,6 +21,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 
 import { signOut } from "@/actions/auth"
+import { useT } from "@/i18n/provider"
 
 export function BoUserMenu({
   label,
@@ -33,6 +34,7 @@ export function BoUserMenu({
   initials: string
   role: string
 }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -100,7 +102,7 @@ export function BoUserMenu({
           </div>
 
           <Link className="who-item" role="menuitem" href="/inicio" onClick={() => setOpen(false)}>
-            Perfil da conta
+            {t("bo.shell.userMenu.profile")}
           </Link>
 
           {/*
@@ -115,12 +117,12 @@ export function BoUserMenu({
             href="/admin/price-checker/definicoes"
             onClick={() => setOpen(false)}
           >
-            Definições
+            {t("bo.shell.userMenu.settings")}
           </Link>
 
           <form action={signOut}>
             <button className="who-item danger" type="submit" role="menuitem">
-              Terminar sessão
+              {t("bo.shell.userMenu.signOut")}
             </button>
           </form>
         </div>

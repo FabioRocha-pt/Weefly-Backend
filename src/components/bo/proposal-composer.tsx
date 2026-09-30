@@ -104,7 +104,8 @@ import { BoErrorList } from "@/components/bo/error-list"
 import { CARRIERS } from "@/lib/pc/catalog"
 import { FALLBACK_AIRLINES, airlineName } from "@/lib/airlines-catalog"
 import { CarrierMark } from "@/components/bo/carrier-mark"
-import { useT } from "@/i18n/provider"
+import { useI18n, useT } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
 import { useLinkBase } from "@/components/bo/link-base"
 import type { Translator } from "@/i18n/translate"
 
@@ -911,6 +912,7 @@ function SegmentBaggageBlock({
   onChange: (changes: Partial<BaggageState>) => void
   onCopyToAll: () => void
 }) {
+  const t = useT()
   const fromRequest = !baggage.answered && baggage.from === "request"
   /* VIP-10 · o que o cliente pediu, ao lado do que a tarifa dá. Menos do que o
      pedido não é um erro — é uma tarifa mais barata — mas tem de se ver. */
@@ -920,20 +922,27 @@ function SegmentBaggageBlock({
     <div className="col-span-12 rounded-lg border border-adm-line-soft bg-adm-panel p-2.5">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className="text-[10px] font-bold uppercase tracking-[.07em] text-adm-txt-2">
-          Bagagem neste voo
+          {t("bo.composer.baggage.title")}
         </span>
         {baggage.answered ? (
-          <span className="text-[10.5px] text-adm-muted">peças × kg por peça</span>
+          <span className="text-[10.5px] text-adm-muted">{t("bo.composer.baggage.unit")}</span>
         ) : (
           <span
             className="rounded-[4px] border border-adm-warn/45 bg-adm-warn/[.16] px-1 py-px text-[9.5px] font-bold text-[#F0C983]"
             title={
               baggage.from === "offer"
-                ? "Estes valores são a contagem antiga da oferta, para a viagem inteira. O cliente vê-os assim até alguém confirmar este voo."
-                : "Estes valores vieram do pedido do cliente. Enquanto ninguém os confirmar, não são gravados e o cliente não os vê."
+                ? t("bo.composer.baggage.fromOfferTitle")
+                : t("bo.composer.baggage.fromRequestTitle")
             }
           >
-            ! {baggage.from === "offer" ? "da oferta" : "do pedido"} · por confirmar
+            !{" "}
+            {t("bo.composer.baggage.toConfirm", {
+              source: t(
+                baggage.from === "offer"
+                  ? "bo.composer.baggage.fromOffer"
+                  : "bo.composer.baggage.fromRequest"
+              ),
+            })}
           </span>
         )}
         <div className="ml-auto flex gap-1.5">
@@ -944,7 +953,7 @@ function SegmentBaggageBlock({
               onClick={() => onChange({})}
               className="rounded-md border border-adm-warn/50 bg-adm-panel-2 px-2 py-1 text-[11px] font-bold text-[#F0C983] transition-colors hover:bg-adm-raise disabled:opacity-50"
             >
-              Confirmar
+              {t("bo.composer.baggage.confirm")}
             </button>
           )}
           {multi && (
@@ -954,14 +963,18 @@ function SegmentBaggageBlock({
               onClick={onCopyToAll}
               className="rounded-md border border-adm-line bg-adm-panel-2 px-2 py-1 text-[11px] font-bold text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt disabled:opacity-50"
             >
-              Aplicar a todos os voos
+              {t("bo.composer.baggage.copyToAll")}
             </button>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-12 gap-2.5">
-        <Field label="Artigo pessoal" span={2} hint="mochila, debaixo do banco">
+        <Field
+          label={t("bo.composer.baggage.personal")}
+          span={2}
+          hint={t("bo.composer.baggage.personalHint")}
+        >
           <StepField
             value={baggage.personal}
             onChange={(v) => onChange({ personal: v ?? 0 })}
@@ -969,7 +982,7 @@ function SegmentBaggageBlock({
             disabled={disabled}
           />
         </Field>
-        <Field label="Mão · peças" span={2}>
+        <Field label={t("bo.composer.baggage.cabinPieces")} span={2}>
           <StepField
             value={baggage.cabinPieces}
             onChange={(v) => onChange({ cabinPieces: v ?? 0 })}
@@ -977,7 +990,11 @@ function SegmentBaggageBlock({
             disabled={disabled}
           />
         </Field>
-        <Field label="Mão · kg" span={2} hint="— sem peso indicado">
+        <Field
+          label={t("bo.composer.baggage.cabinKg")}
+          span={2}
+          hint={t("bo.composer.baggage.noWeight")}
+        >
           <StepField
             value={baggage.cabinKg}
             onChange={(v) => onChange({ cabinKg: v })}
@@ -990,14 +1007,14 @@ function SegmentBaggageBlock({
           />
         </Field>
         <Field
-          label="Porão · peças"
+          label={t("bo.composer.baggage.checkedPieces")}
           span={3}
           prefilled={fromRequest}
           hint={
             requestedBaggage > 0
               ? short
-                ? `O cliente pediu ${requestedBaggage}`
-                : `Pedido: ${requestedBaggage}`
+                ? t("bo.composer.bits.requestedShort", { requested: requestedBaggage })
+                : t("bo.composer.bits.requested", { requested: requestedBaggage })
               : undefined
           }
         >
@@ -1008,7 +1025,11 @@ function SegmentBaggageBlock({
             disabled={disabled}
           />
         </Field>
-        <Field label="Porão · kg" span={3} hint="— sem peso indicado">
+        <Field
+          label={t("bo.composer.baggage.checkedKg")}
+          span={3}
+          hint={t("bo.composer.baggage.noWeight")}
+        >
           <StepField
             value={baggage.checkedKg}
             onChange={(v) => onChange({ checkedKg: v })}
@@ -1558,9 +1579,9 @@ function OpenOffer({
                 trecho do itinerário tem agora o seu bloco — artigo pessoal, mão
                 e porão, em peças × quilos. A contagem da oferta continua na
                 base, derivada dos voos ao gravar, para quem ainda a lê. */}
-            <Field label="Bagagem" span={8}>
+            <Field label={t("bo.composer.conditions.baggage")} span={8}>
               <p className="flex h-[38px] items-center text-[12px] text-adm-muted">
-                Por voo, no bloco de bagagem de cada trecho do itinerário.
+                {t("bo.composer.conditions.baggagePerFlight")}
               </p>
             </Field>
             {/* PC-B · "não reembolsável" passa a caixa.
@@ -2259,6 +2280,7 @@ function PublishPanel({
   onRevision: () => void
   t: Translator
 }) {
+  const { locale } = useI18n()
   const published = proposal.status === "publicada"
   const [included, setIncluded] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
@@ -2333,7 +2355,7 @@ function PublishPanel({
               revision: proposal.revision,
               when: proposal.published_at
                 ? t("admin.publishedAt", {
-                    when: new Intl.DateTimeFormat("pt-PT", {
+                    when: new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
                       dateStyle: "short",
                       timeStyle: "short",
                       timeZone: "Atlantic/Cape_Verde",

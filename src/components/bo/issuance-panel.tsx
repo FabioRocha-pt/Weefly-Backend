@@ -43,6 +43,9 @@ import { CARRIERS } from "@/lib/pc/catalog"
 import { CarrierMark } from "@/components/bo/carrier-mark"
 import { BoErrorList, focusField, type BoFieldError } from "@/components/bo/error-list"
 import { FALLBACK_AIRLINES, airlineName } from "@/lib/airlines-catalog"
+import { useI18n, useT } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
+import type { Translator } from "@/i18n/translate"
 
 interface TicketRow {
   passengerId: string
@@ -147,13 +150,17 @@ function piecesKg(pieces: number, kg: number | null): string {
   return pieces > 0 && kg !== null ? `${pieces} × ${kg} kg` : String(pieces)
 }
 
-function promiseLabel(segment: OfferSegment): string | null {
+function promiseLabel(segment: OfferSegment, t: Translator): string | null {
   const p = segment.baggage
   if (!p) return null
   return [
-    p.personal_item ? "artigo pessoal" : "sem artigo pessoal",
-    `mão ${piecesKg(p.cabin_pieces, p.cabin_kg)}`,
-    `porão ${piecesKg(p.checked_pieces, p.checked_kg)}`,
+    p.personal_item
+      ? t("bo.issuance.baggage.personalItem")
+      : t("bo.issuance.baggage.noPersonalItem"),
+    t("bo.issuance.baggage.cabinValue", { value: piecesKg(p.cabin_pieces, p.cabin_kg) }),
+    t("bo.issuance.baggage.checkedValue", {
+      value: piecesKg(p.checked_pieces, p.checked_kg),
+    }),
   ].join(" · ")
 }
 
@@ -186,6 +193,7 @@ function BagStep({
   disabled?: boolean
   title: string
 }) {
+  const t = useT()
   const up = () =>
     onChange(value === null ? Math.min(start ?? min, max) : Math.min(value + 1, max))
   const down = () => {
@@ -219,7 +227,7 @@ function BagStep({
       <button
         type="button"
         style={button}
-        aria-label={`${title}: menos um`}
+        aria-label={t("bo.issuance.baggage.stepDown", { title })}
         onClick={down}
         disabled={disabled || value === null || (!nullable && value <= min)}
       >
@@ -231,7 +239,7 @@ function BagStep({
       <button
         type="button"
         style={button}
-        aria-label={`${title}: mais um`}
+        aria-label={t("bo.issuance.baggage.stepUp", { title })}
         onClick={up}
         disabled={disabled || (value !== null && value >= max)}
       >
@@ -295,6 +303,7 @@ export function BoIssuancePanel({
   hasDocument: boolean
 }) {
   const router = useRouter()
+  const { t, locale } = useI18n()
   const [pending, startTransition] = useTransition()
 
   const paid = Boolean(payment?.admin_confirmed) || payment?.status === "COMPLETED"
@@ -450,25 +459,28 @@ export function BoIssuancePanel({
   if (!paid) {
     errors.push({
       target: "em-pnr",
-      label: "O pagamento ainda não está confirmado — confirme-o na aba Pagamento.",
+      label: t("bo.issuance.errors.notPaid"),
     })
   }
   if (!/^[A-Za-z0-9]{6}$/.test(pnr)) {
-    errors.push({ target: "em-pnr", label: "O PNR tem de ter 6 caracteres." })
+    errors.push({ target: "em-pnr", label: t("bo.issuance.errors.pnr") })
   }
   passengers.forEach((passenger, index) => {
     const value = numbers[index] ?? ""
     if (!/^\d{13}$/.test(value)) {
       errors.push({
         target: `em-ticket-${passenger.id}`,
-        label: `P${index + 1} ${passenger.last_name}: o número de bilhete são 3 dígitos de companhia + 10 do documento.`,
+        label: t("bo.issuance.errors.ticketNumber", {
+          pax: `P${index + 1}`,
+          name: passenger.last_name,
+        }),
       })
     }
   })
   if (duplicated) {
     errors.push({
       target: `em-ticket-${passengers[0]?.id ?? ""}`,
-      label: "Há números de bilhete repetidos — cada passageiro tem o seu.",
+      label: t("bo.issuance.errors.duplicated"),
     })
   }
   /*
@@ -491,31 +503,34 @@ export function BoIssuancePanel({
          — há aeroportos sem terminais e companhias que só dão lugar no
          check-in, e exigi-los bloqueava emissões legítimas. */
       const gaps = [
-        doc.fareBasis.trim() ? "" : "base tarifária",
+        doc.fareBasis.trim() ? "" : t("bo.issuance.errors.gapFareBasis"),
         doc.nvb.trim() ? "" : "NVB",
         doc.nva.trim() ? "" : "NVA",
-        doc.couponNumber.trim() ? "" : "cupão",
-        doc.aircraft.trim() ? "" : "avião",
-        doc.cabin.trim() || doc.bookingClass.trim() ? "" : "classe",
+        doc.couponNumber.trim() ? "" : t("bo.issuance.errors.gapCoupon"),
+        doc.aircraft.trim() ? "" : t("bo.issuance.errors.gapAircraft"),
+        doc.cabin.trim() || doc.bookingClass.trim() ? "" : t("bo.issuance.errors.gapClass"),
       ].filter(Boolean)
       if (gaps.length) {
         errors.push({
           target: `em-fare-${segment.id}`,
-          label: `${flightLabel(segment)}: falta ${gaps.join(", ")}.`,
+          label: t("bo.issuance.errors.flightGaps", {
+            flight: flightLabel(segment),
+            fields: gaps.join(", "),
+          }),
         })
       }
     }
   } else {
     if (!fareBasis.trim()) {
-      errors.push({ target: "em-fare-basis", label: "Falta a base tarifária." })
+      errors.push({ target: "em-fare-basis", label: t("bo.issuance.errors.fareBasis") })
     }
-    if (!nvb.trim()) errors.push({ target: "em-nvb", label: "Falta o NVB." })
-    if (!nva.trim()) errors.push({ target: "em-nva", label: "Falta o NVA." })
+    if (!nvb.trim()) errors.push({ target: "em-nvb", label: t("bo.issuance.errors.nvb") })
+    if (!nva.trim()) errors.push({ target: "em-nva", label: t("bo.issuance.errors.nva") })
   }
   if (passengers.length === 0) {
     errors.push({
       target: "em-pnr",
-      label: "Sem passageiros submetidos não há a quem emitir bilhete.",
+      label: t("bo.issuance.errors.noPassengers"),
     })
   }
 
@@ -540,7 +555,7 @@ export function BoIssuancePanel({
         setNotice(result.notice ?? null)
         router.refresh()
       } else {
-        setError(result.error ?? "Falhou.")
+        setError(result.error ?? t("bo.issuance.errors.failed"))
       }
     })
   }
@@ -549,34 +564,34 @@ export function BoIssuancePanel({
     <div className="cols two tabpane">
       <aside className="panel sticky">
         <div className="panel-h">
-          <h3>{issued ? "Emitido" : "Pronto a emitir"}</h3>
+          <h3>{issued ? t("bo.issuance.summary.issued") : t("bo.issuance.summary.ready")}</h3>
         </div>
         <div className="panel-b">
           <div className="kv">
-            <span className="kv-k">Pagamento</span>
+            <span className="kv-k">{t("bo.issuance.summary.payment")}</span>
             <span className="kv-v" style={{ color: paid ? "var(--ok)" : "var(--warn)" }}>
-              {paid ? "Confirmado" : "Não confirmado"}
+              {paid ? t("bo.issuance.summary.confirmed") : t("bo.issuance.summary.notConfirmed")}
             </span>
           </div>
           <div className="kv">
-            <span className="kv-k">Passageiros</span>
+            <span className="kv-k">{t("bo.issuance.summary.passengers")}</span>
             <span className="kv-v">{passengers.length}</span>
           </div>
           <div className="kv">
-            <span className="kv-k">Voos</span>
+            <span className="kv-k">{t("bo.issuance.summary.flights")}</span>
             <span className="kv-v">{ordered.length}</span>
           </div>
           <div className="kv">
-            <span className="kv-k">Cobrado</span>
+            <span className="kv-k">{t("bo.issuance.summary.charged")}</span>
             <span className="kv-v mono">
               {amount ? formatMoney(amount, currency) : "—"}
             </span>
           </div>
           {issued && (
             <div className="kv">
-              <span className="kv-k">Emitido em</span>
+              <span className="kv-k">{t("bo.issuance.summary.issuedAt")}</span>
               <span className="kv-v">
-                {new Date(issuance.issuedAt!).toLocaleString("pt-PT", {
+                {new Date(issuance.issuedAt!).toLocaleString(LOCALE_TAGS[locale], {
                   timeZone: "Atlantic/Cape_Verde",
                 })}
               </span>
@@ -585,13 +600,12 @@ export function BoIssuancePanel({
 
           {paid && !issued && (
             <p className="note bad" style={{ marginTop: 12 }}>
-              Este é o estado mais crítico do sistema. O cliente já pagou e ainda
-              não tem bilhete.
+              {t("bo.issuance.summary.critical")}
             </p>
           )}
           {!paid && (
             <p className="note warn" style={{ marginTop: 12 }}>
-              Confirme o pagamento na aba anterior antes de emitir.
+              {t("bo.issuance.summary.confirmFirst")}
             </p>
           )}
 
@@ -606,7 +620,7 @@ export function BoIssuancePanel({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Abrir o bilhete
+                    {t("bo.issuance.document.open")}
                   </a>
                   <button
                     className="btn btn-sm"
@@ -614,11 +628,10 @@ export function BoIssuancePanel({
                     disabled={pending}
                     onClick={() => run(() => boResendTickets(caseId))}
                   >
-                    Reenviar ao cliente
+                    {t("bo.issuance.document.resend")}
                   </button>
                   <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                    O reenvio manda o mesmo ficheiro, com o mesmo número de
-                    documento. Não gera nada de novo.
+                    {t("bo.issuance.document.resendHint")}
                   </span>
                 </>
               ) : (
@@ -629,10 +642,10 @@ export function BoIssuancePanel({
                     disabled={pending}
                     onClick={() => run(() => boGenerateTickets(caseId))}
                   >
-                    Gerar o bilhete
+                    {t("bo.issuance.document.generate")}
                   </button>
                   <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                    O caso está emitido mas o PDF ainda não existe.
+                    {t("bo.issuance.document.missingPdf")}
                   </span>
                 </>
               )}
@@ -644,18 +657,14 @@ export function BoIssuancePanel({
       <main className="stack">
         <div className="panel">
           <div className="panel-h">
-            <h3>Dados da emissão</h3>
+            <h3>{t("bo.issuance.form.title")}</h3>
             {carrier && <CarrierMark code={carrier} className="ml-auto" />}
           </div>
           <div className="panel-b">
             {!issued && (
               <div style={{ marginBottom: 14 }}>
                 <BoErrorList
-                  title={
-                    errors.length === 1
-                      ? "Falta 1 campo para poder emitir"
-                      : `Faltam ${errors.length} campos para poder emitir`
-                  }
+                  title={t("bo.issuance.errors.title", { count: errors.length })}
                   errors={errors}
                 />
               </div>
@@ -667,7 +676,7 @@ export function BoIssuancePanel({
                 <input
                   id="em-pnr"
                   className="mono"
-                  placeholder="6 caracteres"
+                  placeholder={t("bo.issuance.form.pnrPlaceholder")}
                   maxLength={6}
                   style={{ textTransform: "uppercase" }}
                   value={pnr}
@@ -677,7 +686,7 @@ export function BoIssuancePanel({
                 />
               </div>
               <div className="f s3">
-                <label>Companhia emissora</label>
+                <label>{t("bo.issuance.form.carrier")}</label>
                 {/*
                   C-26 · vem da proposta, sem ser reescolhida.
 
@@ -699,7 +708,7 @@ export function BoIssuancePanel({
                   onChange={(event) => setCarrier(event.target.value)}
                   disabled={issued}
                 >
-                  <option value="">Escolher…</option>
+                  <option value="">{t("bo.issuance.form.choose")}</option>
                   {CARRIER_CODES.map((code) => (
                     <option key={code} value={code}>
                       {/* C-10 · o nome das 31 vem do catálogo novo; o prefixo do
@@ -710,15 +719,17 @@ export function BoIssuancePanel({
                     </option>
                   ))}
                   {carrier && !CARRIER_CODES.includes(carrier) && (
-                    <option value={carrier}>{carrier} · fora do catálogo</option>
+                    <option value={carrier}>
+                      {carrier} · {t("bo.issuance.form.outsideCatalog")}
+                    </option>
                   )}
                 </select>
                 {!issuance.issuingCarrier && carrier && (
-                  <span className="hint">da proposta · confirme antes de emitir</span>
+                  <span className="hint">{t("bo.issuance.form.fromProposal")}</span>
                 )}
               </div>
               <div className="f s3">
-                <label>Consolidador</label>
+                <label>{t("bo.issuance.form.consolidator")}</label>
                 <input
                   placeholder="Atlântida"
                   value={consolidator}
@@ -727,7 +738,7 @@ export function BoIssuancePanel({
                 />
               </div>
               <div className="f s3">
-                <label>Custo real</label>
+                <label>{t("bo.issuance.form.costReal")}</label>
                 <input
                   className="mono"
                   placeholder="946,00"
@@ -736,24 +747,25 @@ export function BoIssuancePanel({
                   disabled={issued}
                 />
                 {margin !== null && (
-                  <span className="hint">margem {formatMoney(margin, currency)}</span>
+                  <span className="hint">
+                    {t("bo.issuance.form.margin", { amount: formatMoney(margin, currency) })}
+                  </span>
                 )}
               </div>
             </div>
 
             <div className="sec" style={{ marginTop: 18 }}>
               <div className="sec-h">
-                <h4>Bilhete por passageiro</h4>
+                <h4>{t("bo.issuance.tickets.title")}</h4>
                 <span className="rule" />
                 <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                  {prefix ? `${prefix} + 10 dígitos` : "3 + 10 dígitos"} · sem
-                  duplicados
+                  {t("bo.issuance.tickets.rule", { prefix: prefix || "3" })}
                 </span>
               </div>
 
               {passengers.length === 0 && (
                 <p className="note">
-                  Sem passageiros submetidos não há a quem emitir bilhete.
+                  {t("bo.issuance.tickets.noPassengers")}
                 </p>
               )}
 
@@ -778,7 +790,7 @@ export function BoIssuancePanel({
                           focusField(`em-ticket-${passenger.id}`)
                         }}
                       >
-                        Começar com {prefix}
+                        {t("bo.issuance.tickets.startWith", { prefix })}
                       </button>
                     )}
                   </div>
@@ -788,7 +800,7 @@ export function BoIssuancePanel({
                   >
                     <div className="fgrid" style={{ width: "100%" }}>
                       <div className="f s4">
-                        <label>Nº do bilhete</label>
+                        <label>{t("bo.issuance.tickets.number")}</label>
                         <input
                           id={`em-ticket-${passenger.id}`}
                           className="mono"
@@ -840,7 +852,7 @@ export function BoIssuancePanel({
                         const bag = bags[key] ?? EMPTY_BAG
                         const promise = promisedBag(segment)
                         const drifted = promise !== null && !sameBag(bag, promise)
-                        const promised = promiseLabel(segment)
+                        const promised = promiseLabel(segment, t)
                         return (
                           <div className="f s12" key={segment.id}>
                             <label>
@@ -864,7 +876,7 @@ export function BoIssuancePanel({
                                 style={{ width: 74 }}
                                 placeholder="12A"
                                 maxLength={6}
-                                title="Lugar"
+                                title={t("bo.issuance.baggage.seat")}
                                 value={seats[key] ?? ""}
                                 onChange={(event) =>
                                   setSeats((current) => ({
@@ -874,16 +886,16 @@ export function BoIssuancePanel({
                                 }
                                 disabled={issued}
                               />
-                              <span className="hint">mão</span>
+                              <span className="hint">{t("bo.issuance.baggage.cabin")}</span>
                               <BagStep
-                                title="Peças de mão neste voo"
+                                title={t("bo.issuance.baggage.cabinPieces")}
                                 value={bag.cabinPieces}
                                 onChange={(v) => patchBag(key, { cabinPieces: v ?? 0 })}
                                 max={BAGGAGE_MAX_PIECES}
                                 disabled={issued}
                               />
                               <BagStep
-                                title="Peso por peça de mão, em quilos"
+                                title={t("bo.issuance.baggage.cabinKg")}
                                 value={bag.cabinKg}
                                 onChange={(v) => patchBag(key, { cabinKg: v })}
                                 min={1}
@@ -893,16 +905,16 @@ export function BoIssuancePanel({
                                 nullable
                                 disabled={issued || bag.cabinPieces === 0}
                               />
-                              <span className="hint">porão</span>
+                              <span className="hint">{t("bo.issuance.baggage.checked")}</span>
                               <BagStep
-                                title="Malas de porão neste voo"
+                                title={t("bo.issuance.baggage.checkedPieces")}
                                 value={bag.checkedPieces}
                                 onChange={(v) => patchBag(key, { checkedPieces: v ?? 0 })}
                                 max={BAGGAGE_MAX_PIECES}
                                 disabled={issued}
                               />
                               <BagStep
-                                title="Peso por mala de porão, em quilos"
+                                title={t("bo.issuance.baggage.checkedKg")}
                                 value={bag.checkedKg}
                                 onChange={(v) => patchBag(key, { checkedKg: v })}
                                 min={1}
@@ -918,8 +930,13 @@ export function BoIssuancePanel({
                               style={drifted ? { color: "#F0C983" } : undefined}
                             >
                               {promised
-                                ? `${drifted ? "Diferente da proposta — " : "Proposta: "}${promised}`
-                                : "lugar · mão (peças × kg) · porão (peças × kg)"}
+                                ? t(
+                                    drifted
+                                      ? "bo.issuance.baggage.drifted"
+                                      : "bo.issuance.baggage.promised",
+                                    { promise: promised }
+                                  )
+                                : t("bo.issuance.baggage.legend")}
                             </span>
                           </div>
                         )
@@ -931,8 +948,7 @@ export function BoIssuancePanel({
 
               {ordered.length === 0 && passengers.length > 0 && (
                 <p className="note warn">
-                  A oferta escolhida não tem trechos gravados, por isso não há onde
-                  atribuir lugares. Os bilhetes podem ser emitidos à mesma.
+                  {t("bo.issuance.tickets.noSegments")}
                 </p>
               )}
             </div>
@@ -953,11 +969,10 @@ export function BoIssuancePanel({
             {ordered.length > 0 && (
               <div className="sec">
                 <div className="sec-h">
-                  <h4>Documento por voo</h4>
+                  <h4>{t("bo.issuance.flights.title")}</h4>
                   <span className="rule" />
                   <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                    {ordered.length} voo{ordered.length === 1 ? "" : "s"} · um
-                    cupão cada
+                    {t("bo.issuance.flights.count", { count: ordered.length })}
                   </span>
                 </div>
 
@@ -966,13 +981,17 @@ export function BoIssuancePanel({
                   return (
                     <div className="paxcard" key={`doc-${segment.id}`}>
                       <div className="paxcard-h">
-                        <span className="paxtag">Voo {index + 1}</span>
+                        <span className="paxtag">
+                          {t("bo.issuance.flights.flight", { n: index + 1 })}
+                        </span>
                         <b>{flightLabel(segment)}</b>
                         <span
                           className="st state st-n"
                           style={{ marginLeft: "auto" }}
                         >
-                          {segment.direction === "ida" ? "Ida" : "Volta"}
+                          {segment.direction === "ida"
+                            ? t("bo.issuance.flights.outbound")
+                            : t("bo.issuance.flights.inbound")}
                         </span>
                       </div>
                       <div
@@ -985,7 +1004,7 @@ export function BoIssuancePanel({
                       >
                         <div className="fgrid" style={{ width: "100%" }}>
                           <div className="f s3">
-                            <label>Partida</label>
+                            <label>{t("bo.issuance.flights.departure")}</label>
                             <input
                               className="mono"
                               value={segment.depart_at?.replace("T", " ") ?? "—"}
@@ -993,7 +1012,7 @@ export function BoIssuancePanel({
                             />
                           </div>
                           <div className="f s3">
-                            <label>Chegada</label>
+                            <label>{t("bo.issuance.flights.arrival")}</label>
                             <input
                               className="mono"
                               value={segment.arrive_at?.replace("T", " ") ?? "—"}
@@ -1001,7 +1020,7 @@ export function BoIssuancePanel({
                             />
                           </div>
                           <div className="f s3">
-                            <label>Aeronave</label>
+                            <label>{t("bo.issuance.flights.aircraft")}</label>
                             <input
                               placeholder="Airbus A330-900"
                               value={doc.aircraft}
@@ -1014,7 +1033,7 @@ export function BoIssuancePanel({
                             />
                           </div>
                           <div className="f s3">
-                            <label>Cabina · classe</label>
+                            <label>{t("bo.issuance.flights.cabinClass")}</label>
                             <div style={{ display: "flex", gap: 6 }}>
                               <input
                                 value={doc.cabin}
@@ -1043,7 +1062,7 @@ export function BoIssuancePanel({
                             </div>
                           </div>
                           <div className="f s3">
-                            <label>Terminal de partida</label>
+                            <label>{t("bo.issuance.flights.terminalFrom")}</label>
                             <input
                               value={doc.terminalFrom}
                               placeholder="1"
@@ -1056,7 +1075,7 @@ export function BoIssuancePanel({
                             />
                           </div>
                           <div className="f s3">
-                            <label>Terminal de chegada</label>
+                            <label>{t("bo.issuance.flights.terminalTo")}</label>
                             <input
                               value={doc.terminalTo}
                               placeholder="2"
@@ -1069,7 +1088,7 @@ export function BoIssuancePanel({
                             />
                           </div>
                           <div className="f s3">
-                            <label>Localizador da companhia</label>
+                            <label>{t("bo.issuance.flights.airlinePnr")}</label>
                             <input
                               className="mono"
                               placeholder="ABC123"
@@ -1083,11 +1102,11 @@ export function BoIssuancePanel({
                               disabled={issued}
                             />
                             <span className="hint">
-                              o PNR da companhia, se for diferente do nosso
+                              {t("bo.issuance.flights.airlinePnrHint")}
                             </span>
                           </div>
                           <div className="f s3">
-                            <label>Nº do cupão</label>
+                            <label>{t("bo.issuance.flights.coupon")}</label>
                             <input
                               className="mono"
                               maxLength={4}
@@ -1101,7 +1120,7 @@ export function BoIssuancePanel({
                             />
                           </div>
                           <div className="f s4">
-                            <label>Fare basis</label>
+                            <label>{t("bo.issuance.flights.fareBasis")}</label>
                             <input
                               id={`em-fare-${segment.id}`}
                               className="mono"
@@ -1167,9 +1186,9 @@ export function BoIssuancePanel({
                                     disabled={issued}
                                   />
                                   <span>
-                                    A bagagem segue directa até ao destino final
-                                    — o passageiro não a levanta na escala de{" "}
-                                    {segment.destination}
+                                    {t("bo.issuance.flights.baggageThrough", {
+                                      airport: segment.destination ?? "",
+                                    })}
                                   </span>
                                 </label>
                               </div>
@@ -1186,8 +1205,8 @@ export function BoIssuancePanel({
               <div className="sec-h">
                 <h4>
                   {ordered.length > 0
-                    ? "Campos comuns ao bilhete"
-                    : "Campos do documento"}
+                    ? t("bo.issuance.common.titleShared")
+                    : t("bo.issuance.common.titleDocument")}
                 </h4>
                 <span className="rule" />
               </div>
@@ -1198,7 +1217,7 @@ export function BoIssuancePanel({
                 {ordered.length === 0 && (
                   <>
                     <div className="f s3">
-                      <label>Fare basis</label>
+                      <label>{t("bo.issuance.flights.fareBasis")}</label>
                       <input
                         id="em-fare-basis"
                         className="mono"
@@ -1236,7 +1255,7 @@ export function BoIssuancePanel({
                   </>
                 )}
                 <div className="f s3">
-                  <label>Endossos</label>
+                  <label>{t("bo.issuance.common.endorsements")}</label>
                   <input
                     className="mono"
                     value={endorsements}
@@ -1337,15 +1356,15 @@ export function BoIssuancePanel({
                     )
                   }
                 >
-                  {pending ? "A emitir…" : "Emitir, gerar o bilhete e avisar o cliente"}
+                  {pending ? t("bo.issuance.submit.pending") : t("bo.issuance.submit.issue")}
                 </button>
               </div>
             )}
 
             {issued && (
               <div className="note ok">
-                Emitido com o PNR <b className="mono">{issuance.pnr}</b>. O cliente
-                vê os bilhetes no link dele.
+                {t("bo.issuance.submit.doneBefore")} <b className="mono">{issuance.pnr}</b>
+                {t("bo.issuance.submit.doneAfter")}
               </div>
             )}
           </div>

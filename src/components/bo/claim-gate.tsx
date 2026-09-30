@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { boClaimCase } from "@/actions/bo-price-checker"
+import { useT } from "@/i18n/provider"
 
 export function BoClaimGate({
   caseId,
@@ -34,6 +35,7 @@ export function BoClaimGate({
   waiting: string
 }) {
   const router = useRouter()
+  const t = useT()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -54,17 +56,17 @@ export function BoClaimGate({
   return (
     <div className="mx-auto max-w-[620px] rounded-xl border border-adm-line bg-adm-panel p-7">
       <h2 className="mb-2 text-[15px] font-extrabold text-adm-txt">
-        Este caso ainda não tem dono
+        {t("bo.queue.claimGate.title")}
       </h2>
       <p className="mb-1 text-[13px] leading-relaxed text-adm-txt-2">
-        O pedido de <b className="text-adm-txt">{clientName}</b> está na fila há{" "}
-        <b className="text-adm-txt">{waiting}</b> e ninguém o reclamou.
+        {t("bo.queue.claimGate.waitingBefore")} <b className="text-adm-txt">{clientName}</b>{" "}
+        {t("bo.queue.claimGate.waitingMiddle")} <b className="text-adm-txt">{waiting}</b>{" "}
+        {t("bo.queue.claimGate.waitingAfter")}
       </p>
       <p className="mb-5 text-[12.5px] leading-relaxed text-adm-muted">
-        Uma proposta escrita num caso sem responsável pode ser sobreposta por
-        outro agente a trabalhar o mesmo pedido, sem que nenhum dos dois saiba.
-        Reclame o caso e o compositor abre — fica registado que é seu, com a
-        hora, e o caso sai de <span className="font-mono">novos sem dono</span>.
+        {t("bo.queue.claimGate.explainBefore")}{" "}
+        <span className="font-mono">{t("bo.queue.claimGate.explainBucket")}</span>
+        {t("bo.queue.claimGate.explainAfter")}
       </p>
 
       {error && (
@@ -79,7 +81,7 @@ export function BoClaimGate({
         disabled={pending}
         className="rounded-lg border border-adm-ember/60 bg-adm-ember/[.16] px-4 py-2.5 text-[13px] font-bold text-adm-txt transition-colors hover:bg-adm-ember/25 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {pending ? "A reclamar…" : "Reclamar e cotar"}
+        {pending ? t("bo.queue.claimGate.claiming") : t("bo.queue.claimGate.claim")}
       </button>
     </div>
   )

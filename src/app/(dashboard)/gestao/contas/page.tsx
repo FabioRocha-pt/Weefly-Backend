@@ -3,6 +3,8 @@ import { ShieldCheck } from "lucide-react"
 import { SectionPlaceholder } from "@/components/dashboard/section-placeholder"
 import { AccountReview } from "@/components/pro/account-review"
 import { loadAccountsReview } from "@/lib/pro-admin"
+import { LOCALE_TAGS } from "@/i18n/config"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /**
  * PRO-09 · contas à espera de validação, no módulo Admin da conta master.
@@ -11,36 +13,37 @@ import { loadAccountsReview } from "@/lib/pro-admin"
  * e inglês) é da semana seguinte e trata tudo de uma vez.
  */
 export default async function ContasPage() {
+  const { t, locale } = await getBoI18n()
   const review = await loadAccountsReview()
 
   if (!review) {
     return (
       <SectionPlaceholder
         icon={<ShieldCheck className="w-8 h-8 text-orange-600" />}
-        title="Validação de contas"
-        description="Não foi possível ler as contas. Confirme que a migração 0022 está aplicada."
+        title={t("bo.pro.accounts.title")}
+        description={t("bo.pro.accounts.loadError")}
       />
     )
   }
 
-  const dt = new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium", timeStyle: "short" })
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium", timeStyle: "short" })
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Validação de contas</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t("bo.pro.accounts.title")}</h1>
         <p className="text-slate-500 mt-1">
-          Uma conta nova não entra em nenhum módulo até ser aprovada aqui.
+          {t("bo.pro.accounts.subtitle")}
         </p>
       </div>
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-          Pendentes · {review.pending.length}
+          {t("bo.pro.accounts.pending", { count: review.pending.length })}
         </h2>
         {review.pending.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-slate-500">
-            Nenhuma conta à espera.
+            {t("bo.pro.accounts.noPending")}
           </p>
         ) : (
           review.pending.map((account) => (
@@ -62,20 +65,20 @@ export default async function ContasPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-          Registo de decisões
+          {t("bo.pro.accounts.decisionLog")}
         </h2>
         {review.decisions.length === 0 ? (
-          <p className="text-slate-500 text-sm">Ainda não há decisões registadas.</p>
+          <p className="text-slate-500 text-sm">{t("bo.pro.accounts.noDecisions")}</p>
         ) : (
           <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-5 py-3 font-semibold">Data</th>
-                  <th className="px-5 py-3 font-semibold">Conta</th>
-                  <th className="px-5 py-3 font-semibold">Decisão</th>
-                  <th className="px-5 py-3 font-semibold">Empresa / motivo</th>
-                  <th className="px-5 py-3 font-semibold">Quem decidiu</th>
+                  <th className="px-5 py-3 font-semibold">{t("bo.pro.common.date")}</th>
+                  <th className="px-5 py-3 font-semibold">{t("bo.pro.accounts.colAccount")}</th>
+                  <th className="px-5 py-3 font-semibold">{t("bo.pro.accounts.colDecision")}</th>
+                  <th className="px-5 py-3 font-semibold">{t("bo.pro.accounts.colCompanyReason")}</th>
+                  <th className="px-5 py-3 font-semibold">{t("bo.pro.accounts.colDecidedBy")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -88,11 +91,11 @@ export default async function ContasPage() {
                     <td className="px-5 py-3">
                       {d.decision === "approved" ? (
                         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                          Aprovada
+                          {t("bo.pro.accounts.approved")}
                         </span>
                       ) : (
                         <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
-                          Recusada
+                          {t("bo.pro.accounts.rejected")}
                         </span>
                       )}
                     </td>

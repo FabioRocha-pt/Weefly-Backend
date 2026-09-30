@@ -10,6 +10,7 @@ import {
   type SidebarModule,
 } from "@/components/dashboard/sidebar"
 import { UserMenu, type UserMenuData } from "@/components/dashboard/user-menu"
+import { PoweredByWeefly } from "@/components/powered-by"
 import { useT } from "@/i18n/provider"
 
 /** O título do cabeçalho é a mesma etiqueta que o menu lateral usa. */
@@ -37,6 +38,7 @@ export function DashboardShell({
   agentMenus,
   companyName,
   canManageTeam,
+  poweredByWeefly,
   children,
 }: {
   user: UserMenuData | null
@@ -44,6 +46,8 @@ export function DashboardShell({
   agentMenus: SidebarAgentMenu[]
   companyName: string | null
   canManageTeam?: boolean
+  /** TEN-05 · o parceiro da conta tem o interruptor ligado. */
+  poweredByWeefly?: boolean
   children: React.ReactNode
 }) {
   const nav = { modules, agentMenus, companyName, canManageTeam }
@@ -98,7 +102,12 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-8">{children}</main>
+        <main className="flex-1 p-4 sm:p-8">
+          {children}
+          {/* TEN-05 · no back-office de um parceiro (conforme o interruptor
+              dele) e no Admin. */}
+          {(poweredByWeefly || pathname.startsWith("/gestao")) && <PoweredByWeefly className="text-slate-500" />}
+        </main>
       </div>
     </div>
   )

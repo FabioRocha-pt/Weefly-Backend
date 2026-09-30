@@ -1,1 +1,123 @@
-{ "bo": { "payments": {} } }
+{
+  "bo": {
+    "payments": {
+      "method": {
+        "stripe": "Stripe",
+        "vinti4": "Vinti4 / 24",
+        "revolut": "Revolut",
+        "instapay": "InstaPay",
+        "transfer": "Transferência bancária (método antigo)",
+        "link": "Link de pagamento (método antigo)",
+        "card": "Cartão (método antigo)",
+        "momo": "Mobile money (método antigo)",
+        "local": "Métodos locais (método antigo)",
+        "cash": "Presencial (método antigo)",
+        "paypal": "PayPal (método retirado)"
+      },
+      "field": {
+        "stripe": "Link de pagamento Stripe",
+        "vinti4": "Referência SISP ou link",
+        "revolut": "Link Revolut",
+        "instapay": "Referência InstaPay"
+      },
+      "sample": {
+        "stripe": "https://buy.stripe.com/…",
+        "vinti4": "Referência 1234 5678 9012 — ou https://…",
+        "revolut": "https://revolut.me/…",
+        "instapay": "INSTA-000-000"
+      },
+      "summary": {
+        "title": "A cobrar",
+        "noPayment": "Ainda não há valor a cobrar. O pagamento nasce quando o cliente escolhe uma das ofertas publicadas.",
+        "total": "Total",
+        "status": "Estado",
+        "statusSettled": "Pago e confirmado",
+        "statusExpired": "Link expirado",
+        "statusWaitingOnUs": "Comprovativo por validar",
+        "statusAwaiting": "Aguarda pagamento",
+        "deadlineOurs": "Prazo nosso",
+        "deadlineClient": "Prazo do cliente",
+        "deadlineOver": "esgotado",
+        "market": "Mercado",
+        "reference": "Referência",
+        "extended": "Prazo estendido",
+        "waitingOnUsWarning": "O cliente já pagou e está à espera de nós. Se ninguém validar até {date}, o link expira e o caso volta à fila."
+      },
+      "countdown": {
+        "hoursMinutes": "faltam {hours}h {minutes}m",
+        "minutes": "faltam {minutes}m"
+      },
+      "proof": {
+        "title": "Comprovativo do cliente",
+        "count_one": "{count} envio",
+        "count_other": "{count} envios",
+        "none": "nenhum",
+        "empty": "O cliente ainda não carregou comprovativo.",
+        "declaredPaid": " Declarou ter pago em {date} pelo método {method} — sem ficheiro para abrir.",
+        "validated": "validado",
+        "rejected": "rejeitado",
+        "awaiting": "à espera de validação",
+        "open": "Abrir"
+      },
+      "confirm": {
+        "title": "Confirmar pagamento",
+        "alwaysManual": "sempre manual",
+        "noPayment": "Sem pagamento, não há nada para confirmar.",
+        "confirmedAt": "Pagamento confirmado em {date}",
+        "paidNoTicket": "Falta emitir. É o estado mais crítico do sistema: o cliente pagou e ainda não tem bilhete.",
+        "closedMoney": "O caso está fechado do lado do dinheiro.",
+        "received": "Valor recebido",
+        "toCharge": "a cobrar: {amount}",
+        "chosenMethod": "Via escolhida",
+        "valueDate": "Data de boa cobrança",
+        "bankReference": "Referência do banco",
+        "validatedBy": "Validado por",
+        "diffEqual": "Valor recebido igual ao valor a cobrar. Pode confirmar.",
+        "diffOver": "Recebeu {amount} a mais do que o cobrado. Confirme só se souber porquê.",
+        "diffUnder": "Faltam {amount}. Um pagamento parcial não liberta a emissão — fale com o cliente antes de confirmar.",
+        "checkboxTitle": "Confirmo que o valor entrou na conta da WeeFly.",
+        "checkboxBody": "Vi o extrato ou o comprovativo e reconheço o pagamento deste caso. Fica registado em meu nome ({email}) e o caso é libertado para emissão.",
+        "submit": "Confirmar pagamento e libertar para emissão",
+        "reject": "Rejeitar comprovativo",
+        "expiredNote": "Este link já expirou. Para o cliente poder pagar outra vez é preciso reabrir o pagamento — o histórico guarda a tentativa que morreu.",
+        "rejectLabel": "Porque não serve — o cliente vai ler",
+        "rejectPlaceholder": "O comprovativo é de outra transferência / não tem a referência / o valor não corresponde",
+        "rejectSubmit": "Rejeitar e pedir outro",
+        "cancel": "Cancelar",
+        "failed": "Falhou."
+      },
+      "deadline": {
+        "title": "Prazo do link de pagamento",
+        "body": "O link do cliente não fica aberto para sempre: o preço que ele viu tem validade. Sem confirmação até ao prazo, o pagamento expira sozinho e o cliente vê o ecrã de ofertas expiradas, com o botão para pedir nova pesquisa.",
+        "extend": "Estender +{hours}h",
+        "closeNow": "Fechar o link agora",
+        "reopen": "Reabrir pagamento por {hours}h"
+      },
+      "instructions": {
+        "settledTitle": "Como o cliente pagou",
+        "via": "Via",
+        "supplied": "Fornecido",
+        "title": "Via escolhida pelo cliente",
+        "outsidePlatform": "o pagamento acontece fora da plataforma",
+        "notChosen": "O cliente ainda não escolheu",
+        "legacy": "(registo antigo: {method})",
+        "chooseForClient": "Se combinou a via com o cliente por telefone ou WhatsApp, escolha-a aqui. Fica registado que a escolha veio do back-office.",
+        "methodLabel": "Via de pagamento",
+        "clientChoseOther": "O cliente escolheu {method}. Mudar aqui muda o que ele vai ver.",
+        "clientChoseHint": "A via que o cliente escolheu no link.",
+        "amount": "Valor a cobrar",
+        "amountHint": "vem da oferta escolhida",
+        "dueAt": "Prazo para pagar",
+        "dueAtHint": "vai na mensagem ao cliente",
+        "linkAlternative": "Link (alternativa)",
+        "sispReference": "Referência SISP",
+        "createdByYou": "O link ou a referência são criados por você, no {method} — a plataforma não os gera, só os guarda e envia. Confirme que o valor cobrado é {amount}.",
+        "sentAt": "Instruções enviadas em {date}.",
+        "sentAtBy": "Instruções enviadas em {date} por {email}.",
+        "sending": "A enviar…",
+        "saveAndSend": "Gravar e enviar ao cliente",
+        "saveOnly": "Gravar sem enviar"
+      }
+    }
+  }
+}

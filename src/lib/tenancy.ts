@@ -24,6 +24,8 @@ export interface Tenant {
   isOperator: boolean
   /** ADM-04 · uma conta do operador que vê todos os parceiros. */
   crossPartner: boolean
+  /** TEN-05 · o rodapé do back-office do parceiro diz "Powered by WeeFly". */
+  poweredByWeefly: boolean
 }
 
 /** A linha que o `select` da allowlist traz, com o parceiro embutido. */
@@ -36,12 +38,13 @@ export interface AllowlistTenantRow {
     commercial_name: string
     status: PartnerStatus
     is_operator: boolean
+    powered_by_weefly?: boolean | null
   } | null
 }
 
 /** As colunas a pedir à `bo_allowlist` para montar um `Tenant`. */
 export const ALLOWLIST_TENANT_COLUMNS =
-  "partner_id, cross_partner, partner:partners(id, slug, commercial_name, status, is_operator)"
+  "partner_id, cross_partner, partner:partners(id, slug, commercial_name, status, is_operator, powered_by_weefly)"
 
 export function tenantFromRow(row: AllowlistTenantRow): Tenant | null {
   const p = row.partner
@@ -56,6 +59,7 @@ export function tenantFromRow(row: AllowlistTenantRow): Tenant | null {
     // 0020); repetir aqui custa uma linha e impede que um dado mal migrado
     // abra tudo.
     crossPartner: Boolean(row.cross_partner) && p.is_operator,
+    poweredByWeefly: !p.is_operator && p.powered_by_weefly !== false,
   }
 }
 

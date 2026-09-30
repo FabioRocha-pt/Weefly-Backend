@@ -1,9 +1,9 @@
 import { Wallet } from "lucide-react"
 import { SectionPlaceholder } from "@/components/dashboard/section-placeholder"
-import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
-export default function FinanceiroPage() {
-  const { t } = getI18n()
+export default async function FinanceiroPage() {
+  const { t } = await getBoI18n()
 
   return (
     <SectionPlaceholder

@@ -4,7 +4,7 @@ import { ArrowRight, Car, Home, Lock, Plane, Sparkles, UtensilsCrossed, Users, W
 import { getCurrentUser } from "@/lib/current-user"
 import { getProAccount, visibleAgentMenus, type AgentMenu } from "@/lib/pro-account"
 import { AGENT_MENU_HREF } from "@/lib/pro-menus"
-import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 import { cn } from "@/lib/utils"
 
 /**
@@ -24,7 +24,7 @@ const ICON: Record<AgentMenu, React.ReactNode> = {
 }
 
 export default async function AgentHomePage() {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   const [account, user] = await Promise.all([getProAccount(), getCurrentUser()])
   const firstName = user?.firstName || user?.fullName || t("dashboard.fallbackName")
   const menus = account ? visibleAgentMenus(account) : []

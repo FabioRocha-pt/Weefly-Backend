@@ -29,7 +29,6 @@ import type { PaymentProof, PcPayment } from "@/lib/pc/payment"
 import type { BoState } from "@/lib/pc/bo-queue"
 import { formatAmountPlain, formatMoney, parseMoney } from "@/lib/proposal-math"
 import {
-  METHOD_LABEL_PT,
   PAY_METHOD_IDS,
   PAY_METHODS,
   PROOF_REVIEW_HOURS,
@@ -38,20 +37,32 @@ import {
   type PayMethodId,
 } from "@/lib/pc/catalog"
 import { humanSize } from "@/lib/pc/format-size"
+import { LOCALE_TAGS } from "@/i18n/config"
+import { useI18n } from "@/i18n/provider"
+import { translateOr, type Translator } from "@/i18n/translate"
 
 /* C-33 · a ordem é a do catálogo, e o catálogo é o único sítio onde ela vive. */
 const METHODS: PayMethodId[] = PAY_METHOD_IDS
 
-const dt = (iso: string | null | undefined) =>
-  iso
-    ? new Date(iso).toLocaleString("pt-PT", {
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "Atlantic/Cape_Verde",
-      })
-    : "—"
+/** I18N-01 · a data na língua do agente; o fuso continua o de Cabo Verde. */
+function useDt() {
+  const { locale } = useI18n()
+  const tag = LOCALE_TAGS[locale]
+  return (iso: string | null | undefined) =>
+    iso
+      ? new Date(iso).toLocaleString(tag, {
+          day: "2-digit",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Atlantic/Cape_Verde",
+        })
+      : "—"
+}
+
+/** I18N-01 · a etiqueta do método no ecrã; um código desconhecido cai na do catálogo. */
+const methodLabel = (t: Translator, id: string | null | undefined) =>
+  id ? translateOr(t, `bo.payments.method.${id}`, methodLabelPt(id)) : "—"
 
 export function BoPaymentPanel({
   caseId,
@@ -74,6 +85,8 @@ export function BoPaymentPanel({
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const { t } = useI18n()
+  const dt = useDt()
 
   const [confirmed, setConfirmed] = useState(false)
   const [received, setReceived] = useState(
@@ -100,22 +113,19 @@ export function BoPaymentPanel({
       <div className="cols two tabpane">
         <aside className="panel sticky">
           <div className="panel-h">
-            <h3>A cobrar</h3>
+            <h3>{t("bo.payments.summary.title")}</h3>
           </div>
           <div className="panel-b">
-            <p className="note">
-              Ainda não há valor a cobrar. O pagamento nasce quando o cliente
-              escolhe uma das ofertas publicadas.
-            </p>
+            <p className="note">{t("bo.payments.summary.noPayment")}</p>
           </div>
         </aside>
         <main className="stack">
           <div className="panel">
             <div className="panel-h">
-              <h3>Confirmar pagamento</h3>
+              <h3>{t("bo.payments.confirm.title")}</h3>
             </div>
             <div className="panel-b">
-              <p className="note">Sem pagamento, não há nada para confirmar.</p>
+              <p className="note">{t("bo.payments.confirm.noPayment")}</p>
             </div>
           </div>
         </main>
@@ -138,7 +148,7 @@ export function BoPaymentPanel({
         setNotice(result.notice ?? null)
         router.refresh()
       } else {
-        setError(result.error ?? "Falhou.")
+        setError(result.error ?? t("bo.payments.confirm.failed"))
       }
     })
   }
@@ -147,15 +157,15 @@ export function BoPaymentPanel({
     <div className="cols two tabpane">
       <aside className="panel sticky">
         <div className="panel-h">
-          <h3>A cobrar</h3>
+          <h3>{t("bo.payments.summary.title")}</h3>
         </div>
         <div className="panel-b">
           <div className="kv">
-            <span className="kv-k">Total</span>
+            <span className="kv-k">{t("bo.payments.summary.total")}</span>
             <span className="kv-v mono">{formatMoney(payment.amount, payment.currency)}</span>
           </div>
           <div className="kv">
-            <span className="kv-k">Estado</span>
+            <span className="kv-k">{t("bo.payments.summary.status")}</span>
             <span
               className="kv-v"
               style={{
@@ -169,16 +179,20 @@ export function BoPaymentPanel({
               }}
             >
               {settled
-                ? "Pago e confirmado"
+                ? t("bo.payments.summary.statusSettled")
                 : expired
-                  ? "Link expirado"
+                  ? t("bo.payments.summary.statusExpired")
                   : waitingOnUs
-                    ? "Comprovativo por validar"
-                    : "Aguarda pagamento"}
+                    ? t("bo.payments.summary.statusWaitingOnUs")
+                    : t("bo.payments.summary.statusAwaiting")}
             </span>
           </div>
           <div className="kv">
-            <span className="kv-k">{waitingOnUs ? "Prazo nosso" : "Prazo do cliente"}</span>
+            <span className="kv-k">
+              {waitingOnUs
+                ? t("bo.payments.summary.deadlineOurs")
+                : t("bo.payments.summary.deadlineClient")}
+            </span>
             <span className="kv-v">
               {settled
                 ? "—"
@@ -186,29 +200,29 @@ export function BoPaymentPanel({
                   ? `${remaining} · ${dt(
                       waitingOnUs ? payment.review_deadline_at : payment.expires_at
                     )}`
-                  : "esgotado"}
+                  : t("bo.payments.summary.deadlineOver")}
             </span>
           </div>
           <div className="kv">
-            <span className="kv-k">Mercado</span>
+            <span className="kv-k">{t("bo.payments.summary.market")}</span>
             <span className="kv-v">{market}</span>
           </div>
           <div className="kv">
-            <span className="kv-k">Referência</span>
+            <span className="kv-k">{t("bo.payments.summary.reference")}</span>
             <span className="kv-v mono">{reference}</span>
           </div>
           {payment.extension_count > 0 && (
             <div className="kv">
-              <span className="kv-k">Prazo estendido</span>
+              <span className="kv-k">{t("bo.payments.summary.extended")}</span>
               <span className="kv-v">{payment.extension_count}×</span>
             </div>
           )}
 
           {waitingOnUs && !settled && (
             <p className="note bad" style={{ marginTop: 12 }}>
-              O cliente já pagou e está à espera de nós. Se ninguém validar até{" "}
-              {dt(payment.review_deadline_at)}, o link expira e o caso volta à
-              fila.
+              {t("bo.payments.summary.waitingOnUsWarning", {
+                date: dt(payment.review_deadline_at),
+              })}
             </p>
           )}
         </div>
@@ -232,23 +246,22 @@ export function BoPaymentPanel({
         {/* ── o comprovativo ── */}
         <div className="panel">
           <div className="panel-h">
-            <h3>Comprovativo do cliente</h3>
+            <h3>{t("bo.payments.proof.title")}</h3>
             <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
               {proofs.length
-                ? `${proofs.length} envio${proofs.length > 1 ? "s" : ""}`
-                : "nenhum"}
+                ? t("bo.payments.proof.count", { count: proofs.length })
+                : t("bo.payments.proof.none")}
             </span>
           </div>
           <div className="panel-b">
             {proofs.length === 0 ? (
               <p className="note">
-                O cliente ainda não carregou comprovativo.
+                {t("bo.payments.proof.empty")}
                 {payment.client_declared_paid_at
-                  ? ` Declarou ter pago em ${dt(payment.client_declared_paid_at)} pelo método ${
-                      payment.method
-                        ? methodLabelPt(payment.method)
-                        : "—"
-                    } — sem ficheiro para abrir.`
+                  ? t("bo.payments.proof.declaredPaid", {
+                      date: dt(payment.client_declared_paid_at),
+                      method: methodLabel(t, payment.method),
+                    })
                   : ""}
               </p>
             ) : (
@@ -264,10 +277,10 @@ export function BoPaymentPanel({
                     <br />
                     <span style={{ color: "var(--muted)", fontSize: 11 }}>
                       {proof.status === "validado"
-                        ? "validado"
+                        ? t("bo.payments.proof.validated")
                         : proof.status === "rejeitado"
-                          ? `rejeitado${proof.review_note ? ` · ${proof.review_note}` : ""}`
-                          : "à espera de validação"}
+                          ? `${t("bo.payments.proof.rejected")}${proof.review_note ? ` · ${proof.review_note}` : ""}`
+                          : t("bo.payments.proof.awaiting")}
                     </span>
                   </span>
                   {/*
@@ -289,7 +302,7 @@ export function BoPaymentPanel({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Abrir
+                    {t("bo.payments.proof.open")}
                   </a>
                 </div>
               ))
@@ -300,16 +313,16 @@ export function BoPaymentPanel({
         {/* ── confirmar ── */}
         <div className="panel">
           <div className="panel-h">
-            <h3>Confirmar pagamento</h3>
+            <h3>{t("bo.payments.confirm.title")}</h3>
             <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-              sempre manual
+              {t("bo.payments.confirm.alwaysManual")}
             </span>
           </div>
           <div className="panel-b">
             {settled ? (
               <>
                 <div className="note ok">
-                  Pagamento confirmado em {dt(payment.admin_confirmed_at)}
+                  {t("bo.payments.confirm.confirmedAt", { date: dt(payment.admin_confirmed_at) })}
                   {payment.received_amount
                     ? ` · ${formatMoney(payment.received_amount, payment.currency)}`
                     : ""}
@@ -317,21 +330,25 @@ export function BoPaymentPanel({
                 </div>
                 <p className="note" style={{ marginTop: 12 }}>
                   {state === "pago_sem_bilhete"
-                    ? "Falta emitir. É o estado mais crítico do sistema: o cliente pagou e ainda não tem bilhete."
-                    : "O caso está fechado do lado do dinheiro."}
+                    ? t("bo.payments.confirm.paidNoTicket")
+                    : t("bo.payments.confirm.closedMoney")}
                 </p>
               </>
             ) : (
               <>
                 <div className="fgrid">
                   <div className="f s4">
-                    <label>Valor recebido</label>
+                    <label>{t("bo.payments.confirm.received")}</label>
                     <input
                       className="mono"
                       value={received}
                       onChange={(event) => setReceived(event.target.value)}
                     />
-                    <span className="hint">a cobrar: {formatAmountPlain(payment.amount)}</span>
+                    <span className="hint">
+                      {t("bo.payments.confirm.toCharge", {
+                        amount: formatAmountPlain(payment.amount),
+                      })}
+                    </span>
                   </div>
                   {/*
                     C-33 · o seletor de método saiu daqui.
@@ -343,11 +360,11 @@ export function BoPaymentPanel({
                     convidar o agente a contradizer o que o cliente escolheu.
                   */}
                   <div className="f s4">
-                    <label>Via escolhida</label>
-                    <input value={methodLabelPt(payment.method)} disabled />
+                    <label>{t("bo.payments.confirm.chosenMethod")}</label>
+                    <input value={methodLabel(t, payment.method)} disabled />
                   </div>
                   <div className="f s4">
-                    <label>Data de boa cobrança</label>
+                    <label>{t("bo.payments.confirm.valueDate")}</label>
                     <input
                       type="date"
                       value={valueDate}
@@ -355,7 +372,7 @@ export function BoPaymentPanel({
                     />
                   </div>
                   <div className="f s6">
-                    <label>Referência do banco</label>
+                    <label>{t("bo.payments.confirm.bankReference")}</label>
                     <input
                       className="mono"
                       placeholder="TRF20260814-88421"
@@ -364,7 +381,7 @@ export function BoPaymentPanel({
                     />
                   </div>
                   <div className="f s6">
-                    <label>Validado por</label>
+                    <label>{t("bo.payments.confirm.validatedBy")}</label>
                     <input value={viewer.label} disabled />
                   </div>
                 </div>
@@ -374,10 +391,14 @@ export function BoPaymentPanel({
                   style={{ marginTop: 12 }}
                 >
                   {difference === 0
-                    ? "Valor recebido igual ao valor a cobrar. Pode confirmar."
+                    ? t("bo.payments.confirm.diffEqual")
                     : difference > 0
-                      ? `Recebeu ${formatMoney(difference, payment.currency)} a mais do que o cobrado. Confirme só se souber porquê.`
-                      : `Faltam ${formatMoney(-difference, payment.currency)}. Um pagamento parcial não liberta a emissão — fale com o cliente antes de confirmar.`}
+                      ? t("bo.payments.confirm.diffOver", {
+                          amount: formatMoney(difference, payment.currency),
+                        })
+                      : t("bo.payments.confirm.diffUnder", {
+                          amount: formatMoney(-difference, payment.currency),
+                        })}
                 </div>
 
                 {/*
@@ -403,12 +424,10 @@ export function BoPaymentPanel({
                     onChange={(event) => setConfirmed(event.target.checked)}
                   />
                   <span>
-                    <b>Confirmo que o valor entrou na conta da WeeFly.</b>
+                    <b>{t("bo.payments.confirm.checkboxTitle")}</b>
                     <br />
                     <span style={{ color: "var(--muted)", fontSize: 11.5 }}>
-                      Vi o extrato ou o comprovativo e reconheço o pagamento deste
-                      caso. Fica registado em meu nome ({viewer.email}) e o caso é
-                      libertado para emissão.
+                      {t("bo.payments.confirm.checkboxBody", { email: viewer.email })}
                     </span>
                   </span>
                 </label>
@@ -445,7 +464,7 @@ export function BoPaymentPanel({
                       )
                     }
                   >
-                    Confirmar pagamento e libertar para emissão
+                    {t("bo.payments.confirm.submit")}
                   </button>
 
                   {proofs.some((p) => p.status === "recebido") && (
@@ -454,25 +473,23 @@ export function BoPaymentPanel({
                       type="button"
                       onClick={() => setShowReject((v) => !v)}
                     >
-                      Rejeitar comprovativo
+                      {t("bo.payments.confirm.reject")}
                     </button>
                   )}
                 </div>
 
                 {expired && (
                   <p className="note" style={{ marginTop: 12 }}>
-                    Este link já expirou. Para o cliente poder pagar outra vez é
-                    preciso reabrir o pagamento — o histórico guarda a tentativa
-                    que morreu.
+                    {t("bo.payments.confirm.expiredNote")}
                   </p>
                 )}
 
                 {showReject && (
                   <div className="f" style={{ marginTop: 12 }}>
-                    <label>Porque não serve — o cliente vai ler</label>
+                    <label>{t("bo.payments.confirm.rejectLabel")}</label>
                     <textarea
                       style={{ minHeight: 60 }}
-                      placeholder="O comprovativo é de outra transferência / não tem a referência / o valor não corresponde"
+                      placeholder={t("bo.payments.confirm.rejectPlaceholder")}
                       value={rejectReason}
                       onChange={(event) => setRejectReason(event.target.value)}
                     />
@@ -496,14 +513,14 @@ export function BoPaymentPanel({
                           })
                         }
                       >
-                        Rejeitar e pedir outro
+                        {t("bo.payments.confirm.rejectSubmit")}
                       </button>
                       <button
                         className="btn btn-sm"
                         type="button"
                         onClick={() => setShowReject(false)}
                       >
-                        Cancelar
+                        {t("bo.payments.confirm.cancel")}
                       </button>
                     </div>
                   </div>
@@ -517,15 +534,10 @@ export function BoPaymentPanel({
         {!settled && (
           <div className="panel">
             <div className="panel-h">
-              <h3>Prazo do link de pagamento</h3>
+              <h3>{t("bo.payments.deadline.title")}</h3>
             </div>
             <div className="panel-b">
-              <p className="note">
-                O link do cliente não fica aberto para sempre: o preço que ele viu
-                tem validade. Sem confirmação até ao prazo, o pagamento expira
-                sozinho e o cliente vê o ecrã de ofertas expiradas, com o botão para
-                pedir nova pesquisa.
-              </p>
+              <p className="note">{t("bo.payments.deadline.body")}</p>
 
               {error && (
                 <div className="note bad" style={{ marginTop: 12 }}>
@@ -555,7 +567,7 @@ export function BoPaymentPanel({
                         )
                       }
                     >
-                      Estender +{PROOF_REVIEW_HOURS}h
+                      {t("bo.payments.deadline.extend", { hours: PROOF_REVIEW_HOURS })}
                     </button>
                     <button
                       className="btn btn-sm"
@@ -567,7 +579,7 @@ export function BoPaymentPanel({
                         )
                       }
                     >
-                      Estender +24h
+                      {t("bo.payments.deadline.extend", { hours: 24 })}
                     </button>
                     <button
                       className="btn btn-sm"
@@ -575,7 +587,7 @@ export function BoPaymentPanel({
                       disabled={pending}
                       onClick={() => run(() => boExpirePayment(caseId, payment.id))}
                     >
-                      Fechar o link agora
+                      {t("bo.payments.deadline.closeNow")}
                     </button>
                   </>
                 )}
@@ -587,7 +599,7 @@ export function BoPaymentPanel({
                     disabled={pending}
                     onClick={() => run(() => boReopenPayment(caseId, PROOF_REVIEW_HOURS))}
                   >
-                    Reabrir pagamento por {PROOF_REVIEW_HOURS}h
+                    {t("bo.payments.deadline.reopen", { hours: PROOF_REVIEW_HOURS })}
                   </button>
                 )}
               </div>
@@ -639,6 +651,8 @@ function BoPayInstructions({
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const { t } = useI18n()
+  const dt = useDt()
 
   const chosen = payMethod(payment.method)
   const [method, setMethod] = useState<PayMethodId>(chosen?.id ?? "stripe")
@@ -684,16 +698,16 @@ function BoPayInstructions({
     return (
       <div className="panel">
         <div className="panel-h">
-          <h3>Como o cliente pagou</h3>
+          <h3>{t("bo.payments.instructions.settledTitle")}</h3>
         </div>
         <div className="panel-b">
           <div className="kv">
-            <span className="kv-k">Via</span>
-            <span className="kv-v">{methodLabelPt(payment.method)}</span>
+            <span className="kv-k">{t("bo.payments.instructions.via")}</span>
+            <span className="kv-v">{methodLabel(t, payment.method)}</span>
           </div>
           {(payment.pay_link || payment.pay_reference) && (
             <div className="kv">
-              <span className="kv-k">Fornecido</span>
+              <span className="kv-k">{t("bo.payments.instructions.supplied")}</span>
               <span className="kv-v mono" style={{ wordBreak: "break-all" }}>
                 {payment.pay_link ?? payment.pay_reference}
               </span>
@@ -707,9 +721,9 @@ function BoPayInstructions({
   return (
     <div className="panel">
       <div className="panel-h">
-        <h3>Via escolhida pelo cliente</h3>
+        <h3>{t("bo.payments.instructions.title")}</h3>
         <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-          o pagamento acontece fora da plataforma
+          {t("bo.payments.instructions.outsidePlatform")}
         </span>
       </div>
       <div className="panel-b">
@@ -724,7 +738,9 @@ function BoPayInstructions({
           }}
         >
           <span style={{ fontSize: 21, fontWeight: 800, color: "var(--txt)" }}>
-            {chosen ? METHOD_LABEL_PT[chosen.id] : "O cliente ainda não escolheu"}
+            {chosen
+              ? t(`bo.payments.method.${chosen.id}`)
+              : t("bo.payments.instructions.notChosen")}
           </span>
           {chosen && payment.pay_provider && (
             <span className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
@@ -733,21 +749,22 @@ function BoPayInstructions({
           )}
           {!chosen && payment.method && (
             <span style={{ fontSize: 12, color: "var(--warn)" }}>
-              (registo antigo: {methodLabelPt(payment.method)})
+              {t("bo.payments.instructions.legacy", {
+                method: methodLabel(t, payment.method),
+              })}
             </span>
           )}
         </div>
 
         {!chosen && (
           <p className="note" style={{ marginBottom: 13 }}>
-            Se combinou a via com o cliente por telefone ou WhatsApp, escolha-a
-            aqui. Fica registado que a escolha veio do back-office.
+            {t("bo.payments.instructions.chooseForClient")}
           </p>
         )}
 
         <div className="fgrid">
           <div className="f s6">
-            <label>Via de pagamento</label>
+            <label>{t("bo.payments.instructions.methodLabel")}</label>
             <select
               value={method}
               disabled={pending}
@@ -755,47 +772,51 @@ function BoPayInstructions({
             >
               {METHODS.map((id) => (
                 <option key={id} value={id}>
-                  {METHOD_LABEL_PT[id]}
+                  {t(`bo.payments.method.${id}`)}
                 </option>
               ))}
             </select>
             <span className="hint">
               {chosen && chosen.id !== method
-                ? `O cliente escolheu ${METHOD_LABEL_PT[chosen.id]}. Mudar aqui muda o que ele vai ver.`
-                : "A via que o cliente escolheu no link."}
+                ? t("bo.payments.instructions.clientChoseOther", {
+                    method: t(`bo.payments.method.${chosen.id}`),
+                  })
+                : t("bo.payments.instructions.clientChoseHint")}
             </span>
           </div>
 
           <div className="f s3">
-            <label>Valor a cobrar</label>
+            <label>{t("bo.payments.instructions.amount")}</label>
             <input
               className="mono"
               value={formatMoney(payment.amount, payment.currency)}
               disabled
             />
-            <span className="hint">vem da oferta escolhida</span>
+            <span className="hint">{t("bo.payments.instructions.amountHint")}</span>
           </div>
 
           <div className="f s3">
-            <label>Prazo para pagar</label>
+            <label>{t("bo.payments.instructions.dueAt")}</label>
             <input
               type="datetime-local"
               value={dueAt}
               disabled={pending}
               onChange={(event) => setDueAt(event.target.value)}
             />
-            <span className="hint">vai na mensagem ao cliente</span>
+            <span className="hint">{t("bo.payments.instructions.dueAtHint")}</span>
           </div>
 
           {/* Só os campos da via escolhida. */}
           {wantsLink && (
             <div className={wantsRef ? "f s6" : "f s12"}>
               <label>
-                {active.supply === "either" ? "Link (alternativa)" : active.fieldPt}
+                {active.supply === "either"
+                  ? t("bo.payments.instructions.linkAlternative")
+                  : t(`bo.payments.field.${active.id}`)}
               </label>
               <input
                 className="mono"
-                placeholder={active.samplePt}
+                placeholder={t(`bo.payments.sample.${active.id}`)}
                 value={link}
                 disabled={pending}
                 onChange={(event) => setLink(event.target.value)}
@@ -806,11 +827,13 @@ function BoPayInstructions({
           {wantsRef && (
             <div className={wantsLink ? "f s6" : "f s12"}>
               <label>
-                {active.supply === "either" ? "Referência SISP" : active.fieldPt}
+                {active.supply === "either"
+                  ? t("bo.payments.instructions.sispReference")
+                  : t(`bo.payments.field.${active.id}`)}
               </label>
               <input
                 className="mono"
-                placeholder={active.samplePt}
+                placeholder={t(`bo.payments.sample.${active.id}`)}
                 value={reference}
                 disabled={pending}
                 onChange={(event) => setReference(event.target.value)}
@@ -820,18 +843,22 @@ function BoPayInstructions({
         </div>
 
         <p className="note" style={{ marginTop: 12 }}>
-          O link ou a referência são criados por você, no {METHOD_LABEL_PT[method]} —
-          a plataforma não os gera, só os guarda e envia. Confirme que o valor
-          cobrado é {formatMoney(payment.amount, payment.currency)}.
+          {t("bo.payments.instructions.createdByYou", {
+            method: t(`bo.payments.method.${method}`),
+            amount: formatMoney(payment.amount, payment.currency),
+          })}
         </p>
 
         {payment.pay_instructions_sent_at && (
           <div className="note ok" style={{ marginTop: 11 }}>
-            Instruções enviadas em {dt(payment.pay_instructions_sent_at)}
             {payment.pay_instructions_sent_by_email
-              ? ` por ${payment.pay_instructions_sent_by_email}`
-              : ""}
-            .
+              ? t("bo.payments.instructions.sentAtBy", {
+                  date: dt(payment.pay_instructions_sent_at),
+                  email: payment.pay_instructions_sent_by_email,
+                })
+              : t("bo.payments.instructions.sentAt", {
+                  date: dt(payment.pay_instructions_sent_at),
+                })}
           </div>
         )}
 
@@ -853,7 +880,9 @@ function BoPayInstructions({
             disabled={pending}
             onClick={() => save(true)}
           >
-            {pending ? "A enviar…" : "Gravar e enviar ao cliente"}
+            {pending
+              ? t("bo.payments.instructions.sending")
+              : t("bo.payments.instructions.saveAndSend")}
           </button>
           <button
             className="btn btn-sm"
@@ -861,7 +890,7 @@ function BoPayInstructions({
             disabled={pending}
             onClick={() => save(false)}
           >
-            Gravar sem enviar
+            {t("bo.payments.instructions.saveOnly")}
           </button>
         </div>
       </div>
@@ -882,6 +911,7 @@ function localMoment(iso: string): string {
 /** O prazo a contar, ao segundo. */
 function useCountdown(target: string | null): string | null {
   const [text, setText] = useState<string | null>(null)
+  const { t } = useI18n()
 
   useEffect(() => {
     if (!target) {
@@ -896,12 +926,16 @@ function useCountdown(target: string | null): string | null {
       }
       const hours = Math.floor(left / 3600_000)
       const minutes = Math.floor((left % 3600_000) / 60000)
-      setText(hours > 0 ? `faltam ${hours}h ${minutes}m` : `faltam ${minutes}m`)
+      setText(
+        hours > 0
+          ? t("bo.payments.countdown.hoursMinutes", { hours, minutes })
+          : t("bo.payments.countdown.minutes", { minutes })
+      )
     }
     tick()
     const timer = setInterval(tick, 30_000)
     return () => clearInterval(timer)
-  }, [target])
+  }, [target, t])
 
   return text
 }

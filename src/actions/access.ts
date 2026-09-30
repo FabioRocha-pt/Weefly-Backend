@@ -23,6 +23,8 @@ import { createAdminClient } from "@/utils/supabase/admin"
 import { boIdentity, type BoIdentity } from "@/lib/bo-access"
 import { canGrant, profileFromRow, ACCESS_ROLE_COLUMNS, type AccessRoleRow } from "@/lib/access-roles"
 import { siteUrl } from "@/lib/site-url"
+import { getBoI18n } from "@/i18n/bo-server"
+import { translateMessage, type Translator } from "@/i18n/translate"
 
 export type AccessResult = { ok: true; notice?: string } | { ok: false; error: string }
 
@@ -30,10 +32,10 @@ const MENUS = ["flights", "cars", "houses", "experiences", "food"] as const
 
 const userSchema = z.object({
   mode: z.enum(["create", "update"]),
-  email: z.string().trim().toLowerCase().email("Email inválido."),
-  label: z.string().trim().min(2, "Falta o nome.").max(120),
+  email: z.string().trim().toLowerCase().email("bo.actions.common.invalidEmail"),
+  label: z.string().trim().min(2, "bo.actions.access.nameMissing").max(120),
   roleId: z.enum(["weefly_admin", "weefly_agent", "partner_admin", "partner_agent", "secretary"]),
-  partnerId: z.string().uuid("Escolha o parceiro."),
+  partnerId: z.string().uuid("bo.actions.access.pickPartner"),
   organisationId: z.string().uuid().nullable().optional(),
   /** Nulo: os menus da empresa. */
   agentMenus: z.array(z.enum(MENUS)).nullable().optional(),
@@ -51,25 +53,26 @@ function touch() {
   revalidatePath("/agente/equipa")
 }
 
-/** Uma escrita recusada pelo RLS ou pelo trigger, dita em português. */
-function writeError(error: { code?: string; message: string }): string {
-  if (error.code === "42501") return "Não tem permissão para dar este perfil neste parceiro."
-  if (error.code === "23505") return "Já existe uma conta com este email."
+/** Uma escrita recusada pelo RLS ou pelo trigger, dita na língua do agente. */
+function writeError(t: Translator, error: { code?: string; message: string }): string {
+  if (error.code === "42501") return t("bo.actions.access.write.noPermission")
+  if (error.code === "23505") return t("bo.actions.access.write.emailTaken")
   if (error.code === "23514" || error.code === "23503") {
-    if (/ministério/.test(error.message)) return "Este perfil pertence a um ministério: escolha-o."
-    if (/operador/.test(error.message)) return "Este perfil não existe neste parceiro."
-    return "Os dados não batem certo com o perfil escolhido."
+    if (/ministério/.test(error.message)) return t("bo.actions.access.write.needsOrganisation")
+    if (/operador/.test(error.message)) return t("bo.actions.access.write.profileNotInPartner")
+    return t("bo.actions.access.write.mismatch")
   }
   return error.message
 }
 
 export async function saveUser(input: z.input<typeof userSchema>): Promise<AccessResult> {
+  const { t } = await getBoI18n()
   const actor = await manager()
-  if (!actor?.profile) return { ok: false, error: "A sua conta não gere utilizadores." }
+  if (!actor?.profile) return { ok: false, error: t("bo.actions.access.notManager") }
 
   const parsed = userSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
   }
   const v = parsed.data
   const db = createClient()
@@ -79,7 +82,7 @@ export async function saveUser(input: z.input<typeof userSchema>): Promise<Acces
     db.from("partners").select("id, is_operator, status").eq("id", v.partnerId).maybeSingle(),
   ])
   const target = profileFromRow(roleRow as unknown as AccessRoleRow | null)
-  if (!target || !partner) return { ok: false, error: "Parceiro ou perfil desconhecido." }
+  if (!target || !partner) return { ok: false, error: t("bo.actions.access.unknownPartnerOrProfile") }
 
   const p = partner as { id: string; is_operator: boolean; status: string }
   if (
@@ -92,18 +95,18 @@ export async function saveUser(input: z.input<typeof userSchema>): Promise<Acces
       ok: false,
       error:
         target.id === "weefly_admin" && actor.profile.manageUsers !== "all"
-          ? "Só um Admin WeeFly dá o perfil Admin WeeFly."
-          : "Não pode dar este perfil neste parceiro.",
+          ? t("bo.actions.access.onlyAdminGrantsAdmin")
+          : t("bo.actions.access.cannotGrant"),
     }
   }
   if (target.needsOrganisation && !v.organisationId) {
-    return { ok: false, error: "A secretária pertence a um ministério: escolha-o." }
+    return { ok: false, error: t("bo.actions.access.secretaryNeedsOrganisation") }
   }
 
   /* Ninguém muda o próprio perfil: é a forma mais curta de uma conta se
      trancar fora, ou de se promover. */
   if (v.mode === "update" && v.email === actor.email) {
-    return { ok: false, error: "O seu próprio perfil muda-o outra pessoa com acesso de gestão." }
+    return { ok: false, error: t("bo.actions.access.ownProfile") }
   }
 
   const row = {
@@ -123,14 +126,14 @@ export async function saveUser(input: z.input<typeof userSchema>): Promise<Acces
 
   if (v.mode === "create") {
     const { error } = await db.from("bo_allowlist").insert({ ...row, active: true, role: seller })
-    if (error) return { ok: false, error: writeError(error) }
+    if (error) return { ok: false, error: writeError(t, error) }
   } else {
     const { data: current } = await db
       .from("bo_allowlist")
       .select("role_id")
       .eq("email", v.email)
       .maybeSingle()
-    if (!current) return { ok: false, error: "Conta não encontrada." }
+    if (!current) return { ok: false, error: t("bo.actions.common.accountNotFound") }
     const roleChanged = (current as { role_id: string }).role_id !== v.roleId
 
     const { data, error } = await db
@@ -138,14 +141,14 @@ export async function saveUser(input: z.input<typeof userSchema>): Promise<Acces
       .update(roleChanged ? { ...row, role: seller } : row)
       .eq("email", v.email)
       .select("email")
-    if (error) return { ok: false, error: writeError(error) }
-    if (!data || data.length === 0) return { ok: false, error: "Conta não encontrada." }
+    if (error) return { ok: false, error: writeError(t, error) }
+    if (!data || data.length === 0) return { ok: false, error: t("bo.actions.common.accountNotFound") }
   }
 
-  let notice = v.mode === "create" ? "Utilizador criado." : "Utilizador actualizado."
+  let notice = v.mode === "create" ? t("bo.actions.access.created") : t("bo.actions.access.updated")
   if (v.mode === "create" && v.invite !== false && target.backoffice) {
-    const sent = await invite(v.email, v.label)
-    notice += sent.ok ? " O convite foi enviado." : ` O convite não saiu: ${sent.reason}`
+    const sent = await invite(t, v.email, v.label)
+    notice += sent.ok ? ` ${t("bo.actions.access.inviteSent")}` : ` ${t("bo.actions.access.inviteFailed", { reason: sent.reason })}`
   }
 
   touch()
@@ -154,7 +157,7 @@ export async function saveUser(input: z.input<typeof userSchema>): Promise<Acces
 
 const suspendSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
-  reason: z.string().trim().min(3, "Escreva o motivo.").max(500),
+  reason: z.string().trim().min(3, "bo.actions.access.reasonMissing").max(500),
 })
 
 /**
@@ -166,13 +169,14 @@ const suspendSchema = z.object({
  * a fazer login até ser reactivada).
  */
 export async function suspendUser(input: z.input<typeof suspendSchema>): Promise<AccessResult> {
+  const { t } = await getBoI18n()
   const actor = await manager()
-  if (!actor) return { ok: false, error: "A sua conta não gere utilizadores." }
+  if (!actor) return { ok: false, error: t("bo.actions.access.notManager") }
 
   const parsed = suspendSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  if (!parsed.success) return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
   const v = parsed.data
-  if (v.email === actor.email) return { ok: false, error: "Não pode suspender a sua própria conta." }
+  if (v.email === actor.email) return { ok: false, error: t("bo.actions.access.cannotSuspendSelf") }
 
   const db = createClient()
   const { data, error } = await db
@@ -185,24 +189,25 @@ export async function suspendUser(input: z.input<typeof suspendSchema>): Promise
     })
     .eq("email", v.email)
     .select("email")
-  if (error) return { ok: false, error: writeError(error) }
-  if (!data || data.length === 0) return { ok: false, error: "Conta não encontrada." }
+  if (error) return { ok: false, error: writeError(t, error) }
+  if (!data || data.length === 0) return { ok: false, error: t("bo.actions.common.accountNotFound") }
 
   const cut = await cutSessions(v.email, true)
   touch()
   return {
     ok: true,
     notice: cut
-      ? "Conta suspensa. As sessões abertas foram terminadas."
-      : "Conta suspensa. Não havia sessão a terminar (a pessoa ainda não se registou).",
+      ? t("bo.actions.access.suspended")
+      : t("bo.actions.access.suspendedNoSession"),
   }
 }
 
 export async function reactivateUser(email: string): Promise<AccessResult> {
+  const { t } = await getBoI18n()
   const actor = await manager()
-  if (!actor) return { ok: false, error: "A sua conta não gere utilizadores." }
+  if (!actor) return { ok: false, error: t("bo.actions.access.notManager") }
   const parsed = z.string().trim().toLowerCase().email().safeParse(email)
-  if (!parsed.success) return { ok: false, error: "Email inválido." }
+  if (!parsed.success) return { ok: false, error: t("bo.actions.common.invalidEmail") }
 
   const db = createClient()
   const { data, error } = await db
@@ -210,18 +215,19 @@ export async function reactivateUser(email: string): Promise<AccessResult> {
     .update({ active: true, changed_by_email: actor.email })
     .eq("email", parsed.data)
     .select("email")
-  if (error) return { ok: false, error: writeError(error) }
-  if (!data || data.length === 0) return { ok: false, error: "Conta não encontrada." }
+  if (error) return { ok: false, error: writeError(t, error) }
+  if (!data || data.length === 0) return { ok: false, error: t("bo.actions.common.accountNotFound") }
 
   await cutSessions(parsed.data, false)
   touch()
-  return { ok: true, notice: "Conta reactivada." }
+  return { ok: true, notice: t("bo.actions.access.reactivated") }
 }
 
 /** Reenviar o convite a quem ainda não entrou. */
 export async function resendInvite(email: string): Promise<AccessResult> {
+  const { t } = await getBoI18n()
   const actor = await manager()
-  if (!actor) return { ok: false, error: "A sua conta não gere utilizadores." }
+  if (!actor) return { ok: false, error: t("bo.actions.access.notManager") }
 
   /* Só a quem esta pessoa vê (o RLS responde). */
   const db = createClient()
@@ -231,11 +237,11 @@ export async function resendInvite(email: string): Promise<AccessResult> {
     .eq("email", email.trim().toLowerCase())
     .maybeSingle()
   const row = data as { email: string; label: string | null; active: boolean } | null
-  if (!row) return { ok: false, error: "Conta não encontrada." }
-  if (!row.active) return { ok: false, error: "A conta está suspensa." }
+  if (!row) return { ok: false, error: t("bo.actions.common.accountNotFound") }
+  if (!row.active) return { ok: false, error: t("bo.actions.access.accountSuspended") }
 
-  const sent = await invite(row.email, row.label ?? row.email)
-  return sent.ok ? { ok: true, notice: "Convite enviado." } : { ok: false, error: sent.reason }
+  const sent = await invite(t, row.email, row.label ?? row.email)
+  return sent.ok ? { ok: true, notice: t("bo.actions.access.inviteResent") } : { ok: false, error: sent.reason }
 }
 
 // ── GoTrue ───────────────────────────────────────────────────────────────────
@@ -246,13 +252,14 @@ export async function resendInvite(email: string): Promise<AccessResult> {
  * com a password que já tem, e a allowlist já lhe dá o acesso.
  */
 async function invite(
+  t: Translator,
   email: string,
   label: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const admin = createAdminClient()
-  if (!admin) return { ok: false, reason: "servidor sem service role" }
+  if (!admin) return { ok: false, reason: t("bo.actions.access.invite.noServiceRole") }
   const base = siteUrl()
-  if (!base) return { ok: false, reason: "NEXT_PUBLIC_SITE_URL por configurar" }
+  if (!base) return { ok: false, reason: t("bo.actions.access.invite.noSiteUrl") }
 
   const [first, ...rest] = label.trim().split(/\s+/)
   const { error } = await admin.auth.admin.inviteUserByEmail(email, {
@@ -261,7 +268,7 @@ async function invite(
   })
   if (!error) return { ok: true }
   if (/already|registered|exists/i.test(error.message)) {
-    return { ok: false, reason: "esta pessoa já tem conta — entra com a password dela." }
+    return { ok: false, reason: t("bo.actions.access.invite.alreadyRegistered") }
   }
   return { ok: false, reason: error.message }
 }

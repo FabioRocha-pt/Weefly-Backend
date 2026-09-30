@@ -1,1 +1,123 @@
-{ "bo": { "payments": {} } }
+{
+  "bo": {
+    "payments": {
+      "method": {
+        "stripe": "Stripe",
+        "vinti4": "Vinti4 / 24",
+        "revolut": "Revolut",
+        "instapay": "InstaPay",
+        "transfer": "Bank transfer (old method)",
+        "link": "Payment link (old method)",
+        "card": "Card (old method)",
+        "momo": "Mobile money (old method)",
+        "local": "Local methods (old method)",
+        "cash": "In person (old method)",
+        "paypal": "PayPal (retired method)"
+      },
+      "field": {
+        "stripe": "Stripe payment link",
+        "vinti4": "SISP reference or link",
+        "revolut": "Revolut link",
+        "instapay": "InstaPay reference"
+      },
+      "sample": {
+        "stripe": "https://buy.stripe.com/…",
+        "vinti4": "Reference 1234 5678 9012 — or https://…",
+        "revolut": "https://revolut.me/…",
+        "instapay": "INSTA-000-000"
+      },
+      "summary": {
+        "title": "To collect",
+        "noPayment": "There is no amount to collect yet. The payment is created when the client picks one of the published offers.",
+        "total": "Total",
+        "status": "Status",
+        "statusSettled": "Paid and confirmed",
+        "statusExpired": "Link expired",
+        "statusWaitingOnUs": "Proof awaiting validation",
+        "statusAwaiting": "Awaiting payment",
+        "deadlineOurs": "Our deadline",
+        "deadlineClient": "Client deadline",
+        "deadlineOver": "expired",
+        "market": "Market",
+        "reference": "Reference",
+        "extended": "Deadline extended",
+        "waitingOnUsWarning": "The client has already paid and is waiting on us. If nobody validates by {date}, the link expires and the case goes back to the queue."
+      },
+      "countdown": {
+        "hoursMinutes": "{hours}h {minutes}m left",
+        "minutes": "{minutes}m left"
+      },
+      "proof": {
+        "title": "Client proof of payment",
+        "count_one": "{count} upload",
+        "count_other": "{count} uploads",
+        "none": "none",
+        "empty": "The client has not uploaded a proof of payment yet.",
+        "declaredPaid": " They declared payment on {date} via {method} — no file to open.",
+        "validated": "validated",
+        "rejected": "rejected",
+        "awaiting": "awaiting validation",
+        "open": "Open"
+      },
+      "confirm": {
+        "title": "Confirm payment",
+        "alwaysManual": "always manual",
+        "noPayment": "No payment, nothing to confirm.",
+        "confirmedAt": "Payment confirmed on {date}",
+        "paidNoTicket": "Ticket not issued yet. This is the most critical state in the system: the client has paid and still has no ticket.",
+        "closedMoney": "The case is closed on the money side.",
+        "received": "Amount received",
+        "toCharge": "to collect: {amount}",
+        "chosenMethod": "Chosen method",
+        "valueDate": "Value date",
+        "bankReference": "Bank reference",
+        "validatedBy": "Validated by",
+        "diffEqual": "Amount received matches the amount to collect. You can confirm.",
+        "diffOver": "Received {amount} more than charged. Only confirm if you know why.",
+        "diffUnder": "{amount} short. A partial payment does not release issuance — talk to the client before confirming.",
+        "checkboxTitle": "I confirm the amount has reached WeeFly's account.",
+        "checkboxBody": "I have seen the statement or the proof and recognise this case's payment. It is recorded under my name ({email}) and the case is released for issuance.",
+        "submit": "Confirm payment and release for issuance",
+        "reject": "Reject proof",
+        "expiredNote": "This link has already expired. For the client to pay again the payment must be reopened — the history keeps the attempt that died.",
+        "rejectLabel": "Why it doesn't work — the client will read this",
+        "rejectPlaceholder": "The proof is from another transfer / it has no reference / the amount doesn't match",
+        "rejectSubmit": "Reject and ask for another",
+        "cancel": "Cancel",
+        "failed": "Failed."
+      },
+      "deadline": {
+        "title": "Payment link deadline",
+        "body": "The client's link doesn't stay open forever: the price they saw has an expiry. Without confirmation by the deadline, the payment expires on its own and the client sees the expired offers screen, with the button to request a new search.",
+        "extend": "Extend +{hours}h",
+        "closeNow": "Close the link now",
+        "reopen": "Reopen payment for {hours}h"
+      },
+      "instructions": {
+        "settledTitle": "How the client paid",
+        "via": "Method",
+        "supplied": "Supplied",
+        "title": "Method chosen by the client",
+        "outsidePlatform": "payment happens outside the platform",
+        "notChosen": "The client hasn't chosen yet",
+        "legacy": "(old record: {method})",
+        "chooseForClient": "If you agreed the method with the client by phone or WhatsApp, pick it here. It is recorded that the choice came from the back office.",
+        "methodLabel": "Payment method",
+        "clientChoseOther": "The client chose {method}. Changing it here changes what they will see.",
+        "clientChoseHint": "The method the client chose in the link.",
+        "amount": "Amount to collect",
+        "amountHint": "comes from the chosen offer",
+        "dueAt": "Payment deadline",
+        "dueAtHint": "goes in the message to the client",
+        "linkAlternative": "Link (alternative)",
+        "sispReference": "SISP reference",
+        "createdByYou": "The link or reference is created by you, in {method} — the platform doesn't generate them, it only stores and sends them. Make sure the amount charged is {amount}.",
+        "sentAt": "Instructions sent on {date}.",
+        "sentAtBy": "Instructions sent on {date} by {email}.",
+        "sending": "Sending…",
+        "saveAndSend": "Save and send to client",
+        "saveOnly": "Save without sending"
+      }
+    }
+  }
+}

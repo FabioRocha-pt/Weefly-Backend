@@ -53,11 +53,17 @@ async function upsertLead(
     consent_at: data.consent ? new Date().toISOString() : null,
   }
 
-  const existing = await admin
-    .from("leads")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle()
+  /* TEN-03 · o formulário do concierge é da WeeFly: o lead procura-se e
+     cria-se na WeeFly. O mesmo email pode ser cliente de um parceiro, e esse
+     lead é outro (índice `(partner_id, email)`, migração 0027). */
+  const { data: operator } = await admin.from("partners").select("id").eq("is_operator", true).maybeSingle()
+  const partnerId = (operator as { id: string } | null)?.id ?? null
+  const byEmail = () => {
+    const q = admin.from("leads").select("id").eq("email", email)
+    return partnerId ? q.eq("partner_id", partnerId) : q
+  }
+
+  const existing = await byEmail().maybeSingle()
 
   if (existing.data?.id) {
     // Don't overwrite the original source_channel — where a lead first came
@@ -69,18 +75,14 @@ async function upsertLead(
 
   const inserted = await admin
     .from("leads")
-    .insert(contact)
+    .insert({ ...contact, ...(partnerId ? { partner_id: partnerId } : {}) } as Record<string, unknown>)
     .select("id")
     .single()
 
   if (inserted.error) {
     if (inserted.error.code === UNIQUE_VIOLATION) {
       // Lost the race — the concurrent insert won, so adopt its lead.
-      const retry = await admin
-        .from("leads")
-        .select("id")
-        .eq("email", email)
-        .single()
+      const retry = await byEmail().single()
       if (retry.data?.id) return retry.data.id
     }
     throw inserted.error

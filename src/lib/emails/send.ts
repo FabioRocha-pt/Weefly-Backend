@@ -29,6 +29,7 @@ import {
 import { whatsappTeamNumber } from "@/lib/whatsapp"
 import { toE164 } from "@/lib/countries"
 import { caseClientUrl, siteUrl, type LinkPartner } from "@/lib/site-url"
+import { clientBrandForCase, type Brand } from "@/lib/brand"
 import {
   BORDER,
   EMBER_RED,
@@ -85,6 +86,8 @@ interface CaseContext {
   locale: Locale
   /** MIG-02 · o parceiro do caso, para o endereço do link do cliente. */
   partner: LinkPartner | null
+  /** TEN-02 · a marca que o cliente vê (a do parceiro, ou a WeeFly). */
+  brand: Brand
 }
 
 /* MIG-02 · o endereço vem da configuração, num sítio só. */
@@ -237,6 +240,7 @@ async function context(caseId: string): Promise<CaseContext | null> {
     pnr: (row.pnr as string | null) ?? null,
     locale: localeForClient(lead?.locale as string | null),
     partner: partnerOf(unwrap(row.partner)),
+    brand: await clientBrandForCase(caseId),
   }
 }
 
@@ -264,8 +268,11 @@ function shell(
   title: string,
   body: string,
   locale: Locale = DEFAULT_LOCALE,
-  reference: string | null = null
+  reference: string | null = null,
+  /** TEN-02 · a marca do cliente do caso. Sem ela, a WeeFly. */
+  brand: Brand | null = null
 ): string {
+  const partner = brand?.kind === "partner" ? brand : null
   return `<!DOCTYPE html>
 <html lang="${LOCALE_TAGS[locale]}">
 <head><meta charset="utf-8" /><meta name="color-scheme" content="light only" /><title>${escapeHtml(title)}</title></head>
@@ -273,11 +280,15 @@ function shell(
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SURFACE_ALT};padding:32px 16px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${BORDER};">
-        ${masthead(reference)}
+        ${masthead(reference, partner ? { background: partner.colorPrimary ?? undefined, brand: partner } : {})}
         <tr><td style="padding:32px;">${body}</td></tr>
         <tr><td style="padding:0 32px 32px;">
           <hr style="border:none;border-top:1px solid ${BORDER};margin:0 0 16px;" />
-          <p style="margin:0;font-size:12px;color:#98A1AE;">© ${new Date().getFullYear()} WeeFly Africa · Praia, Cabo Verde</p>
+          <p style="margin:0;font-size:12px;color:#98A1AE;">${
+            partner
+              ? `${escapeHtml(partner.footerText ?? partner.name)}${partner.poweredByWeefly ? " · Powered by WeeFly" : ""}`
+              : `© ${new Date().getFullYear()} WeeFly Africa · Praia, Cabo Verde`
+          }</p>
         </td></tr>
       </table>
     </td></tr>
@@ -371,7 +382,8 @@ export async function sendRequestReceivedEmail(
      </p>
      ${cta(link, t("email.receivedCta"))}`,
     locale,
-    ctx.reference
+    ctx.reference,
+    ctx.brand
   )
 
   const text = [
@@ -635,7 +647,8 @@ export async function sendOfferChosenEmail(
      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(t("email.chosenNext"))}</p>
      ${cta(link, t("email.chosenCta"))}`,
     ctx.locale,
-    ctx.reference
+    ctx.reference,
+    ctx.brand
   )
 
   const text = [
@@ -811,7 +824,8 @@ export async function sendPaymentInstructionsEmail(
        <a href="${link}" style="color:${EMBER_RED};">${escapeHtml(t("email.payInstructionsCta"))}</a>
      </p>`,
     ctx.locale,
-    ctx.reference
+    ctx.reference,
+    ctx.brand
   )
 
   const text = [
@@ -910,7 +924,8 @@ export async function sendPaymentConfirmedEmail(
      </p>
      <p style="margin:22px 0 0;">${cta(clientLink(ctx), t("email.paidCta"))}</p>`,
     locale,
-    ctx.reference
+    ctx.reference,
+    ctx.brand
   )
 
   const text = [
@@ -1002,7 +1017,8 @@ export async function sendTicketsIssuedEmail(input: {
      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(t("email.issuedGuide"))}</p>
      ${cta(link, t("email.issuedCta"))}`,
     ctx.locale,
-    ctx.reference
+    ctx.reference,
+    ctx.brand
   )
 
   const text = [
@@ -1179,7 +1195,8 @@ export async function sendManualClientNotice(input: {
      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(t("email.alertFooter"))}</p>
      ${cta(link, t("email.alertCta"))}`,
     ctx.locale,
-    ctx.reference
+    ctx.reference,
+    ctx.brand
   )
 
   const text = [
@@ -1379,7 +1396,8 @@ export async function sendDatesProposedEmail(
      </p>
      ${cta(link, t("email.datesCta"))}`,
     locale,
-    ctx.reference
+    ctx.reference,
+    ctx.brand
   )
 
   const text = [

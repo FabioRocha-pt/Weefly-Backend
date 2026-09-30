@@ -16,6 +16,7 @@
  * aviso interno, mais abaixo, fica em português: quem o lê é a equipa.
  */
 
+import type { Brand } from "@/lib/brand"
 import {
   BORDER,
   EMBER_RED,
@@ -45,6 +46,8 @@ import ptDictionary from "@/i18n/dictionaries/pt.json"
 const pt = createTranslator(ptDictionary as Record<string, unknown>)
 
 export interface ProposalEmailData {
+  /** TEN-02 · a marca que o cliente vê; sem ela, a WeeFly. */
+  brand?: Brand | null
   clientName: string
   reference: string | null
   origin: string
@@ -229,7 +232,11 @@ export function buildProposalPublishedEmail(
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SURFACE_ALT};padding:32px 16px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${BORDER};">
-        ${masthead(data.reference)}
+        ${
+          data.brand?.kind === "partner"
+            ? masthead(data.reference, { background: data.brand.colorPrimary ?? undefined, brand: data.brand })
+            : masthead(data.reference)
+        }
 
         <tr>
           <td style="padding:36px 32px 4px;">
@@ -280,7 +287,11 @@ export function buildProposalPublishedEmail(
               ${escapeHtml(t("email.proposalFooter"))}
             </p>
             <p style="margin:12px 0 0;font-size:12px;color:#98A1AE;">
-              ${escapeHtml(t("email.copyright", { year: new Date().getFullYear() }))}
+              ${
+                data.brand?.kind === "partner"
+                  ? `${escapeHtml(data.brand.footerText ?? data.brand.name)}${data.brand.poweredByWeefly ? " · Powered by WeeFly" : ""}`
+                  : escapeHtml(t("email.copyright", { year: new Date().getFullYear() }))
+              }
             </p>
           </td>
         </tr>
@@ -313,7 +324,7 @@ export function buildProposalPublishedEmail(
     t("email.proposalTextSee", { link: data.link }),
     "",
     t("email.proposalTextPersonal"),
-    "© WeeFly Africa",
+    data.brand?.kind === "partner" ? data.brand.name : "© WeeFly Africa",
   ].join("\n")
 
   return { subject, html, text }

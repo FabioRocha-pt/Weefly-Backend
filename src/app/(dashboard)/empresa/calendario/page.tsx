@@ -1,9 +1,9 @@
 import { Calendar } from "lucide-react"
 import { SectionPlaceholder } from "@/components/dashboard/section-placeholder"
-import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
-export default function CalendarioPage() {
-  const { t } = getI18n()
+export default async function CalendarioPage() {
+  const { t } = await getBoI18n()
 
   return (
     <SectionPlaceholder

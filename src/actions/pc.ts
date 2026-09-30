@@ -22,6 +22,7 @@ import { PC_LOCALE_COOKIE, pcLocale } from "@/lib/pc/locale"
 import { getTranslator, localeForClient } from "@/i18n/server"
 
 import { createAdminClient } from "@/utils/supabase/admin"
+import { hostPartnerSlug } from "@/lib/host-partner"
 import {
   RATE_LIMIT,
   countRecentSubmissions,
@@ -309,6 +310,9 @@ export async function submitPcRequest(
     currency: v.currency,
     agentSlug: v.agentSlug ?? null,
     companySlug: v.companySlug ?? null,
+    /* TEN-04 · o parceiro do subdomínio, lido dos cabeçalhos — nunca do
+       formulário. */
+    hostPartnerSlug: hostPartnerSlug(),
     /* O ecrã de consentimento promete guardar IP e dispositivo. */
     consentIp: ip,
     consentAgent: head.get("user-agent")?.slice(0, 300) ?? null,

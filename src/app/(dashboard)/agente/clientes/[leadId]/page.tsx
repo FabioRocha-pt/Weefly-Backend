@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react"
 import { getProAccount } from "@/lib/pro-account"
 import { loadProClient } from "@/lib/pro-clients"
 import { LOCALE_TAGS } from "@/i18n/config"
-import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /**
  * PRO-05 · um cliente e os casos dele. Um cliente de outra empresa, aberto
@@ -14,7 +14,7 @@ import { getI18n } from "@/i18n/server"
 export default async function ClientePage({ params }: { params: { leadId: string } }) {
   if (!/^[0-9a-f-]{36}$/i.test(params.leadId)) notFound()
 
-  const { t, locale } = getI18n()
+  const { t, locale } = await getBoI18n()
   const account = await getProAccount()
   const client = account ? await loadProClient(account, params.leadId) : null
   if (!client) notFound()

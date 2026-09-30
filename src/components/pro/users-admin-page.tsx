@@ -2,6 +2,9 @@ import { notFound } from "next/navigation"
 
 import { loadAccessAdmin, type AuditEntry } from "@/lib/access-admin"
 import { UsersAdmin, type UsersAdminAudit } from "@/components/pro/users-admin"
+import { LOCALE_TAGS } from "@/i18n/config"
+import { getBoI18n } from "@/i18n/bo-server"
+import type { Translator } from "@/i18n/translate"
 
 /**
  * ADM-02 · o ecrã de Utilizadores e permissões, para as duas portas por onde
@@ -12,10 +15,11 @@ import { UsersAdmin, type UsersAdminAudit } from "@/components/pro/users-admin"
 export async function UsersAdminPage({ title, subtitle }: { title: string; subtitle: string }) {
   const data = await loadAccessAdmin()
   if (!data) notFound()
+  const { t, locale } = await getBoI18n()
 
-  const dt = new Intl.DateTimeFormat("pt-PT", { dateStyle: "short", timeStyle: "short" })
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short" })
   const partnerName = new Map(data.partners.map((p) => [p.id, p.commercialName]))
-  const roleName = new Map(data.roles.map((r) => [r.id, r.labelPt]))
+  const roleName = new Map(data.roles.map((r) => [r.id, locale === "pt" ? r.labelPt : r.labelEn]))
   const orgName = new Map(data.organisations.map((o) => [o.id, o.name]))
 
   const audit: UsersAdminAudit[] = data.audit
@@ -27,7 +31,7 @@ export async function UsersAdminPage({ title, subtitle }: { title: string; subti
       action: a.action,
       target: a.target,
       partnerName: a.partnerId ? (partnerName.get(a.partnerId) ?? null) : null,
-      changes: describe(a, { partnerName, roleName, orgName }),
+      changes: describe(a, { partnerName, roleName, orgName }, t),
       reason: a.reason,
     }))
 
@@ -57,15 +61,9 @@ export async function UsersAdminPage({ title, subtitle }: { title: string; subti
   )
 }
 
-const FIELD_LABEL: Record<string, string> = {
-  label: "Nome",
-  role_id: "Perfil",
-  partner_id: "Parceiro",
-  organisation_id: "Ministério",
-  agent_menus: "Menus",
-  active: "Activa",
-  role: "Vendedor",
-}
+/* Os campos que o registo mostra, pela ordem; a etiqueta vem de
+   `bo.pro.users.field.<campo>`. */
+const FIELDS = ["label", "role_id", "partner_id", "organisation_id", "agent_menus", "active", "role"]
 
 /** "Perfil: Agente do parceiro → Admin do parceiro", uma linha por campo. */
 function describe(
@@ -74,27 +72,29 @@ function describe(
     partnerName: Map<string, string>
     roleName: Map<string, string>
     orgName: Map<string, string>
-  }
+  },
+  t: Translator
 ): string {
   const show = (key: string, value: unknown): string => {
     if (value === null || value === undefined || value === "") return "—"
     if (key === "partner_id") return names.partnerName.get(String(value)) ?? String(value)
     if (key === "role_id") return names.roleName.get(String(value)) ?? String(value)
     if (key === "organisation_id") return names.orgName.get(String(value)) ?? String(value)
-    if (key === "active") return value ? "sim" : "não"
-    if (key === "role") return value === "manager" ? "sim" : "não"
-    if (Array.isArray(value)) return value.join(", ") || "nenhum"
+    if (key === "active") return value ? t("bo.pro.common.yes") : t("bo.pro.common.no")
+    if (key === "role") return value === "manager" ? t("bo.pro.common.yes") : t("bo.pro.common.no")
+    if (Array.isArray(value)) return value.join(", ") || t("bo.pro.common.none")
     return String(value)
   }
 
   const after = a.after ?? {}
   const before = a.before ?? {}
-  return Object.keys(FIELD_LABEL)
+  const label = (k: string) => t(`bo.pro.users.field.${k}`)
+  return FIELDS
     .filter((k) => (a.before ? JSON.stringify(before[k]) !== JSON.stringify(after[k]) : after[k] != null))
     .map((k) =>
       a.before
-        ? `${FIELD_LABEL[k]}: ${show(k, before[k])} → ${show(k, after[k])}`
-        : `${FIELD_LABEL[k]}: ${show(k, after[k])}`
+        ? `${label(k)}: ${show(k, before[k])} → ${show(k, after[k])}`
+        : `${label(k)}: ${show(k, after[k])}`
     )
     .join("\n")
 }

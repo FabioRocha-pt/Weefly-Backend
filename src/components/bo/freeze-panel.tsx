@@ -18,6 +18,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { boUnfreezeFlight } from "@/actions/bo-price-checker"
+import { useT } from "@/i18n/provider"
 
 export function BoFreezePanel({
   caseId,
@@ -33,6 +34,7 @@ export function BoFreezePanel({
   issued: boolean
   offerName: string | null
 }) {
+  const t = useT()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
@@ -42,34 +44,29 @@ export function BoFreezePanel({
 
   if (!frozen) return null
 
-  const chosen = offerName || "a oferta escolhida"
+  const chosen = offerName || t("bo.caseView.freeze.chosenFallback")
 
   return (
     <div className="panel">
       <div className="panel-h">
-        <h3>Voo escolhido · congelado</h3>
+        <h3>{t("bo.caseView.freeze.title")}</h3>
         <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-          fase de pagamento
+          {t("bo.caseView.freeze.subtitle")}
         </span>
       </div>
       <div className="panel-b">
         <div className="note warn">
-          <b>{chosen} está congelada.</b> O caso já chegou ao pagamento: o preço
-          que o cliente vê é o desta oferta, e o valor a cobrar foi calculado a
-          partir dela. Editar o itinerário aqui mudaria a viagem por baixo de um
-          pagamento em curso.
+          <b>{t("bo.caseView.freeze.frozenBold", { name: chosen })}</b>{" "}
+          {t("bo.caseView.freeze.frozenBody")}
         </div>
 
         {issued ? (
           <p className="note bad" style={{ marginTop: 11 }}>
-            O caso está emitido. Mudar de voo é uma reemissão e passa pela
-            companhia — não por este ecrã.
+            {t("bo.caseView.freeze.issued")}
           </p>
         ) : paid ? (
           <p className="note bad" style={{ marginTop: 11 }}>
-            O cliente já pagou. A partir daqui uma troca de voo é um reembolso ou
-            uma alteração com a companhia, e nenhuma das duas se faz com um botão
-            que diz “voltar atrás”.
+            {t("bo.caseView.freeze.paid")}
           </p>
         ) : notice ? (
           <div className="note ok" style={{ marginTop: 11 }}>
@@ -78,11 +75,10 @@ export function BoFreezePanel({
         ) : !open ? (
           <div style={{ marginTop: 12 }}>
             <button className="btn btn-sm" type="button" onClick={() => setOpen(true)}>
-              Voltar um passo e mudar de voo
+              {t("bo.caseView.freeze.open")}
             </button>
             <span style={{ marginLeft: 9, fontSize: 11, color: "var(--muted)" }}>
-              desfaz a escolha, fecha o link de pagamento, abre uma revisão e
-              avisa o cliente
+              {t("bo.caseView.freeze.openHint")}
             </span>
           </div>
         ) : (
@@ -94,15 +90,14 @@ export function BoFreezePanel({
             }}
           >
             <div className="f s12">
-              <label>Porque volta atrás · obrigatório</label>
+              <label>{t("bo.caseView.freeze.reasonLabel")}</label>
               <textarea
-                placeholder="A companhia deixou de ter lugares nesta tarifa e a alternativa parte duas horas mais tarde. Vamos enviar-lhe uma proposta nova."
+                placeholder={t("bo.caseView.freeze.reasonPlaceholder")}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
               />
               <span className="hint">
-                Esta frase vai para o cliente por email e WhatsApp, e fica no
-                registo do caso.
+                {t("bo.caseView.freeze.reasonHint")}
               </span>
             </div>
 
@@ -122,7 +117,7 @@ export function BoFreezePanel({
                   startTransition(async () => {
                     const result = await boUnfreezeFlight({ caseId, reason })
                     if (result.ok) {
-                      setNotice(result.notice ?? "Voo descongelado.")
+                      setNotice(result.notice ?? t("bo.caseView.freeze.unfrozen"))
                       setOpen(false)
                       setReason("")
                       router.refresh()
@@ -132,7 +127,7 @@ export function BoFreezePanel({
                   })
                 }}
               >
-                {pending ? "A processar…" : "Voltar um passo e avisar o cliente"}
+                {pending ? t("bo.caseView.freeze.processing") : t("bo.caseView.freeze.submit")}
               </button>
               <button
                 className="btn btn-sm"
@@ -144,7 +139,7 @@ export function BoFreezePanel({
                   setError(null)
                 }}
               >
-                Cancelar
+                {t("bo.caseView.common.cancel")}
               </button>
             </div>
           </div>

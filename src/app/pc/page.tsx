@@ -1,7 +1,9 @@
-import { redirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 
 import { RequestWizard } from "@/components/pc/request-wizard"
-import { PcFab, PcFooter, ToastHost } from "@/components/pc/chrome"
+import { PcBrandProvider, PcFab, PcFooter, ToastHost } from "@/components/pc/chrome"
+import { brandCssVars, clientBrandForSlug, toClientBrand, weeflyBrand } from "@/lib/brand"
+import { hostPartnerSlug } from "@/lib/host-partner"
 import { CURRENCIES } from "@/lib/pc/catalog"
 import { COUNTRY_BY_ISO, countryOfDial } from "@/lib/countries"
 import { I18nProvider } from "@/i18n/provider"
@@ -28,7 +30,7 @@ import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/config"
 
 export const dynamic = "force-dynamic"
 
-export default function PriceCheckerPage({
+export default async function PriceCheckerPage({
   searchParams,
 }: {
   searchParams: Record<string, string | string[] | undefined>
@@ -66,12 +68,25 @@ export default function PriceCheckerPage({
     (COUNTRY_BY_ISO[askedCountry] ? askedCountry : null) ??
     countryOfDial(askedDial)
 
+  /*
+   * TEN-04 · TEN-02 · a marca do formulário: a do parceiro do subdomínio, e,
+   * sem subdomínio, a da empresa do link (PRO-06). Um subdomínio que não é de
+   * nenhum parceiro dá "não encontrado", nunca um erro técnico.
+   */
+  const hostSlug = hostPartnerSlug()
+  const hostBrand = hostSlug ? await clientBrandForSlug(hostSlug) : null
+  if (hostSlug && !hostBrand) notFound()
+  const linkCompany = /^[a-z0-9-]{1,63}$/.test(company) ? company : null
+  const brand =
+    hostBrand ?? (linkCompany ? await clientBrandForSlug(linkCompany) : null) ?? (await weeflyBrand())
+
   return (
     <I18nProvider
       locale={locale}
       dictionary={getDictionary(locale)}
       fallback={locale === DEFAULT_LOCALE ? undefined : getDictionary(DEFAULT_LOCALE)}
     >
+      <PcBrandProvider brand={toClientBrand(brand)} cssVars={brandCssVars(brand)}>
       <ToastHost>
         <RequestWizard
           initialLang={locale}
@@ -83,6 +98,7 @@ export default function PriceCheckerPage({
         <PcFooter />
         <PcFab />
       </ToastHost>
+      </PcBrandProvider>
     </I18nProvider>
   )
 }

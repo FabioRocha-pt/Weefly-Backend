@@ -1,1 +1,110 @@
-{ "bo": { "queue": {} } }
+{
+  "bo": {
+    "queue": {
+      "title": "Price Checker · work queue",
+      "intro": "Requests come in on their own when the client submits the form. The clock starts at that submission, not at assignment.",
+      "bucket": {
+        "por_validar": "Proofs to validate",
+        "pagos_sem_bilhete": "Paid, no ticket",
+        "novos_sem_dono": "New, unassigned",
+        "a_cotar_meus": "Quoting, mine",
+        "a_expirar": "Offers expiring",
+        "espera_cliente": "Waiting on client",
+        "tudo": "All",
+        "fechados": "Closed cases"
+      },
+      "kpi": {
+        "oldest": "oldest {tempo} ago",
+        "nothingWaiting": "nothing waiting on us",
+        "none": "none",
+        "emptyQueue": "queue empty",
+        "underAnHour": "under 1 hour",
+        "choosingOrPaying": "choosing or paying",
+        "issuedThisMonth": "Issued this month"
+      },
+      "empty": {
+        "por_validar": "No proof of payment waiting for validation. This is the bucket that should never have a queue.",
+        "pagos_sem_bilhete": "No paid case without an issued ticket.",
+        "novos_sem_dono": "Every new request has an owner.",
+        "a_cotar_meus": "You have no cases of your own being quoted.",
+        "a_expirar": "No offer expiring in the next hour.",
+        "espera_cliente": "No case waiting on the client.",
+        "tudo": "No request has come in through the Price Checker yet.",
+        "fechados": "No closed cases. A case is closed after issuance, with the button in the case header."
+      },
+      "table": {
+        "searchPlaceholder": "Reference, name, phone, PNR or route",
+        "cases_one": "{count} case",
+        "cases_other": "{count} cases",
+        "reference": "Reference",
+        "client": "Client",
+        "origin": "Source",
+        "state": "Status",
+        "route": "Route",
+        "passengers": "Passengers",
+        "amount": "Amount",
+        "inQueueFor": "In queue for",
+        "noAgent": "no agent",
+        "claim": "Claim",
+        "validate": "Validate",
+        "issue": "Issue",
+        "quote": "Quote",
+        "open": "Open"
+      },
+      "deadline": {
+        "closed": "closed {when}",
+        "issued": "issued",
+        "cancelled": "cancelled",
+        "linkExpired": "link expired",
+        "overdue": "deadline passed",
+        "validateBy": "validate by {when}",
+        "payBy": "pay by {when}",
+        "offerValidUntil": "offer valid until {when}",
+        "waitingUs": "waiting on us",
+        "waitingClient": "waiting on the client"
+      },
+      "closedReason": {
+        "emitido": "Issued",
+        "fechado_fora_plataforma": "Closed outside the platform",
+        "cliente_desistiu": "The client gave up",
+        "sem_resposta": "Client not responding",
+        "duplicado": "Duplicate request",
+        "outro": "Other reason"
+      },
+      "state": {
+        "novo": "E1 · New",
+        "em_cotacao": "E2 · Quoting",
+        "propostas_enviadas": "E3 · Offers sent",
+        "aguarda_escolha": "E3 · Awaiting choice",
+        "aguarda_passaportes": "E3 · Awaiting passports",
+        "aguarda_pagamento": "E4 · Awaiting payment",
+        "comprovativo_por_validar": "E4 · Proof to validate",
+        "pago_sem_bilhete": "Paid, no ticket",
+        "emitido": "E5 · Issued",
+        "fechado": "Closed",
+        "expirado": "X1 · Expired",
+        "cancelado": "X2 · Cancelled"
+      },
+      "claimGate": {
+        "title": "This case has no owner yet",
+        "waitingBefore": "The request from",
+        "waitingMiddle": "has been in the queue for",
+        "waitingAfter": "and nobody has claimed it.",
+        "explainBefore": "An offer written on a case with no owner can be overwritten by another agent working the same request, without either of them knowing. Claim the case and the composer opens — it is recorded as yours, with the time, and the case leaves",
+        "explainBucket": "new, unassigned",
+        "explainAfter": ".",
+        "claiming": "Claiming…",
+        "claim": "Claim and quote"
+      },
+      "notes": {
+        "title": "Internal notes",
+        "teamOnly": "team only",
+        "placeholder": "What was agreed on WhatsApp. Only the team sees this.",
+        "hint": "The WhatsApp conversation is not stored in the system. Record here what matters for the case.",
+        "saving": "Saving…",
+        "save": "Save to case",
+        "team": "team"
+      }
+    }
+  }
+}

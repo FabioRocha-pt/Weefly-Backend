@@ -105,3 +105,19 @@ export function createTranslator(
     return key
   }
 }
+
+/**
+ * I18N-01 · a tradução de uma chave que pode não existir, com a frase a usar
+ * nesse caso. Serve os acontecimentos do caso: o sistema guarda o código
+ * (`kind`) e um título em português; o ecrã mostra `bo.events.<kind>` na
+ * língua de quem lê e, para um código sem tradução, o título guardado.
+ */
+export function translateOr(
+  t: Translator,
+  key: string,
+  fallback: string,
+  values?: TranslateOptions
+): string {
+  const out = t(key, values)
+  return out === key ? fallback : out
+}

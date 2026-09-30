@@ -4,7 +4,7 @@ import { Car, Home, Lock, Sparkles, UtensilsCrossed } from "lucide-react"
 import { SectionPlaceholder } from "@/components/dashboard/section-placeholder"
 import { AGENT_MENU_HREF } from "@/lib/pro-menus"
 import { agentMenuState, getProAccount, type AgentMenu } from "@/lib/pro-account"
-import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /**
  * PRO-04 · os menus do Agente que ainda não têm conteúdo.
@@ -39,7 +39,7 @@ export default async function AgentMenuPage({ params }: { params: { menu: string
   if (state === "hidden") notFound()
   if (menu === "flights" || state === "open") redirect(AGENT_MENU_HREF[menu])
 
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   return (
     <SectionPlaceholder
       icon={ICON[menu] ?? <Lock className="w-8 h-8 text-slate-400" />}

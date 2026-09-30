@@ -1,1 +1,110 @@
-{ "bo": { "queue": {} } }
+{
+  "bo": {
+    "queue": {
+      "title": "Price Checker · fila de trabalho",
+      "intro": "Pedidos entram sozinhos quando o cliente submete o formulário. O cronómetro começa nessa submissão, não na atribuição.",
+      "bucket": {
+        "por_validar": "Comprovativos por validar",
+        "pagos_sem_bilhete": "Pagos, sem bilhete",
+        "novos_sem_dono": "Novos, sem dono",
+        "a_cotar_meus": "A cotar, meus",
+        "a_expirar": "Propostas a expirar",
+        "espera_cliente": "Espera pelo cliente",
+        "tudo": "Tudo",
+        "fechados": "Casos fechados"
+      },
+      "kpi": {
+        "oldest": "o mais antigo há {tempo}",
+        "nothingWaiting": "nada à espera de nós",
+        "none": "nenhum",
+        "emptyQueue": "fila vazia",
+        "underAnHour": "menos de 1 hora",
+        "choosingOrPaying": "a escolher ou a pagar",
+        "issuedThisMonth": "Emitidos este mês"
+      },
+      "empty": {
+        "por_validar": "Nenhum comprovativo à espera de validação. Este é o balde que nunca deve ter fila.",
+        "pagos_sem_bilhete": "Nenhum caso pago sem bilhete emitido.",
+        "novos_sem_dono": "Todos os pedidos novos têm dono.",
+        "a_cotar_meus": "Não tem casos seus em cotação.",
+        "a_expirar": "Nenhuma proposta a expirar na próxima hora.",
+        "espera_cliente": "Nenhum caso à espera do cliente.",
+        "tudo": "Ainda não entrou nenhum pedido pelo Price Checker.",
+        "fechados": "Nenhum caso fechado. Um caso fecha-se depois de emitido, no botão do cabeçalho da ficha."
+      },
+      "table": {
+        "searchPlaceholder": "Referência, nome, telefone, PNR ou rota",
+        "cases_one": "{count} caso",
+        "cases_other": "{count} casos",
+        "reference": "Referência",
+        "client": "Cliente",
+        "origin": "Origem",
+        "state": "Estado",
+        "route": "Rota",
+        "passengers": "Passageiros",
+        "amount": "Valor",
+        "inQueueFor": "Na fila há",
+        "noAgent": "sem agente",
+        "claim": "Reclamar",
+        "validate": "Validar",
+        "issue": "Emitir",
+        "quote": "Cotar",
+        "open": "Abrir"
+      },
+      "deadline": {
+        "closed": "fechado {when}",
+        "issued": "emitido",
+        "cancelled": "cancelado",
+        "linkExpired": "link expirado",
+        "overdue": "prazo esgotado",
+        "validateBy": "validar até {when}",
+        "payBy": "pagar até {when}",
+        "offerValidUntil": "proposta válida até {when}",
+        "waitingUs": "à espera de nós",
+        "waitingClient": "à espera do cliente"
+      },
+      "closedReason": {
+        "emitido": "Emitido",
+        "fechado_fora_plataforma": "Fechado fora da plataforma",
+        "cliente_desistiu": "O cliente desistiu",
+        "sem_resposta": "Cliente sem resposta",
+        "duplicado": "Pedido duplicado",
+        "outro": "Outro motivo"
+      },
+      "state": {
+        "novo": "E1 · Novo",
+        "em_cotacao": "E2 · Em cotação",
+        "propostas_enviadas": "E3 · Propostas enviadas",
+        "aguarda_escolha": "E3 · Aguarda escolha",
+        "aguarda_passaportes": "E3 · Aguarda passaportes",
+        "aguarda_pagamento": "E4 · Aguarda pagamento",
+        "comprovativo_por_validar": "E4 · Comprovativo por validar",
+        "pago_sem_bilhete": "Pago, sem bilhete",
+        "emitido": "E5 · Emitido",
+        "fechado": "Fechado",
+        "expirado": "X1 · Expirado",
+        "cancelado": "X2 · Cancelado"
+      },
+      "claimGate": {
+        "title": "Este caso ainda não tem dono",
+        "waitingBefore": "O pedido de",
+        "waitingMiddle": "está na fila há",
+        "waitingAfter": "e ninguém o reclamou.",
+        "explainBefore": "Uma proposta escrita num caso sem responsável pode ser sobreposta por outro agente a trabalhar o mesmo pedido, sem que nenhum dos dois saiba. Reclame o caso e o compositor abre — fica registado que é seu, com a hora, e o caso sai de",
+        "explainBucket": "novos sem dono",
+        "explainAfter": ".",
+        "claiming": "A reclamar…",
+        "claim": "Reclamar e cotar"
+      },
+      "notes": {
+        "title": "Notas internas",
+        "teamOnly": "só a equipa vê",
+        "placeholder": "O que ficou combinado no WhatsApp. Só a equipa vê.",
+        "hint": "A conversa de WhatsApp não fica guardada no sistema. Registe aqui o que importa para o caso.",
+        "saving": "A guardar…",
+        "save": "Guardar no caso",
+        "team": "equipa"
+      }
+    }
+  }
+}

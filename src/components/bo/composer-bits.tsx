@@ -16,6 +16,7 @@ import { useEffect, useState } from "react"
 
 import { cn } from "@/lib/utils"
 import { formatAmountPlain, parseMoney } from "@/lib/proposal-math"
+import { useT } from "@/i18n/provider"
 
 export const inputClass =
   "w-full rounded-lg border border-adm-line bg-adm-panel px-2.5 py-2 text-[13px] text-adm-txt outline-none transition-colors placeholder:text-[#5D6B82] focus:border-[#46587A] disabled:opacity-50"
@@ -48,6 +49,7 @@ export function Field({
   prefilled?: boolean
   children: React.ReactNode
 }) {
+  const t = useT()
   return (
     <div className={cn("flex min-w-0 flex-col gap-1.5", SPANS[span])}>
       <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.07em] text-adm-muted">
@@ -63,11 +65,11 @@ export function Field({
         */}
         {prefilled && (
           <span
-            title="Este valor veio do pedido do cliente e ainda não foi confirmado por ninguém. Confirme-o ou corrija-o antes de publicar."
+            title={t("bo.composer.bits.prefilledTitle")}
             className="flex items-center gap-1 rounded-[4px] border border-adm-warn/45 bg-adm-warn/[.16] px-1 py-px text-[8.5px] font-extrabold tracking-[.06em] text-[#F0C983]"
           >
             <span aria-hidden="true">!</span>
-            do pedido
+            {t("bo.composer.bits.prefilledTag")}
           </span>
         )}
       </label>
@@ -152,6 +154,7 @@ export function CountField({
   /** O que o cliente pediu, quando faz sentido compará-lo (VIP-10). */
   requested?: number
 }) {
+  const t = useT()
   const step = (delta: number) => {
     if (value === null) return onChange(delta > 0 ? 1 : 0)
     const next = value + delta
@@ -188,7 +191,9 @@ export function CountField({
             short ? "text-adm-warn" : "text-adm-muted"
           )}
         >
-          {short ? `O cliente pediu ${requested}` : `Pedido: ${requested}`}
+          {short
+            ? t("bo.composer.bits.requestedShort", { requested })
+            : t("bo.composer.bits.requested", { requested })}
         </span>
       )}
     </div>
@@ -287,12 +292,13 @@ function CountStep({
   onClick: () => void
   disabled?: boolean
 }) {
+  const t = useT()
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label={label === "+" ? "Mais um" : "Menos um"}
+      aria-label={label === "+" ? t("bo.composer.bits.stepUp") : t("bo.composer.bits.stepDown")}
       className="h-6 w-6 shrink-0 rounded-md border border-adm-line bg-adm-panel-2 text-[13px] font-bold leading-none text-adm-txt-2 transition-colors hover:bg-adm-raise hover:text-adm-txt disabled:opacity-40"
     >
       {label}

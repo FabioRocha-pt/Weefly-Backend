@@ -3,10 +3,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { getActiveCompany } from "@/lib/companies"
-import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
 export default async function DefinicoesPage() {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   const company = await getActiveCompany()
   if (!company) redirect("/criar-empresa")
 

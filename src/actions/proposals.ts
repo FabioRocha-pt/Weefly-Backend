@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getCase, getCaseByToken, type BookingCaseRow } from "@/lib/booking-cases"
 import { caseClientLink } from "@/lib/case-partner"
+import { clientBrandForCase } from "@/lib/brand"
 import { caseInScope } from "@/lib/bo-scope"
 import {
   ensureProposal,
@@ -40,6 +41,7 @@ import {
 } from "@/lib/emails/send"
 import type { CaseStage } from "@/lib/case-status"
 import { getI18n, getTranslator, localeForClient } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
 export type ProposalActionState = { error: string | null }
 
@@ -202,7 +204,7 @@ export interface OfferDraft {
 async function editableProposal(
   caseId: string
 ): Promise<{ id: string; currency: string } | { error: string }> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
 
   /*
    * T-01 · "a opção de cotar sem reclamar continua disponível. Remova-a por
@@ -246,7 +248,7 @@ async function editableProposal(
 async function requireCaseOwner(
   caseId: string
 ): Promise<{ error: string } | null> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
 
   const access = await getBoAccess()
   if (!access.ok) return { error: t("errors.sessionExpired") }
@@ -284,7 +286,7 @@ export async function initProposal(
   caseId: string,
   currency = "CVE"
 ): Promise<ProposalActionState> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   if (!caseId) return { error: t("errors.invalidCase") }
 
   /* T-01 · abrir uma proposta é começar a cotar, e não se cota um caso sem
@@ -310,7 +312,7 @@ export async function saveProposalMeta(
   caseId: string,
   input: { currency?: string; openingMessage?: string }
 ): Promise<ProposalActionState> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -341,7 +343,7 @@ export async function saveProposalMeta(
 // --- Ofertas ----------------------------------------------------------------
 
 export async function addOffer(caseId: string): Promise<ProposalActionState> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -461,7 +463,8 @@ export async function duplicateOffer(
   caseId: string,
   offerId: string
 ): Promise<ProposalActionState> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
+  const { t: nameT } = getI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -499,7 +502,7 @@ export async function duplicateOffer(
     .insert({
       ...fields,
       position: ((last as { position: number } | null)?.position ?? -1) + 1,
-      name: `${(row.name as string) || t("chatProposal.unnamedOffer")} (${t("common.copy").toLowerCase()})`,
+      name: `${(row.name as string) || nameT("chatProposal.unnamedOffer")} (${nameT("common.copy").toLowerCase()})`,
       // Duas ofertas recomendadas ao mesmo tempo não querem dizer nada ao
       // cliente. A cópia nasce sem etiquetas e o vendedor decide.
       is_recommended: false,
@@ -579,7 +582,7 @@ export async function removeOffer(
   caseId: string,
   offerId: string
 ): Promise<ProposalActionState> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -632,7 +635,7 @@ export async function saveOffer(
   offerId: string,
   draft: OfferDraft
 ): Promise<ProposalActionState> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -876,7 +879,7 @@ export async function saveTicketDetails(
   offerId: string,
   draft: TicketDetailsDraft
 ): Promise<ProposalActionState> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
 
   /* TEN-03 · a mesma porta que as outras escritas da proposta. */
   const access = await getBoAccess()
@@ -967,7 +970,7 @@ export async function publishProposal(
     changeNote?: string
   }
 ): Promise<ProposalActionState & { warning?: string }> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   const editable = await editableProposal(caseId)
   if ("error" in editable) return editable
 
@@ -1103,6 +1106,7 @@ export async function publishProposal(
    * Juntado ao `changeNote` em vez de num email próprio: são a mesma notícia, e
    * dois avisos sobre a mesma publicação é exactamente o que o NT-04 recusa.
    */
+  const { t: noteT } = getI18n()
   const dateChanges = going
     .filter((offer) => offer.date_change_confirmed && offer.date_change_reason)
     .map((offer) => {
@@ -1113,7 +1117,7 @@ export async function publishProposal(
       ]
         .filter(Boolean)
         .join(" · ")
-      return `${offer.name || t("email.proposalUnnamed")}: ${legs} — ${offer.date_change_reason}`
+      return `${offer.name || noteT("email.proposalUnnamed")}: ${legs} — ${offer.date_change_reason}`
     })
 
   if (dateChanges.length > 0) {
@@ -1195,7 +1199,7 @@ async function notifyPublication(input: {
   /** NT-04 · o que mudou desde a revisão anterior, quando há uma. */
   changeNote: string | null
 }): Promise<string | undefined> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   const { bookingCase } = input
   const trip = bookingCase.trip_request
   const clientLocale = localeForClient(trip?.lead?.locale)
@@ -1242,7 +1246,12 @@ async function notifyPublication(input: {
      * `t` desta action fala a língua de quem carregou no botão. A do cliente
      * ficou guardada no lead quando ele nos escreveu — ver a migração 0008.
      */
-    const mail = buildProposalPublishedEmail(payload, clientT, clientLocale)
+    /* TEN-02 · com a marca que o cliente vê (a do parceiro, ou a WeeFly). */
+    const mail = buildProposalPublishedEmail(
+      { ...payload, brand: await clientBrandForCase(bookingCase.id) },
+      clientT,
+      clientLocale
+    )
     const sent = await sendProposalPublishedEmail({
       caseId: bookingCase.id,
       subject: mail.subject,
@@ -1297,7 +1306,7 @@ async function notifyPublication(input: {
 export async function startRevision(
   caseId: string
 ): Promise<ProposalActionState> {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
 
   /* T-01 · abrir uma revisão é voltar a cotar. Aqui à mão porque uma proposta
      publicada não passa por `editableProposal` — é precisamente esta acção que

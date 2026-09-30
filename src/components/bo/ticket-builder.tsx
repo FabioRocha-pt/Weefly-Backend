@@ -27,6 +27,8 @@ import { saveTicketDetails } from "@/actions/proposals"
 import type { Offer } from "@/lib/proposal-math"
 import { legsOf, timeOf } from "@/lib/proposal-math"
 import { Field, Input, Section, inputClass } from "@/components/bo/composer-bits"
+import { useT } from "@/i18n/provider"
+import type { Translator } from "@/i18n/translate"
 
 interface SegmentRow {
   id: string
@@ -50,6 +52,7 @@ export function BoTicketBuilder({
   /** Já emitido: os campos passam a leitura, porque mudá-los é uma reemissão. */
   issued: boolean
 }) {
+  const t = useT()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
@@ -61,19 +64,18 @@ export function BoTicketBuilder({
   const [seatPolicy, setSeatPolicy] = useState(offer?.seat_policy ?? "")
   const [documents, setDocuments] = useState(offer?.documents ?? "")
   const [segments, setSegments] = useState<SegmentRow[]>(() =>
-    rowsOf(offer)
+    rowsOf(offer, t)
   )
 
   if (!offer) {
     return (
       <section className="panel">
         <div className="panel-h">
-          <h3>Construtor de bilhete</h3>
+          <h3>{t("bo.caseView.ticket.title")}</h3>
         </div>
         <div className="panel-b">
           <p className="note">
-            O cliente ainda não escolheu uma oferta. Os detalhes de emissão
-            pertencem à oferta escolhida, e por isso só aparecem depois dela.
+            {t("bo.caseView.ticket.noOffer")}
           </p>
         </div>
       </section>
@@ -115,76 +117,73 @@ export function BoTicketBuilder({
   return (
     <section className="panel">
       <div className="panel-h">
-        <h3>Construtor de bilhete</h3>
+        <h3>{t("bo.caseView.ticket.title")}</h3>
         {saved && !pending && (
           <span
             className="ml-auto inline-flex items-center gap-1 text-[11px] text-adm-ok"
             style={{ marginLeft: "auto" }}
           >
-            <Check className="h-3 w-3" /> gravado
+            <Check className="h-3 w-3" /> {t("bo.caseView.ticket.saved")}
           </span>
         )}
       </div>
       <div className="panel-b">
         <p className="note" style={{ marginBottom: 14 }}>
-          O que está aqui não muda a proposta que o cliente leu — nem o preço,
-          nem as horas, nem a rota. São os campos que o bilhete precisa e a
-          proposta não precisava.
+          {t("bo.caseView.ticket.intro")}
         </p>
 
         <fieldset disabled={issued || pending} className="space-y-5">
-          <Section title="Tarifa">
+          <Section title={t("bo.caseView.ticket.fare")}>
             <div className="grid grid-cols-12 gap-2.5">
-              <Field label="Nome da tarifa" span={4}>
+              <Field label={t("bo.caseView.ticket.fareName")} span={4}>
                 <Input
                   value={fareName}
                   onChange={setFareName}
                   placeholder="Economy Smart"
                 />
               </Field>
-              <Field label="Alterações" span={4}>
+              <Field label={t("bo.caseView.ticket.changes")} span={4}>
                 <Input
                   value={changePolicy}
                   onChange={setChangePolicy}
-                  placeholder="Alteração com taxa de 60 €"
+                  placeholder={t("bo.caseView.ticket.changesPlaceholder")}
                 />
               </Field>
               <Field
-                label="Reembolso"
+                label={t("bo.caseView.ticket.refund")}
                 span={4}
-                hint="A letra pequena. Se é reembolsável ou não, decide-se na proposta."
+                hint={t("bo.caseView.ticket.refundHint")}
               >
                 <Input
                   value={refundPolicy}
                   onChange={setRefundPolicy}
-                  placeholder="Reembolso até 24 h antes, com taxa"
+                  placeholder={t("bo.caseView.ticket.refundPlaceholder")}
                 />
               </Field>
-              <Field label="Lugares" span={4}>
+              <Field label={t("bo.caseView.ticket.seats")} span={4}>
                 <Input
                   value={seatPolicy}
                   onChange={setSeatPolicy}
-                  placeholder="Marcação de lugar incluída"
+                  placeholder={t("bo.caseView.ticket.seatsPlaceholder")}
                 />
               </Field>
-              <Field label="Documentos" span={8}>
+              <Field label={t("bo.caseView.ticket.documents")} span={8}>
                 <Input
                   value={documents}
                   onChange={setDocuments}
-                  placeholder="Passaporte válido 6 meses além do regresso"
+                  placeholder={t("bo.caseView.ticket.documentsPlaceholder")}
                 />
               </Field>
             </div>
           </Section>
 
           <Section
-            title="Trechos"
-            aside={`${segments.length} ${segments.length === 1 ? "trecho" : "trechos"}`}
+            title={t("bo.caseView.ticket.segments")}
+            aside={t("bo.caseView.ticket.segmentCount", { count: segments.length })}
           >
             {segments.length === 0 ? (
               <p className="note">
-                Esta oferta não tem trechos guardados. Sem eles não há terminais
-                nem classe de reserva a preencher.
+                {t("bo.caseView.ticket.noSegments")}
               </p>
             ) : (
               segments.map((row) => (
@@ -203,7 +202,7 @@ export function BoTicketBuilder({
                       Aqui e obrigatorio: um bilhete sem numero de voo nao serve
                       para embarcar, e este e o formulario que o escreve.
                     */}
-                    <Field label="Numero de voo" span={2}>
+                    <Field label={t("bo.caseView.ticket.flightNumber")} span={2}>
                       <Input
                         mono
                         maxLength={6}
@@ -212,14 +211,14 @@ export function BoTicketBuilder({
                         placeholder="231"
                       />
                     </Field>
-                    <Field label="Equipamento" span={4}>
+                    <Field label={t("bo.caseView.ticket.equipment")} span={4}>
                       <Input
                         value={row.equipment}
                         onChange={(v) => patch(row.id, { equipment: v })}
                         placeholder="Airbus A320neo"
                       />
                     </Field>
-                    <Field label="Classe de reserva" span={2}>
+                    <Field label={t("bo.caseView.ticket.bookingClass")} span={2}>
                       <Input
                         mono
                         maxLength={2}
@@ -230,14 +229,14 @@ export function BoTicketBuilder({
                         placeholder="T"
                       />
                     </Field>
-                    <Field label="Terminal de partida" span={2}>
+                    <Field label={t("bo.caseView.ticket.terminalFrom")} span={2}>
                       <Input
                         value={row.terminal_from}
                         onChange={(v) => patch(row.id, { terminal_from: v })}
                         placeholder="1"
                       />
                     </Field>
-                    <Field label="Terminal de chegada" span={2}>
+                    <Field label={t("bo.caseView.ticket.terminalTo")} span={2}>
                       <Input
                         value={row.terminal_to}
                         onChange={(v) => patch(row.id, { terminal_to: v })}
@@ -262,8 +261,7 @@ export function BoTicketBuilder({
 
         {issued ? (
           <p className="note" style={{ marginTop: 12 }}>
-            O caso já está emitido. Mudar estes campos agora não muda o bilhete
-            que a companhia emitiu — isso é uma reemissão, e passa por ela.
+            {t("bo.caseView.ticket.issuedNote")}
           </p>
         ) : (
           <button
@@ -274,7 +272,7 @@ export function BoTicketBuilder({
             style={{ marginTop: 14 }}
           >
             {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Guardar detalhes do bilhete
+            {t("bo.caseView.ticket.save")}
           </button>
         )}
       </div>
@@ -288,15 +286,15 @@ export function BoTicketBuilder({
  * O id vem da base e é por ele que a gravação encontra a linha — nada aqui
  * apaga nem reinsere trechos de uma proposta publicada.
  */
-function rowsOf(offer: Offer | null): SegmentRow[] {
+function rowsOf(offer: Offer | null, t: Translator): SegmentRow[] {
   if (!offer) return []
   const { ida, volta } = legsOf(offer)
   const label = (s: (typeof ida)[number], leg: string) =>
     `${leg} · ${s.origin ?? "—"} ${timeOf(s.depart_at)} → ${s.destination ?? "—"} ${timeOf(s.arrive_at)}`
 
   return [
-    ...ida.map((s) => ({ s, leg: "Ida" })),
-    ...volta.map((s) => ({ s, leg: "Volta" })),
+    ...ida.map((s) => ({ s, leg: t("bo.caseView.ticket.legOut") })),
+    ...volta.map((s) => ({ s, leg: t("bo.caseView.ticket.legBack") })),
   ].map(({ s, leg }) => ({
     id: s.id,
     label: label(s, leg),

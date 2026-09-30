@@ -32,6 +32,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { createClient } from "@/utils/supabase/client"
+import { useT } from "@/i18n/provider"
 
 /** As tabelas cuja mudança muda algum ecrã deste back-office. */
 const TABLES = [
@@ -79,6 +80,7 @@ const PARTNER_TABLES = ["booking_cases", "trip_requests"]
 
 export function BoLiveUpdates({ partnerId }: { partnerId?: string | null }) {
   const router = useRouter()
+  const t = useT()
   const [arrival, setArrival] = useState<Arrival | null>(null)
   const [live, setLive] = useState(false)
   const [sound, setSound] = useState(true)
@@ -258,25 +260,25 @@ export function BoLiveUpdates({ partnerId }: { partnerId?: string | null }) {
         title={
           live
             ? sound
-              ? "Em tempo real, com aviso sonoro. Clique para silenciar."
-              : "Em tempo real, silencioso. Clique para ligar o aviso."
-            : "Sem websocket — a fila continua a actualizar a cada 4 segundos."
+              ? t("bo.shell.live.titleSound")
+              : t("bo.shell.live.titleSilent")
+            : t("bo.shell.live.titlePolling")
         }
       >
         <span className="dot" />
-        {live ? "ao vivo" : "a sondar"}
-        {!sound && <span className="muted-tag">silencioso</span>}
+        {live ? t("bo.shell.live.live") : t("bo.shell.live.polling")}
+        {!sound && <span className="muted-tag">{t("bo.shell.live.silent")}</span>}
       </button>
 
       {arrival && (
         <button type="button" className="live-news" onClick={() => setArrival(null)}>
           {arrival.fresh
             ? arrival.count === 1
-              ? "Entrou um pedido novo"
-              : `${arrival.count} novidades, uma delas um pedido novo`
+              ? t("bo.shell.live.newRequest")
+              : t("bo.shell.live.newsWithRequest", { count: arrival.count })
             : arrival.count === 1
-              ? "Um caso mudou de estado"
-              : `${arrival.count} casos mudaram de estado`}
+              ? t("bo.shell.live.oneChanged")
+              : t("bo.shell.live.manyChanged", { count: arrival.count })}
           <span className="x" aria-hidden="true">
             ✕
           </span>

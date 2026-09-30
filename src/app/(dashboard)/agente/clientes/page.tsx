@@ -5,14 +5,14 @@ import { SectionPlaceholder } from "@/components/dashboard/section-placeholder"
 import { getProAccount } from "@/lib/pro-account"
 import { loadProClients } from "@/lib/pro-clients"
 import { LOCALE_TAGS } from "@/i18n/config"
-import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /**
  * PRO-05 · os clientes da empresa: nome, contactos, número de pedidos e data do
  * último. Construída a partir dos casos — ver `lib/pro-clients.ts`.
  */
 export default async function ClientesPage() {
-  const { t, locale } = getI18n()
+  const { t, locale } = await getBoI18n()
   const account = await getProAccount()
   const result = account ? await loadProClients(account) : null
 

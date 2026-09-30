@@ -32,7 +32,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import type { BoCaseDetail } from "@/lib/pc/bo-queue"
-import { BO_STATE_CLASS, BO_STATE_LABEL } from "@/lib/pc/bo-queue"
+import { BO_STATE_CLASS } from "@/lib/pc/bo-queue"
 import { elapsedSince } from "@/lib/case-status"
 import {
   boArchiveCase,
@@ -41,9 +41,11 @@ import {
   boNotifyClient,
   boReopenCase,
 } from "@/actions/bo-price-checker"
-import { ARCHIVE_REASONS, CLOSED_REASON_LABEL_PT } from "@/lib/pc/archive"
+import { ARCHIVE_REASONS } from "@/lib/pc/archive"
 import { BoWhatsappLink } from "@/components/bo/whatsapp-link"
 import { countryName, flagOf } from "@/lib/countries"
+import { useI18n } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
 
 export type BoTabId =
   | "t-pedido"
@@ -69,9 +71,9 @@ export interface BoSellerOption {
   label: string
 }
 
-const dt = (iso: string | null | undefined, withTime = true): string => {
+const formatDt = (tag: string, iso: string | null | undefined, withTime = true): string => {
   if (!iso) return "—"
-  return new Date(iso).toLocaleString("pt-PT", {
+  return new Date(iso).toLocaleString(tag, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -81,8 +83,8 @@ const dt = (iso: string | null | undefined, withTime = true): string => {
 }
 
 /** O mercado do caso, escrito como uma pessoa o lê. */
-export const marketName = (iso: string) =>
-  iso ? `${flagOf(iso)} ${countryName(iso, "pt")}` : "—"
+export const marketName = (iso: string, localeTag = "pt") =>
+  iso ? `${flagOf(iso)} ${countryName(iso, localeTag)}` : "—"
 
 export function BoCaseHeader({
   detail,
@@ -107,6 +109,9 @@ export function BoCaseHeader({
    */
   onSelect?: (tab: BoTabId) => void
 }) {
+  const { t, locale } = useI18n()
+  const dt = (iso: string | null | undefined, withTime = true) =>
+    formatDt(LOCALE_TAGS[locale], iso, withTime)
   const router = useRouter()
   const row = detail.row
   const [pending, startTransition] = useTransition()
@@ -152,27 +157,27 @@ export function BoCaseHeader({
       <div className="case-top">
         <div>
           <p className="crumb">
-            <Link href="/admin/price-checker">Price Checker</Link> ·{" "}
-            <Link href="/admin/price-checker?tab=tudo">Casos</Link>
+            <Link href="/admin/price-checker">{t("bo.caseView.header.crumbPriceChecker")}</Link> ·{" "}
+            <Link href="/admin/price-checker?tab=tudo">{t("bo.caseView.header.crumbCases")}</Link>
           </p>
           <h2 className="case">
             {row.clientName} <span className="token mono">{row.reference}</span>{" "}
             <span className={`state ${BO_STATE_CLASS[row.state]}`}>
               <span className={`dot ${row.waiting === "bad" ? "bad" : row.waiting}`} />
-              {BO_STATE_LABEL[row.state]}
+              {t(`bo.queue.state.${row.state}`)}
             </span>
           </h2>
           <div className="case-meta">
             <div className="cm">
-              <span className="cm-k">Entrada</span>
-              {detail.trip.intake === "price_checker" ? "Link" : detail.trip.intake} ·{" "}
+              <span className="cm-k">{t("bo.caseView.header.intake")}</span>
+              {detail.trip.intake === "price_checker" ? t("bo.caseView.header.intakeLink") : detail.trip.intake} ·{" "}
               <span className="mono">
-                {row.agentSlug ? `agent=${row.agentSlug}` : "sem agente"}
+                {row.agentSlug ? `agent=${row.agentSlug}` : t("bo.caseView.header.noAgent")}
               </span>
             </div>
             <div className="cm">
-              <span className="cm-k">Mercado e moeda</span>
-              {marketName(row.market)} · <span className="mono">{row.currency}</span> ·{" "}
+              <span className="cm-k">{t("bo.caseView.header.marketCurrency")}</span>
+              {marketName(row.market, LOCALE_TAGS[locale])} · <span className="mono">{row.currency}</span> ·{" "}
               <span className="mono">lang={row.locale}</span>
             </div>
             {/*
@@ -193,23 +198,23 @@ export function BoCaseHeader({
               todos os ecrãs, que é a razão de isto estar no cabeçalho.
             */}
             <div className="cm">
-              <span className="cm-k">Vendedor</span>
+              <span className="cm-k">{t("bo.caseView.header.seller")}</span>
               {detail.seller.label ?? detail.seller.email ?? (
-                <span style={{ color: "var(--warn)" }}>sem vendedor</span>
+                <span style={{ color: "var(--warn)" }}>{t("bo.caseView.header.noSeller")}</span>
               )}
             </div>
             <div className="cm">
-              <span className="cm-k">Submetido</span>
+              <span className="cm-k">{t("bo.caseView.header.submitted")}</span>
               {dt(row.submittedAt)} ·{" "}
               <span style={{ color: "var(--warn)" }}>
-                há {elapsedSince(row.submittedAt)}
+                {t("bo.caseView.header.ago", { tempo: elapsedSince(row.submittedAt) })}
               </span>
             </div>
           </div>
         </div>
         <div className="case-actions">
           <Link className="btn btn-sm" href={`/pc/${row.token}`} target="_blank">
-            Ver como cliente
+            {t("bo.caseView.header.viewAsClient")}
           </Link>
           <BoWhatsappLink
             phone={row.clientPhone}
@@ -222,7 +227,7 @@ export function BoCaseHeader({
               type="button"
               onClick={() => setNoticeOpen((open) => !open)}
             >
-              Avisar cliente
+              {t("bo.caseView.header.notifyClient")}
             </button>
           )}
 
@@ -250,7 +255,7 @@ export function BoCaseHeader({
                 })
               }
             >
-              {pending ? "A fechar…" : "Fechar caso"}
+              {pending ? t("bo.caseView.header.closing") : t("bo.caseView.header.closeCase")}
             </button>
           )}
 
@@ -262,7 +267,7 @@ export function BoCaseHeader({
               disabled={pending}
               onClick={() => setArchiveOpen((open) => !open)}
             >
-              Arquivar…
+              {t("bo.caseView.header.archiveOpen")}
             </button>
           )}
 
@@ -283,7 +288,7 @@ export function BoCaseHeader({
                 })
               }
             >
-              {pending ? "A reabrir…" : "Reabrir caso"}
+              {pending ? t("bo.caseView.header.reopening") : t("bo.caseView.header.reopenCase")}
             </button>
           )}
         </div>
@@ -302,9 +307,10 @@ export function BoCaseHeader({
           style={{ margin: "12px 0 0", display: "flex", gap: 10, alignItems: "center" }}
         >
           <span style={{ flex: 1 }}>
-            <b>Um aviso ao cliente não foi entregue</b> em {dt(detail.notifyAlert.at)}
-            {detail.notifyAlert.reason ? ` — ${detail.notifyAlert.reason}` : ""}. Fale
-            com ele por outro canal antes de contar com o email.
+            <b>{t("bo.caseView.header.notifyFailedTitle")}</b>{" "}
+            {t("bo.caseView.header.notifyFailedAt", { data: dt(detail.notifyAlert.at) })}
+            {detail.notifyAlert.reason ? ` — ${detail.notifyAlert.reason}` : ""}
+            {t("bo.caseView.header.notifyFailedTail")}
           </span>
           <button
             className="btn btn-sm"
@@ -317,7 +323,7 @@ export function BoCaseHeader({
               })
             }
           >
-            Já tratei
+            {t("bo.caseView.header.handled")}
           </button>
         </div>
       )}
@@ -328,24 +334,24 @@ export function BoCaseHeader({
         <div className="panel" style={{ margin: "12px 0 0" }}>
           <div className="panel-b">
             <div className="f s6">
-              <label>Motivo do arquivo · obrigatório</label>
+              <label>{t("bo.caseView.header.archiveReason")}</label>
               <select value={archiveReason} onChange={(e) => setArchiveReason(e.target.value)}>
                 {ARCHIVE_REASONS.map((reason) => (
                   <option key={reason} value={reason}>
-                    {CLOSED_REASON_LABEL_PT[reason]}
+                    {t(`bo.queue.closedReason.${reason}`)}
                   </option>
                 ))}
               </select>
             </div>
             <div className="f s12" style={{ marginTop: 10 }}>
               <label>
-                Nota {archiveReason === "outro" ? "· obrigatória" : "· opcional"}
+                {archiveReason === "outro" ? t("bo.caseView.header.noteRequired") : t("bo.caseView.header.noteOptional")}
               </label>
               <textarea
                 rows={2}
                 value={archiveNote}
                 onChange={(e) => setArchiveNote(e.target.value)}
-                placeholder="Ex.: fechou por telefone, pagou ao balcão."
+                placeholder={t("bo.caseView.header.notePlaceholder")}
               />
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
@@ -356,7 +362,7 @@ export function BoCaseHeader({
                 onClick={() => {
                   if (
                     !window.confirm(
-                      `Arquivar ${row.reference ?? "este caso"}? Sai das filas de trabalho e só um administrador o reabre.`
+                      t("bo.caseView.header.archiveConfirm", { ref: row.reference ?? t("bo.caseView.header.thisCase") })
                     )
                   ) {
                     return
@@ -378,10 +384,10 @@ export function BoCaseHeader({
                   })
                 }}
               >
-                {pending ? "A arquivar…" : "Arquivar caso"}
+                {pending ? t("bo.caseView.header.archiving") : t("bo.caseView.header.archiveCase")}
               </button>
               <button className="btn btn-sm" type="button" onClick={() => setArchiveOpen(false)}>
-                Cancelar
+                {t("bo.caseView.common.cancel")}
               </button>
             </div>
           </div>
@@ -392,16 +398,15 @@ export function BoCaseHeader({
         <div className="panel" style={{ margin: "12px 0 0" }}>
           <div className="panel-b">
             <div className="f s12">
-              <label>Mensagem para o cliente · vai como está</label>
+              <label>{t("bo.caseView.header.messageLabel")}</label>
               <textarea
                 style={{ minHeight: 72 }}
-                placeholder="A TAP mudou o voo TP1553 de 06/09 das 14:20 para as 17:05. A ligação em Lisboa mantém-se com 2h10 de escala. Não é preciso fazer nada — se preferir outra data, diga-nos."
+                placeholder={t("bo.caseView.header.messagePlaceholder")}
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
               />
               <span className="hint">
-                Fica no registo com o seu nome e a hora, e aparece como alerta no
-                link do cliente.
+                {t("bo.caseView.header.messageHint")}
               </span>
             </div>
             <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
@@ -411,7 +416,7 @@ export function BoCaseHeader({
                   checked={byEmail}
                   onChange={(event) => setByEmail(event.target.checked)}
                 />
-                Email
+                {t("bo.caseView.common.email")}
               </label>
               <label className="chk" style={{ display: "flex", gap: 7 }}>
                 <input
@@ -419,7 +424,7 @@ export function BoCaseHeader({
                   checked={byWhatsapp}
                   onChange={(event) => setByWhatsapp(event.target.checked)}
                 />
-                WhatsApp
+                {t("bo.caseView.common.whatsapp")}
               </label>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
@@ -429,14 +434,14 @@ export function BoCaseHeader({
                 disabled={pending || message.trim().length < 10 || (!byEmail && !byWhatsapp)}
                 onClick={sendNotice}
               >
-                {pending ? "A enviar…" : "Enviar e registar"}
+                {pending ? t("bo.caseView.header.sending") : t("bo.caseView.header.sendAndLog")}
               </button>
               <button
                 className="btn btn-sm"
                 type="button"
                 onClick={() => setNoticeOpen(false)}
               >
-                Cancelar
+                {t("bo.caseView.common.cancel")}
               </button>
             </div>
           </div>
@@ -459,7 +464,7 @@ export function BoCaseHeader({
           const count = counts[entry.id]
           const body = (
             <>
-              {entry.label}
+              {t(`bo.caseView.tabs.${entry.id.slice(2)}`)}
               {count ? <span className="n">{count}</span> : null}
             </>
           )

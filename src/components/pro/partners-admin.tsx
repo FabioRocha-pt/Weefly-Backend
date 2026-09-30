@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { createPartner, setPartnerStatus, updatePartner } from "@/actions/partners"
 import { partnerHostPreview } from "@/lib/site-url"
+import { useT } from "@/i18n/provider"
 
 /**
  * WeeFly · ADM-01 · Parceiros: criar, configurar a marca (TEN-02), suspender.
@@ -15,13 +16,8 @@ import { partnerHostPreview } from "@/lib/site-url"
  */
 
 type Menu = "flights" | "cars" | "houses" | "experiences" | "food"
-const MENUS: { id: Menu; label: string }[] = [
-  { id: "flights", label: "Passagens" },
-  { id: "cars", label: "Carros" },
-  { id: "houses", label: "Casas" },
-  { id: "experiences", label: "Experiências" },
-  { id: "food", label: "Comida" },
-]
+/* A etiqueta de cada menu vem de `pro.menu.<id>`. */
+const MENUS: Menu[] = ["flights", "cars", "houses", "experiences", "food"]
 
 export interface PartnerRowView {
   id: string
@@ -135,7 +131,7 @@ function fromRow(p: PartnerRowView): Form {
     sellMode: p.sellMode ?? "white_label",
     channels: p.channels.filter((c): c is "B2C" | "B2G" => c === "B2C" || c === "B2G"),
     customerFront: p.customerFront,
-    agentMenus: p.agentMenus.filter((m): m is Menu => MENUS.some((x) => x.id === m)),
+    agentMenus: p.agentMenus.filter((m): m is Menu => MENUS.includes(m as Menu)),
     logoUrl: p.logoUrl ?? "",
     colorPrimary: p.colorPrimary ?? "",
     colorDark: p.colorDark ?? "",
@@ -162,6 +158,7 @@ const field =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-slate-100"
 
 export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
+  const t = useT()
   const router = useRouter()
   const [pending, start] = useTransition()
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
@@ -175,7 +172,7 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
     start(async () => {
       setMessage(null)
       const result = await action()
-      setMessage(result.ok ? { ok: true, text: result.notice ?? "Feito." } : { ok: false, text: result.error })
+      setMessage(result.ok ? { ok: true, text: result.notice ?? t("bo.pro.common.done") } : { ok: false, text: result.error })
       if (result.ok) {
         after?.()
         router.refresh()
@@ -255,7 +252,7 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
             setEditing({ id: null, form: EMPTY, slugTouched: false })
           }}
         >
-          Novo parceiro
+          {t("bo.pro.partners.newPartner")}
         </Button>
       </div>
 
@@ -268,13 +265,13 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
       {editing && (
         <div className="rounded-2xl border border-orange-200 bg-orange-50/40 p-5 space-y-5">
           <h3 className="font-semibold text-slate-900">
-            {editing.id ? `Editar ${editing.form.commercialName}` : "Novo parceiro"}
+            {editing.id ? t("bo.pro.common.editNamed", { name: editing.form.commercialName }) : t("bo.pro.partners.newPartner")}
           </h3>
 
           <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <legend className="text-sm font-semibold text-slate-900 mb-2">Registo</legend>
+            <legend className="text-sm font-semibold text-slate-900 mb-2">{t("bo.pro.partners.registry")}</legend>
             <label className="text-sm space-y-1">
-              <span className="text-slate-600">Nome comercial</span>
+              <span className="text-slate-600">{t("bo.pro.common.commercialName")}</span>
               <input
                 className={field}
                 value={editing.form.commercialName}
@@ -296,7 +293,7 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
               />
             </label>
             <label className="text-sm space-y-1">
-              <span className="text-slate-600">Endereço (subdomínio)</span>
+              <span className="text-slate-600">{t("bo.pro.common.slugLabel")}</span>
               <input
                 className={`${field} font-mono`}
                 value={editing.form.slug}
@@ -308,28 +305,28 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
               />
               <span className="text-xs text-slate-500">
                 {partnerHostPreview(editing.form.slug) ??
-                  `${editing.form.slug || "…"} · subdomínio por configurar (TEN-04)`}
+                  t("bo.pro.common.slugPending", { slug: editing.form.slug || "…" })}
               </span>
             </label>
-            {input("legalName", "Nome legal")}
-            {input("nif", "NIF")}
-            {input("country", "País (ISO, ex.: CV)", { maxLength: 2 })}
-            {input("address", "Morada")}
-            {input("contactName", "Pessoa de contacto")}
-            {input("contactEmail", "Email de contacto", { type: "email" })}
-            {input("contactPhone", "Telefone de contacto")}
-            {input("contractStart", "Início do contrato", { type: "date" })}
+            {input("legalName", t("bo.pro.partners.legalName"))}
+            {input("nif", t("bo.pro.partners.nif"))}
+            {input("country", t("bo.pro.partners.country"), { maxLength: 2 })}
+            {input("address", t("bo.pro.partners.address"))}
+            {input("contactName", t("bo.pro.partners.contactName"))}
+            {input("contactEmail", t("bo.pro.partners.contactEmail"), { type: "email" })}
+            {input("contactPhone", t("bo.pro.partners.contactPhone"))}
+            {input("contractStart", t("bo.pro.partners.contractStart"), { type: "date" })}
           </fieldset>
 
           <fieldset className="space-y-2">
-            <legend className="text-sm font-semibold text-slate-900">Contas e venda</legend>
+            <legend className="text-sm font-semibold text-slate-900">{t("bo.pro.partners.accountsAndSales")}</legend>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={editing.form.supplyEnabled}
                 onChange={(e) => set("supplyEnabled", e.target.checked)}
               />
-              Menu 1 · Fornecer produtos
+              {t("bo.pro.partners.menuSupply")}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -337,30 +334,30 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                 checked={editing.form.sellEnabled}
                 onChange={(e) => set("sellEnabled", e.target.checked)}
               />
-              Menu 2 · Vender produtos
+              {t("bo.pro.partners.menuSell")}
             </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
               <label className="text-sm space-y-1">
-                <span className="text-slate-600">Forma de vender</span>
+                <span className="text-slate-600">{t("bo.pro.partners.sellMode")}</span>
                 <select
                   className={field}
                   value={editing.form.sellMode}
                   onChange={(e) => set("sellMode", e.target.value as Form["sellMode"])}
                 >
-                  <option value="reseller">Revendedor oficial WeeFly (marca WeeFly)</option>
-                  <option value="white_label">White label (marca do parceiro)</option>
+                  <option value="reseller">{t("bo.pro.partners.sellModeReseller")}</option>
+                  <option value="white_label">{t("bo.pro.partners.sellModeWhiteLabel")}</option>
                 </select>
               </label>
               {editing.form.sellMode === "white_label" && (
                 <label className="text-sm space-y-1">
-                  <span className="text-slate-600">O link do cliente mostra</span>
+                  <span className="text-slate-600">{t("bo.pro.partners.customerFront")}</span>
                   <select
                     className={field}
                     value={editing.form.customerFront}
                     onChange={(e) => set("customerFront", e.target.value as Form["customerFront"])}
                   >
-                    <option value="own">O ecrã do parceiro, com Powered by WeeFly</option>
-                    <option value="weefly">O ecrã WeeFly, sem alterações</option>
+                    <option value="own">{t("bo.pro.partners.frontOwn")}</option>
+                    <option value="weefly">{t("bo.pro.partners.frontWeefly")}</option>
                   </select>
                 </label>
               )}
@@ -379,32 +376,32 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
             </div>
             <div className="flex flex-wrap gap-4 pl-6">
               {MENUS.map((m) => (
-                <label key={m.id} className="flex items-center gap-2 text-sm">
+                <label key={m} className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    checked={editing.form.agentMenus.includes(m.id)}
-                    onChange={() => set("agentMenus", toggle(editing.form.agentMenus, m.id))}
+                    checked={editing.form.agentMenus.includes(m)}
+                    onChange={() => set("agentMenus", toggle(editing.form.agentMenus, m))}
                   />
-                  {m.label}
-                  {m.id !== "flights" && <span className="text-xs text-slate-400">(Brevemente)</span>}
+                  {t(`pro.menu.${m}`)}
+                  {m !== "flights" && <span className="text-xs text-slate-400">{t("bo.pro.common.soonTag")}</span>}
                 </label>
               ))}
             </div>
           </fieldset>
 
           <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <legend className="text-sm font-semibold text-slate-900 mb-2">Marca (TEN-02)</legend>
-            {input("logoUrl", "Logótipo (URL)")}
+            <legend className="text-sm font-semibold text-slate-900 mb-2">{t("bo.pro.partners.brand")}</legend>
+            {input("logoUrl", t("bo.pro.partners.logoUrl"))}
             <div className="grid grid-cols-2 gap-3">
-              {input("colorPrimary", "Cor principal", { placeholder: "#02A9FF" })}
-              {input("colorDark", "Cor escura", { placeholder: "#0078E8" })}
+              {input("colorPrimary", t("bo.pro.partners.colorPrimary"), { placeholder: "#02A9FF" })}
+              {input("colorDark", t("bo.pro.partners.colorDark"), { placeholder: "#0078E8" })}
             </div>
-            {input("senderName", "Nome do remetente")}
-            {input("senderEmail", "Endereço do remetente", { type: "email" })}
-            {input("replyTo", "Endereço de resposta", { type: "email" })}
-            {input("whatsappNumber", "WhatsApp de apoio")}
+            {input("senderName", t("bo.pro.partners.senderName"))}
+            {input("senderEmail", t("bo.pro.partners.senderEmail"), { type: "email" })}
+            {input("replyTo", t("bo.pro.partners.replyTo"), { type: "email" })}
+            {input("whatsappNumber", t("bo.pro.partners.whatsappNumber"))}
             <label className="text-sm space-y-1 md:col-span-2">
-              <span className="text-slate-600">Rodapé</span>
+              <span className="text-slate-600">{t("bo.pro.partners.footer")}</span>
               <textarea
                 className={`${field} min-h-[60px]`}
                 value={editing.form.footerText}
@@ -417,26 +414,26 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                 checked={editing.form.poweredByWeefly}
                 onChange={(e) => set("poweredByWeefly", e.target.checked)}
               />
-              Mostrar “Powered by WeeFly” (TEN-05)
+              {t("bo.pro.partners.poweredBy")}
             </label>
           </fieldset>
 
           {!editing.id && (
             <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <legend className="text-sm font-semibold text-slate-900 mb-2">
-                Primeira conta de administrador (recebe o convite)
+                {t("bo.pro.partners.firstAdmin")}
               </legend>
-              {input("firstAdminName", "Nome")}
-              {input("firstAdminEmail", "Email", { type: "email" })}
+              {input("firstAdminName", t("bo.pro.common.name"))}
+              {input("firstAdminEmail", t("bo.pro.common.email"), { type: "email" })}
             </fieldset>
           )}
 
           <div className="flex gap-2">
             <Button size="sm" onClick={save} disabled={pending}>
-              {editing.id ? "Guardar" : "Criar parceiro e enviar convite"}
+              {editing.id ? t("bo.pro.common.save") : t("bo.pro.partners.createAndInvite")}
             </Button>
             <Button size="sm" variant="outline" onClick={() => setEditing(null)} disabled={pending}>
-              Cancelar
+              {t("bo.pro.common.cancel")}
             </Button>
           </div>
         </div>
@@ -446,11 +443,11 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
             <tr>
-              <th className="px-4 py-3 font-semibold">Parceiro</th>
-              <th className="px-4 py-3 font-semibold">Venda</th>
-              <th className="px-4 py-3 font-semibold">Contas</th>
-              <th className="px-4 py-3 font-semibold">Estado</th>
-              <th className="px-4 py-3 font-semibold text-right">Acções</th>
+              <th className="px-4 py-3 font-semibold">{t("bo.pro.common.partner")}</th>
+              <th className="px-4 py-3 font-semibold">{t("bo.pro.partners.colSales")}</th>
+              <th className="px-4 py-3 font-semibold">{t("bo.pro.partners.colAccounts")}</th>
+              <th className="px-4 py-3 font-semibold">{t("bo.pro.common.state")}</th>
+              <th className="px-4 py-3 font-semibold text-right">{t("bo.pro.common.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -459,27 +456,28 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                 <td className="px-4 py-3">
                   <p className="font-medium text-slate-900">
                     {p.commercialName}
-                    {p.isOperator && <span className="ml-2 text-xs text-slate-500">(operador)</span>}
+                    {p.isOperator && <span className="ml-2 text-xs text-slate-500">{t("bo.pro.common.operatorTag")}</span>}
                   </p>
                   <p className="text-xs font-mono text-slate-500">{p.slug}</p>
                 </td>
                 <td className="px-4 py-3">
                   {p.sellEnabled
-                    ? `${p.sellMode === "white_label" ? "White label" : "Revendedor"} · ${p.channels.join(", ") || "—"}`
-                    : "Não vende"}
+                    ? `${p.sellMode === "white_label" ? t("bo.pro.partners.whiteLabel") : t("bo.pro.partners.reseller")} · ${p.channels.join(", ") || "—"}`
+                    : t("bo.pro.partners.notSelling")}
                 </td>
                 <td className="px-4 py-3">
-                  {p.activeUsers} activas{p.users > p.activeUsers ? ` · ${p.users - p.activeUsers} suspensas` : ""}
+                  {t("bo.pro.partners.activeCount", { count: p.activeUsers })}
+                  {p.users > p.activeUsers ? t("bo.pro.partners.suspendedCount", { count: p.users - p.activeUsers }) : ""}
                 </td>
                 <td className="px-4 py-3">
                   {p.status === "active" ? (
                     <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                      Activo
+                      {t("bo.pro.partners.active")}
                     </span>
                   ) : (
                     <div>
                       <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
-                        Suspenso
+                        {t("bo.pro.partners.suspended")}
                       </span>
                       {p.suspendReason && <p className="mt-1 text-xs">{p.suspendReason}</p>}
                     </div>
@@ -496,7 +494,7 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                         setEditing({ id: p.id, form: fromRow(p), slugTouched: true })
                       }}
                     >
-                      Editar
+                      {t("bo.pro.common.edit")}
                     </Button>
                     {!p.isOperator &&
                       (p.status === "active" ? (
@@ -506,19 +504,19 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                           disabled={pending}
                           onClick={() => setSuspending({ id: p.id, reason: "" })}
                         >
-                          Suspender
+                          {t("bo.pro.common.suspend")}
                         </Button>
                       ) : (
                         <Button
                           size="sm"
                           disabled={pending}
                           onClick={() => {
-                            if (window.confirm(`Reactivar ${p.commercialName}?`)) {
+                            if (window.confirm(t("bo.pro.common.reactivateConfirm", { name: p.commercialName }))) {
                               run(() => setPartnerStatus({ id: p.id, status: "active" }))
                             }
                           }}
                         >
-                          Reactivar
+                          {t("bo.pro.common.reactivate")}
                         </Button>
                       ))}
                   </div>
@@ -526,7 +524,7 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                     <div className="mt-3 space-y-2 rounded-xl bg-red-50 p-3">
                       <textarea
                         className={`${field} min-h-[70px]`}
-                        placeholder="Motivo (fica no registo)"
+                        placeholder={t("bo.pro.common.reasonPlaceholder")}
                         value={suspending.reason}
                         onChange={(e) => setSuspending({ ...suspending, reason: e.target.value })}
                       />
@@ -537,9 +535,7 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                           disabled={pending}
                           onClick={() => {
                             if (
-                              !window.confirm(
-                                `Suspender ${p.commercialName}? As contas deixam de entrar e os links deixam de abrir.`
-                              )
+                              !window.confirm(t("bo.pro.partners.suspendConfirm", { name: p.commercialName }))
                             )
                               return
                             run(
@@ -549,10 +545,10 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                             )
                           }}
                         >
-                          Confirmar suspensão
+                          {t("bo.pro.common.confirmSuspension")}
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => setSuspending(null)}>
-                          Cancelar
+                          {t("bo.pro.common.cancel")}
                         </Button>
                       </div>
                     </div>

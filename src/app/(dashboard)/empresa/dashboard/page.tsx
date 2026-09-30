@@ -4,7 +4,7 @@ import { StatsCard } from "@/components/dashboard/stats-card"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency } from "@/lib/utils"
 import { getActiveCompany } from "@/lib/companies"
-import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
 const RECENT_RESERVATIONS = [
   { id: "R-1042", product: "Toyota Yaris", client: "Maria Santos", date: "14 Jul", status: "confirmada" as const },
@@ -20,7 +20,7 @@ const STATUS_VARIANT: Record<string, "novo" | "proposta" | "confirmada"> = {
 }
 
 export default async function CompanyDashboardPage() {
-  const { t } = getI18n()
+  const { t } = await getBoI18n()
   const company = await getActiveCompany()
   if (!company) redirect("/criar-empresa")
 

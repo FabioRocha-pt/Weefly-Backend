@@ -64,6 +64,12 @@ export interface PcIntake {
   agentSlug: string | null
   /** PRO-06 · a empresa que o link diz. Ver `resolveLinkPartner`. */
   companySlug?: string | null
+  /**
+   * TEN-04 · o parceiro que o endereço identifica (o subdomínio), lido no
+   * servidor dos cabeçalhos do pedido — nunca do formulário. Ganha ao
+   * `companySlug`.
+   */
+  hostPartnerSlug?: string | null
   consentIp: string | null
   consentAgent: string | null
 }
@@ -86,7 +92,8 @@ const UNIQUE_VIOLATION = "23505"
  */
 async function upsertLead(
   admin: NonNullable<ReturnType<typeof createAdminClient>>,
-  input: PcIntake
+  input: PcIntake,
+  partnerId: string | null
 ): Promise<string> {
   const email = input.email.trim().toLowerCase()
   const now = new Date().toISOString()
@@ -118,11 +125,14 @@ async function upsertLead(
     consent_at: input.consent ? now : null,
   }
 
-  const existing = await admin
-    .from("leads")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle()
+  /* TEN-03 · um cliente é por parceiro: o mesmo email na WeeFly e no Alô são
+     dois leads (índice único `(partner_id, email)`, migração 0027). */
+  const byEmail = () => {
+    const q = admin.from("leads").select("id").eq("email", email)
+    return partnerId ? q.eq("partner_id", partnerId) : q
+  }
+
+  const existing = await byEmail().maybeSingle()
 
   if (existing.data?.id) {
     await admin.from("leads").update(contact).eq("id", existing.data.id)
@@ -131,18 +141,18 @@ async function upsertLead(
 
   const inserted = await admin
     .from("leads")
-    .insert({ ...contact, source_channel: "browser" })
+    .insert({
+      ...contact,
+      source_channel: "browser",
+      ...(partnerId ? { partner_id: partnerId } : {}),
+    })
     .select("id")
     .single()
 
   if (inserted.error) {
     if (inserted.error.code === UNIQUE_VIOLATION) {
       // Duas submissões do mesmo email ao mesmo tempo: adota o vencedor.
-      const retry = await admin
-        .from("leads")
-        .select("id")
-        .eq("email", email)
-        .single()
+      const retry = await byEmail().single()
       if (retry.data?.id) return retry.data.id as string
     }
     throw inserted.error
@@ -283,7 +293,18 @@ export async function createPriceCheckerCase(
   }
 
   try {
-    const leadId = await upsertLead(admin, input)
+    /*
+     * TEN-01 · TEN-03 · o parceiro decide-se antes de tudo, e vai nas três
+     * linhas — lead, pedido e caso. Só no caso não chegava: o RLS olha para o
+     * `partner_id` de cada uma, e um caso do Alô com o lead e o pedido na
+     * WeeFly ficava invisível na fila do Alô.
+     */
+    const partnerId =
+      (await resolveHostPartner(admin, input.hostPartnerSlug)) ??
+      (await resolveLinkPartner(admin, input.companySlug, input.agentSlug)) ??
+      (await operatorPartnerId(admin))
+
+    const leadId = await upsertLead(admin, input, partnerId)
     const { origin, destination } = ends(input)
 
     const { data: trip, error: tripError } = await admin
@@ -314,6 +335,7 @@ export async function createPriceCheckerCase(
         consent_ip: input.consentIp,
         consent_agent: input.consentAgent,
         status: "novo",
+        ...(partnerId ? { partner_id: partnerId } : {}),
       })
       .select("id, reference")
       .single()
@@ -343,11 +365,8 @@ export async function createPriceCheckerCase(
 
     const token = mintToken()
 
-    /* PRO-06 · o caso pertence à empresa do vendedor do link. Sem empresa
-       confirmada, a coluna fica com o default da 0020 (a WeeFly Global) — e
-       numa base sem a 0020 não se manda coluna nenhuma. */
-    const partnerId = await resolveLinkPartner(admin, input.companySlug, input.agentSlug)
-
+    /* PRO-06 · o caso pertence à empresa do link (o parceiro resolvido em
+       cima). Numa base sem a 0020 não se manda coluna nenhuma. */
     const { data: bookingCase, error: caseError } = await admin
       .from("booking_cases")
       .insert({
@@ -455,6 +474,30 @@ async function resolveLinkPartner(
     (row) => sellerSlug(row.email) === agentSlug
   )
   return matches ? partnerId : null
+}
+
+/** TEN-04 · o parceiro do subdomínio, se existir e estiver activo. */
+async function resolveHostPartner(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  slug: string | null | undefined
+): Promise<string | null> {
+  if (!slug) return null
+  const { data, error } = await admin
+    .from("partners")
+    .select("id, status")
+    .eq("slug", slug)
+    .maybeSingle()
+  if (error || !data || (data as { status: string }).status !== "active") return null
+  return (data as { id: string }).id
+}
+
+/** O operador, escrito explicitamente em vez de deixado ao default da 0020. */
+async function operatorPartnerId(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>
+): Promise<string | null> {
+  const { data, error } = await admin.from("partners").select("id").eq("is_operator", true).maybeSingle()
+  if (error || !data) return null
+  return (data as { id: string }).id
 }
 
 /** O mesmo slug que o construtor de links tira do email (`topbar-actions`). */

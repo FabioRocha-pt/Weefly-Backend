@@ -1,11 +1,10 @@
 import { UsersAdminPage } from "@/components/pro/users-admin-page"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /** ADM-02 · no Admin: todas as contas, de todos os parceiros. */
-export default function UtilizadoresPage() {
+export default async function UtilizadoresPage() {
+  const { t } = await getBoI18n()
   return (
-    <UsersAdminPage
-      title="Utilizadores e permissões"
-      subtitle="Cada conta tem um perfil, um parceiro e os módulos ligados. Não se apagam contas: suspendem-se."
-    />
+    <UsersAdminPage title={t("bo.pro.users.title")} subtitle={t("bo.pro.users.subtitle")} />
   )
 }

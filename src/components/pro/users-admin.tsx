@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { reactivateUser, resendInvite, saveUser, suspendUser } from "@/actions/access"
 import { canGrant, type AccessProfile } from "@/lib/access-roles"
+import { useI18n } from "@/i18n/provider"
+import { translateOr } from "@/i18n/translate"
 
 /**
  * WeeFly · ADM-02 · Utilizadores e permissões.
@@ -18,13 +20,8 @@ import { canGrant, type AccessProfile } from "@/lib/access-roles"
 
 type Menu = "flights" | "cars" | "houses" | "experiences" | "food"
 
-const MENUS: { id: Menu; label: string }[] = [
-  { id: "flights", label: "Passagens" },
-  { id: "cars", label: "Carros" },
-  { id: "houses", label: "Casas" },
-  { id: "experiences", label: "Experiências" },
-  { id: "food", label: "Comida" },
-]
+/* A etiqueta de cada menu vem de `pro.menu.<id>`. */
+const MENUS: Menu[] = ["flights", "cars", "houses", "experiences", "food"]
 
 export interface UsersAdminPartner {
   id: string
@@ -70,17 +67,6 @@ interface Props {
   audit: UsersAdminAudit[]
 }
 
-const ACTION_LABEL: Record<string, string> = {
-  user_created: "Conta criada",
-  user_updated: "Conta alterada",
-  user_suspended: "Conta suspensa",
-  user_reactivated: "Conta reactivada",
-  partner_created: "Parceiro criado",
-  partner_updated: "Parceiro alterado",
-  partner_suspended: "Parceiro suspenso",
-  partner_reactivated: "Parceiro reactivado",
-}
-
 const field =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-slate-100"
 
@@ -106,6 +92,8 @@ export function UsersAdmin({
   users,
   audit,
 }: Props) {
+  const { t, locale } = useI18n()
+  const roleLabel = (r: AccessProfile) => (locale === "pt" ? r.labelPt : r.labelEn)
   const router = useRouter()
   const [pending, start] = useTransition()
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
@@ -163,7 +151,7 @@ export function UsersAdmin({
     start(async () => {
       setMessage(null)
       const result = await action()
-      setMessage(result.ok ? { ok: true, text: result.notice ?? "Feito." } : { ok: false, text: result.error })
+      setMessage(result.ok ? { ok: true, text: result.notice ?? t("bo.pro.common.done") } : { ok: false, text: result.error })
       if (result.ok) {
         after?.()
         router.refresh()
@@ -205,7 +193,7 @@ export function UsersAdmin({
         <div className="flex flex-wrap items-center gap-2">
           {actor.manageUsers === "all" && (
             <select className={`${field} w-auto`} value={filter} onChange={(e) => setFilter(e.target.value)}>
-              <option value="all">Todos os parceiros</option>
+              <option value="all">{t("bo.pro.users.allPartners")}</option>
               {partners.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -215,13 +203,13 @@ export function UsersAdmin({
           )}
           <input
             className={`${field} w-64`}
-            placeholder="Procurar por nome ou email"
+            placeholder={t("bo.pro.users.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
           <div className="flex-1" />
           <Button size="sm" onClick={openCreate} disabled={pending || creatablePartners.length === 0}>
-            Novo utilizador
+            {t("bo.pro.users.newUser")}
           </Button>
         </div>
 
@@ -234,11 +222,11 @@ export function UsersAdmin({
         {draft && (
           <div className="rounded-2xl border border-orange-200 bg-orange-50/40 p-5 space-y-4">
             <h3 className="font-semibold text-slate-900">
-              {draft.mode === "create" ? "Novo utilizador" : `Editar ${draft.email}`}
+              {draft.mode === "create" ? t("bo.pro.users.newUser") : t("bo.pro.common.editNamed", { name: draft.email })}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <label className="text-sm space-y-1">
-                <span className="text-slate-600">Email</span>
+                <span className="text-slate-600">{t("bo.pro.common.email")}</span>
                 <input
                   className={field}
                   type="email"
@@ -248,7 +236,7 @@ export function UsersAdmin({
                 />
               </label>
               <label className="text-sm space-y-1">
-                <span className="text-slate-600">Nome</span>
+                <span className="text-slate-600">{t("bo.pro.common.name")}</span>
                 <input
                   className={field}
                   value={draft.label}
@@ -256,7 +244,7 @@ export function UsersAdmin({
                 />
               </label>
               <label className="text-sm space-y-1">
-                <span className="text-slate-600">Parceiro</span>
+                <span className="text-slate-600">{t("bo.pro.common.partner")}</span>
                 <select
                   className={field}
                   value={draft.partnerId}
@@ -277,14 +265,14 @@ export function UsersAdmin({
                   {creatablePartners.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
-                      {p.isOperator ? " (operador)" : ""}
-                      {p.status === "suspended" ? " · suspenso" : ""}
+                      {p.isOperator ? t("bo.pro.common.operatorSuffix") : ""}
+                      {p.status === "suspended" ? t("bo.pro.users.suspendedSuffix") : ""}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="text-sm space-y-1">
-                <span className="text-slate-600">Perfil</span>
+                <span className="text-slate-600">{t("bo.pro.common.profile")}</span>
                 <select
                   className={field}
                   value={draft.roleId}
@@ -292,20 +280,20 @@ export function UsersAdmin({
                 >
                   {grantable(draft.partnerId).map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.labelPt}
+                      {roleLabel(r)}
                     </option>
                   ))}
                 </select>
               </label>
               {draftRole?.needsOrganisation && (
                 <label className="text-sm space-y-1 md:col-span-2">
-                  <span className="text-slate-600">Ministério</span>
+                  <span className="text-slate-600">{t("bo.pro.common.ministry")}</span>
                   <select
                     className={field}
                     value={draft.organisationId}
                     onChange={(e) => setDraft({ ...draft, organisationId: e.target.value })}
                   >
-                    <option value="">— escolha —</option>
+                    <option value="">{t("bo.pro.users.chooseOption")}</option>
                     {draftOrgs.map((o) => (
                       <option key={o.id} value={o.id}>
                         {o.name}
@@ -314,7 +302,7 @@ export function UsersAdmin({
                   </select>
                   {draftOrgs.length === 0 && (
                     <span className="text-xs text-amber-700">
-                      Este parceiro ainda não tem ministérios (PAR-02).
+                      {t("bo.pro.users.noMinistries")}
                     </span>
                   )}
                 </label>
@@ -323,7 +311,7 @@ export function UsersAdmin({
 
             {draftRole?.backoffice && draftPartner && (
               <fieldset className="space-y-2">
-                <legend className="text-sm font-semibold text-slate-900">Menus do Agente</legend>
+                <legend className="text-sm font-semibold text-slate-900">{t("bo.pro.common.agentMenus")}</legend>
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -335,25 +323,25 @@ export function UsersAdmin({
                       })
                     }
                   />
-                  Os mesmos da empresa
+                  {t("bo.pro.users.sameAsCompany")}
                 </label>
                 {draft.agentMenus !== null && (
                   <div className="flex flex-wrap gap-3 pl-6">
-                    {MENUS.filter((m) => draftPartner.agentMenus.includes(m.id)).map((m) => (
-                      <label key={m.id} className="flex items-center gap-2 text-sm">
+                    {MENUS.filter((m) => draftPartner.agentMenus.includes(m)).map((m) => (
+                      <label key={m} className="flex items-center gap-2 text-sm">
                         <input
                           type="checkbox"
-                          checked={draft.agentMenus!.includes(m.id)}
+                          checked={draft.agentMenus!.includes(m)}
                           onChange={() =>
                             setDraft({
                               ...draft,
-                              agentMenus: draft.agentMenus!.includes(m.id)
-                                ? draft.agentMenus!.filter((x) => x !== m.id)
-                                : [...draft.agentMenus!, m.id],
+                              agentMenus: draft.agentMenus!.includes(m)
+                                ? draft.agentMenus!.filter((x) => x !== m)
+                                : [...draft.agentMenus!, m],
                             })
                           }
                         />
-                        {m.label}
+                        {t(`pro.menu.${m}`)}
                       </label>
                     ))}
                   </div>
@@ -368,16 +356,16 @@ export function UsersAdmin({
                   checked={draft.invite}
                   onChange={(e) => setDraft({ ...draft, invite: e.target.checked })}
                 />
-                Enviar o convite por email agora
+                {t("bo.pro.users.sendInvite")}
               </label>
             )}
 
             <div className="flex gap-2">
               <Button size="sm" onClick={submit} disabled={pending || !draft.roleId}>
-                {draft.mode === "create" ? "Criar" : "Guardar"}
+                {draft.mode === "create" ? t("bo.pro.common.create") : t("bo.pro.common.save")}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setDraft(null)} disabled={pending}>
-                Cancelar
+                {t("bo.pro.common.cancel")}
               </Button>
             </div>
           </div>
@@ -387,11 +375,11 @@ export function UsersAdmin({
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
               <tr>
-                <th className="px-4 py-3 font-semibold">Utilizador</th>
-                <th className="px-4 py-3 font-semibold">Perfil</th>
-                <th className="px-4 py-3 font-semibold">Parceiro</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-                <th className="px-4 py-3 font-semibold text-right">Acções</th>
+                <th className="px-4 py-3 font-semibold">{t("bo.pro.users.colUser")}</th>
+                <th className="px-4 py-3 font-semibold">{t("bo.pro.common.profile")}</th>
+                <th className="px-4 py-3 font-semibold">{t("bo.pro.common.partner")}</th>
+                <th className="px-4 py-3 font-semibold">{t("bo.pro.common.state")}</th>
+                <th className="px-4 py-3 font-semibold text-right">{t("bo.pro.common.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -413,11 +401,15 @@ export function UsersAdmin({
                       <p className="text-xs text-slate-500">{u.email}</p>
                     </td>
                     <td className="px-4 py-3">
-                      {role?.labelPt ?? u.roleId}
+                      {role ? roleLabel(role) : u.roleId}
                       {org && <p className="text-xs text-slate-500">{org.name}</p>}
                       {u.agentMenus && (
                         <p className="text-xs text-slate-500">
-                          Menus: {u.agentMenus.map((m) => MENUS.find((x) => x.id === m)?.label ?? m).join(", ") || "nenhum"}
+                          {t("bo.pro.users.menusList", {
+                            menus:
+                              u.agentMenus.map((m) => translateOr(t, `pro.menu.${m}`, m)).join(", ") ||
+                              t("bo.pro.common.none"),
+                          })}
                         </p>
                       )}
                     </td>
@@ -425,12 +417,12 @@ export function UsersAdmin({
                     <td className="px-4 py-3">
                       {u.active ? (
                         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                          Activa
+                          {t("bo.pro.users.active")}
                         </span>
                       ) : (
                         <div>
                           <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
-                            Suspensa
+                            {t("bo.pro.users.suspended")}
                           </span>
                           {u.suspendReason && (
                             <p className="mt-1 text-xs text-slate-500">
@@ -443,11 +435,11 @@ export function UsersAdmin({
                     </td>
                     <td className="px-4 py-3">
                       {u.email === actorEmail ? (
-                        <p className="text-right text-xs text-slate-400">A sua conta</p>
+                        <p className="text-right text-xs text-slate-400">{t("bo.pro.users.yourAccount")}</p>
                       ) : editable ? (
                         <div className="flex flex-wrap justify-end gap-2">
                           <Button size="sm" variant="outline" disabled={pending} onClick={() => openEdit(u)}>
-                            Editar
+                            {t("bo.pro.common.edit")}
                           </Button>
                           {u.active ? (
                             <>
@@ -458,7 +450,7 @@ export function UsersAdmin({
                                   disabled={pending}
                                   onClick={() => run(() => resendInvite(u.email))}
                                 >
-                                  Reenviar convite
+                                  {t("bo.pro.users.resendInvite")}
                                 </Button>
                               )}
                               <Button
@@ -467,7 +459,7 @@ export function UsersAdmin({
                                 disabled={pending}
                                 onClick={() => setSuspending({ email: u.email, reason: "" })}
                               >
-                                Suspender
+                                {t("bo.pro.common.suspend")}
                               </Button>
                             </>
                           ) : (
@@ -475,21 +467,21 @@ export function UsersAdmin({
                               size="sm"
                               disabled={pending}
                               onClick={() => {
-                                if (window.confirm(`Reactivar ${u.email}?`)) run(() => reactivateUser(u.email))
+                                if (window.confirm(t("bo.pro.common.reactivateConfirm", { name: u.email }))) run(() => reactivateUser(u.email))
                               }}
                             >
-                              Reactivar
+                              {t("bo.pro.common.reactivate")}
                             </Button>
                           )}
                         </div>
                       ) : (
-                        <p className="text-right text-xs text-slate-400">Só leitura</p>
+                        <p className="text-right text-xs text-slate-400">{t("bo.pro.users.readOnly")}</p>
                       )}
                       {suspending?.email === u.email && (
                         <div className="mt-3 space-y-2 rounded-xl bg-red-50 p-3">
                           <textarea
                             className={`${field} min-h-[70px]`}
-                            placeholder="Motivo (fica no registo)"
+                            placeholder={t("bo.pro.common.reasonPlaceholder")}
                             value={suspending.reason}
                             onChange={(e) => setSuspending({ ...suspending, reason: e.target.value })}
                           />
@@ -499,17 +491,17 @@ export function UsersAdmin({
                               variant="destructive"
                               disabled={pending}
                               onClick={() => {
-                                if (!window.confirm(`Suspender ${u.email}? As sessões abertas terminam já.`)) return
+                                if (!window.confirm(t("bo.pro.users.suspendConfirm", { email: u.email }))) return
                                 run(
                                   () => suspendUser({ email: u.email, reason: suspending.reason }),
                                   () => setSuspending(null)
                                 )
                               }}
                             >
-                              Confirmar suspensão
+                              {t("bo.pro.common.confirmSuspension")}
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => setSuspending(null)}>
-                              Cancelar
+                              {t("bo.pro.common.cancel")}
                             </Button>
                           </div>
                         </div>
@@ -521,7 +513,7 @@ export function UsersAdmin({
               {visible.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
-                    Nenhum utilizador.
+                    {t("bo.pro.users.noUsers")}
                   </td>
                 </tr>
               )}
@@ -532,19 +524,19 @@ export function UsersAdmin({
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-          Registo de alterações
+          {t("bo.pro.users.changeLog")}
         </h2>
         {audit.length === 0 ? (
-          <p className="text-sm text-slate-500">Ainda não há alterações registadas.</p>
+          <p className="text-sm text-slate-500">{t("bo.pro.users.noChanges")}</p>
         ) : (
           <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Data</th>
-                  <th className="px-4 py-3 font-semibold">Quem</th>
-                  <th className="px-4 py-3 font-semibold">O quê</th>
-                  <th className="px-4 py-3 font-semibold">Antes → depois</th>
+                  <th className="px-4 py-3 font-semibold">{t("bo.pro.common.date")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("bo.pro.users.colWho")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("bo.pro.users.colWhat")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("bo.pro.users.colBeforeAfter")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -553,12 +545,12 @@ export function UsersAdmin({
                     <td className="px-4 py-3 whitespace-nowrap text-slate-600">{a.createdLabel}</td>
                     <td className="px-4 py-3 text-slate-600">{a.actorEmail}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-900">{ACTION_LABEL[a.action] ?? a.action}</p>
+                      <p className="font-medium text-slate-900">{translateOr(t, `bo.pro.users.action.${a.action}`, a.action)}</p>
                       <p className="text-xs text-slate-500">
                         {a.target}
                         {a.partnerName ? ` · ${a.partnerName}` : ""}
                       </p>
-                      {a.reason && <p className="text-xs text-slate-500">Motivo: {a.reason}</p>}
+                      {a.reason && <p className="text-xs text-slate-500">{t("bo.pro.users.reason", { reason: a.reason })}</p>}
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600 whitespace-pre-line">{a.changes || "—"}</td>
                   </tr>

@@ -41,22 +41,14 @@ import {
   boMarkAlertsRead,
   boMarkAllAlertsRead,
 } from "@/actions/bo-price-checker"
+import { useI18n } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
+import { translateOr } from "@/i18n/translate"
 
-/** O que cada acontecimento é, escrito para quem atende. */
-const ALERT_LABEL: Record<string, string> = {
-  request_submitted: "Pedido novo submetido",
-  offer_selected: "O cliente escolheu uma oferta",
-  passengers_submitted: "Passaportes submetidos",
-  pay_method_chosen: "O cliente escolheu como pagar",
-  proof_uploaded: "Comprovativo enviado",
-  client_declared_paid: "O cliente diz que pagou",
-  client_message: "Mensagem do cliente",
-  request_cancelled: "O cliente cancelou o pedido",
-  payment_expired: "O prazo de pagamento expirou",
-}
+/* O que cada acontecimento é, escrito para quem atende: `bo.shell.alerts.kind.<kind>`. */
 
-const when = (iso: string) =>
-  new Date(iso).toLocaleString("pt-PT", {
+const when = (iso: string, tag: string) =>
+  new Date(iso).toLocaleString(tag, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -72,6 +64,7 @@ export function BoNotificationBell({
   unread: number
 }) {
   const router = useRouter()
+  const { t, locale } = useI18n()
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   /* O que foi lido neste separador e o servidor ainda não devolveu. Faz o
@@ -158,7 +151,11 @@ export function BoNotificationBell({
       <button
         ref={trigger}
         className="bell"
-        title={unreadNow > 0 ? `${unreadNow} avisos por ver` : "Avisos"}
+        title={
+          unreadNow > 0
+            ? t("bo.shell.alerts.unseenTitle", { count: unreadNow })
+            : t("bo.shell.alerts.title")
+        }
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -182,11 +179,11 @@ export function BoNotificationBell({
       {open && (
         <div className="who-pop alerts" role="menu">
           <div className="who-head">
-            <b>Avisos</b>
+            <b>{t("bo.shell.alerts.title")}</b>
             <span className="mono">
               {alerts.length === 0
-                ? "nada por agora"
-                : `${alerts.length} · ${unreadNow} por ver`}
+                ? t("bo.shell.alerts.nothing")
+                : t("bo.shell.alerts.summary", { total: alerts.length, unseen: unreadNow })}
             </span>
             {alerts.length > 0 && (
               <div className="alert-actions">
@@ -194,14 +191,14 @@ export function BoNotificationBell({
                   <>
                     <span>
                       {asking === "all"
-                        ? `Marcar ${unreadNow} como lidos?`
-                        : `Limpar ${readCount} já lidos?`}
+                        ? t("bo.shell.alerts.confirmAll", { count: unreadNow })
+                        : t("bo.shell.alerts.confirmClear", { count: readCount })}
                     </span>
                     <button type="button" disabled={pending} onClick={confirmAsked}>
-                      Sim
+                      {t("bo.shell.alerts.yes")}
                     </button>
                     <button type="button" onClick={() => setAsking(null)}>
-                      Não
+                      {t("bo.shell.alerts.no")}
                     </button>
                   </>
                 ) : (
@@ -211,14 +208,14 @@ export function BoNotificationBell({
                       disabled={pending || unreadNow === 0}
                       onClick={() => setAsking("all")}
                     >
-                      Marcar todas como lidas
+                      {t("bo.shell.alerts.markAll")}
                     </button>
                     <button
                       type="button"
                       disabled={pending || readCount === 0}
                       onClick={() => setAsking("clear")}
                     >
-                      Limpar lidas
+                      {t("bo.shell.alerts.clearRead")}
                     </button>
                   </>
                 )}
@@ -229,8 +226,7 @@ export function BoNotificationBell({
 
           {alerts.length === 0 ? (
             <p className="alert-empty">
-              Quando um cliente escolher uma oferta, submeter passaportes ou
-              enviar um comprovativo, aparece aqui.
+              {t("bo.shell.alerts.empty")}
             </p>
           ) : (
             <div className="alert-list">
@@ -243,7 +239,7 @@ export function BoNotificationBell({
                   onClick={() => readOne(alert)}
                 >
                   <b>
-                    {ALERT_LABEL[alert.kind] ?? alert.title}
+                    {translateOr(t, `bo.shell.alerts.kind.${alert.kind}`, alert.title)}
                     {/* Repetições colapsadas numa linha. Ver `loadBoAlerts`. */}
                     {alert.repeated > 1 && (
                       <span className="alert-x"> ×{alert.repeated}</span>
@@ -254,16 +250,16 @@ export function BoNotificationBell({
                     {alert.clientName ? ` · ${alert.clientName}` : ""}
                   </span>
                   <span className="alert-meta">
-                    {when(alert.createdAt)}
+                    {when(alert.createdAt, LOCALE_TAGS[locale])}
                     {" · "}
                     {/* Quem o provocou. Um acontecimento do cliente não tem
                         email — tem o cliente, e dizer "sistema" ali era mentir
                         sobre quem agiu. */}
                     {alert.actorKind === "client"
-                      ? (alert.clientName ?? "o cliente")
+                      ? (alert.clientName ?? t("bo.shell.alerts.actorClient"))
                       : alert.actorKind === "system"
-                        ? "automático"
-                        : (alert.actorEmail ?? "equipa")}
+                        ? t("bo.shell.alerts.actorSystem")
+                        : (alert.actorEmail ?? t("bo.shell.alerts.actorTeam"))}
                   </span>
                 </Link>
               ))}

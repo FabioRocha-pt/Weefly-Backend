@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { approveProAccount, rejectProAccount } from "@/actions/pro"
 import { partnerHostPreview } from "@/lib/site-url"
+import { useT } from "@/i18n/provider"
 
 /**
  * PRO-09 · uma conta pendente: aprovar (empresa, tipo, módulo, menus) ou
@@ -14,13 +15,8 @@ import { partnerHostPreview } from "@/lib/site-url"
 
 type Menu = "flights" | "cars" | "houses" | "experiences" | "food"
 
-const MENUS: { id: Menu; label: string }[] = [
-  { id: "flights", label: "Passagens" },
-  { id: "cars", label: "Carros" },
-  { id: "houses", label: "Casas" },
-  { id: "experiences", label: "Experiências" },
-  { id: "food", label: "Comida" },
-]
+/* A etiqueta de cada menu vem de `pro.menu.<id>`. */
+const MENUS: Menu[] = ["flights", "cars", "houses", "experiences", "food"]
 
 interface PartnerOption {
   id: string
@@ -56,6 +52,7 @@ function slugify(value: string): string {
 }
 
 export function AccountReview({ account, partners }: Props) {
+  const t = useT()
   const router = useRouter()
   const [pending, start] = useTransition()
   const [mode, setMode] = useState<"idle" | "approve" | "reject">("idle")
@@ -94,8 +91,10 @@ export function AccountReview({ account, partners }: Props) {
 
   const approve = () => {
     const target =
-      partnerChoice === "new" ? companyName || "empresa nova" : selectedPartner?.name ?? "empresa"
-    if (!window.confirm(`Aprovar ${account.email} em ${target}?`)) return
+      partnerChoice === "new"
+        ? companyName || t("bo.pro.review.newCompanyFallback")
+        : selectedPartner?.name ?? t("bo.pro.review.companyFallback")
+    if (!window.confirm(t("bo.pro.review.approveConfirm", { email: account.email, target }))) return
     start(async () => {
       setMessage(null)
       const result = await approveProAccount({
@@ -109,21 +108,21 @@ export function AccountReview({ account, partners }: Props) {
         agentEnabled,
         menus,
       })
-      setMessage(result.ok ? { ok: true, text: result.notice ?? "Aprovada." } : { ok: false, text: result.error })
+      setMessage(result.ok ? { ok: true, text: result.notice ?? t("bo.pro.review.approvedNotice") } : { ok: false, text: result.error })
       if (result.ok) router.refresh()
     })
   }
 
   const reject = () => {
     if (reason.trim().length < 3) {
-      setMessage({ ok: false, text: "A recusa leva um motivo." })
+      setMessage({ ok: false, text: t("bo.pro.review.reasonRequired") })
       return
     }
-    if (!window.confirm(`Recusar ${account.email}? O motivo segue por email.`)) return
+    if (!window.confirm(t("bo.pro.review.rejectConfirm", { email: account.email }))) return
     start(async () => {
       setMessage(null)
       const result = await rejectProAccount({ userId: account.userId, reason })
-      setMessage(result.ok ? { ok: true, text: result.notice ?? "Recusada." } : { ok: false, text: result.error })
+      setMessage(result.ok ? { ok: true, text: result.notice ?? t("bo.pro.review.rejectedNotice") } : { ok: false, text: result.error })
       if (result.ok) router.refresh()
     })
   }
@@ -141,9 +140,9 @@ export function AccountReview({ account, partners }: Props) {
           </p>
         </div>
         <div className="text-right text-xs text-slate-500">
-          <p>Registada a {account.createdLabel}</p>
+          <p>{t("bo.pro.review.registeredOn", { date: account.createdLabel })}</p>
           <p className={account.emailConfirmed ? "text-emerald-700" : "text-amber-700"}>
-            {account.emailConfirmed ? "Email confirmado" : "Email ainda por confirmar"}
+            {account.emailConfirmed ? t("bo.pro.review.emailConfirmed") : t("bo.pro.review.emailUnconfirmed")}
           </p>
         </div>
       </header>
@@ -151,10 +150,10 @@ export function AccountReview({ account, partners }: Props) {
       {mode === "idle" && (
         <div className="flex gap-2">
           <Button size="sm" onClick={() => setMode("approve")}>
-            Aprovar…
+            {t("bo.pro.review.approve")}
           </Button>
           <Button size="sm" variant="outline" onClick={() => setMode("reject")}>
-            Recusar…
+            {t("bo.pro.review.reject")}
           </Button>
         </div>
       )}
@@ -162,10 +161,10 @@ export function AccountReview({ account, partners }: Props) {
       {mode === "approve" && (
         <div className="space-y-4 rounded-xl bg-slate-50 p-4">
           <fieldset className="space-y-2">
-            <legend className="text-sm font-semibold text-slate-900">Empresa</legend>
+            <legend className="text-sm font-semibold text-slate-900">{t("bo.pro.review.company")}</legend>
             <label className="flex items-center gap-2 text-sm">
               <input type="radio" checked={partnerChoice === "new"} onChange={() => setPartnerChoice("new")} />
-              Empresa nova
+              {t("bo.pro.review.newCompany")}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -176,13 +175,13 @@ export function AccountReview({ account, partners }: Props) {
                   pickPartner(partnerId)
                 }}
               />
-              Juntar a uma empresa que já existe
+              {t("bo.pro.review.joinExisting")}
             </label>
 
             {partnerChoice === "new" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 <label className="text-sm space-y-1">
-                  <span className="text-slate-600">Nome comercial</span>
+                  <span className="text-slate-600">{t("bo.pro.common.commercialName")}</span>
                   <input
                     className={field}
                     value={companyName}
@@ -193,7 +192,7 @@ export function AccountReview({ account, partners }: Props) {
                   />
                 </label>
                 <label className="text-sm space-y-1">
-                  <span className="text-slate-600">Endereço (subdomínio)</span>
+                  <span className="text-slate-600">{t("bo.pro.common.slugLabel")}</span>
                   <input
                     className={`${field} font-mono`}
                     value={slug}
@@ -203,7 +202,7 @@ export function AccountReview({ account, partners }: Props) {
                     }}
                   />
                   <span className="text-xs text-slate-500">
-                    {partnerHostPreview(slug) ?? `${slug || "…"} · subdomínio por configurar (TEN-04)`}
+                    {partnerHostPreview(slug) ?? t("bo.pro.common.slugPending", { slug: slug || "…" })}
                   </span>
                 </label>
               </div>
@@ -212,7 +211,7 @@ export function AccountReview({ account, partners }: Props) {
                 {partners.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
-                    {p.isOperator ? " (operador)" : ""}
+                    {p.isOperator ? t("bo.pro.common.operatorSuffix") : ""}
                   </option>
                 ))}
               </select>
@@ -221,20 +220,19 @@ export function AccountReview({ account, partners }: Props) {
 
           {operatorLocked ? (
             <p className="text-sm text-slate-600">
-              A conta entra na {selectedPartner?.name} com a configuração que ela já tem. A
-              configuração do operador não se muda a partir de uma aprovação.
+              {t("bo.pro.review.operatorLocked", { name: selectedPartner?.name ?? "" })}
             </p>
           ) : (
             <>
               <fieldset className="space-y-2">
-                <legend className="text-sm font-semibold text-slate-900">Tipo de empresa</legend>
+                <legend className="text-sm font-semibold text-slate-900">{t("bo.pro.review.companyType")}</legend>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="radio" checked={sellMode === "reseller"} onChange={() => setSellMode("reseller")} />
-                  Agente oficial WeeFly · o link do cliente tem a marca WeeFly
+                  {t("bo.pro.review.typeReseller")}
                 </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="radio" checked={sellMode === "white_label"} onChange={() => setSellMode("white_label")} />
-                  White label · o link tem a marca da empresa
+                  {t("bo.pro.review.typeWhiteLabel")}
                 </label>
                 {sellMode === "white_label" && (
                   <select
@@ -242,33 +240,33 @@ export function AccountReview({ account, partners }: Props) {
                     value={customerFront}
                     onChange={(e) => setCustomerFront(e.target.value as "own" | "weefly")}
                   >
-                    <option value="own">O link mostra a marca da empresa (com Powered by WeeFly)</option>
-                    <option value="weefly">O link mostra o ecrã WeeFly</option>
+                    <option value="own">{t("bo.pro.review.frontOwn")}</option>
+                    <option value="weefly">{t("bo.pro.review.frontWeefly")}</option>
                   </select>
                 )}
               </fieldset>
 
               <fieldset className="space-y-2">
-                <legend className="text-sm font-semibold text-slate-900">Módulos</legend>
+                <legend className="text-sm font-semibold text-slate-900">{t("bo.pro.review.modules")}</legend>
                 <label className="flex items-center gap-2 text-sm text-slate-400">
                   <input type="checkbox" disabled checked={false} readOnly />
-                  Fornecedor · Brevemente
+                  {t("bo.pro.review.supplierSoon")}
                 </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={agentEnabled} onChange={(e) => setAgentEnabled(e.target.checked)} />
-                  Agente
+                  {t("bo.pro.review.agent")}
                 </label>
               </fieldset>
 
               {agentEnabled && (
                 <fieldset className="space-y-2">
-                  <legend className="text-sm font-semibold text-slate-900">Menus do Agente</legend>
+                  <legend className="text-sm font-semibold text-slate-900">{t("bo.pro.common.agentMenus")}</legend>
                   <div className="flex flex-wrap gap-3">
                     {MENUS.map((m) => (
-                      <label key={m.id} className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={menus.includes(m.id)} onChange={() => toggleMenu(m.id)} />
-                        {m.label}
-                        {m.id !== "flights" && <span className="text-xs text-slate-400">(Brevemente)</span>}
+                      <label key={m} className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={menus.includes(m)} onChange={() => toggleMenu(m)} />
+                        {t(`pro.menu.${m}`)}
+                        {m !== "flights" && <span className="text-xs text-slate-400">{t("bo.pro.common.soonTag")}</span>}
                       </label>
                     ))}
                   </div>
@@ -279,10 +277,10 @@ export function AccountReview({ account, partners }: Props) {
 
           <div className="flex gap-2">
             <Button size="sm" onClick={approve} disabled={pending}>
-              Confirmar aprovação
+              {t("bo.pro.review.confirmApproval")}
             </Button>
             <Button size="sm" variant="outline" onClick={() => setMode("idle")} disabled={pending}>
-              Cancelar
+              {t("bo.pro.common.cancel")}
             </Button>
           </div>
         </div>
@@ -291,20 +289,20 @@ export function AccountReview({ account, partners }: Props) {
       {mode === "reject" && (
         <div className="space-y-3 rounded-xl bg-slate-50 p-4">
           <label className="text-sm space-y-1 block">
-            <span className="font-semibold text-slate-900">Motivo da recusa</span>
+            <span className="font-semibold text-slate-900">{t("bo.pro.review.rejectReason")}</span>
             <textarea
               className={`${field} min-h-[90px]`}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Vai no email para a pessoa."
+              placeholder={t("bo.pro.review.rejectReasonPlaceholder")}
             />
           </label>
           <div className="flex gap-2">
             <Button size="sm" variant="destructive" onClick={reject} disabled={pending}>
-              Confirmar recusa
+              {t("bo.pro.review.confirmRejection")}
             </Button>
             <Button size="sm" variant="outline" onClick={() => setMode("idle")} disabled={pending}>
-              Cancelar
+              {t("bo.pro.common.cancel")}
             </Button>
           </div>
         </div>

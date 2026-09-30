@@ -3,14 +3,14 @@ import { accessProfile, requireApprovedAccount } from "@/lib/pro-account"
 import { getBoAccess } from "@/lib/bo-access"
 import { ProfileForm } from "@/components/pro/profile-form"
 import { BoLanguageSetting } from "@/components/bo/language-setting"
-import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /**
  * PRO-13 · o perfil básico. Nome e telefone editam-se; a empresa e o perfil de
  * acesso só se leem — quem os muda é o Admin.
  */
 export default async function ContaPage() {
-  const { t } = getI18n()
+  const { t, locale } = await getBoI18n()
   const [account, user, bo] = await Promise.all([
     requireApprovedAccount(),
     getCurrentUser(),
@@ -21,7 +21,7 @@ export default async function ContaPage() {
      ou o papel no Concierge, ou simplesmente membro da empresa. */
   const stored = account.profile ?? (bo.ok ? bo.identity.profile : null)
   const profile = stored
-    ? getI18n().locale === "pt"
+    ? locale === "pt"
       ? stored.labelPt
       : stored.labelEn
     : accessProfile(account) === "master"

@@ -1,1 +1,111 @@
-{ "bo": { "issuance": {} } }
+{
+  "bo": {
+    "issuance": {
+      "summary": {
+        "issued": "Issued",
+        "ready": "Ready to issue",
+        "payment": "Payment",
+        "confirmed": "Confirmed",
+        "notConfirmed": "Not confirmed",
+        "passengers": "Passengers",
+        "flights": "Flights",
+        "charged": "Charged",
+        "issuedAt": "Issued on",
+        "critical": "This is the most critical state in the system. The customer has already paid and still has no ticket.",
+        "confirmFirst": "Confirm the payment in the previous tab before issuing."
+      },
+      "document": {
+        "open": "Open the ticket",
+        "resend": "Resend to customer",
+        "resendHint": "Resending sends the same file, with the same document number. Nothing new is generated.",
+        "generate": "Generate the ticket",
+        "missingPdf": "The case is issued but the PDF does not exist yet."
+      },
+      "form": {
+        "title": "Issuance details",
+        "pnrPlaceholder": "6 characters",
+        "carrier": "Issuing airline",
+        "choose": "Choose…",
+        "outsideCatalog": "not in catalogue",
+        "fromProposal": "from the proposal · confirm before issuing",
+        "consolidator": "Consolidator",
+        "costReal": "Actual cost",
+        "margin": "margin {amount}"
+      },
+      "tickets": {
+        "title": "Ticket per passenger",
+        "rule": "{prefix} + 10 digits · no duplicates",
+        "noPassengers": "With no passengers submitted there is no one to issue a ticket to.",
+        "startWith": "Start with {prefix}",
+        "number": "Ticket no.",
+        "noSegments": "The chosen offer has no saved segments, so there is nowhere to assign seats. Tickets can still be issued."
+      },
+      "baggage": {
+        "seat": "Seat",
+        "cabin": "cabin",
+        "checked": "hold",
+        "cabinPieces": "Cabin pieces on this flight",
+        "cabinKg": "Weight per cabin piece, in kilos",
+        "checkedPieces": "Checked bags on this flight",
+        "checkedKg": "Weight per checked bag, in kilos",
+        "stepDown": "{title}: one less",
+        "stepUp": "{title}: one more",
+        "personalItem": "personal item",
+        "noPersonalItem": "no personal item",
+        "cabinValue": "cabin {value}",
+        "checkedValue": "hold {value}",
+        "drifted": "Different from the proposal — {promise}",
+        "promised": "Proposal: {promise}",
+        "legend": "seat · cabin (pieces × kg) · hold (pieces × kg)"
+      },
+      "flights": {
+        "title": "Document per flight",
+        "count_one": "{count} flight · one coupon each",
+        "count_other": "{count} flights · one coupon each",
+        "flight": "Flight {n}",
+        "outbound": "Outbound",
+        "inbound": "Return",
+        "departure": "Departure",
+        "arrival": "Arrival",
+        "aircraft": "Aircraft",
+        "cabinClass": "Cabin · class",
+        "terminalFrom": "Departure terminal",
+        "terminalTo": "Arrival terminal",
+        "airlinePnr": "Airline locator",
+        "airlinePnrHint": "the airline's PNR, if different from ours",
+        "coupon": "Coupon no.",
+        "fareBasis": "Fare basis",
+        "baggageThrough": "Baggage is checked through to the final destination — the passenger does not collect it at the {airport} connection"
+      },
+      "common": {
+        "titleShared": "Fields common to the ticket",
+        "titleDocument": "Document fields",
+        "endorsements": "Endorsements"
+      },
+      "errors": {
+        "title_one": "{count} field missing before you can issue",
+        "title_other": "{count} fields missing before you can issue",
+        "notPaid": "The payment is not confirmed yet — confirm it in the Payment tab.",
+        "pnr": "The PNR must have 6 characters.",
+        "ticketNumber": "{pax} {name}: the ticket number is 3 airline digits + 10 document digits.",
+        "duplicated": "There are repeated ticket numbers — each passenger has their own.",
+        "flightGaps": "{flight}: missing {fields}.",
+        "gapFareBasis": "fare basis",
+        "gapCoupon": "coupon",
+        "gapAircraft": "aircraft",
+        "gapClass": "class",
+        "fareBasis": "The fare basis is missing.",
+        "nvb": "The NVB is missing.",
+        "nva": "The NVA is missing.",
+        "noPassengers": "With no passengers submitted there is no one to issue a ticket to.",
+        "failed": "Failed."
+      },
+      "submit": {
+        "pending": "Issuing…",
+        "issue": "Issue, generate the ticket and notify the customer",
+        "doneBefore": "Issued with PNR",
+        "doneAfter": ". The customer sees the tickets in their link."
+      }
+    }
+  }
+}

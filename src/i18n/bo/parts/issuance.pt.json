@@ -1,1 +1,111 @@
-{ "bo": { "issuance": {} } }
+{
+  "bo": {
+    "issuance": {
+      "summary": {
+        "issued": "Emitido",
+        "ready": "Pronto a emitir",
+        "payment": "Pagamento",
+        "confirmed": "Confirmado",
+        "notConfirmed": "Não confirmado",
+        "passengers": "Passageiros",
+        "flights": "Voos",
+        "charged": "Cobrado",
+        "issuedAt": "Emitido em",
+        "critical": "Este é o estado mais crítico do sistema. O cliente já pagou e ainda não tem bilhete.",
+        "confirmFirst": "Confirme o pagamento na aba anterior antes de emitir."
+      },
+      "document": {
+        "open": "Abrir o bilhete",
+        "resend": "Reenviar ao cliente",
+        "resendHint": "O reenvio manda o mesmo ficheiro, com o mesmo número de documento. Não gera nada de novo.",
+        "generate": "Gerar o bilhete",
+        "missingPdf": "O caso está emitido mas o PDF ainda não existe."
+      },
+      "form": {
+        "title": "Dados da emissão",
+        "pnrPlaceholder": "6 caracteres",
+        "carrier": "Companhia emissora",
+        "choose": "Escolher…",
+        "outsideCatalog": "fora do catálogo",
+        "fromProposal": "da proposta · confirme antes de emitir",
+        "consolidator": "Consolidador",
+        "costReal": "Custo real",
+        "margin": "margem {amount}"
+      },
+      "tickets": {
+        "title": "Bilhete por passageiro",
+        "rule": "{prefix} + 10 dígitos · sem duplicados",
+        "noPassengers": "Sem passageiros submetidos não há a quem emitir bilhete.",
+        "startWith": "Começar com {prefix}",
+        "number": "Nº do bilhete",
+        "noSegments": "A oferta escolhida não tem trechos gravados, por isso não há onde atribuir lugares. Os bilhetes podem ser emitidos à mesma."
+      },
+      "baggage": {
+        "seat": "Lugar",
+        "cabin": "mão",
+        "checked": "porão",
+        "cabinPieces": "Peças de mão neste voo",
+        "cabinKg": "Peso por peça de mão, em quilos",
+        "checkedPieces": "Malas de porão neste voo",
+        "checkedKg": "Peso por mala de porão, em quilos",
+        "stepDown": "{title}: menos um",
+        "stepUp": "{title}: mais um",
+        "personalItem": "artigo pessoal",
+        "noPersonalItem": "sem artigo pessoal",
+        "cabinValue": "mão {value}",
+        "checkedValue": "porão {value}",
+        "drifted": "Diferente da proposta — {promise}",
+        "promised": "Proposta: {promise}",
+        "legend": "lugar · mão (peças × kg) · porão (peças × kg)"
+      },
+      "flights": {
+        "title": "Documento por voo",
+        "count_one": "{count} voo · um cupão cada",
+        "count_other": "{count} voos · um cupão cada",
+        "flight": "Voo {n}",
+        "outbound": "Ida",
+        "inbound": "Volta",
+        "departure": "Partida",
+        "arrival": "Chegada",
+        "aircraft": "Aeronave",
+        "cabinClass": "Cabina · classe",
+        "terminalFrom": "Terminal de partida",
+        "terminalTo": "Terminal de chegada",
+        "airlinePnr": "Localizador da companhia",
+        "airlinePnrHint": "o PNR da companhia, se for diferente do nosso",
+        "coupon": "Nº do cupão",
+        "fareBasis": "Fare basis",
+        "baggageThrough": "A bagagem segue directa até ao destino final — o passageiro não a levanta na escala de {airport}"
+      },
+      "common": {
+        "titleShared": "Campos comuns ao bilhete",
+        "titleDocument": "Campos do documento",
+        "endorsements": "Endossos"
+      },
+      "errors": {
+        "title_one": "Falta {count} campo para poder emitir",
+        "title_other": "Faltam {count} campos para poder emitir",
+        "notPaid": "O pagamento ainda não está confirmado — confirme-o na aba Pagamento.",
+        "pnr": "O PNR tem de ter 6 caracteres.",
+        "ticketNumber": "{pax} {name}: o número de bilhete são 3 dígitos de companhia + 10 do documento.",
+        "duplicated": "Há números de bilhete repetidos — cada passageiro tem o seu.",
+        "flightGaps": "{flight}: falta {fields}.",
+        "gapFareBasis": "base tarifária",
+        "gapCoupon": "cupão",
+        "gapAircraft": "avião",
+        "gapClass": "classe",
+        "fareBasis": "Falta a base tarifária.",
+        "nvb": "Falta o NVB.",
+        "nva": "Falta o NVA.",
+        "noPassengers": "Sem passageiros submetidos não há a quem emitir bilhete.",
+        "failed": "Falhou."
+      },
+      "submit": {
+        "pending": "A emitir…",
+        "issue": "Emitir, gerar o bilhete e avisar o cliente",
+        "doneBefore": "Emitido com o PNR",
+        "doneAfter": ". O cliente vê os bilhetes no link dele."
+      }
+    }
+  }
+}

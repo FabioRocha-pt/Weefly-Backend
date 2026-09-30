@@ -25,6 +25,70 @@ import { waLink } from "@/lib/pc/format"
 import { IcWa } from "@/components/pc/bits"
 import { LOCALES, LOCALE_SHORT, type Locale } from "@/i18n/config"
 import { useT } from "@/i18n/provider"
+import { websiteUrl } from "@/lib/site-url"
+import type { ClientBrand } from "@/lib/brand"
+
+// ── TEN-02 · a marca ─────────────────────────────────────────────────────────
+
+/*
+ * A marca do ecrã, lida no servidor (`lib/brand`) e trazida para aqui. Sem
+ * provider é a WeeFly, tal como sempre foi — o formulário público continua
+ * igual enquanto nenhum parceiro o assinar.
+ */
+const BrandContext = createContext<ClientBrand | null>(null)
+
+export function PcBrandProvider({
+  brand,
+  cssVars,
+  children,
+}: {
+  brand: ClientBrand
+  /** As cores da marca (`brandCssVars`), aplicadas por cima da folha. */
+  cssVars: Record<string, string>
+  children: React.ReactNode
+}) {
+  return (
+    <BrandContext.Provider value={brand}>
+      <div style={cssVars as React.CSSProperties}>{children}</div>
+    </BrandContext.Provider>
+  )
+}
+
+export function usePcBrand(): ClientBrand | null {
+  return useContext(BrandContext)
+}
+
+/**
+ * O número de WhatsApp do ecrã. A WeeFly usa a linha do concierge; um parceiro
+ * usa o dele (MIN-04 · "liga à Alô, não à WeeFly") — e sem número não há
+ * botão, em vez de mandar o cliente para a WeeFly.
+ */
+function useWaNumber(): string | null {
+  const brand = usePcBrand()
+  if (!brand || brand.kind === "weefly") return (brand?.whatsapp ?? "").replace(/\D/g, "") || WA_NUMBER
+  return (brand.whatsapp ?? "").replace(/\D/g, "") || null
+}
+
+function BrandLogo() {
+  const brand = usePcBrand()
+  if (brand?.kind !== "partner") return <WeeFlyLogo className="logo" />
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+      {brand.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="logo" src={brand.logoUrl} alt={brand.name} style={{ height: 32, width: "auto" }} />
+      ) : (
+        <b style={{ fontSize: 17 }}>{brand.name}</b>
+      )}
+      {/* TEN-02 · o brasão do ministério ao lado; sem brasão, nada — nem
+          espaço vazio nem imagem partida. */}
+      {brand.organisation?.logoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={brand.organisation.logoUrl} alt={brand.organisation.name} style={{ height: 32, width: "auto" }} />
+      )}
+    </span>
+  )
+}
 
 // ── toast ────────────────────────────────────────────────────────────────────
 
@@ -97,6 +161,11 @@ export function PcTopbar({
   const toast = useToast()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const brand = usePcBrand()
+  /* O nome do produto é o da WeeFly; um parceiro mostra o nome do ministério,
+     quando há, e senão nada acrescenta. */
+  const brandLine =
+    brand?.kind === "partner" ? (brand.organisation?.name ?? "") : "Price Checker"
 
   /* T-13 · a altura real da barra, para o contador do pagamento colar por
      baixo dela e não por trás. Muda com a referência e com a largura. */
@@ -153,8 +222,8 @@ export function PcTopbar({
     <header className="topbar" ref={barRef}>
       <div className="topbar-in">
         <div>
-          <WeeFlyLogo className="logo" />
-          <div className="brandline">Price Checker</div>
+          <BrandLogo />
+          <div className="brandline">{brandLine}</div>
         </div>
         <div className="prefs">
           {/*
@@ -255,13 +324,15 @@ export function WaButton({
   style?: React.CSSProperties
 }) {
   const t = useT()
+  const number = useWaNumber()
+  if (!number) return null
   return (
     <button
       type="button"
       className={className}
       style={style}
       onClick={() =>
-        window.open(waLink(WA_NUMBER, reference, t), "_blank", "noopener")
+        window.open(waLink(number, reference, t), "_blank", "noopener")
       }
     >
       {children}
@@ -271,11 +342,13 @@ export function WaButton({
 
 export function PcFab() {
   const t = useT()
+  const number = useWaNumber()
+  if (!number) return null
   return (
     <button
       type="button"
       className="fab"
-      onClick={() => window.open(waLink(WA_NUMBER, null, t), "_blank", "noopener")}
+      onClick={() => window.open(waLink(number, null, t), "_blank", "noopener")}
     >
       <IcWa size={21} />
       <span>{t("pc.chat")}</span>
@@ -297,13 +370,60 @@ export function PcFab() {
  */
 export function PcFooter() {
   const t = useT()
+  const brand = usePcBrand()
+  const number = useWaNumber()
+
+  /* TEN-02 · TEN-05 · o rodapé de um parceiro: o nome ou o texto dele, o
+     WhatsApp dele se o tiver, e o "Powered by WeeFly" discreto. */
+  if (brand?.kind === "partner") {
+    return (
+      <footer>
+        <div className="foot-in">
+          {brand.footerText ? brand.footerText : <b>{brand.name}</b>}
+          {number && (
+            <>
+              {" · "}
+              <a
+                className="mono"
+                href={waLink(number, null, t)}
+                target="_blank"
+                rel="noreferrer noopener"
+                style={{ color: "inherit", textDecoration: "underline" }}
+              >
+                +{number}
+              </a>
+            </>
+          )}
+          {brand.poweredByWeefly && (
+            <span style={{ opacity: 0.6, marginLeft: 8, fontSize: "0.9em" }}>Powered by WeeFly</span>
+          )}
+        </div>
+      </footer>
+    )
+  }
+
+  const host = (() => {
+    try {
+      return new URL(websiteUrl()).hostname
+    } catch {
+      return ""
+    }
+  })()
+
   return (
     <footer>
       <div className="foot-in">
-        {t("pc.footer.place")} · <b>weefly.africa</b> ·{" "}
+        {t("pc.footer.place")}
+        {host && (
+          <>
+            {" · "}
+            <b>{host}</b>
+          </>
+        )}
+        {" · "}
         <a
           className="mono"
-          href={waLink(WA_NUMBER, null, t)}
+          href={waLink(number ?? WA_NUMBER, null, t)}
           target="_blank"
           rel="noreferrer noopener"
           style={{ color: "inherit", textDecoration: "underline" }}

@@ -1,1 +1,36 @@
-{ "bo": { "composer": {} } }
+{
+  "bo": {
+    "composer": {
+      "bits": {
+        "prefilledTitle": "Este valor veio do pedido do cliente e ainda não foi confirmado por ninguém. Confirme-o ou corrija-o antes de publicar.",
+        "prefilledTag": "do pedido",
+        "requestedShort": "O cliente pediu {requested}",
+        "requested": "Pedido: {requested}",
+        "stepUp": "Mais um",
+        "stepDown": "Menos um"
+      },
+      "baggage": {
+        "title": "Bagagem neste voo",
+        "unit": "peças × kg por peça",
+        "fromOfferTitle": "Estes valores são a contagem antiga da oferta, para a viagem inteira. O cliente vê-os assim até alguém confirmar este voo.",
+        "fromRequestTitle": "Estes valores vieram do pedido do cliente. Enquanto ninguém os confirmar, não são gravados e o cliente não os vê.",
+        "fromOffer": "da oferta",
+        "fromRequest": "do pedido",
+        "toConfirm": "{source} · por confirmar",
+        "confirm": "Confirmar",
+        "copyToAll": "Aplicar a todos os voos",
+        "personal": "Artigo pessoal",
+        "personalHint": "mochila, debaixo do banco",
+        "cabinPieces": "Mão · peças",
+        "cabinKg": "Mão · kg",
+        "checkedPieces": "Porão · peças",
+        "checkedKg": "Porão · kg",
+        "noWeight": "— sem peso indicado"
+      },
+      "conditions": {
+        "baggage": "Bagagem",
+        "baggagePerFlight": "Por voo, no bloco de bagagem de cada trecho do itinerário."
+      }
+    }
+  }
+}

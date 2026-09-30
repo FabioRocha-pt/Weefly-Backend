@@ -2,7 +2,8 @@ import { notFound } from "next/navigation"
 
 import { loadPcState, touchLink } from "@/lib/pc/state"
 import { pcLocale } from "@/lib/pc/locale"
-import { PcFab, PcFooter, ToastHost } from "@/components/pc/chrome"
+import { PcBrandProvider, PcFab, PcFooter, ToastHost } from "@/components/pc/chrome"
+import { brandCssVars, clientBrandForCase, toClientBrand } from "@/lib/brand"
 import { PcScreenRouter } from "@/components/pc/screen-router"
 import { I18nProvider } from "@/i18n/provider"
 import { getDictionary } from "@/i18n/server"
@@ -74,6 +75,8 @@ export default async function PriceCheckerCasePage({
   const stage = state.screen === "p5" || state.screen === "p4b" ? 2 : state.screen.startsWith("p7") ? 3 : 1
   void touchLink(state, stage as 1 | 2 | 3)
 
+  const brand = await clientBrandForCase(state.caseId)
+
   const view = Array.isArray(searchParams.view)
     ? searchParams.view[0]
     : searchParams.view
@@ -86,11 +89,15 @@ export default async function PriceCheckerCasePage({
          frase na língua errada do que o nome da chave no ecrã do cliente. */
       fallback={locale === DEFAULT_LOCALE ? undefined : getDictionary(DEFAULT_LOCALE)}
     >
-      <ToastHost>
-        <PcScreenRouter state={state} forceView={view} locale={locale} />
-        <PcFooter />
-        <PcFab />
-      </ToastHost>
+      {/* TEN-02 · a marca do parceiro do caso (ou a WeeFly), e o brasão do
+          ministério quando o caso tem um. */}
+      <PcBrandProvider brand={toClientBrand(brand)} cssVars={brandCssVars(brand)}>
+        <ToastHost>
+          <PcScreenRouter state={state} forceView={view} locale={locale} />
+          <PcFooter />
+          <PcFab />
+        </ToastHost>
+      </PcBrandProvider>
     </I18nProvider>
   )
 }

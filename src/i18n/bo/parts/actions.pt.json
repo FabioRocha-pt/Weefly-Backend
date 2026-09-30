@@ -1,1 +1,225 @@
-{ "bo": { "actions": {} } }
+{
+  "bo": {
+    "actions": {
+      "common": {
+        "invalidData": "Dados inválidos.",
+        "serviceUnavailable": "Serviço indisponível.",
+        "caseNotFound": "Caso não encontrado.",
+        "accountNotFound": "Conta não encontrada.",
+        "invalidEmail": "Email inválido.",
+        "noServiceRole": "Servidor sem service role."
+      },
+      "pc": {
+        "notAllowed": "A sua conta não tem acesso ao Price Checker.",
+        "confirmTick": "Marque a caixa que confirma que o valor entrou.",
+        "rejectReason": "Diga porque não serve — o cliente vai ler.",
+        "archiveNote": "Escreva o motivo.",
+        "noteEmpty": "Escreva a nota.",
+        "noteEmptyFallback": "Nota vazia.",
+        "pnrLength": "O PNR tem 6 caracteres.",
+        "ticketNumberShape": "Cada bilhete são 3 dígitos de companhia + 10 do documento.",
+        "noticeMessage": "Escreva a mensagem — é o cliente que a vai ler.",
+        "unfreezeReason": "Escreva porque o voo escolhido volta atrás — o cliente vai ler.",
+        "departInvalid": "Data de ida inválida.",
+        "datesReason": "Escreva porque as datas mudam — o cliente vai ler esta frase.",
+        "noPayment": "Este caso não tem pagamento.",
+        "confirm": {
+          "notConfirmed": "Marque a caixa antes de confirmar.",
+          "illegal": "O pagamento já está num estado que não permite ser marcado como pago.",
+          "failed": "Não foi possível registar o pagamento.",
+          "unknown": "Falhou.",
+          "mismatch": "Pagamento confirmado — com valor diferente do cobrado, registado no histórico.",
+          "done": "Pagamento confirmado. O caso está pronto a emitir."
+        },
+        "proofRejected": "Comprovativo rejeitado. O cliente pode enviar outro.",
+        "proofRejectFailed": "Não foi possível rejeitar o comprovativo.",
+        "deadlineInvalid": "Prazo inválido.",
+        "deadlineExtended": "Prazo estendido em {hours}h.",
+        "deadlineExtendFailed": "Não foi possível estender o prazo.",
+        "paymentExpired": "Link de pagamento fechado. O cliente vê o ecrã de expirado.",
+        "paymentExpireFailed": "Não foi possível fechar o link.",
+        "paymentReopened": "Pagamento reaberto por {hours}h.",
+        "paymentReopenFailed": "Não foi possível reabrir o pagamento.",
+        "claim": {
+          "hasOwner": "Este caso já tem dono. Para o passar a outra pessoa, mude o vendedor no cabeçalho.",
+          "alreadyYours": "O caso já é seu.",
+          "lostRace": "Outra pessoa reclamou este caso primeiro. Recarregue a página.",
+          "done": "Caso reclamado. Esteve {waited} sem dono."
+        },
+        "alerts": {
+          "nothingUnread": "Nada por ler.",
+          "markedRead": "{n} marcados como lidos.",
+          "cleared": "Avisos lidos limpos."
+        },
+        "pay": {
+          "unknownMethod": "Método desconhecido.",
+          "field": {
+            "stripe": "Link de pagamento Stripe",
+            "vinti4": "Referência SISP ou link",
+            "revolut": "Link Revolut",
+            "instapay": "Referência InstaPay"
+          },
+          "missingLink": "Falta o {field}.",
+          "missingReference": "Falta a {field}.",
+          "missingEither": "Escreva a referência ou o link do {field}.",
+          "notFound": "Pagamento não encontrado.",
+          "alreadyConfirmed": "Este pagamento já está confirmado.",
+          "saveFailed": "Não foi possível gravar.",
+          "savedNotSent": "Instruções gravadas. Ainda não foram enviadas.",
+          "sentAutoDue": "Instruções enviadas ao cliente. O prazo ficou em {due} — hora do envio mais {hours}h.",
+          "savedAndSent": "Instruções gravadas e enviadas ao cliente.",
+          "alreadySent": "Instruções gravadas. Estas já tinham sido enviadas ao cliente.",
+          "emailFailed": "As instruções ficaram gravadas, mas o email NÃO saiu: {reason}. O cliente continua sem saber por onde pagar — mande-lhe o link por WhatsApp ou tente enviar outra vez."
+        },
+        "close": {
+          "alreadyClosed": "O caso já está fechado.",
+          "notIssued": "Só se fecha um caso depois de o bilhete estar emitido. Um caso que não emitiu cancela-se, e isso é outra ação.",
+          "done": "Caso fechado. Saiu das filas de trabalho."
+        },
+        "archive": {
+          "pickReason": "Escolha um motivo.",
+          "migrationMissing": "Falta aplicar a migração 0023 para arquivar casos.",
+          "alreadyClosed": "Este caso já está fechado.",
+          "done": "Caso arquivado. Está no filtro Fechados."
+        },
+        "reopen": {
+          "adminOnly": "Só um administrador pode reabrir um caso fechado.",
+          "notClosed": "Este caso não está fechado.",
+          "done": "Caso reaberto. Volta às filas de trabalho."
+        },
+        "noteSaved": "Nota guardada.",
+        "issue": {
+          "duplicateNumbers": "Há números de bilhete repetidos.",
+          "needsPayment": "Confirme o pagamento antes de emitir.",
+          "fareBasis": "base tarifária",
+          "missingFields": "Faltam campos do documento em {count} voo(s): {flights}.",
+          "saveFailed": "Não foi possível gravar a emissão.",
+          "issued": "Emitido. PNR {pnr}.",
+          "pdfFailed": "O PDF não foi gerado ({reason}) — use \"Gerar de novo\" na aba da Emissão.",
+          "emailSent": "O cliente recebeu o email com o PDF em anexo.",
+          "emailFailed": "O email ao cliente não saiu — veja a aba Comunicações."
+        },
+        "tickets": {
+          "generated": "Bilhete {number} gerado.",
+          "noneYet": "Este caso ainda não tem bilhete gerado. Use “Gerar bilhete” antes de reenviar.",
+          "resent": "Bilhete {number} reenviado — o mesmo documento, sem regenerar.",
+          "resendFailed": "O reenvio falhou: {reason}",
+          "generateFailed": "Não foi possível gerar o bilhete: {reason}"
+        },
+        "seller": {
+          "invalid": "Vendedor inválido.",
+          "notListed": "Esse vendedor não está na lista de acessos.",
+          "saveFailed": "Não foi possível gravar o vendedor.",
+          "assigned": "Caso atribuído a {name}.",
+          "cleared": "Caso sem vendedor."
+        },
+        "notify": {
+          "pickChannel": "Escolha pelo menos um canal.",
+          "emailSent": "email enviado",
+          "emailFailed": "email não saiu ({reason})",
+          "whatsappSent": "WhatsApp enviado",
+          "whatsappFailed": "WhatsApp não saiu ({reason})",
+          "error": "erro",
+          "done": "Aviso registado no caso · {channels}.",
+          "nothingDelivered": "Nada foi entregue · {channels}.",
+          "flagCleared": "Bandeira de entrega baixada."
+        },
+        "link": {
+          "adminOnly": "Só um administrador pode revogar o link.",
+          "failed": "Não foi possível gerar um link novo.",
+          "done": "Link novo gerado. O antigo deixou de abrir — envie o novo ao cliente."
+        },
+        "unfreeze": {
+          "issued": "Este caso já está emitido. Mudar de voo é uma reemissão.",
+          "paid": "O cliente já pagou este voo. Mudá-lo passa por um reembolso, não por voltar um passo.",
+          "done": "O voo deixou de estar congelado e a escolha do cliente foi desfeita.",
+          "draft": "A proposta está em rascunho como R{revision}.",
+          "clientNotified": "O cliente foi avisado."
+        },
+        "dates": {
+          "returnBeforeDepart": "A volta não pode ser antes da ida.",
+          "issued": "Este caso já está emitido. Uma mudança de datas é uma reemissão.",
+          "paid": "O cliente já pagou. Fale com ele antes de mexer nas datas.",
+          "unchanged": "As datas são as mesmas que já estão no pedido.",
+          "saveFailed": "Não foi possível gravar as datas.",
+          "done": "Datas atualizadas e registadas.",
+          "draft": "A proposta voltou a rascunho como R{revision}.",
+          "clientNotified": "O cliente foi avisado por email.",
+          "clientNotNotified": "Não foi possível avisar o cliente por email — fale com ele pelo WhatsApp."
+        }
+      },
+      "access": {
+        "nameMissing": "Falta o nome.",
+        "pickPartner": "Escolha o parceiro.",
+        "reasonMissing": "Escreva o motivo.",
+        "write": {
+          "noPermission": "Não tem permissão para dar este perfil neste parceiro.",
+          "emailTaken": "Já existe uma conta com este email.",
+          "needsOrganisation": "Este perfil pertence a um ministério: escolha-o.",
+          "profileNotInPartner": "Este perfil não existe neste parceiro.",
+          "mismatch": "Os dados não batem certo com o perfil escolhido."
+        },
+        "notManager": "A sua conta não gere utilizadores.",
+        "unknownPartnerOrProfile": "Parceiro ou perfil desconhecido.",
+        "onlyAdminGrantsAdmin": "Só um Admin WeeFly dá o perfil Admin WeeFly.",
+        "cannotGrant": "Não pode dar este perfil neste parceiro.",
+        "secretaryNeedsOrganisation": "A secretária pertence a um ministério: escolha-o.",
+        "ownProfile": "O seu próprio perfil muda-o outra pessoa com acesso de gestão.",
+        "created": "Utilizador criado.",
+        "updated": "Utilizador actualizado.",
+        "inviteSent": "O convite foi enviado.",
+        "inviteFailed": "O convite não saiu: {reason}",
+        "cannotSuspendSelf": "Não pode suspender a sua própria conta.",
+        "suspended": "Conta suspensa. As sessões abertas foram terminadas.",
+        "suspendedNoSession": "Conta suspensa. Não havia sessão a terminar (a pessoa ainda não se registou).",
+        "reactivated": "Conta reactivada.",
+        "accountSuspended": "A conta está suspensa.",
+        "inviteResent": "Convite enviado.",
+        "invite": {
+          "noServiceRole": "servidor sem service role",
+          "noSiteUrl": "NEXT_PUBLIC_SITE_URL por configurar",
+          "alreadyRegistered": "esta pessoa já tem conta — entra com a password dela."
+        }
+      },
+      "partners": {
+        "colorHex": "Cor em hexadecimal, ex.: #02A9FF.",
+        "nameMissing": "Falta o nome comercial.",
+        "dateInvalid": "Data inválida.",
+        "slugShape": "O endereço só leva minúsculas, números e hífen.",
+        "firstAdminEmail": "Falta o email do primeiro administrador.",
+        "firstAdminName": "Falta o nome do primeiro administrador.",
+        "onlyAdminCreates": "Só um Admin WeeFly cria parceiros.",
+        "slugTaken": "Já existe um parceiro com esse endereço.",
+        "created": "Parceiro criado. {notice}",
+        "createdAccountFailed": "Parceiro criado, mas a primeira conta falhou: {error}",
+        "onlyAdminEdits": "Só um Admin WeeFly edita parceiros.",
+        "invalid": "Parceiro inválido.",
+        "notFound": "Parceiro não encontrado.",
+        "updated": "Parceiro actualizado.",
+        "onlyAdminSuspends": "Só um Admin WeeFly suspende parceiros.",
+        "suspendNeedsReason": "A suspensão leva um motivo.",
+        "operatorNotSuspendable": "O operador da plataforma não se suspende.",
+        "suspended": "Parceiro suspenso. As contas dele deixam de entrar e os links deixam de abrir.",
+        "reactivated": "Parceiro reactivado."
+      },
+      "pro": {
+        "masterOnly": "Só a conta master valida contas.",
+        "slugShape": "O endereço da empresa só leva minúsculas, números e hífen.",
+        "companyNameMissing": "Falta o nome da empresa.",
+        "pickCompany": "Escolha a empresa.",
+        "approveInvalid": "Dados de aprovação inválidos.",
+        "alreadyApproved": "Esta conta já foi aprovada.",
+        "slugTaken": "Já existe uma empresa com esse endereço.",
+        "companyNotFound": "Empresa não encontrada.",
+        "approved": "Conta aprovada. O email de aprovação foi enviado.",
+        "approvedEmailFailed": "Conta aprovada, mas o email não saiu: {reason}",
+        "invalidAccount": "Conta inválida.",
+        "rejectNeedsReason": "A recusa leva um motivo.",
+        "reasonTooLong": "O motivo é demasiado longo.",
+        "onlyPendingRejected": "Só se recusa uma conta pendente.",
+        "rejected": "Conta recusada. O email com o motivo foi enviado.",
+        "rejectedEmailFailed": "Conta recusada, mas o email não saiu: {reason}"
+      }
+    }
+  }
+}

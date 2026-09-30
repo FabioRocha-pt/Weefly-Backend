@@ -15,29 +15,15 @@ import { useRouter } from "next/navigation"
 import { boClaimCase } from "@/actions/bo-price-checker"
 import {
   BO_STATE_CLASS,
-  BO_STATE_LABEL,
   type BoBucket,
   type BoQueueRow,
 } from "@/lib/pc/bo-queue"
-import { CLOSED_REASON_LABEL_PT } from "@/lib/pc/archive"
 import { elapsedSince } from "@/lib/case-status"
 import { formatMoney } from "@/lib/proposal-math"
 import { countryName } from "@/lib/countries"
-
-const EMPTY: Record<BoBucket, string> = {
-  por_validar: "Nenhum comprovativo à espera de validação. Este é o balde que nunca deve ter fila.",
-  pagos_sem_bilhete: "Nenhum caso pago sem bilhete emitido.",
-  novos_sem_dono: "Todos os pedidos novos têm dono.",
-  a_cotar_meus: "Não tem casos seus em cotação.",
-  a_expirar: "Nenhuma proposta a expirar na próxima hora.",
-  espera_cliente: "Nenhum caso à espera do cliente.",
-  tudo: "Ainda não entrou nenhum pedido pelo Price Checker.",
-  /* T-21 · fechar um caso é um gesto deliberado, e um sistema novo não tem
-     nenhum. A frase diz onde ele aparece, para ninguém o procurar aqui antes de
-     o ter fechado. */
-  fechados:
-    "Nenhum caso fechado. Um caso fecha-se depois de emitido, no botão do cabeçalho da ficha.",
-}
+import { useI18n } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
+import { translateOr, type Translator } from "@/i18n/translate"
 
 /* A coluna é estreita: fica o código do país, que é o que a equipa lê de
    relance, com o nome inteiro no title. */
@@ -55,6 +41,8 @@ export function BoQueueTable({
   viewerId: string
 }) {
   const router = useRouter()
+  const { t, locale } = useI18n()
+  const tag = LOCALE_TAGS[locale]
   const [pending, startTransition] = useTransition()
   const [query, setQuery] = useState(search)
   const [claiming, setClaiming] = useState<string | null>(null)
@@ -79,33 +67,33 @@ export function BoQueueTable({
             <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
           <input
-            placeholder="Referência, nome, telefone, PNR ou rota"
+            placeholder={t("bo.queue.table.searchPlaceholder")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
         <span className="tcount">
-          {visible.length} {visible.length === 1 ? "caso" : "casos"}
+          {t("bo.queue.table.cases", { count: visible.length })}
         </span>
       </div>
 
       <div className="tablewrap">
         {visible.length === 0 ? (
           <div className="panel-b">
-            <p className="note">{EMPTY[bucket]}</p>
+            <p className="note">{t(`bo.queue.empty.${bucket}`)}</p>
           </div>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Referência</th>
-                <th>Cliente</th>
-                <th>Origem</th>
-                <th>Estado</th>
-                <th>Rota</th>
-                <th>Passageiros</th>
-                <th style={{ textAlign: "right" }}>Valor</th>
-                <th>Na fila há</th>
+                <th>{t("bo.queue.table.reference")}</th>
+                <th>{t("bo.queue.table.client")}</th>
+                <th>{t("bo.queue.table.origin")}</th>
+                <th>{t("bo.queue.table.state")}</th>
+                <th>{t("bo.queue.table.route")}</th>
+                <th>{t("bo.queue.table.passengers")}</th>
+                <th style={{ textAlign: "right" }}>{t("bo.queue.table.amount")}</th>
+                <th>{t("bo.queue.table.inQueueFor")}</th>
                 <th />
               </tr>
             </thead>
@@ -123,7 +111,7 @@ export function BoQueueTable({
                     <td>
                       <div className="ref mono">{row.reference}</div>
                       <div className="ref-sub">
-                        {row.agentSlug ? `agent=${row.agentSlug}` : "sem agente"}
+                        {row.agentSlug ? `agent=${row.agentSlug}` : t("bo.queue.table.noAgent")}
                       </div>
                     </td>
                     <td>
@@ -133,7 +121,7 @@ export function BoQueueTable({
                     <td>
                       <span
                         className="chan"
-                        title={row.market ? countryName(row.market, "pt") : ""}
+                        title={row.market ? countryName(row.market, tag) : ""}
                       >
                         <i>WEB</i>
                         Link · {MARKET_NAME(row.market)}
@@ -142,7 +130,7 @@ export function BoQueueTable({
                     <td>
                       <span className={`state ${BO_STATE_CLASS[row.state]}`}>
                         <span className={`dot ${row.waiting === "bad" ? "bad" : row.waiting}`} />
-                        {BO_STATE_LABEL[row.state]}
+                        {t(`bo.queue.state.${row.state}`)}
                       </span>
                     </td>
                     <td>
@@ -163,7 +151,7 @@ export function BoQueueTable({
                       <div className={`age${late ? " late" : row.waiting === "us" ? " hot" : ""}`}>
                         {elapsedSince(row.submittedAt)}
                       </div>
-                      <div className="age-sub">{deadlineNote(row)}</div>
+                      <div className="age-sub">{deadlineNote(row, t, tag)}</div>
                     </td>
                     <td>
                       <div className="rowacts">
@@ -181,7 +169,7 @@ export function BoQueueTable({
                               })
                             }}
                           >
-                            Reclamar
+                            {t("bo.queue.table.claim")}
                           </button>
                         )}
                         <Link
@@ -191,12 +179,12 @@ export function BoQueueTable({
                           }`}
                         >
                           {row.state === "comprovativo_por_validar"
-                            ? "Validar"
+                            ? t("bo.queue.table.validate")
                             : row.state === "pago_sem_bilhete"
-                              ? "Emitir"
+                              ? t("bo.queue.table.issue")
                               : row.state === "novo"
-                                ? "Cotar"
-                                : "Abrir"}
+                                ? t("bo.queue.table.quote")
+                                : t("bo.queue.table.open")}
                         </Link>
                       </div>
                     </td>
@@ -217,11 +205,11 @@ export function BoQueueTable({
  * Distinguir os dois é o ponto. "prazo nosso" é uma dívida da equipa; "prazo do
  * cliente" é uma espera normal.
  */
-function deadlineNote(row: BoQueueRow): string {
+function deadlineNote(row: BoQueueRow, t: Translator, tag: string): string {
   /* T-21 · num caso fechado o prazo já não é notícia; quem o fechou e quando é
      que é. É a única pergunta que se faz sobre um caso arquivado. */
   if (row.closedAt) {
-    const when = new Date(row.closedAt).toLocaleDateString("pt-PT", {
+    const when = new Date(row.closedAt).toLocaleDateString(tag, {
       day: "2-digit",
       month: "short",
       timeZone: "Atlantic/Cape_Verde",
@@ -229,28 +217,28 @@ function deadlineNote(row: BoQueueRow): string {
     /* PRO-10 · o motivo, quando foi arquivado e não emitido. */
     const why =
       row.closedReason && row.closedReason !== "emitido"
-        ? ` · ${CLOSED_REASON_LABEL_PT[row.closedReason] ?? row.closedReason}`
+        ? ` · ${translateOr(t, `bo.queue.closedReason.${row.closedReason}`, row.closedReason)}`
         : ""
-    return `fechado ${when}${why}${row.closedByEmail ? ` · ${row.closedByEmail}` : ""}`
+    return `${t("bo.queue.deadline.closed", { when })}${why}${row.closedByEmail ? ` · ${row.closedByEmail}` : ""}`
   }
-  if (row.state === "emitido") return row.pnr ? `PNR ${row.pnr}` : "emitido"
-  if (row.state === "cancelado") return "cancelado"
-  if (row.state === "expirado") return "link expirado"
+  if (row.state === "emitido") return row.pnr ? `PNR ${row.pnr}` : t("bo.queue.deadline.issued")
+  if (row.state === "cancelado") return t("bo.queue.deadline.cancelled")
+  if (row.state === "expirado") return t("bo.queue.deadline.linkExpired")
 
   if (row.deadlineAt) {
     const left = Date.parse(row.deadlineAt) - Date.now()
     const label =
       left <= 0
-        ? "prazo esgotado"
-        : `${row.deadlineIsOurs ? "validar" : "pagar"} até ${new Date(
-            row.deadlineAt
-          ).toLocaleString("pt-PT", {
-            day: "2-digit",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "Atlantic/Cape_Verde",
-          })}`
+        ? t("bo.queue.deadline.overdue")
+        : t(row.deadlineIsOurs ? "bo.queue.deadline.validateBy" : "bo.queue.deadline.payBy", {
+            when: new Date(row.deadlineAt).toLocaleString(tag, {
+              day: "2-digit",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "Atlantic/Cape_Verde",
+            }),
+          })
     return label
   }
 
@@ -258,11 +246,16 @@ function deadlineNote(row: BoQueueRow): string {
     /* FB-04 · o prazo é agora um instante em UTC e já não a hora de parede que
        o vendedor escrevia. Cortar a string mostrava a hora de Greenwich a quem
        está em Cabo Verde — uma hora a mais, sempre. */
-    return `proposta válida até ${new Date(row.offerValidUntil).toLocaleString(
-      "pt-PT",
-      { hour: "2-digit", minute: "2-digit", timeZone: "Atlantic/Cape_Verde" }
-    )}`
+    return t("bo.queue.deadline.offerValidUntil", {
+      when: new Date(row.offerValidUntil).toLocaleString(tag, {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Atlantic/Cape_Verde",
+      }),
+    })
   }
 
-  return row.waiting === "us" ? "à espera de nós" : "à espera do cliente"
+  return row.waiting === "us"
+    ? t("bo.queue.deadline.waitingUs")
+    : t("bo.queue.deadline.waitingClient")
 }

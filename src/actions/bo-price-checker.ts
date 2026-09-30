@@ -17,6 +17,10 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
+import { getBoI18n } from "@/i18n/bo-server"
+import { LOCALE_TAGS } from "@/i18n/config"
+import { translateMessage } from "@/i18n/translate"
+
 import { createAdminClient } from "@/utils/supabase/admin"
 import { boIdentity } from "@/lib/bo-access"
 import { boCaseIdentity, boPaymentIdentity } from "@/lib/bo-scope"
@@ -55,7 +59,8 @@ export type BoResultWith<T> =
   | ({ ok: true; notice?: string } & T)
   | { ok: false; error: string }
 
-const NOT_ALLOWED = "A sua conta não tem acesso ao Price Checker."
+/* I18N-01 · a frase de quem não tem acesso sai do dicionário, na língua do agente. */
+const NOT_ALLOWED = "bo.actions.pc.notAllowed"
 
 function touch(caseId: string) {
   revalidatePath("/admin/price-checker")
@@ -70,7 +75,7 @@ const confirmSchema = z.object({
   /* A checkbox. `z.literal(true)` e não `boolean`: uma caixa desmarcada não é
      uma confirmação com valor `false`, é uma ação que não devia ter acontecido. */
   confirmed: z.literal(true, {
-    errorMap: () => ({ message: "Marque a caixa que confirma que o valor entrou." }),
+    errorMap: () => ({ message: "bo.actions.pc.confirmTick" }),
   }),
   receivedAmount: z.string().optional(),
   method: z.string().optional(),
@@ -90,17 +95,18 @@ const confirmSchema = z.object({
 export async function boConfirmPayment(
   input: z.input<typeof confirmSchema>
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boPaymentIdentity(String(input?.caseId ?? ""), String(input?.paymentId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = confirmSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
   }
   const v = parsed.data
 
   const payment = await getPcPayment(v.caseId)
-  if (!payment) return { ok: false, error: "Este caso não tem pagamento." }
+  if (!payment) return { ok: false, error: t("bo.actions.pc.noPayment") }
 
   const received = v.receivedAmount ? parseMoney(v.receivedAmount) : payment.amount
 
@@ -120,13 +126,13 @@ export async function boConfirmPayment(
 
   if (!outcome.ok) {
     const message: Record<string, string> = {
-      not_confirmed: "Marque a caixa antes de confirmar.",
-      no_payment: "Este caso não tem pagamento.",
-      illegal: "O pagamento já está num estado que não permite ser marcado como pago.",
-      failed: "Não foi possível registar o pagamento.",
-      unavailable: "Serviço indisponível.",
+      not_confirmed: t("bo.actions.pc.confirm.notConfirmed"),
+      no_payment: t("bo.actions.pc.noPayment"),
+      illegal: t("bo.actions.pc.confirm.illegal"),
+      failed: t("bo.actions.pc.confirm.failed"),
+      unavailable: t("bo.actions.common.serviceUnavailable"),
     }
-    return { ok: false, error: message[outcome.reason] ?? "Falhou." }
+    return { ok: false, error: message[outcome.reason] ?? t("bo.actions.pc.confirm.unknown") }
   }
 
   await notifyClientPaid(v.caseId)
@@ -135,27 +141,28 @@ export async function boConfirmPayment(
   return {
     ok: true,
     notice: mismatch
-      ? "Pagamento confirmado — com valor diferente do cobrado, registado no histórico."
-      : "Pagamento confirmado. O caso está pronto a emitir.",
+      ? t("bo.actions.pc.confirm.mismatch")
+      : t("bo.actions.pc.confirm.done"),
   }
 }
 
 const rejectSchema = z.object({
   caseId: z.string().uuid(),
   paymentId: z.string().uuid(),
-  reason: z.string().trim().min(3, "Diga porque não serve — o cliente vai ler."),
+  reason: z.string().trim().min(3, "bo.actions.pc.rejectReason"),
 })
 
 /** Rejeitar o comprovativo, e dar ao cliente nova janela para enviar outro. */
 export async function boRejectProof(
   input: z.input<typeof rejectSchema>
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boPaymentIdentity(String(input?.caseId ?? ""), String(input?.paymentId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = rejectSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
   }
 
   const result = await rejectProof({
@@ -169,8 +176,8 @@ export async function boRejectProof(
   touch(parsed.data.caseId)
 
   return result.ok
-    ? { ok: true, notice: "Comprovativo rejeitado. O cliente pode enviar outro." }
-    : { ok: false, error: "Não foi possível rejeitar o comprovativo." }
+    ? { ok: true, notice: t("bo.actions.pc.proofRejected") }
+    : { ok: false, error: t("bo.actions.pc.proofRejectFailed") }
 }
 
 const extendSchema = z.object({
@@ -183,11 +190,12 @@ const extendSchema = z.object({
 export async function boExtendDeadline(
   input: z.input<typeof extendSchema>
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boPaymentIdentity(String(input?.caseId ?? ""), String(input?.paymentId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = extendSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: "Prazo inválido." }
+  if (!parsed.success) return { ok: false, error: t("bo.actions.pc.deadlineInvalid") }
 
   const result = await extendReviewDeadline({
     caseId: parsed.data.caseId,
@@ -200,8 +208,8 @@ export async function boExtendDeadline(
   touch(parsed.data.caseId)
 
   return result.ok
-    ? { ok: true, notice: `Prazo estendido em ${parsed.data.hours}h.` }
-    : { ok: false, error: "Não foi possível estender o prazo." }
+    ? { ok: true, notice: t("bo.actions.pc.deadlineExtended", { hours: parsed.data.hours }) }
+    : { ok: false, error: t("bo.actions.pc.deadlineExtendFailed") }
 }
 
 /** Fechar o link à mão, antes do prazo. */
@@ -209,8 +217,9 @@ export async function boExpirePayment(
   caseId: string,
   paymentId: string
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boPaymentIdentity(caseId, paymentId)
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const result = await expireNow({
     caseId,
@@ -222,8 +231,8 @@ export async function boExpirePayment(
   touch(caseId)
 
   return result.ok
-    ? { ok: true, notice: "Link de pagamento fechado. O cliente vê o ecrã de expirado." }
-    : { ok: false, error: "Não foi possível fechar o link." }
+    ? { ok: true, notice: t("bo.actions.pc.paymentExpired") }
+    : { ok: false, error: t("bo.actions.pc.paymentExpireFailed") }
 }
 
 /** Reabrir um pagamento expirado, com nova janela. */
@@ -231,8 +240,9 @@ export async function boReopenPayment(
   caseId: string,
   hours = 48
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(caseId)
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const result = await reopenPayment({
     caseId,
@@ -244,8 +254,8 @@ export async function boReopenPayment(
   touch(caseId)
 
   return result.ok
-    ? { ok: true, notice: `Pagamento reaberto por ${hours}h.` }
-    : { ok: false, error: "Não foi possível reabrir o pagamento." }
+    ? { ok: true, notice: t("bo.actions.pc.paymentReopened", { hours }) }
+    : { ok: false, error: t("bo.actions.pc.paymentReopenFailed") }
 }
 
 /*
@@ -281,11 +291,12 @@ export async function boReopenPayment(
  * o segundo recebe uma frase em vez de um caso que acha que é dele.
  */
 export async function boClaimCase(caseId: string): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(caseId)
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Serviço indisponível." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   const { data: bookingCase } = await admin
     .from("booking_cases")
@@ -293,7 +304,7 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
     .eq("id", caseId)
     .maybeSingle()
 
-  if (!bookingCase) return { ok: false, error: "Caso não encontrado." }
+  if (!bookingCase) return { ok: false, error: t("bo.actions.common.caseNotFound") }
 
   const record = bookingCase as {
     created_by: string | null
@@ -305,12 +316,12 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
     return {
       ok: false,
       error:
-        "Este caso já tem dono. Para o passar a outra pessoa, mude o vendedor no cabeçalho.",
+        t("bo.actions.pc.claim.hasOwner"),
     }
   }
 
   if (record.created_by === identity.userId) {
-    return { ok: true, notice: "O caso já é seu." }
+    return { ok: true, notice: t("bo.actions.pc.claim.alreadyYours") }
   }
 
   const now = new Date()
@@ -345,7 +356,7 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
   if (!claimed || claimed.length === 0) {
     return {
       ok: false,
-      error: "Outra pessoa reclamou este caso primeiro. Recarregue a página.",
+      error: t("bo.actions.pc.claim.lostRace"),
     }
   }
 
@@ -373,7 +384,7 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
   })
 
   touch(caseId)
-  return { ok: true, notice: `Caso reclamado. Esteve ${waited} sem dono.` }
+  return { ok: true, notice: t("bo.actions.pc.claim.done", { waited }) }
 }
 
 // ── C-14 · a campainha ───────────────────────────────────────────────────────
@@ -389,8 +400,9 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
  * seguinte, e devolvê-lo daqui criava uma segunda fonte de verdade.
  */
 export async function boMarkAlertsRead(eventIds: string[]): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boIdentity()
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   /* Um limite, porque isto vem do browser. Uma entrada colapsada leva os ids
      de todas as repetições (a janela é de 400). */
@@ -405,23 +417,25 @@ export async function boMarkAlertsRead(eventIds: string[]): Promise<BoResult> {
 
 /** PRO-12 · "Marcar todas como lidas". A confirmação é do painel. */
 export async function boMarkAllAlertsRead(): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boIdentity()
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const n = await markAllAlertsRead(identity.userId)
   revalidatePath("/admin/price-checker", "layout")
-  return { ok: true, notice: n === 0 ? "Nada por ler." : `${n} marcados como lidos.` }
+  return { ok: true, notice: n === 0 ? t("bo.actions.pc.alerts.nothingUnread") : t("bo.actions.pc.alerts.markedRead", { n }) }
 }
 
 /** PRO-12 · "Limpar": retira os lidos do painel. A confirmação é do painel. */
 export async function boClearReadAlerts(): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boIdentity()
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const result = await clearReadAlerts(identity.userId)
   if (!result.ok) return result
   revalidatePath("/admin/price-checker", "layout")
-  return { ok: true, notice: "Avisos lidos limpos." }
+  return { ok: true, notice: t("bo.actions.pc.alerts.cleared") }
 }
 
 // ── C-33 · as instruções de pagamento ────────────────────────────────────────
@@ -449,37 +463,40 @@ const instructionsSchema = z.object({
 export async function boSavePayInstructions(
   input: z.input<typeof instructionsSchema>
 ): Promise<BoResult> {
+  const { t, locale } = await getBoI18n()
   const identity = await boPaymentIdentity(String(input?.caseId ?? ""), String(input?.paymentId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = instructionsSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
   }
   const v = parsed.data
 
   const method = payMethod(v.method)
-  if (!method) return { ok: false, error: "Método desconhecido." }
+  if (!method) return { ok: false, error: t("bo.actions.pc.pay.unknownMethod") }
 
   const link = v.link?.trim() || null
   const reference = v.reference?.trim() || null
 
+  /* O nome do campo vem do dicionário (em PT, igual ao `fieldPt` do catálogo). */
+  const field = t(`bo.actions.pc.pay.field.${v.method}`)
   if (method.supply === "link" && !link) {
-    return { ok: false, error: `Falta o ${method.fieldPt.toLowerCase()}.` }
+    return { ok: false, error: t("bo.actions.pc.pay.missingLink", { field: field.toLowerCase() }) }
   }
   if (method.supply === "reference" && !reference) {
-    return { ok: false, error: `Falta a ${method.fieldPt.toLowerCase()}.` }
+    return { ok: false, error: t("bo.actions.pc.pay.missingReference", { field: field.toLowerCase() }) }
   }
   if (method.supply === "either" && !link && !reference) {
-    return { ok: false, error: `Escreva a referência ou o link do ${method.fieldPt}.` }
+    return { ok: false, error: t("bo.actions.pc.pay.missingEither", { field }) }
   }
 
   const payment = await getPcPayment(v.caseId)
   if (!payment || payment.id !== v.paymentId) {
-    return { ok: false, error: "Pagamento não encontrado." }
+    return { ok: false, error: t("bo.actions.pc.pay.notFound") }
   }
   if (payment.admin_confirmed || payment.status === "COMPLETED") {
-    return { ok: false, error: "Este pagamento já está confirmado." }
+    return { ok: false, error: t("bo.actions.pc.pay.alreadyConfirmed") }
   }
 
   const dueAt = v.dueAt ? new Date(v.dueAt).toISOString() : null
@@ -494,7 +511,7 @@ export async function boSavePayInstructions(
     actorEmail: identity.email,
   })
 
-  if (!saved.ok) return { ok: false, error: "Não foi possível gravar." }
+  if (!saved.ok) return { ok: false, error: t("bo.actions.pc.pay.saveFailed") }
 
   await logCaseEvent({
     caseId: v.caseId,
@@ -529,7 +546,7 @@ export async function boSavePayInstructions(
 
   if (!v.send) {
     touch(v.caseId)
-    return { ok: true, notice: "Instruções gravadas. Ainda não foram enviadas." }
+    return { ok: true, notice: t("bo.actions.pc.pay.savedNotSent") }
   }
 
   /* A impressão digital do que vai sair: o mesmo conteúdo duas vezes é um
@@ -589,23 +606,24 @@ export async function boSavePayInstructions(
     return {
       ok: true,
       notice: autoFilled
-        ? `Instruções enviadas ao cliente. O prazo ficou em ${new Date(
-            due!
-          ).toLocaleString("pt-PT", {
-            day: "2-digit",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "Atlantic/Cape_Verde",
-          })} — hora do envio mais ${PAY_DUE_HOURS}h.`
-        : "Instruções gravadas e enviadas ao cliente.",
+        ? t("bo.actions.pc.pay.sentAutoDue", {
+            due: new Date(due!).toLocaleString(LOCALE_TAGS[locale], {
+              day: "2-digit",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "Atlantic/Cape_Verde",
+            }),
+            hours: PAY_DUE_HOURS,
+          })
+        : t("bo.actions.pc.pay.savedAndSent"),
     }
   }
 
   if (outcome.status === "duplicate") {
     return {
       ok: true,
-      notice: "Instruções gravadas. Estas já tinham sido enviadas ao cliente.",
+      notice: t("bo.actions.pc.pay.alreadySent"),
     }
   }
 
@@ -619,7 +637,7 @@ export async function boSavePayInstructions(
    */
   return {
     ok: false,
-    error: `As instruções ficaram gravadas, mas o email NÃO saiu: ${outcome.reason}. O cliente continua sem saber por onde pagar — mande-lhe o link por WhatsApp ou tente enviar outra vez.`,
+    error: t("bo.actions.pc.pay.emailFailed", { reason: outcome.reason }),
   }
 }
 
@@ -639,11 +657,12 @@ export async function boSavePayInstructions(
  * outra leitura nos números do mês. Os estados finais completos são Sprint 4.
  */
 export async function boCloseCase(caseId: string): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(caseId)
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Serviço indisponível." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   const { data: raw } = await admin
     .from("booking_cases")
@@ -651,7 +670,7 @@ export async function boCloseCase(caseId: string): Promise<BoResult> {
     .eq("id", caseId)
     .maybeSingle()
 
-  if (!raw) return { ok: false, error: "Caso não encontrado." }
+  if (!raw) return { ok: false, error: t("bo.actions.common.caseNotFound") }
 
   const record = raw as {
     stage: string
@@ -660,14 +679,14 @@ export async function boCloseCase(caseId: string): Promise<BoResult> {
     closed_at: string | null
   }
 
-  if (record.closed_at) return { ok: true, notice: "O caso já está fechado." }
+  if (record.closed_at) return { ok: true, notice: t("bo.actions.pc.close.alreadyClosed") }
 
   const issued = record.stage === "emitido" || Boolean(record.pnr) || Boolean(record.issued_at)
   if (!issued) {
     return {
       ok: false,
       error:
-        "Só se fecha um caso depois de o bilhete estar emitido. Um caso que não emitiu cancela-se, e isso é outra ação.",
+        t("bo.actions.pc.close.notIssued"),
     }
   }
 
@@ -694,7 +713,7 @@ export async function boCloseCase(caseId: string): Promise<BoResult> {
   })
 
   touch(caseId)
-  return { ok: true, notice: "Caso fechado. Saiu das filas de trabalho." }
+  return { ok: true, notice: t("bo.actions.pc.close.done") }
 }
 
 /**
@@ -712,7 +731,7 @@ const archiveSchema = z
     note: z.string().trim().max(1000).optional(),
   })
   .refine((v) => v.reason !== "outro" || (v.note ?? "").length > 0, {
-    message: "Escreva o motivo.",
+    message: "bo.actions.pc.archiveNote",
     path: ["note"],
   })
 
@@ -721,20 +740,21 @@ export async function boArchiveCase(input: {
   reason: string
   note?: string
 }): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(String(input?.caseId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = archiveSchema.safeParse(input)
   if (!parsed.success) {
     return {
       ok: false,
-      error: parsed.error.issues[0]?.path[0] === "note" ? "Escreva o motivo." : "Escolha um motivo.",
+      error: parsed.error.issues[0]?.path[0] === "note" ? t("bo.actions.pc.archiveNote") : t("bo.actions.pc.archive.pickReason"),
     }
   }
   const v = parsed.data
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Serviço indisponível." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   const { data: archived, error } = await admin
     .from("booking_cases")
@@ -751,12 +771,12 @@ export async function boArchiveCase(input: {
 
   if (error) {
     if (error.code === "42703") {
-      return { ok: false, error: "Falta aplicar a migração 0023 para arquivar casos." }
+      return { ok: false, error: t("bo.actions.pc.archive.migrationMissing") }
     }
     return { ok: false, error: error.message }
   }
   if (!archived || archived.length === 0) {
-    return { ok: false, error: "Este caso já está fechado." }
+    return { ok: false, error: t("bo.actions.pc.archive.alreadyClosed") }
   }
 
   const label = CLOSED_REASON_LABEL_PT[v.reason] ?? v.reason
@@ -772,7 +792,7 @@ export async function boArchiveCase(input: {
   })
 
   touch(v.caseId)
-  return { ok: true, notice: "Caso arquivado. Está no filtro Fechados." }
+  return { ok: true, notice: t("bo.actions.pc.archive.done") }
 }
 
 /**
@@ -782,18 +802,19 @@ export async function boArchiveCase(input: {
  * nada: o rasto vive em `case_events`, que ninguém reescreve.
  */
 export async function boReopenCase(caseId: string): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(caseId)
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   if (identity.role !== "admin") {
     return {
       ok: false,
-      error: "Só um administrador pode reabrir um caso fechado.",
+      error: t("bo.actions.pc.reopen.adminOnly"),
     }
   }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Serviço indisponível." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   const reopen = (fields: Record<string, null>) =>
     admin
@@ -813,7 +834,7 @@ export async function boReopenCase(caseId: string): Promise<BoResult> {
   if (reopenError?.code === "42703") ({ data: reopened } = await reopen(base))
 
   if (!reopened || reopened.length === 0) {
-    return { ok: false, error: "Este caso não está fechado." }
+    return { ok: false, error: t("bo.actions.pc.reopen.notClosed") }
   }
 
   await logCaseEvent({
@@ -827,28 +848,29 @@ export async function boReopenCase(caseId: string): Promise<BoResult> {
   })
 
   touch(caseId)
-  return { ok: true, notice: "Caso reaberto. Volta às filas de trabalho." }
+  return { ok: true, notice: t("bo.actions.pc.reopen.done") }
 }
 
 const noteSchema = z.object({
   caseId: z.string().uuid(),
-  body: z.string().trim().min(1, "Escreva a nota."),
+  body: z.string().trim().min(1, "bo.actions.pc.noteEmpty"),
 })
 
 /** A nota interna do caso — o que ficou combinado no WhatsApp. */
 export async function boSaveNote(
   input: z.input<typeof noteSchema>
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(String(input?.caseId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = noteSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Nota vazia." }
+    return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.pc.noteEmptyFallback") }
   }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Serviço indisponível." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   const { data: bookingCase } = await admin
     .from("booking_cases")
@@ -879,7 +901,7 @@ export async function boSaveNote(
   })
 
   touch(parsed.data.caseId)
-  return { ok: true, notice: "Nota guardada." }
+  return { ok: true, notice: t("bo.actions.pc.noteSaved") }
 }
 
 // ── emissão ──────────────────────────────────────────────────────────────────
@@ -890,7 +912,7 @@ const issueSchema = z.object({
     .string()
     .trim()
     .toUpperCase()
-    .regex(/^[A-Z0-9]{6}$/, "O PNR tem 6 caracteres."),
+    .regex(/^[A-Z0-9]{6}$/, "bo.actions.pc.pnrLength"),
   issuingCarrier: z.string().trim().max(40).optional(),
   consolidator: z.string().trim().max(60).optional(),
   costReal: z.string().optional(),
@@ -918,7 +940,7 @@ const issueSchema = z.object({
           .transform((v) => v.replace(/[\s-]+/g, ""))
           .refine(
             (v) => /^\d{3}\d{10}$/.test(v),
-            "Cada bilhete são 3 dígitos de companhia + 10 do documento."
+            "bo.actions.pc.ticketNumberShape"
           ),
         seatOutbound: z.string().trim().max(6).optional(),
         seatInbound: z.string().trim().max(6).optional(),
@@ -987,30 +1009,31 @@ const issueSchema = z.object({
 export async function boIssueTickets(
   input: z.input<typeof issueSchema>
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(String(input?.caseId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = issueSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
   }
   const v = parsed.data
 
   const numbers = v.tickets.map((t) => t.ticketNumber)
   if (new Set(numbers).size !== numbers.length) {
-    return { ok: false, error: "Há números de bilhete repetidos." }
+    return { ok: false, error: t("bo.actions.pc.issue.duplicateNumbers") }
   }
 
   const payment = await getPcPayment(v.caseId)
   if (!payment || (!payment.admin_confirmed && payment.status !== "COMPLETED")) {
     return {
       ok: false,
-      error: "Confirme o pagamento antes de emitir.",
+      error: t("bo.actions.pc.issue.needsPayment"),
     }
   }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Serviço indisponível." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   /*
    * T-04 · "o botão de emitir fica desactivado até cada voo estar completo".
@@ -1037,7 +1060,7 @@ export async function boIssueTickets(
         continue
       }
       const gaps = [
-        row.fareBasis?.trim() ? "" : "base tarifária",
+        row.fareBasis?.trim() ? "" : t("bo.actions.pc.issue.fareBasis"),
         row.nvb?.trim() ? "" : "NVB",
         row.nva?.trim() ? "" : "NVA",
       ].filter(Boolean)
@@ -1047,7 +1070,7 @@ export async function boIssueTickets(
     if (missing.length > 0) {
       return {
         ok: false,
-        error: `Faltam campos do documento em ${missing.length} voo(s): ${missing.join(" · ")}.`,
+        error: t("bo.actions.pc.issue.missingFields", { count: missing.length, flights: missing.join(" · ") }),
       }
     }
   }
@@ -1080,7 +1103,7 @@ export async function boIssueTickets(
 
   if (error) {
     console.error("[bo/pc] emissão falhou:", error.message)
-    return { ok: false, error: "Não foi possível gravar a emissão." }
+    return { ok: false, error: t("bo.actions.pc.issue.saveFailed") }
   }
 
   for (const ticket of v.tickets) {
@@ -1177,14 +1200,14 @@ export async function boIssueTickets(
   return {
     ok: true,
     notice: [
-      `Emitido. PNR ${v.pnr}.`,
+      t("bo.actions.pc.issue.issued", { pnr: v.pnr }),
       documents.ok
-        ? `Bilhete ${documents.documentNumber} gerado.`
-        : `O PDF não foi gerado (${documents.reason}) — use "Gerar de novo" na aba da Emissão.`,
+        ? t("bo.actions.pc.tickets.generated", { number: documents.documentNumber })
+        : t("bo.actions.pc.issue.pdfFailed", { reason: documents.reason }),
       documents.ok
         ? delivered
-          ? "O cliente recebeu o email com o PDF em anexo."
-          : "O email ao cliente não saiu — veja a aba Comunicações."
+          ? t("bo.actions.pc.issue.emailSent")
+          : t("bo.actions.pc.issue.emailFailed")
         : "",
     ]
       .filter(Boolean)
@@ -1248,8 +1271,9 @@ async function selectedSegments(caseId: string): Promise<
  * tem de ser byte a byte o mesmo que o cliente já tem.
  */
 export async function boResendTickets(caseId: string): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(caseId)
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const { loadTicketDocument } = await import("@/lib/tickets/store")
   const combined = await loadTicketDocument(caseId, null)
@@ -1258,7 +1282,7 @@ export async function boResendTickets(caseId: string): Promise<BoResult> {
     return {
       ok: false,
       error:
-        "Este caso ainda não tem bilhete gerado. Use “Gerar bilhete” antes de reenviar.",
+        t("bo.actions.pc.tickets.noneYet"),
     }
   }
 
@@ -1294,9 +1318,9 @@ export async function boResendTickets(caseId: string): Promise<BoResult> {
   return sent.ok
     ? {
         ok: true,
-        notice: `Bilhete ${combined.documentNumber} reenviado — o mesmo documento, sem regenerar.`,
+        notice: t("bo.actions.pc.tickets.resent", { number: combined.documentNumber }),
       }
-    : { ok: false, error: `O reenvio falhou: ${sent.reason}` }
+    : { ok: false, error: t("bo.actions.pc.tickets.resendFailed", { reason: sent.reason }) }
 }
 
 /**
@@ -1307,8 +1331,9 @@ export async function boResendTickets(caseId: string): Promise<BoResult> {
  * mantendo o número de documento, que deriva do PNR e da referência.
  */
 export async function boGenerateTickets(caseId: string): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(caseId)
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const { generateTicketDocuments } = await import("@/lib/tickets/generate")
   const result = await generateTicketDocuments({
@@ -1319,8 +1344,8 @@ export async function boGenerateTickets(caseId: string): Promise<BoResult> {
   touch(caseId)
 
   return result.ok
-    ? { ok: true, notice: `Bilhete ${result.documentNumber} gerado.` }
-    : { ok: false, error: `Não foi possível gerar o bilhete: ${result.reason}` }
+    ? { ok: true, notice: t("bo.actions.pc.tickets.generated", { number: result.documentNumber }) }
+    : { ok: false, error: t("bo.actions.pc.tickets.generateFailed", { reason: result.reason }) }
 }
 
 
@@ -1344,14 +1369,15 @@ const sellerSchema = z.object({
 export async function boSetSeller(
   input: z.input<typeof sellerSchema>
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(String(input?.caseId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = sellerSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: "Vendedor inválido." }
+  if (!parsed.success) return { ok: false, error: t("bo.actions.pc.seller.invalid") }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Serviço indisponível." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   const { listBoSellers } = await import("@/lib/bo-access")
   const sellers = await listBoSellers()
@@ -1362,7 +1388,7 @@ export async function boSetSeller(
     : null
 
   if (parsed.data.email && !chosen) {
-    return { ok: false, error: "Esse vendedor não está na lista de acessos." }
+    return { ok: false, error: t("bo.actions.pc.seller.notListed") }
   }
 
   const { error } = await admin
@@ -1377,7 +1403,7 @@ export async function boSetSeller(
 
   if (error) {
     console.error("[bo/pc] vendedor não gravado:", error.message)
-    return { ok: false, error: "Não foi possível gravar o vendedor." }
+    return { ok: false, error: t("bo.actions.pc.seller.saveFailed") }
   }
 
   await logCaseEvent({
@@ -1393,7 +1419,7 @@ export async function boSetSeller(
   touch(parsed.data.caseId)
   return {
     ok: true,
-    notice: chosen ? `Caso atribuído a ${chosen.label}.` : "Caso sem vendedor.",
+    notice: chosen ? t("bo.actions.pc.seller.assigned", { name: chosen.label }) : t("bo.actions.pc.seller.cleared"),
   }
 }
 
@@ -1404,7 +1430,7 @@ const noticeSchema = z.object({
   message: z
     .string()
     .trim()
-    .min(10, "Escreva a mensagem — é o cliente que a vai ler.")
+    .min(10, "bo.actions.pc.noticeMessage")
     .max(2000),
   email: z.boolean().default(true),
   whatsapp: z.boolean().default(true),
@@ -1420,17 +1446,18 @@ const noticeSchema = z.object({
 export async function boNotifyClient(
   input: z.input<typeof noticeSchema>
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(String(input?.caseId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = noticeSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
   }
   const v = parsed.data
 
   if (!v.email && !v.whatsapp) {
-    return { ok: false, error: "Escolha pelo menos um canal." }
+    return { ok: false, error: t("bo.actions.pc.notify.pickChannel") }
   }
 
   const { sendManualClientNotice } = await import("@/lib/emails/send")
@@ -1464,28 +1491,33 @@ export async function boNotifyClient(
    */
   const parts: string[] = []
   if (v.email) {
-    parts.push(outcome.email?.ok ? "email enviado" : `email não saiu (${outcome.email?.reason ?? "erro"})`)
+    parts.push(
+      outcome.email?.ok
+        ? t("bo.actions.pc.notify.emailSent")
+        : t("bo.actions.pc.notify.emailFailed", { reason: outcome.email?.reason ?? t("bo.actions.pc.notify.error") })
+    )
   }
   if (v.whatsapp) {
     parts.push(
       outcome.whatsapp?.ok
-        ? "WhatsApp enviado"
-        : `WhatsApp não saiu (${outcome.whatsapp?.reason ?? "erro"})`
+        ? t("bo.actions.pc.notify.whatsappSent")
+        : t("bo.actions.pc.notify.whatsappFailed", { reason: outcome.whatsapp?.reason ?? t("bo.actions.pc.notify.error") })
     )
   }
 
   const anySent = Boolean(outcome.email?.ok || outcome.whatsapp?.ok)
   return anySent
-    ? { ok: true, notice: `Aviso registado no caso · ${parts.join(" · ")}.` }
-    : { ok: false, error: `Nada foi entregue · ${parts.join(" · ")}.` }
+    ? { ok: true, notice: t("bo.actions.pc.notify.done", { channels: parts.join(" · ") }) }
+    : { ok: false, error: t("bo.actions.pc.notify.nothingDelivered", { channels: parts.join(" · ") }) }
 }
 
 // ── NT-06 · a bandeira de entrega ────────────────────────────────────────────
 
 /** Baixa a bandeira depois de alguém tratar do assunto (telefonema, outro email). */
 export async function boClearNotifyFlag(caseId: string): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(caseId)
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const { clearNotifyFlag } = await import("@/lib/notifications")
   await clearNotifyFlag(caseId)
@@ -1501,7 +1533,7 @@ export async function boClearNotifyFlag(caseId: string): Promise<BoResult> {
   })
 
   touch(caseId)
-  return { ok: true, notice: "Bandeira de entrega baixada." }
+  return { ok: true, notice: t("bo.actions.pc.notify.flagCleared") }
 }
 
 // ── LNK-08 · revogar e voltar a gerar o link do cliente ──────────────────────
@@ -1522,14 +1554,15 @@ export async function boRotateClientLink(
   caseId: string,
   reason: string
 ): Promise<BoResultWith<{ token: string }>> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(caseId)
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
   if (identity.role !== "admin") {
-    return { ok: false, error: "Só um administrador pode revogar o link." }
+    return { ok: false, error: t("bo.actions.pc.link.adminOnly") }
   }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Serviço indisponível." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   const { data: existing } = await admin
     .from("booking_cases")
@@ -1537,7 +1570,7 @@ export async function boRotateClientLink(
     .eq("id", caseId)
     .maybeSingle()
 
-  if (!existing) return { ok: false, error: "Caso não encontrado." }
+  if (!existing) return { ok: false, error: t("bo.actions.common.caseNotFound") }
 
   const { mintToken } = await import("@/lib/booking-cases")
   const token = mintToken()
@@ -1549,7 +1582,7 @@ export async function boRotateClientLink(
 
   if (error) {
     console.error("[bo/pc] rotação do link falhou:", error.message)
-    return { ok: false, error: "Não foi possível gerar um link novo." }
+    return { ok: false, error: t("bo.actions.pc.link.failed") }
   }
 
   await admin.from("case_token_history").insert({
@@ -1574,7 +1607,7 @@ export async function boRotateClientLink(
   return {
     ok: true,
     token,
-    notice: "Link novo gerado. O antigo deixou de abrir — envie o novo ao cliente.",
+    notice: t("bo.actions.pc.link.done"),
   }
 }
 
@@ -1585,7 +1618,7 @@ const unfreezeSchema = z.object({
   reason: z
     .string()
     .trim()
-    .min(12, "Escreva porque o voo escolhido volta atrás — o cliente vai ler."),
+    .min(12, "bo.actions.pc.unfreezeReason"),
 })
 
 /**
@@ -1611,17 +1644,18 @@ const unfreezeSchema = z.object({
 export async function boUnfreezeFlight(
   input: z.input<typeof unfreezeSchema>
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(String(input?.caseId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = unfreezeSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
   }
   const v = parsed.data
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Serviço indisponível." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   const { data: bookingCase } = await admin
     .from("booking_cases")
@@ -1629,13 +1663,13 @@ export async function boUnfreezeFlight(
     .eq("id", v.caseId)
     .maybeSingle()
 
-  if (!bookingCase) return { ok: false, error: "Caso não encontrado." }
+  if (!bookingCase) return { ok: false, error: t("bo.actions.common.caseNotFound") }
 
   const record = bookingCase as { stage: string; pnr: string | null }
   if (record.stage === "emitido" || record.pnr) {
     return {
       ok: false,
-      error: "Este caso já está emitido. Mudar de voo é uma reemissão.",
+      error: t("bo.actions.pc.unfreeze.issued"),
     }
   }
 
@@ -1644,7 +1678,7 @@ export async function boUnfreezeFlight(
     return {
       ok: false,
       error:
-        "O cliente já pagou este voo. Mudá-lo passa por um reembolso, não por voltar um passo.",
+        t("bo.actions.pc.unfreeze.paid"),
     }
   }
 
@@ -1714,9 +1748,9 @@ export async function boUnfreezeFlight(
   return {
     ok: true,
     notice: [
-      "O voo deixou de estar congelado e a escolha do cliente foi desfeita.",
-      revision ? `A proposta está em rascunho como R${revision}.` : "",
-      "O cliente foi avisado.",
+      t("bo.actions.pc.unfreeze.done"),
+      revision ? t("bo.actions.pc.unfreeze.draft", { revision }) : "",
+      t("bo.actions.pc.unfreeze.clientNotified"),
     ]
       .filter(Boolean)
       .join(" "),
@@ -1727,7 +1761,7 @@ export async function boUnfreezeFlight(
 
 const datesSchema = z.object({
   caseId: z.string().uuid(),
-  departDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data de ida inválida."),
+  departDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "bo.actions.pc.departInvalid"),
   returnDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -1738,7 +1772,7 @@ const datesSchema = z.object({
   reason: z
     .string()
     .trim()
-    .min(12, "Escreva porque as datas mudam — o cliente vai ler esta frase."),
+    .min(12, "bo.actions.pc.datesReason"),
 })
 
 /**
@@ -1758,21 +1792,22 @@ const datesSchema = z.object({
 export async function boProposeNewDates(
   input: z.input<typeof datesSchema>
 ): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const identity = await boCaseIdentity(String(input?.caseId ?? ""))
-  if (!identity) return { ok: false, error: NOT_ALLOWED }
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
   const parsed = datesSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+    return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
   }
   const v = parsed.data
 
   if (v.returnDate && v.returnDate < v.departDate) {
-    return { ok: false, error: "A volta não pode ser antes da ida." }
+    return { ok: false, error: t("bo.actions.pc.dates.returnBeforeDepart") }
   }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Serviço indisponível." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   const { data: raw } = await admin
     .from("booking_cases")
@@ -1791,14 +1826,14 @@ export async function boProposeNewDates(
     ? record?.trip_request[0]
     : record?.trip_request
 
-  if (!record || !trip) return { ok: false, error: "Caso não encontrado." }
+  if (!record || !trip) return { ok: false, error: t("bo.actions.common.caseNotFound") }
 
   /* Depois de emitido as datas já não são uma proposta: são um bilhete, e
      mudá-las é uma reemissão que passa pela companhia. */
   if (record.stage === "emitido" || record.pnr) {
     return {
       ok: false,
-      error: "Este caso já está emitido. Uma mudança de datas é uma reemissão.",
+      error: t("bo.actions.pc.dates.issued"),
     }
   }
 
@@ -1806,7 +1841,7 @@ export async function boProposeNewDates(
   if (payment?.admin_confirmed || payment?.status === "COMPLETED") {
     return {
       ok: false,
-      error: "O cliente já pagou. Fale com ele antes de mexer nas datas.",
+      error: t("bo.actions.pc.dates.paid"),
     }
   }
 
@@ -1814,7 +1849,7 @@ export async function boProposeNewDates(
   const fromReturn = (trip.return_date as string | null) ?? null
 
   if (fromDepart === v.departDate && (fromReturn ?? null) === (v.returnDate ?? null)) {
-    return { ok: false, error: "As datas são as mesmas que já estão no pedido." }
+    return { ok: false, error: t("bo.actions.pc.dates.unchanged") }
   }
 
   const { error } = await admin
@@ -1835,7 +1870,7 @@ export async function boProposeNewDates(
 
   if (error) {
     console.error("[bo/pc] datas não gravadas:", error.message)
-    return { ok: false, error: "Não foi possível gravar as datas." }
+    return { ok: false, error: t("bo.actions.pc.dates.saveFailed") }
   }
 
   /* A proposta publicada volta a rascunho, com revisão nova. */
@@ -1895,11 +1930,11 @@ export async function boProposeNewDates(
   return {
     ok: true,
     notice: [
-      "Datas atualizadas e registadas.",
-      revision ? `A proposta voltou a rascunho como R${revision}.` : "",
+      t("bo.actions.pc.dates.done"),
+      revision ? t("bo.actions.pc.dates.draft", { revision }) : "",
       notified
-        ? "O cliente foi avisado por email."
-        : "Não foi possível avisar o cliente por email — fale com ele pelo WhatsApp.",
+        ? t("bo.actions.pc.dates.clientNotified")
+        : t("bo.actions.pc.dates.clientNotNotified"),
     ]
       .filter(Boolean)
       .join(" "),

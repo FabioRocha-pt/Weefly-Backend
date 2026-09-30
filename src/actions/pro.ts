@@ -15,6 +15,7 @@ import { z } from "zod"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getI18n } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 import { sendAccountDecisionEmail } from "@/lib/emails/account"
 import { siteUrl } from "@/lib/site-url"
 import {
@@ -182,8 +183,9 @@ export async function approveProAccount(input: {
   agentEnabled: boolean
   menus: string[]
 }): Promise<ProResult> {
+  const { t } = await getBoI18n()
   const master = await requireMaster()
-  if (!master) return { ok: false, error: "Só a conta master valida contas." }
+  if (!master) return { ok: false, error: t("bo.actions.pro.masterOnly") }
 
   const parsed = approveSchema.safeParse(input)
   if (!parsed.success) {
@@ -192,23 +194,23 @@ export async function approveProAccount(input: {
       ok: false,
       error:
         field === "slug"
-          ? "O endereço da empresa só leva minúsculas, números e hífen."
+          ? t("bo.actions.pro.slugShape")
           : field === "companyName"
-            ? "Falta o nome da empresa."
+            ? t("bo.actions.pro.companyNameMissing")
             : field === "partnerId"
-              ? "Escolha a empresa."
-              : "Dados de aprovação inválidos.",
+              ? t("bo.actions.pro.pickCompany")
+              : t("bo.actions.pro.approveInvalid"),
     }
   }
   const v = parsed.data
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Servidor sem service role." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.noServiceRole") }
 
   const candidate = await readCandidate(admin, v.userId)
-  if (!candidate) return { ok: false, error: "Conta não encontrada." }
+  if (!candidate) return { ok: false, error: t("bo.actions.common.accountNotFound") }
   if (candidate.account.status === "approved") {
-    return { ok: false, error: "Esta conta já foi aprovada." }
+    return { ok: false, error: t("bo.actions.pro.alreadyApproved") }
   }
 
   const partnerConfig = {
@@ -235,7 +237,7 @@ export async function approveProAccount(input: {
     if (error) {
       return {
         ok: false,
-        error: error.code === "23505" ? "Já existe uma empresa com esse endereço." : error.message,
+        error: error.code === "23505" ? t("bo.actions.pro.slugTaken") : error.message,
       }
     }
     partnerId = (data as { id: string }).id
@@ -246,7 +248,7 @@ export async function approveProAccount(input: {
       .select("id, is_operator")
       .eq("id", partnerId)
       .maybeSingle()
-    if (!existing) return { ok: false, error: "Empresa não encontrada." }
+    if (!existing) return { ok: false, error: t("bo.actions.pro.companyNotFound") }
     /* Juntar alguém à WeeFly Global não muda a WeeFly Global: a configuração
        do operador não se edita a partir da aprovação de uma pessoa. */
     if (!(existing as { is_operator: boolean }).is_operator) {
@@ -311,8 +313,8 @@ export async function approveProAccount(input: {
   return {
     ok: true,
     notice: sent.ok
-      ? "Conta aprovada. O email de aprovação foi enviado."
-      : `Conta aprovada, mas o email não saiu: ${sent.reason}`,
+      ? t("bo.actions.pro.approved")
+      : t("bo.actions.pro.approvedEmailFailed", { reason: sent.reason }),
   }
 }
 
@@ -321,23 +323,24 @@ export async function rejectProAccount(input: {
   userId: string
   reason: string
 }): Promise<ProResult> {
+  const { t } = await getBoI18n()
   const master = await requireMaster()
-  if (!master) return { ok: false, error: "Só a conta master valida contas." }
+  if (!master) return { ok: false, error: t("bo.actions.pro.masterOnly") }
 
   const reason = (input.reason ?? "").trim()
   if (!z.string().uuid().safeParse(input.userId).success) {
-    return { ok: false, error: "Conta inválida." }
+    return { ok: false, error: t("bo.actions.pro.invalidAccount") }
   }
-  if (reason.length < 3) return { ok: false, error: "A recusa leva um motivo." }
-  if (reason.length > 1000) return { ok: false, error: "O motivo é demasiado longo." }
+  if (reason.length < 3) return { ok: false, error: t("bo.actions.pro.rejectNeedsReason") }
+  if (reason.length > 1000) return { ok: false, error: t("bo.actions.pro.reasonTooLong") }
 
   const admin = createAdminClient()
-  if (!admin) return { ok: false, error: "Servidor sem service role." }
+  if (!admin) return { ok: false, error: t("bo.actions.common.noServiceRole") }
 
   const candidate = await readCandidate(admin, input.userId)
-  if (!candidate) return { ok: false, error: "Conta não encontrada." }
+  if (!candidate) return { ok: false, error: t("bo.actions.common.accountNotFound") }
   if (candidate.account.status !== "pending") {
-    return { ok: false, error: "Só se recusa uma conta pendente." }
+    return { ok: false, error: t("bo.actions.pro.onlyPendingRejected") }
   }
 
   const { error } = await admin
@@ -371,7 +374,7 @@ export async function rejectProAccount(input: {
   return {
     ok: true,
     notice: sent.ok
-      ? "Conta recusada. O email com o motivo foi enviado."
-      : `Conta recusada, mas o email não saiu: ${sent.reason}`,
+      ? t("bo.actions.pro.rejected")
+      : t("bo.actions.pro.rejectedEmailFailed", { reason: sent.reason }),
   }
 }

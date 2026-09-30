@@ -1,1 +1,225 @@
-{ "bo": { "actions": {} } }
+{
+  "bo": {
+    "actions": {
+      "common": {
+        "invalidData": "Invalid data.",
+        "serviceUnavailable": "Service unavailable.",
+        "caseNotFound": "Case not found.",
+        "accountNotFound": "Account not found.",
+        "invalidEmail": "Invalid email.",
+        "noServiceRole": "Server has no service role."
+      },
+      "pc": {
+        "notAllowed": "Your account does not have access to the Price Checker.",
+        "confirmTick": "Tick the box confirming the amount has come in.",
+        "rejectReason": "Say why it doesn't work — the client will read this.",
+        "archiveNote": "Write the reason.",
+        "noteEmpty": "Write the note.",
+        "noteEmptyFallback": "Empty note.",
+        "pnrLength": "The PNR has 6 characters.",
+        "ticketNumberShape": "Each ticket is 3 airline digits + 10 document digits.",
+        "noticeMessage": "Write the message — the client is the one who will read it.",
+        "unfreezeReason": "Write why the chosen flight is being reverted — the client will read this.",
+        "departInvalid": "Invalid departure date.",
+        "datesReason": "Write why the dates are changing — the client will read this sentence.",
+        "noPayment": "This case has no payment.",
+        "confirm": {
+          "notConfirmed": "Tick the box before confirming.",
+          "illegal": "The payment is already in a state that cannot be marked as paid.",
+          "failed": "Could not record the payment.",
+          "unknown": "Failed.",
+          "mismatch": "Payment confirmed — with an amount different from the one charged, recorded in the history.",
+          "done": "Payment confirmed. The case is ready to issue."
+        },
+        "proofRejected": "Proof rejected. The client can send another.",
+        "proofRejectFailed": "Could not reject the proof.",
+        "deadlineInvalid": "Invalid deadline.",
+        "deadlineExtended": "Deadline extended by {hours}h.",
+        "deadlineExtendFailed": "Could not extend the deadline.",
+        "paymentExpired": "Payment link closed. The client sees the expired screen.",
+        "paymentExpireFailed": "Could not close the link.",
+        "paymentReopened": "Payment reopened for {hours}h.",
+        "paymentReopenFailed": "Could not reopen the payment.",
+        "claim": {
+          "hasOwner": "This case already has an owner. To hand it to someone else, change the seller in the header.",
+          "alreadyYours": "The case is already yours.",
+          "lostRace": "Someone else claimed this case first. Reload the page.",
+          "done": "Case claimed. It was unowned for {waited}."
+        },
+        "alerts": {
+          "nothingUnread": "Nothing unread.",
+          "markedRead": "{n} marked as read.",
+          "cleared": "Read notifications cleared."
+        },
+        "pay": {
+          "unknownMethod": "Unknown method.",
+          "field": {
+            "stripe": "Stripe payment link",
+            "vinti4": "SISP reference or link",
+            "revolut": "Revolut link",
+            "instapay": "InstaPay reference"
+          },
+          "missingLink": "The {field} is missing.",
+          "missingReference": "The {field} is missing.",
+          "missingEither": "Enter the reference or the link for {field}.",
+          "notFound": "Payment not found.",
+          "alreadyConfirmed": "This payment is already confirmed.",
+          "saveFailed": "Could not save.",
+          "savedNotSent": "Instructions saved. They have not been sent yet.",
+          "sentAutoDue": "Instructions sent to the client. The deadline is {due} — time sent plus {hours}h.",
+          "savedAndSent": "Instructions saved and sent to the client.",
+          "alreadySent": "Instructions saved. These had already been sent to the client.",
+          "emailFailed": "The instructions were saved, but the email was NOT sent: {reason}. The client still doesn't know how to pay — send them the link on WhatsApp or try sending again."
+        },
+        "close": {
+          "alreadyClosed": "The case is already closed.",
+          "notIssued": "A case can only be closed after the ticket is issued. A case that wasn't issued is cancelled, and that is a different action.",
+          "done": "Case closed. It has left the work queues."
+        },
+        "archive": {
+          "pickReason": "Choose a reason.",
+          "migrationMissing": "Migration 0023 must be applied to archive cases.",
+          "alreadyClosed": "This case is already closed.",
+          "done": "Case archived. It is in the Closed filter."
+        },
+        "reopen": {
+          "adminOnly": "Only an administrator can reopen a closed case.",
+          "notClosed": "This case is not closed.",
+          "done": "Case reopened. It is back in the work queues."
+        },
+        "noteSaved": "Note saved.",
+        "issue": {
+          "duplicateNumbers": "There are duplicate ticket numbers.",
+          "needsPayment": "Confirm the payment before issuing.",
+          "fareBasis": "fare basis",
+          "missingFields": "Document fields missing on {count} flight(s): {flights}.",
+          "saveFailed": "Could not save the issuance.",
+          "issued": "Issued. PNR {pnr}.",
+          "pdfFailed": "The PDF was not generated ({reason}) — use \"Generate again\" on the Issuance tab.",
+          "emailSent": "The client received the email with the PDF attached.",
+          "emailFailed": "The email to the client was not sent — see the Communications tab."
+        },
+        "tickets": {
+          "generated": "Ticket {number} generated.",
+          "noneYet": "This case has no generated ticket yet. Use “Generate ticket” before resending.",
+          "resent": "Ticket {number} resent — the same document, not regenerated.",
+          "resendFailed": "Resending failed: {reason}",
+          "generateFailed": "Could not generate the ticket: {reason}"
+        },
+        "seller": {
+          "invalid": "Invalid seller.",
+          "notListed": "That seller is not on the access list.",
+          "saveFailed": "Could not save the seller.",
+          "assigned": "Case assigned to {name}.",
+          "cleared": "Case has no seller."
+        },
+        "notify": {
+          "pickChannel": "Choose at least one channel.",
+          "emailSent": "email sent",
+          "emailFailed": "email not sent ({reason})",
+          "whatsappSent": "WhatsApp sent",
+          "whatsappFailed": "WhatsApp not sent ({reason})",
+          "error": "error",
+          "done": "Notice recorded on the case · {channels}.",
+          "nothingDelivered": "Nothing was delivered · {channels}.",
+          "flagCleared": "Delivery flag cleared."
+        },
+        "link": {
+          "adminOnly": "Only an administrator can revoke the link.",
+          "failed": "Could not generate a new link.",
+          "done": "New link generated. The old one no longer opens — send the new one to the client."
+        },
+        "unfreeze": {
+          "issued": "This case is already issued. Changing flight is a reissue.",
+          "paid": "The client has already paid for this flight. Changing it requires a refund, not stepping back.",
+          "done": "The flight is no longer frozen and the client's choice has been undone.",
+          "draft": "The proposal is in draft as R{revision}.",
+          "clientNotified": "The client has been notified."
+        },
+        "dates": {
+          "returnBeforeDepart": "The return cannot be before the departure.",
+          "issued": "This case is already issued. A date change is a reissue.",
+          "paid": "The client has already paid. Talk to them before changing the dates.",
+          "unchanged": "The dates are the same as those already in the request.",
+          "saveFailed": "Could not save the dates.",
+          "done": "Dates updated and recorded.",
+          "draft": "The proposal went back to draft as R{revision}.",
+          "clientNotified": "The client was notified by email.",
+          "clientNotNotified": "Could not notify the client by email — contact them on WhatsApp."
+        }
+      },
+      "access": {
+        "nameMissing": "The name is missing.",
+        "pickPartner": "Choose the partner.",
+        "reasonMissing": "Write the reason.",
+        "write": {
+          "noPermission": "You do not have permission to grant this profile at this partner.",
+          "emailTaken": "An account with this email already exists.",
+          "needsOrganisation": "This profile belongs to a ministry: choose it.",
+          "profileNotInPartner": "This profile does not exist at this partner.",
+          "mismatch": "The data does not match the chosen profile."
+        },
+        "notManager": "Your account does not manage users.",
+        "unknownPartnerOrProfile": "Unknown partner or profile.",
+        "onlyAdminGrantsAdmin": "Only a WeeFly Admin can grant the WeeFly Admin profile.",
+        "cannotGrant": "You cannot grant this profile at this partner.",
+        "secretaryNeedsOrganisation": "The secretary belongs to a ministry: choose it.",
+        "ownProfile": "Your own profile must be changed by someone else with management access.",
+        "created": "User created.",
+        "updated": "User updated.",
+        "inviteSent": "The invitation was sent.",
+        "inviteFailed": "The invitation was not sent: {reason}",
+        "cannotSuspendSelf": "You cannot suspend your own account.",
+        "suspended": "Account suspended. Open sessions have been ended.",
+        "suspendedNoSession": "Account suspended. There was no session to end (the person has not signed up yet).",
+        "reactivated": "Account reactivated.",
+        "accountSuspended": "The account is suspended.",
+        "inviteResent": "Invitation sent.",
+        "invite": {
+          "noServiceRole": "server has no service role",
+          "noSiteUrl": "NEXT_PUBLIC_SITE_URL not configured",
+          "alreadyRegistered": "this person already has an account — they sign in with their own password."
+        }
+      },
+      "partners": {
+        "colorHex": "Colour in hexadecimal, e.g. #02A9FF.",
+        "nameMissing": "The trading name is missing.",
+        "dateInvalid": "Invalid date.",
+        "slugShape": "The address may only contain lowercase letters, numbers and hyphens.",
+        "firstAdminEmail": "The first administrator's email is missing.",
+        "firstAdminName": "The first administrator's name is missing.",
+        "onlyAdminCreates": "Only a WeeFly Admin can create partners.",
+        "slugTaken": "A partner with that address already exists.",
+        "created": "Partner created. {notice}",
+        "createdAccountFailed": "Partner created, but the first account failed: {error}",
+        "onlyAdminEdits": "Only a WeeFly Admin can edit partners.",
+        "invalid": "Invalid partner.",
+        "notFound": "Partner not found.",
+        "updated": "Partner updated.",
+        "onlyAdminSuspends": "Only a WeeFly Admin can suspend partners.",
+        "suspendNeedsReason": "A suspension needs a reason.",
+        "operatorNotSuspendable": "The platform operator cannot be suspended.",
+        "suspended": "Partner suspended. Its accounts can no longer sign in and its links no longer open.",
+        "reactivated": "Partner reactivated."
+      },
+      "pro": {
+        "masterOnly": "Only the master account validates accounts.",
+        "slugShape": "The company address may only contain lowercase letters, numbers and hyphens.",
+        "companyNameMissing": "The company name is missing.",
+        "pickCompany": "Choose the company.",
+        "approveInvalid": "Invalid approval data.",
+        "alreadyApproved": "This account has already been approved.",
+        "slugTaken": "A company with that address already exists.",
+        "companyNotFound": "Company not found.",
+        "approved": "Account approved. The approval email was sent.",
+        "approvedEmailFailed": "Account approved, but the email was not sent: {reason}",
+        "invalidAccount": "Invalid account.",
+        "rejectNeedsReason": "A rejection needs a reason.",
+        "reasonTooLong": "The reason is too long.",
+        "onlyPendingRejected": "Only a pending account can be rejected.",
+        "rejected": "Account rejected. The email with the reason was sent.",
+        "rejectedEmailFailed": "Account rejected, but the email was not sent: {reason}"
+      }
+    }
+  }
+}

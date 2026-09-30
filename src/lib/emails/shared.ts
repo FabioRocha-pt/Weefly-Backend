@@ -170,10 +170,26 @@ function wordmark(variant: "white" | "ember" | "ink", height: number): string {
  */
 export function masthead(
   reference: string | null | undefined,
-  options: { background?: string; logo?: "white" | "ember" | "ink" } = {}
+  options: {
+    background?: string
+    logo?: "white" | "ember" | "ink"
+    /** TEN-02 · a marca de um parceiro: o logótipo e o brasão dele. */
+    brand?: { name: string; logoUrl: string | null; organisation: { name: string; logoUrl: string | null } | null }
+  } = {}
 ): string {
   const background = options.background ?? EMBER_RED
-  const logo = brandLogo(options.logo ?? "white")
+  const b = options.brand
+  const logo = b
+    ? [
+        b.logoUrl
+          ? `<img src="${escapeHtml(b.logoUrl)}" alt="${escapeHtml(b.name)}" height="30" style="height:30px;width:auto;border:0;display:inline-block;background:#ffffff;border-radius:6px;padding:3px 6px;" />`
+          : `<span style="font-size:20px;font-weight:800;color:#ffffff;">${escapeHtml(b.name)}</span>`,
+        /* O brasão do ministério, ao lado; sem brasão, nada. */
+        b.organisation?.logoUrl
+          ? `<img src="${escapeHtml(b.organisation.logoUrl)}" alt="${escapeHtml(b.organisation.name)}" height="30" style="height:30px;width:auto;border:0;display:inline-block;margin-left:10px;background:#ffffff;border-radius:6px;padding:3px;" />`
+          : "",
+      ].join("")
+    : brandLogo(options.logo ?? "white")
 
   const chip = reference
     ? `<span style="display:inline-block;font-family:'IBM Plex Mono','Courier New',monospace;font-size:15px;font-weight:600;letter-spacing:0.06em;color:#ffffff;background:rgba(0,0,0,0.16);border-radius:8px;padding:6px 12px;white-space:nowrap;">${escapeHtml(reference)}</span>`

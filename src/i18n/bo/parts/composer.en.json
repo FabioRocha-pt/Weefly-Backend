@@ -1,1 +1,36 @@
-{ "bo": { "composer": {} } }
+{
+  "bo": {
+    "composer": {
+      "bits": {
+        "prefilledTitle": "This value came from the client's request and nobody has confirmed it yet. Confirm or correct it before publishing.",
+        "prefilledTag": "from request",
+        "requestedShort": "The client asked for {requested}",
+        "requested": "Requested: {requested}",
+        "stepUp": "One more",
+        "stepDown": "One less"
+      },
+      "baggage": {
+        "title": "Baggage on this flight",
+        "unit": "pieces × kg per piece",
+        "fromOfferTitle": "These values are the offer's old count, for the whole trip. The client sees them like this until someone confirms this flight.",
+        "fromRequestTitle": "These values came from the client's request. Until someone confirms them, they are not saved and the client does not see them.",
+        "fromOffer": "from offer",
+        "fromRequest": "from request",
+        "toConfirm": "{source} · to confirm",
+        "confirm": "Confirm",
+        "copyToAll": "Apply to all flights",
+        "personal": "Personal item",
+        "personalHint": "backpack, under the seat",
+        "cabinPieces": "Cabin · pieces",
+        "cabinKg": "Cabin · kg",
+        "checkedPieces": "Hold · pieces",
+        "checkedKg": "Hold · kg",
+        "noWeight": "— no weight stated"
+      },
+      "conditions": {
+        "baggage": "Baggage",
+        "baggagePerFlight": "Per flight, in the baggage block of each itinerary segment."
+      }
+    }
+  }
+}

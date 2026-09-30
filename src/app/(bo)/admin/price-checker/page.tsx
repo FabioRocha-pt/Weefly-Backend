@@ -6,6 +6,7 @@ import { getBoScope } from "@/lib/bo-scope"
 import { BoQueueTable } from "@/components/bo/queue-table"
 import { elapsedSince } from "@/lib/case-status"
 import { formatMoney } from "@/lib/proposal-math"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /**
  * B1 · a fila de trabalho.
@@ -21,16 +22,16 @@ import { formatMoney } from "@/lib/proposal-math"
 
 export const dynamic = "force-dynamic"
 
-const BUCKETS: { id: BoBucket; label: string; tone?: "alert" | "warn" }[] = [
-  { id: "por_validar", label: "Comprovativos por validar", tone: "alert" },
-  { id: "pagos_sem_bilhete", label: "Pagos, sem bilhete", tone: "alert" },
-  { id: "novos_sem_dono", label: "Novos, sem dono", tone: "warn" },
-  { id: "a_cotar_meus", label: "A cotar, meus", tone: "warn" },
-  { id: "a_expirar", label: "Propostas a expirar" },
-  { id: "espera_cliente", label: "Espera pelo cliente" },
-  { id: "tudo", label: "Tudo" },
+const BUCKETS: { id: BoBucket; tone?: "alert" | "warn" }[] = [
+  { id: "por_validar", tone: "alert" },
+  { id: "pagos_sem_bilhete", tone: "alert" },
+  { id: "novos_sem_dono", tone: "warn" },
+  { id: "a_cotar_meus", tone: "warn" },
+  { id: "a_expirar" },
+  { id: "espera_cliente" },
+  { id: "tudo" },
   /* T-21 · o último da fila, porque é o que não tem trabalho dentro. */
-  { id: "fechados", label: "Casos fechados" },
+  { id: "fechados" },
 ]
 
 export default async function BoQueuePage({
@@ -40,6 +41,8 @@ export default async function BoQueuePage({
 }) {
   const access = await getBoAccess()
   if (!access.ok) return null // O layout já mostrou a página de sem acesso.
+
+  const { t } = await getBoI18n()
 
   const one = (key: string) =>
     Array.isArray(searchParams[key])
@@ -66,52 +69,53 @@ export default async function BoQueuePage({
   const kpis = [
     {
       id: "por_validar" as BoBucket,
-      label: "Comprovativos por validar",
+      label: t("bo.queue.bucket.por_validar"),
       dot: "bad",
       tone: "bad",
       sub: (n: number) =>
         n
-          ? `o mais antigo há ${elapsedSince(queue.oldest.por_validar!)}`
-          : "nada à espera de nós",
+          ? t("bo.queue.kpi.oldest", { tempo: elapsedSince(queue.oldest.por_validar!) })
+          : t("bo.queue.kpi.nothingWaiting"),
     },
     {
       id: "pagos_sem_bilhete" as BoBucket,
-      label: "Pagos, sem bilhete",
+      label: t("bo.queue.bucket.pagos_sem_bilhete"),
       dot: "bad",
       tone: "bad",
       sub: (n: number) =>
         n
-          ? `o mais antigo há ${elapsedSince(queue.oldest.pagos_sem_bilhete!)}`
-          : "nenhum",
+          ? t("bo.queue.kpi.oldest", { tempo: elapsedSince(queue.oldest.pagos_sem_bilhete!) })
+          : t("bo.queue.kpi.none"),
     },
     {
       id: "novos_sem_dono" as BoBucket,
-      label: "Novos, sem dono",
+      label: t("bo.queue.bucket.novos_sem_dono"),
       dot: "us",
       tone: "hot",
       sub: (n: number) =>
-        n ? `o mais antigo há ${elapsedSince(queue.oldest.novos_sem_dono!)}` : "fila vazia",
+        n ? t("bo.queue.kpi.oldest", { tempo: elapsedSince(queue.oldest.novos_sem_dono!) })
+          : t("bo.queue.kpi.emptyQueue"),
     },
     {
       id: "a_cotar_meus" as BoBucket,
-      label: "A cotar, meus",
+      label: t("bo.queue.bucket.a_cotar_meus"),
       dot: "us",
       tone: "hot",
       sub: () => access.identity.label,
     },
     {
       id: "a_expirar" as BoBucket,
-      label: "Propostas a expirar",
+      label: t("bo.queue.bucket.a_expirar"),
       dot: "off",
       tone: "hot",
-      sub: () => "menos de 1 hora",
+      sub: () => t("bo.queue.kpi.underAnHour"),
     },
     {
       id: "espera_cliente" as BoBucket,
-      label: "Espera pelo cliente",
+      label: t("bo.queue.bucket.espera_cliente"),
       dot: "them",
       tone: "",
-      sub: () => "a escolher ou a pagar",
+      sub: () => t("bo.queue.kpi.choosingOrPaying"),
     },
   ]
 
@@ -127,10 +131,9 @@ export default async function BoQueuePage({
     <div className="page">
       <div className="head">
         <div>
-          <h1>Price Checker · fila de trabalho</h1>
+          <h1>{t("bo.queue.title")}</h1>
           <p>
-            Pedidos entram sozinhos quando o cliente submete o formulário. O
-            cronómetro começa nessa submissão, não na atribuição.
+            {t("bo.queue.intro")}
           </p>
         </div>
       </div>
@@ -157,7 +160,7 @@ export default async function BoQueuePage({
         <div className="kpi">
           <div className="kpi-k">
             <span className="dot done" />
-            Emitidos este mês
+            {t("bo.queue.kpi.issuedThisMonth")}
           </div>
           <div className="kpi-v">{queue.issuedThisMonth.count}</div>
           <div className="kpi-s">
@@ -178,7 +181,7 @@ export default async function BoQueuePage({
             aria-pressed={tab.id === bucket}
             style={{ textDecoration: "none" }}
           >
-            {tab.label} <span className="n">{queue.counts[tab.id]}</span>
+            {t(`bo.queue.bucket.${tab.id}`)} <span className="n">{queue.counts[tab.id]}</span>
           </Link>
         ))}
       </div>

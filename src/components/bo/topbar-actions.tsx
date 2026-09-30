@@ -13,6 +13,8 @@ import { useEffect, useMemo, useState } from "react"
 import { CURRENCIES } from "@/lib/pc/catalog"
 import { useLinkBase } from "@/components/bo/link-base"
 import { COUNTRIES, COUNTRY_BY_ISO, countryName, flagOf } from "@/lib/countries"
+import { useI18n, useT } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
 
 interface Market {
   name: string
@@ -81,6 +83,7 @@ export function BoTopbarActions({
   /** T-05 · quem está autenticado. O link sai em nome desta pessoa. */
   viewer: { label: string; email: string; company?: string | null }
 }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
 
   /*
@@ -95,7 +98,7 @@ export function BoTopbarActions({
   return (
     <>
       <button className="btn btn-primary btn-sm" type="button" onClick={() => setOpen(true)}>
-        Criar link
+        {t("bo.shell.link.create")}
       </button>
       <LinkDrawer open={open} onClose={() => setOpen(false)} viewer={viewer} />
     </>
@@ -115,6 +118,18 @@ export function LinkDrawer({
      aberta. Um `useState` aqui era a porta por onde a escolha voltaria. */
   const agent = agentSlug(viewer.email)
   const agentName = viewer.label
+  const { t, locale } = useI18n()
+  const tag = LOCALE_TAGS[locale]
+  /* I18N-01 · os nomes dos países na língua do agente, e por isso ordenados nela. */
+  const countryOptions = useMemo(
+    () =>
+      tag === "pt-PT"
+        ? COUNTRY_OPTIONS
+        : [...COUNTRIES].sort((a, b) =>
+            countryName(a.iso, tag).localeCompare(countryName(b.iso, tag), tag)
+          ),
+    [tag]
+  )
 
   const [market, setMarket] = useState(MARKETS[2].name)
   const [lang, setLang] = useState("fr")
@@ -174,13 +189,12 @@ export function LinkDrawer({
   return (
     <>
       <div className={`scrim${open ? " on" : ""}`} onClick={onClose} />
-      <aside className={`drawer${open ? " on" : ""}`} aria-label="Construtor de link">
+      <aside className={`drawer${open ? " on" : ""}`} aria-label={t("bo.shell.link.drawerLabel")}>
         <header className="drawer-h">
           <div>
-            <h3>Link de atendimento</h3>
+            <h3>{t("bo.shell.link.title")}</h3>
             <p>
-              O link é permanente e reutilizável. O caso só nasce quando o cliente
-              submete o formulário.
+              {t("bo.shell.link.intro")}
             </p>
           </div>
           <button className="btn btn-sm btn-icon" type="button" onClick={onClose}>
@@ -191,7 +205,7 @@ export function LinkDrawer({
         <div className="drawer-b">
           <section className="sec">
             <div className="sec-h">
-              <h4>Parâmetros</h4>
+              <h4>{t("bo.shell.link.params")}</h4>
               <span className="rule" />
             </div>
             <div className="fgrid">
@@ -199,22 +213,24 @@ export function LinkDrawer({
                   porque quem cria o link tem de ver em nome de quem ele sai —
                   o que sai é a leitura, não a decisão. */}
               <div className="f s6">
-                <label>Vendedor</label>
+                <label>{t("bo.shell.link.seller")}</label>
                 <input value={agentName} disabled />
                 <span className="hint">
-                  a sua conta · <span className="mono">{agent}</span>
+                  {t("bo.shell.link.yourAccount")} · <span className="mono">{agent}</span>
                 </span>
               </div>
               <div className="f s6">
-                <label>Mercado</label>
+                <label>{t("bo.shell.link.market")}</label>
                 <select value={market} onChange={(e) => applyMarket(e.target.value)}>
                   {MARKETS.map((m) => (
-                    <option key={m.name}>{m.name}</option>
+                    <option key={m.name} value={m.name}>
+                      {tag === "pt-PT" ? m.name : countryName(m.country, tag)}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="f s4">
-                <label>Idioma</label>
+                <label>{t("bo.shell.link.language")}</label>
                 <select value={lang} onChange={(e) => setLang(e.target.value)}>
                   {LANGS.map((l) => (
                     <option key={l.value} value={l.value}>
@@ -224,7 +240,7 @@ export function LinkDrawer({
                 </select>
               </div>
               <div className="f s4">
-                <label>Moeda</label>
+                <label>{t("bo.shell.link.currency")}</label>
                 <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
                   {CURRENCIES.map((c) => (
                     <option key={c}>{c}</option>
@@ -232,21 +248,18 @@ export function LinkDrawer({
                 </select>
               </div>
               <div className="f s4">
-                <label>País do cliente</label>
+                <label>{t("bo.shell.link.clientCountry")}</label>
                 <select value={country} onChange={(e) => setCountry(e.target.value)}>
-                  {COUNTRY_OPTIONS.map((c) => (
+                  {countryOptions.map((c) => (
                     <option key={c.iso} value={c.iso}>
-                      {flagOf(c.iso)} {countryName(c.iso, "pt")} · {c.dial}
+                      {flagOf(c.iso)} {countryName(c.iso, tag)} · {c.dial}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
             <p className="note" style={{ marginTop: 11 }}>
-              O idioma, a moeda e o país são definidos aqui e o cliente já abre o
-              link com tudo certo — o indicativo do telefone vem do país
-              ({COUNTRY_BY_ISO[country]?.dial ?? "—"}). Pode trocar, mas por
-              omissão vê o que faz sentido no mercado dele.
+              {t("bo.shell.link.paramsNote", { dial: COUNTRY_BY_ISO[country]?.dial ?? "—" })}
             </p>
 
             {/*
@@ -256,20 +269,17 @@ export function LinkDrawer({
               sozinho, um passo depois de os passaportes estarem completos.
             */}
             <p className="note" style={{ marginTop: 9 }}>
-              Não há aqui nenhum valor a cobrar: o link de pagamento é gerado
-              automaticamente depois de o cliente escolher uma oferta e preencher
-              os dados de todos os passageiros. Até aí não há montante nem
-              passageiro a quem o cobrar.
+              {t("bo.shell.link.noAmountNote")}
             </p>
           </section>
 
           <section className="sec">
             <div className="sec-h">
-              <h4>Link gerado</h4>
+              <h4>{t("bo.shell.link.generated")}</h4>
               <span className="rule" />
             </div>
             <div className="linkbox">
-              <span className="lb-k">Endereço</span>
+              <span className="lb-k">{t("bo.shell.link.address")}</span>
               <div className="lb-v">
                 <code>{url}</code>
                 <Copy value={url} />
@@ -277,12 +287,12 @@ export function LinkDrawer({
             </div>
 
             <div className="linkbox">
-              <span className="lb-k">Mensagem pronta a colar</span>
+              <span className="lb-k">{t("bo.shell.link.message")}</span>
               <div className="f" style={{ marginTop: 8 }}>
                 <textarea style={{ minHeight: 120 }} readOnly value={message} />
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <Copy value={message} label="Copiar mensagem" style={{ flex: 1 }} />
+                <Copy value={message} label={t("bo.shell.link.copyMessage")} style={{ flex: 1 }} />
                 <button
                   className="btn btn-sm"
                   style={{ flex: 1 }}
@@ -295,20 +305,19 @@ export function LinkDrawer({
                     )
                   }
                 >
-                  Abrir no WhatsApp
+                  {t("bo.shell.link.openWhatsapp")}
                 </button>
               </div>
             </div>
 
             <div className="linkbox">
-              <span className="lb-k">Só o link</span>
+              <span className="lb-k">{t("bo.shell.link.bareOnly")}</span>
               <div className="lb-v">
                 <code>{bare}</code>
                 <Copy value={bare} />
               </div>
               <p className="hint" style={{ marginTop: 8, fontSize: 11, color: "var(--muted)" }}>
-                Sem parâmetros. O cliente escolhe idioma e moeda, e o caso entra sem
-                vendedor atribuído.
+                {t("bo.shell.link.bareNote")}
               </p>
             </div>
           </section>
@@ -316,7 +325,7 @@ export function LinkDrawer({
 
         <footer className="drawer-f">
           <button className="btn" type="button" onClick={onClose}>
-            Fechar
+            {t("bo.shell.link.close")}
           </button>
         </footer>
       </aside>
@@ -326,13 +335,14 @@ export function LinkDrawer({
 
 function Copy({
   value,
-  label = "Copiar",
+  label,
   style,
 }: {
   value: string
   label?: string
   style?: React.CSSProperties
 }) {
+  const t = useT()
   const [done, setDone] = useState(false)
 
   useEffect(() => {
@@ -351,7 +361,7 @@ function Copy({
         setDone(true)
       }}
     >
-      {done ? "Copiado" : label}
+      {done ? t("bo.shell.link.copied") : (label ?? t("bo.shell.link.copy"))}
     </button>
   )
 }

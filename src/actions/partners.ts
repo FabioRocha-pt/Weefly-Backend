@@ -19,6 +19,8 @@ import { z } from "zod"
 import { createClient } from "@/utils/supabase/server"
 import { boIdentity } from "@/lib/bo-access"
 import { saveUser, type AccessResult } from "@/actions/access"
+import { getBoI18n } from "@/i18n/bo-server"
+import { translateMessage } from "@/i18n/translate"
 
 const SLUG = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -38,17 +40,17 @@ const optionalEmail = z
   .toLowerCase()
   .optional()
   .transform((v) => (v ? v : null))
-  .refine((v) => v === null || z.string().email().safeParse(v).success, "Email inválido.")
+  .refine((v) => v === null || z.string().email().safeParse(v).success, "bo.actions.common.invalidEmail")
 
 const optionalColor = z
   .string()
   .trim()
   .optional()
   .transform((v) => (v ? v : null))
-  .refine((v) => v === null || HEX.test(v), "Cor em hexadecimal, ex.: #02A9FF.")
+  .refine((v) => v === null || HEX.test(v), "bo.actions.partners.colorHex")
 
 const partnerSchema = z.object({
-  commercialName: z.string().trim().min(2, "Falta o nome comercial.").max(120),
+  commercialName: z.string().trim().min(2, "bo.actions.partners.nameMissing").max(120),
   legalName: optionalText(200),
   nif: optionalText(40),
   country: optionalText(2),
@@ -61,7 +63,7 @@ const partnerSchema = z.object({
     .trim()
     .optional()
     .transform((v) => (v ? v : null))
-    .refine((v) => v === null || /^\d{4}-\d{2}-\d{2}$/.test(v), "Data inválida."),
+    .refine((v) => v === null || /^\d{4}-\d{2}-\d{2}$/.test(v), "bo.actions.partners.dateInvalid"),
   // Os dois menus (o modelo de contas): fornecer e vender.
   supplyEnabled: z.boolean(),
   sellEnabled: z.boolean(),
@@ -82,9 +84,9 @@ const partnerSchema = z.object({
 })
 
 const createSchema = partnerSchema.extend({
-  slug: z.string().trim().toLowerCase().regex(SLUG, "O endereço só leva minúsculas, números e hífen."),
-  firstAdminEmail: z.string().trim().toLowerCase().email("Falta o email do primeiro administrador."),
-  firstAdminName: z.string().trim().min(2, "Falta o nome do primeiro administrador.").max(120),
+  slug: z.string().trim().toLowerCase().regex(SLUG, "bo.actions.partners.slugShape"),
+  firstAdminEmail: z.string().trim().toLowerCase().email("bo.actions.partners.firstAdminEmail"),
+  firstAdminName: z.string().trim().min(2, "bo.actions.partners.firstAdminName").max(120),
 })
 
 async function weefly() {
@@ -131,11 +133,12 @@ function touch() {
 }
 
 export async function createPartner(input: z.input<typeof createSchema>): Promise<AccessResult> {
+  const { t } = await getBoI18n()
   const actor = await weefly()
-  if (!actor) return { ok: false, error: "Só um Admin WeeFly cria parceiros." }
+  if (!actor) return { ok: false, error: t("bo.actions.partners.onlyAdminCreates") }
 
   const parsed = createSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  if (!parsed.success) return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
   const v = parsed.data
 
   const db = createClient()
@@ -149,9 +152,9 @@ export async function createPartner(input: z.input<typeof createSchema>): Promis
       ok: false,
       error:
         error.code === "23505"
-          ? "Já existe um parceiro com esse endereço."
+          ? t("bo.actions.partners.slugTaken")
           : error.code === "42501"
-            ? "Só um Admin WeeFly cria parceiros."
+            ? t("bo.actions.partners.onlyAdminCreates")
             : error.message,
     }
   }
@@ -168,20 +171,21 @@ export async function createPartner(input: z.input<typeof createSchema>): Promis
 
   touch()
   return first.ok
-    ? { ok: true, notice: `Parceiro criado. ${first.notice ?? ""}`.trim() }
-    : { ok: false, error: `Parceiro criado, mas a primeira conta falhou: ${first.error}` }
+    ? { ok: true, notice: t("bo.actions.partners.created", { notice: first.notice ?? "" }).trim() }
+    : { ok: false, error: t("bo.actions.partners.createdAccountFailed", { error: first.error }) }
 }
 
 export async function updatePartner(
   id: string,
   input: z.input<typeof partnerSchema>
 ): Promise<AccessResult> {
+  const { t } = await getBoI18n()
   const actor = await weefly()
-  if (!actor) return { ok: false, error: "Só um Admin WeeFly edita parceiros." }
-  if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "Parceiro inválido." }
+  if (!actor) return { ok: false, error: t("bo.actions.partners.onlyAdminEdits") }
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, error: t("bo.actions.partners.invalid") }
 
   const parsed = partnerSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  if (!parsed.success) return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
 
   const db = createClient()
   const { data, error } = await db
@@ -190,10 +194,10 @@ export async function updatePartner(
     .eq("id", id)
     .select("id")
   if (error) return { ok: false, error: error.message }
-  if (!data || data.length === 0) return { ok: false, error: "Parceiro não encontrado." }
+  if (!data || data.length === 0) return { ok: false, error: t("bo.actions.partners.notFound") }
 
   touch()
-  return { ok: true, notice: "Parceiro actualizado." }
+  return { ok: true, notice: t("bo.actions.partners.updated") }
 }
 
 /**
@@ -206,13 +210,14 @@ export async function setPartnerStatus(input: {
   status: "active" | "suspended"
   reason?: string
 }): Promise<AccessResult> {
+  const { t } = await getBoI18n()
   const actor = await weefly()
-  if (!actor) return { ok: false, error: "Só um Admin WeeFly suspende parceiros." }
-  if (!z.string().uuid().safeParse(input.id).success) return { ok: false, error: "Parceiro inválido." }
+  if (!actor) return { ok: false, error: t("bo.actions.partners.onlyAdminSuspends") }
+  if (!z.string().uuid().safeParse(input.id).success) return { ok: false, error: t("bo.actions.partners.invalid") }
 
   const reason = (input.reason ?? "").trim()
   if (input.status === "suspended" && reason.length < 3) {
-    return { ok: false, error: "A suspensão leva um motivo." }
+    return { ok: false, error: t("bo.actions.partners.suspendNeedsReason") }
   }
 
   const db = createClient()
@@ -221,9 +226,9 @@ export async function setPartnerStatus(input: {
     .select("is_operator")
     .eq("id", input.id)
     .maybeSingle()
-  if (!current) return { ok: false, error: "Parceiro não encontrado." }
+  if (!current) return { ok: false, error: t("bo.actions.partners.notFound") }
   if ((current as { is_operator: boolean }).is_operator) {
-    return { ok: false, error: "O operador da plataforma não se suspende." }
+    return { ok: false, error: t("bo.actions.partners.operatorNotSuspendable") }
   }
 
   const { error } = await db
@@ -241,7 +246,7 @@ export async function setPartnerStatus(input: {
     ok: true,
     notice:
       input.status === "suspended"
-        ? "Parceiro suspenso. As contas dele deixam de entrar e os links deixam de abrir."
-        : "Parceiro reactivado.",
+        ? t("bo.actions.partners.suspended")
+        : t("bo.actions.partners.reactivated"),
   }
 }

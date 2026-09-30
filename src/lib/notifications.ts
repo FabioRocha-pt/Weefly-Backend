@@ -27,6 +27,7 @@
  */
 
 import { Resend } from "resend"
+import { clientBrandForCase } from "@/lib/brand"
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import { sendWhatsApp, type WhatsAppOutcome } from "@/lib/whatsapp"
@@ -328,11 +329,26 @@ async function deliverEmail(
   }
 
   try {
-    const replyTo = list(input.replyTo)
+    /*
+     * TEN-02 · "os emails da Alô saem com o remetente da Alô, não com o da
+     * WeeFly". Só os que vão para o cliente, e só quando o parceiro tem
+     * remetente preenchido (o domínio tem de estar verificado no Resend). Sem
+     * remetente, sai o da WeeFly — é melhor do que não sair.
+     */
+    const brand = input.audience === "client" ? await clientBrandForCase(input.caseId) : null
+    const partnerSender =
+      brand?.kind === "partner" && brand.senderEmail
+        ? `${(brand.senderName ?? brand.name).replace(/[<>"]/g, "")} <${brand.senderEmail}>`
+        : null
+    const replyTo = list(input.replyTo).length
+      ? list(input.replyTo)
+      : brand?.kind === "partner" && brand.replyTo
+        ? [brand.replyTo]
+        : []
 
     const resend = new Resend(process.env.RESEND_API_KEY)
     const { data, error } = await resend.emails.send({
-      from: senderAddress(),
+      from: partnerSender ?? senderAddress(),
       to,
       subject: input.subject ?? "WeeFly",
       html: input.html ?? "",

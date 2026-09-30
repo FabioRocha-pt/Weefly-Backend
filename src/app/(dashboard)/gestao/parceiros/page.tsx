@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 
 import { loadAccessAdmin } from "@/lib/access-admin"
 import { PartnersAdmin } from "@/components/pro/partners-admin"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /**
  * ADM-01 · o registo de parceiros. Só o Admin WeeFly: a política
@@ -12,6 +13,7 @@ export default async function ParceirosPage() {
   const data = await loadAccessAdmin()
   if (!data || data.actor.manageUsers !== "all" || !data.actor.crossPartner) notFound()
 
+  const { t } = await getBoI18n()
   const counts = new Map<string, { users: number; active: number }>()
   for (const u of data.users) {
     const c = counts.get(u.partnerId) ?? { users: 0, active: 0 }
@@ -23,11 +25,8 @@ export default async function ParceirosPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Parceiros</h1>
-        <p className="text-slate-500 mt-1">
-          Criar um parceiro cria a primeira conta de administrador e envia o convite. Suspender não
-          apaga: bloqueia o login e congela os links.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">{t("bo.pro.partners.title")}</h1>
+        <p className="text-slate-500 mt-1">{t("bo.pro.partners.subtitle")}</p>
       </div>
       <PartnersAdmin
         partners={data.partners.map((p) => ({
