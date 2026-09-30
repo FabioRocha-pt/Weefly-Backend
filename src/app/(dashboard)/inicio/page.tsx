@@ -6,5 +6,5 @@ import { redirect } from "next/navigation"
  * endereço, porque há links e marcadores que apontam para ele.
  */
 export default function InicioPage() {
-  redirect("/modulo")
+  redirect("/entrar")
 }

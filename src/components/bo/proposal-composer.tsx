@@ -105,6 +105,7 @@ import { CARRIERS } from "@/lib/pc/catalog"
 import { FALLBACK_AIRLINES, airlineName } from "@/lib/airlines-catalog"
 import { CarrierMark } from "@/components/bo/carrier-mark"
 import { useT } from "@/i18n/provider"
+import { useLinkBase } from "@/components/bo/link-base"
 import type { Translator } from "@/i18n/translate"
 
 const CURRENCIES = ["CVE", "EUR", "USD"]
@@ -2541,12 +2542,14 @@ function PublishPanel({
 
 function CopyLink({ token, t }: { token: string; t: Translator }) {
   const [copied, setCopied] = useState(false)
+  /* MIG-02 · o endereço da configuração, não o do separador. */
+  const base = useLinkBase()
   return (
     <button
       type="button"
       onClick={async () => {
         await navigator.clipboard.writeText(
-          `${window.location.origin}/pc/${token}`
+          `${base}/pc/${token}`
         )
         setCopied(true)
         setTimeout(() => setCopied(false), 1600)

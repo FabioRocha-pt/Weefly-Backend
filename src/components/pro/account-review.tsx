@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { approveProAccount, rejectProAccount } from "@/actions/pro"
+import { partnerHostPreview } from "@/lib/site-url"
 
 /**
  * PRO-09 · uma conta pendente: aprovar (empresa, tipo, módulo, menus) ou
@@ -201,7 +202,9 @@ export function AccountReview({ account, partners }: Props) {
                       setSlug(e.target.value.toLowerCase())
                     }}
                   />
-                  <span className="text-xs text-slate-500">{slug || "…"}.weefly.africa</span>
+                  <span className="text-xs text-slate-500">
+                    {partnerHostPreview(slug) ?? `${slug || "…"} · subdomínio por configurar (TEN-04)`}
+                  </span>
                 </label>
               </div>
             ) : (

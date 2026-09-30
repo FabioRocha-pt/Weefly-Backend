@@ -9,7 +9,6 @@
  */
 
 import { revalidatePath } from "next/cache"
-import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 
@@ -17,6 +16,7 @@ import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getI18n } from "@/i18n/server"
 import { sendAccountDecisionEmail } from "@/lib/emails/account"
+import { siteUrl } from "@/lib/site-url"
 import {
   AGENT_MENUS,
   MODULE_HOME,
@@ -133,9 +133,9 @@ const approveSchema = z
     }
   })
 
+/** MIG-02 · do endereço configurado, nunca do `origin` do pedido. */
 function loginUrl(): string {
-  const origin = headers().get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? ""
-  return `${origin}/login`
+  return `${siteUrl()}/login`
 }
 
 interface Candidate {
@@ -292,6 +292,8 @@ export async function approveProAccount(input: {
         role: "manager",
         active: true,
         partner_id: partnerId,
+        /* ADM-02 · o registo de acessos guarda quem aprovou. */
+        changed_by_email: master.email,
       },
       { onConflict: "email", ignoreDuplicates: true }
     )

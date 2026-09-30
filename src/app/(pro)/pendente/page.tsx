@@ -16,7 +16,10 @@ export default async function PendentePage() {
   if (!account) redirect("/login")
   if (account.status === "approved") redirect("/modulo")
 
-  const rejected = account.status === "rejected"
+  /* ADM-02 · uma conta suspensa lê-se como recusada: não entra, e diz porquê
+     sem dizer quem. */
+  const suspended = account.status === "suspended"
+  const rejected = account.status === "rejected" || suspended
 
   return (
     <div className="max-w-lg mx-auto rounded-2xl border border-slate-200 bg-white p-8 text-center">
@@ -30,12 +33,20 @@ export default async function PendentePage() {
         {rejected ? <XCircle className="w-7 h-7" /> : <Clock className="w-7 h-7" />}
       </div>
       <h1 className="text-2xl font-bold text-slate-900">
-        {rejected ? t("pro.rejectedTitle") : t("pro.pendingTitle")}
+        {suspended
+          ? t("pro.suspendedTitle")
+          : rejected
+            ? t("pro.rejectedTitle")
+            : t("pro.pendingTitle")}
       </h1>
       <p className="text-slate-500 mt-2">
-        {rejected ? t("pro.rejectedBody") : t("pro.pendingBody", { email: account.email })}
+        {suspended
+          ? t("pro.suspendedBody")
+          : rejected
+            ? t("pro.rejectedBody")
+            : t("pro.pendingBody", { email: account.email })}
       </p>
-      {rejected && account.rejectionReason && (
+      {rejected && !suspended && account.rejectionReason && (
         <blockquote className="mt-5 rounded-xl bg-slate-50 border border-slate-200 p-4 text-left text-sm text-slate-700 whitespace-pre-wrap">
           {account.rejectionReason}
         </blockquote>

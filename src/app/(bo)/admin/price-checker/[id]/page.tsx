@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 
 import { getBoAccess, listBoSellers } from "@/lib/bo-access"
 import { loadBoCase } from "@/lib/pc/bo-queue"
+import { caseInScope, getBoScope } from "@/lib/bo-scope"
 import { getPcPayment, listProofs } from "@/lib/pc/payment"
 import { getPublishedProposal } from "@/lib/proposals"
 import { listCaseEvents } from "@/lib/case-events"
@@ -36,7 +37,10 @@ export default async function BoCasePage({
   const access = await getBoAccess()
   if (!access.ok) return null
 
-  const detail = await loadBoCase(params.id)
+  /* TEN-03 · um caso de outro parceiro, aberto pelo endereço, não existe. */
+  if (!(await caseInScope(params.id))) notFound()
+
+  const detail = await loadBoCase(await getBoScope(), params.id)
   if (!detail) notFound()
 
   const admin = createAdminClient()

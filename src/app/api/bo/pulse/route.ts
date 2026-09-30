@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { getBoAccess } from "@/lib/bo-access"
-import { createAdminClient } from "@/utils/supabase/admin"
+import { getBoScope } from "@/lib/bo-scope"
 
 /**
  * T-03 · o batimento que diz ao back-office que alguma coisa mudou.
@@ -33,30 +32,52 @@ import { createAdminClient } from "@/utils/supabase/admin"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const access = await getBoAccess()
-  if (!access.ok) {
+  const scope = await getBoScope()
+  if (!scope) {
     return NextResponse.json({ ok: false }, { status: 403 })
   }
 
-  const admin = createAdminClient()
-  if (!admin) {
-    return NextResponse.json({ ok: false, reason: "unavailable" }, { status: 503 })
-  }
+  /*
+   * TEN-03 · a assinatura é do mundo desta sessão, e não do mundo inteiro:
+   * lida pelo cliente da sessão (o RLS decide) e pelo parceiro dela. Sem isto,
+   * a fila do Alô recarregava a cada movimento da WeeFly — e as contagens
+   * diziam ao Alô quantos casos a WeeFly tem.
+   *
+   * Os filhos do caso (acontecimentos, pagamentos) chegam ao parceiro pelo
+   * caso: `booking_cases!inner` com o filtro dele.
+   */
+  const { db, partnerId } = scope
 
   const latest = async (table: string, column: string) => {
-    const { data } = await admin
+    let query = db
       .from(table)
-      .select(column)
+      .select(table === "booking_cases" ? column : `${column}, booking_cases!inner(partner_id)`)
       .order(column, { ascending: false })
       .limit(1)
-      .maybeSingle()
+    if (partnerId) {
+      query =
+        table === "booking_cases"
+          ? query.eq("partner_id", partnerId)
+          : query.eq("booking_cases.partner_id", partnerId)
+    }
+    const { data } = await query.maybeSingle()
     return (data as Record<string, string> | null)?.[column] ?? ""
   }
 
   const count = async (table: string) => {
-    const { count: n } = await admin
+    let query = db
       .from(table)
-      .select("id", { count: "exact", head: true })
+      .select(table === "booking_cases" ? "id" : "id, booking_cases!inner(partner_id)", {
+        count: "exact",
+        head: true,
+      })
+    if (partnerId) {
+      query =
+        table === "booking_cases"
+          ? query.eq("partner_id", partnerId)
+          : query.eq("booking_cases.partner_id", partnerId)
+    }
+    const { count: n } = await query
     return n ?? 0
   }
 

@@ -6,6 +6,12 @@
  * Todas começam pela mesma pergunta: quem está a fazer isto está na lista? A
  * verificação é feita aqui e não só no layout, porque uma server action é um
  * endpoint — quem souber o nome dela chama-a sem passar por página nenhuma.
+ *
+ * TEN-03 · e, quando a acção é sobre um caso, se o caso está na área da
+ * sessão (`boCaseIdentity`, `lib/bo-scope`). Um id de outro parceiro recebe a
+ * mesma resposta que uma sessão sem acesso. Um pagamento tem de ser do caso
+ * que a acção diz (`boPaymentIdentity`): sem isso, um caso próprio abria o
+ * pagamento de outro.
  */
 
 import { revalidatePath } from "next/cache"
@@ -13,6 +19,7 @@ import { z } from "zod"
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import { boIdentity } from "@/lib/bo-access"
+import { boCaseIdentity, boPaymentIdentity } from "@/lib/bo-scope"
 import { logCaseEvent } from "@/lib/case-events"
 import {
   clearReadAlerts,
@@ -83,7 +90,7 @@ const confirmSchema = z.object({
 export async function boConfirmPayment(
   input: z.input<typeof confirmSchema>
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boPaymentIdentity(String(input?.caseId ?? ""), String(input?.paymentId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = confirmSchema.safeParse(input)
@@ -143,7 +150,7 @@ const rejectSchema = z.object({
 export async function boRejectProof(
   input: z.input<typeof rejectSchema>
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boPaymentIdentity(String(input?.caseId ?? ""), String(input?.paymentId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = rejectSchema.safeParse(input)
@@ -176,7 +183,7 @@ const extendSchema = z.object({
 export async function boExtendDeadline(
   input: z.input<typeof extendSchema>
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boPaymentIdentity(String(input?.caseId ?? ""), String(input?.paymentId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = extendSchema.safeParse(input)
@@ -202,7 +209,7 @@ export async function boExpirePayment(
   caseId: string,
   paymentId: string
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boPaymentIdentity(caseId, paymentId)
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const result = await expireNow({
@@ -224,7 +231,7 @@ export async function boReopenPayment(
   caseId: string,
   hours = 48
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(caseId)
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const result = await reopenPayment({
@@ -274,7 +281,7 @@ export async function boReopenPayment(
  * o segundo recebe uma frase em vez de um caso que acha que é dele.
  */
 export async function boClaimCase(caseId: string): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(caseId)
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const admin = createAdminClient()
@@ -442,7 +449,7 @@ const instructionsSchema = z.object({
 export async function boSavePayInstructions(
   input: z.input<typeof instructionsSchema>
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boPaymentIdentity(String(input?.caseId ?? ""), String(input?.paymentId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = instructionsSchema.safeParse(input)
@@ -632,7 +639,7 @@ export async function boSavePayInstructions(
  * outra leitura nos números do mês. Os estados finais completos são Sprint 4.
  */
 export async function boCloseCase(caseId: string): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(caseId)
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const admin = createAdminClient()
@@ -714,7 +721,7 @@ export async function boArchiveCase(input: {
   reason: string
   note?: string
 }): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(String(input?.caseId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = archiveSchema.safeParse(input)
@@ -775,7 +782,7 @@ export async function boArchiveCase(input: {
  * nada: o rasto vive em `case_events`, que ninguém reescreve.
  */
 export async function boReopenCase(caseId: string): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(caseId)
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   if (identity.role !== "admin") {
@@ -832,7 +839,7 @@ const noteSchema = z.object({
 export async function boSaveNote(
   input: z.input<typeof noteSchema>
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(String(input?.caseId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = noteSchema.safeParse(input)
@@ -980,7 +987,7 @@ const issueSchema = z.object({
 export async function boIssueTickets(
   input: z.input<typeof issueSchema>
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(String(input?.caseId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = issueSchema.safeParse(input)
@@ -1091,12 +1098,34 @@ export async function boIssueTickets(
       .eq("case_id", v.caseId)
   }
 
+  /*
+   * TEN-03 · os passageiros e os voos têm de ser **deste** caso. As tabelas de
+   * lugares e de bagagem têm chave única (passageiro, voo): um id de outro
+   * caso — de outro parceiro — ocupava a linha dele, e a emissão desse caso
+   * deixava de conseguir gravar.
+   */
+  const { data: ownPassengers } = await admin
+    .from("case_passengers")
+    .select("id")
+    .eq("case_id", v.caseId)
+  const passengerIds = new Set(((ownPassengers ?? []) as { id: string }[]).map((p) => p.id))
+  const segmentIds = new Set(flights.map((f) => f.id))
+
   const { savePassengerSeats, savePassengerBaggage, saveSegmentIssuance } =
     await import("@/lib/issuance")
-  await savePassengerSeats(v.caseId, v.seats)
+  await savePassengerSeats(
+    v.caseId,
+    v.seats.filter((x) => passengerIds.has(x.passengerId) && segmentIds.has(x.segmentId))
+  )
   /* T-04 · o cupão de cada voo, e a bagagem de cada passageiro em cada voo. */
-  await saveSegmentIssuance(v.caseId, v.segments)
-  await savePassengerBaggage(v.caseId, v.baggage)
+  await saveSegmentIssuance(
+    v.caseId,
+    v.segments.filter((x) => segmentIds.has(x.segmentId))
+  )
+  await savePassengerBaggage(
+    v.caseId,
+    v.baggage.filter((x) => passengerIds.has(x.passengerId) && segmentIds.has(x.segmentId))
+  )
 
   await logCaseEvent({
     caseId: v.caseId,
@@ -1219,7 +1248,7 @@ async function selectedSegments(caseId: string): Promise<
  * tem de ser byte a byte o mesmo que o cliente já tem.
  */
 export async function boResendTickets(caseId: string): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(caseId)
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const { loadTicketDocument } = await import("@/lib/tickets/store")
@@ -1278,7 +1307,7 @@ export async function boResendTickets(caseId: string): Promise<BoResult> {
  * mantendo o número de documento, que deriva do PNR e da referência.
  */
 export async function boGenerateTickets(caseId: string): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(caseId)
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const { generateTicketDocuments } = await import("@/lib/tickets/generate")
@@ -1315,7 +1344,7 @@ const sellerSchema = z.object({
 export async function boSetSeller(
   input: z.input<typeof sellerSchema>
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(String(input?.caseId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = sellerSchema.safeParse(input)
@@ -1391,7 +1420,7 @@ const noticeSchema = z.object({
 export async function boNotifyClient(
   input: z.input<typeof noticeSchema>
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(String(input?.caseId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = noticeSchema.safeParse(input)
@@ -1455,7 +1484,7 @@ export async function boNotifyClient(
 
 /** Baixa a bandeira depois de alguém tratar do assunto (telefonema, outro email). */
 export async function boClearNotifyFlag(caseId: string): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(caseId)
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const { clearNotifyFlag } = await import("@/lib/notifications")
@@ -1493,7 +1522,7 @@ export async function boRotateClientLink(
   caseId: string,
   reason: string
 ): Promise<BoResultWith<{ token: string }>> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(caseId)
   if (!identity) return { ok: false, error: NOT_ALLOWED }
   if (identity.role !== "admin") {
     return { ok: false, error: "Só um administrador pode revogar o link." }
@@ -1582,7 +1611,7 @@ const unfreezeSchema = z.object({
 export async function boUnfreezeFlight(
   input: z.input<typeof unfreezeSchema>
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(String(input?.caseId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = unfreezeSchema.safeParse(input)
@@ -1729,7 +1758,7 @@ const datesSchema = z.object({
 export async function boProposeNewDates(
   input: z.input<typeof datesSchema>
 ): Promise<BoResult> {
-  const identity = await boIdentity()
+  const identity = await boCaseIdentity(String(input?.caseId ?? ""))
   if (!identity) return { ok: false, error: NOT_ALLOWED }
 
   const parsed = datesSchema.safeParse(input)

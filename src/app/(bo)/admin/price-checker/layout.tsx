@@ -12,6 +12,8 @@ import { BoNotificationBell } from "@/components/bo/notification-bell"
 import { loadBoAlerts } from "@/lib/bo-alerts"
 import { BoUserMenu } from "@/components/bo/user-menu"
 import { BoLiveUpdates } from "@/components/bo/live-updates"
+import { LinkBaseProvider } from "@/components/bo/link-base"
+import { partnerSiteUrl } from "@/lib/site-url"
 
 /**
  * WeeFly — o back-office do Price Checker.
@@ -92,7 +94,18 @@ export default async function BoPriceCheckerLayout({
       {!access.ok ? (
         <NoAccess email={access.email} />
       ) : (
-        <>
+        /* MIG-02 · os links copiados saem do endereço configurado, e do
+           parceiro da sessão. */
+        <LinkBaseProvider
+          base={partnerSiteUrl(
+            access.identity.tenant
+              ? {
+                  slug: access.identity.tenant.partnerSlug,
+                  isOperator: access.identity.tenant.isOperator,
+                }
+              : null
+          )}
+        >
           <header className="topbar">
             <div className="topbar-in">
               <WeeFlyLogo className="logo" />
@@ -139,9 +152,9 @@ export default async function BoPriceCheckerLayout({
             </div>
           </header>
           {/* BO-03 · a fila deixa de esperar por um F5. Ver o componente. */}
-          <BoLiveUpdates />
+          <BoLiveUpdates partnerId={access.identity.tenant?.partnerId ?? null} />
           {children}
-        </>
+        </LinkBaseProvider>
       )}
     </>
   )
@@ -172,13 +185,10 @@ function NoAccess({ email }: { email?: string }) {
         <div className="panel-b">
           <p className="note">
             O acesso é dado por email, uma conta de cada vez. Se devia ter acesso,
-            peça a quem administra para acrescentar este email à lista:
-          </p>
-          <p className="note" style={{ marginTop: 10 }}>
-            <code className="mono">
-              insert into public.bo_allowlist (email, label) values (&apos;
-              {email ?? "email"}&apos;, &apos;Nome&apos;);
-            </code>
+            peça a quem administra a sua empresa para o criar em{" "}
+            <b>Admin › Utilizadores e permissões</b> (ou em <b>Agente › Equipa</b>,
+            no caso de um parceiro). Se a conta foi suspensa, é aí que se
+            reactiva.
           </p>
           <div style={{ marginTop: 14 }}>
             <Link className="btn btn-sm" href="/inicio">

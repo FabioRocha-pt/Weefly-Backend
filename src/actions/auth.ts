@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { headers } from "next/headers"
 
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
@@ -13,6 +12,7 @@ import {
   setPendingSignup,
 } from "@/lib/signup-cookie"
 import { safeNextPath } from "@/lib/safe-next"
+import { siteUrl } from "@/lib/site-url"
 
 /**
  * Returned to the form on failure. On success the action redirects instead.
@@ -47,12 +47,11 @@ function authEmailError(
   return error.message
 }
 
-/** Onde o link do email aterra. O `origin` do pedido primeiro, para que o
-    link abra no mesmo domínio em que a pessoa se registou. */
+/** Onde o link do email aterra. MIG-02 · do endereço configurado, nunca do
+    `origin` do pedido: quem se registasse pelo endereço antigo recebia um link
+    para ele. */
 function callbackUrl(): string {
-  const origin =
-    headers().get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? ""
-  return `${origin}/auth/callback`
+  return `${siteUrl()}/auth/callback`
 }
 
 /** Read a trimmed string field from FormData. */
@@ -231,7 +230,8 @@ export async function signIn(formData: FormData): Promise<AuthActionState> {
   }
 
   revalidatePath("/", "layout")
-  redirect(next ?? "/modulo")
+  /* TEN-06 · sem destino pedido, o Concierge (ver `/entrar`). */
+  redirect(next ?? "/entrar")
 }
 
 /** Destroy the session and return to the login screen. */

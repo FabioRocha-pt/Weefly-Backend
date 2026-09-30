@@ -1,12 +1,13 @@
 "use server"
 
-import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getCase, getCaseByToken, type BookingCaseRow } from "@/lib/booking-cases"
+import { caseClientLink } from "@/lib/case-partner"
+import { caseInScope } from "@/lib/bo-scope"
 import {
   ensureProposal,
   getProposal,
@@ -249,6 +250,9 @@ async function requireCaseOwner(
 
   const access = await getBoAccess()
   if (!access.ok) return { error: t("errors.sessionExpired") }
+
+  /* TEN-03 · um caso de outro parceiro não existe para esta sessão. */
+  if (!(await caseInScope(caseId))) return { error: t("errors.invalidCase") }
 
   const owner = await caseOwner(caseId)
   if (!owner) return { error: t("errors.publishNeedsOwner") }
@@ -873,6 +877,12 @@ export async function saveTicketDetails(
   draft: TicketDetailsDraft
 ): Promise<ProposalActionState> {
   const { t } = getI18n()
+
+  /* TEN-03 · a mesma porta que as outras escritas da proposta. */
+  const access = await getBoAccess()
+  if (!access.ok) return { error: t("errors.sessionExpired") }
+  if (!(await caseInScope(caseId))) return { error: t("errors.invalidCase") }
+
   const view = await getProposal(caseId)
   if (!view) return { error: t("errors.caseHasNoProposal") }
 
@@ -927,11 +937,6 @@ export async function saveTicketDetails(
 }
 
 // --- Publicar ---------------------------------------------------------------
-
-function baseUrl(): string {
-  const host = headers().get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? ""
-  return host.replace(/\/$/, "")
-}
 
 /* Os endereços da equipa vivem agora em `lib/notifications.ts`, que é por onde
    todos os envios passam. Havia duas cópias da mesma lista, e duas listas iguais
@@ -1201,7 +1206,8 @@ async function notifyPublication(input: {
    * que fez o pedido. É o link 2 do backlog — opaco, sem nome nem referência no
    * caminho, e o mesmo que dá acesso à proposta, aos passaportes e ao bilhete.
    */
-  const link = `${baseUrl()}/pc/${bookingCase.token}`
+  /* MIG-02 · do endereço configurado, e do parceiro do caso. */
+  const link = await caseClientLink(bookingCase.id, bookingCase.token)
 
   if (!process.env.RESEND_API_KEY) {
     console.warn(

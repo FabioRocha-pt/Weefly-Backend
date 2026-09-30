@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { getBoAccess } from "@/lib/bo-access"
 import { loadBoQueue, type BoBucket } from "@/lib/pc/bo-queue"
+import { getBoScope } from "@/lib/bo-scope"
 import { BoQueueTable } from "@/components/bo/queue-table"
 import { elapsedSince } from "@/lib/case-status"
 import { formatMoney } from "@/lib/proposal-math"
@@ -54,6 +55,7 @@ export default async function BoQueuePage({
   const market = one("mercado")
 
   const queue = await loadBoQueue(
+    await getBoScope(),
     { bucket, search, market },
     access.identity.userId
   )

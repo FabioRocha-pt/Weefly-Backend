@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { boIdentity } from "@/lib/bo-access"
+import { caseIdOf, caseInScope } from "@/lib/bo-scope"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { PROOF_BUCKET } from "@/lib/pc/payment"
 
@@ -135,11 +136,18 @@ export async function GET(
     )
   }
 
-  const { data: proof } = await admin
-    .from("case_payment_proofs")
-    .select("storage_path, file_name, mime_type, size_bytes")
-    .eq("id", params.id)
-    .maybeSingle()
+  /* TEN-03 · o comprovativo de um caso de outro parceiro não existe para esta
+     sessão: a mesma resposta que um id que não existe. */
+  const caseId = await caseIdOf("case_payment_proofs", params.id)
+  const visible = caseId ? await caseInScope(caseId) : false
+
+  const { data: proof } = visible
+    ? await admin
+        .from("case_payment_proofs")
+        .select("storage_path, file_name, mime_type, size_bytes")
+        .eq("id", params.id)
+        .maybeSingle()
+    : { data: null }
 
   if (!proof) {
     return problem(

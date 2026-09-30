@@ -6,14 +6,20 @@
  * âmbar somos nós, azul é o cliente — e é esse eixo que decide o que aparece em
  * cima.
  *
- * Leituras pela service role: o back-office já é protegido pela allowlist na
- * porta (`getBoAccess`), e as RLS destas tabelas exigem `platform_staff`, o que
- * faria a fila depender de duas listas em vez de uma.
+ * TEN-03 · a fila lê pelo cliente da sessão (o `BoScope` de `getBoScope`, que
+ * quem chama passa), com o RLS da 0020
+ * a decidir o que a sessão vê, e filtra pelo parceiro dela: uma conta do Alô
+ * abre a fila e vê o Alô. A ficha do caso só se lê depois de a fila a
+ * encontrar — um caso de outro parceiro não está lá, e a página dá 404.
  *
  * SÓ SERVIDOR.
  */
 
 import { createAdminClient } from "@/utils/supabase/admin"
+/* Só o tipo: este ficheiro é lido também por componentes de cliente (as
+   etiquetas dos estados), e o `bo-scope` traz o `next/headers`. Quem chama
+   as leituras passa o âmbito. */
+import type { BoScope } from "@/lib/bo-scope"
 import {
   customerDeadline,
   offerTotal,
@@ -294,10 +300,10 @@ export interface BoQueue {
  * dados para desenhar seis números que têm de ser coerentes entre si.
  */
 export async function loadBoQueue(
+  scope: BoScope | null,
   filters: BoQueueFilters = {},
   viewerId?: string
 ): Promise<BoQueue> {
-  const admin = createAdminClient()
   const empty: BoQueue = {
     rows: [],
     counts: {
@@ -313,17 +319,18 @@ export async function loadBoQueue(
     oldest: {},
     issuedThisMonth: { count: 0, revenue: 0, currency: "EUR" },
   }
-  if (!admin) return empty
+  if (!scope) return empty
 
   /* PRO-10 · o motivo do arquivo vem com a 0023. Numa base sem ela o pedido
      com as colunas novas falha por coluna inexistente (42703), e a fila não
      pode ficar vazia por isso: repete-se sem elas. */
   const run = (columns: string) => {
-    let query = admin
+    let query = scope.db
       .from("booking_cases")
       .select(columns)
       .order("created_at", { ascending: false })
       .limit(filters.caseId ? 1 : (filters.limit ?? 300))
+    if (scope.partnerId) query = query.eq("partner_id", scope.partnerId)
     if (filters.caseId) query = query.eq("id", filters.caseId)
     return query
   }
@@ -690,11 +697,14 @@ const CABIN_LABEL_PT: Record<string, string> = {
  * estado: são duas leituras onde poderia haver uma, e é o preço de o estado ser
  * calculado num sítio só. Pedida por `caseId`, a fila lê uma linha e não 300.
  */
-export async function loadBoCase(caseId: string): Promise<BoCaseDetail | null> {
+export async function loadBoCase(
+  scope: BoScope | null,
+  caseId: string
+): Promise<BoCaseDetail | null> {
   const admin = createAdminClient()
-  if (!admin) return null
+  if (!admin || !scope) return null
 
-  const queue = await loadBoQueue({ bucket: "tudo", caseId })
+  const queue = await loadBoQueue(scope, { bucket: "tudo", caseId })
   const row = queue.rows.find((r) => r.caseId === caseId)
   if (!row) return null
 

@@ -225,12 +225,16 @@ begin
   end;
 end $$;
 
--- cross_partner só em contas do operador.
+-- cross_partner só em contas do operador. Desde a 0026 é o perfil que o
+-- decide: escrevê-lo à mão não pega.
 do $$
 begin
   begin
     update public.bo_allowlist set cross_partner = true where email = 'agent@alo.test';
-    raise exception 'FALHOU · uma conta do Alô ficou cross_partner';
+    if (select cross_partner from public.bo_allowlist where email = 'agent@alo.test') then
+      raise exception 'FALHOU · uma conta do Alô ficou cross_partner';
+    end if;
+    raise notice 'ok · cross_partner recusado fora do operador';
   exception when check_violation then
     raise notice 'ok · cross_partner recusado fora do operador';
   end;

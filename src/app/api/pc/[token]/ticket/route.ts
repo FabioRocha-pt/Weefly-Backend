@@ -41,7 +41,7 @@ export async function GET(
 
   const { data } = await admin
     .from("booking_cases")
-    .select("id, stage")
+    .select("id, stage, partner:partners(status)")
     .eq("token", params.token)
     .maybeSingle()
 
@@ -49,8 +49,14 @@ export async function GET(
     return NextResponse.json({ error: "link inválido" }, { status: 404 })
   }
 
-  const bookingCase = data as { id: string; stage: string }
-  if (bookingCase.stage === "cancelado") {
+  const bookingCase = data as unknown as {
+    id: string
+    stage: string
+    partner: { status: string } | { status: string }[] | null
+  }
+  const partner = Array.isArray(bookingCase.partner) ? bookingCase.partner[0] : bookingCase.partner
+  /* ADM-01 · o link de um parceiro suspenso fica congelado, bilhete incluído. */
+  if (bookingCase.stage === "cancelado" || partner?.status === "suspended") {
     return NextResponse.json({ error: "link inválido" }, { status: 404 })
   }
 

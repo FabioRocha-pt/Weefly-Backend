@@ -28,6 +28,7 @@ import {
 } from "@/lib/notifications"
 import { whatsappTeamNumber } from "@/lib/whatsapp"
 import { toE164 } from "@/lib/countries"
+import { caseClientUrl, siteUrl, type LinkPartner } from "@/lib/site-url"
 import {
   BORDER,
   EMBER_RED,
@@ -82,9 +83,12 @@ interface CaseContext {
   pnr: string | null
   /** A língua em que o cliente falou connosco — ver `0008_lead_locale.sql`. */
   locale: Locale
+  /** MIG-02 · o parceiro do caso, para o endereço do link do cliente. */
+  partner: LinkPartner | null
 }
 
-const site = () => (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")
+/* MIG-02 · o endereço vem da configuração, num sítio só. */
+const site = () => siteUrl()
 
 /**
  * Para onde o aviso manda quem o lê.
@@ -110,8 +114,9 @@ function caseAdminLink(ctx: CaseContext): string {
  * descarrega o bilhete.
  */
 function clientLink(ctx: CaseContext): string {
-  const base = site()
-  return base ? `${base}/pc/${ctx.token}` : ""
+  /* MIG-02 · o link de um caso de parceiro sai do endereço do parceiro. O
+     back-office (`caseAdminLink`) fica no da WeeFly: é lá que todos entram. */
+  return caseClientUrl(ctx.token, ctx.partner)
 }
 
 /** "2A · 1C · 1B" — a mesma abreviatura da coluna de passageiros da fila. */
@@ -137,6 +142,7 @@ async function context(caseId: string): Promise<CaseContext | null> {
     .from("booking_cases")
     .select(
       `id, token, pnr, created_by, seller_email, seller_label,
+       partner:partners (slug, is_operator),
        trip_request:trip_requests (
          reference, origin, destination, depart_date, return_date, intake,
          agent_slug, trip_type, cabin_class, special_requests,
@@ -230,7 +236,13 @@ async function context(caseId: string): Promise<CaseContext | null> {
       null,
     pnr: (row.pnr as string | null) ?? null,
     locale: localeForClient(lead?.locale as string | null),
+    partner: partnerOf(unwrap(row.partner)),
   }
+}
+
+function partnerOf(raw: Record<string, unknown> | null): LinkPartner | null {
+  if (!raw || typeof raw.slug !== "string") return null
+  return { slug: raw.slug, isOperator: Boolean(raw.is_operator) }
 }
 
 /**

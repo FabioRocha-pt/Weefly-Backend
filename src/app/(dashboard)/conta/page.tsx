@@ -16,10 +16,14 @@ export default async function ContaPage() {
     getBoAccess(),
   ])
 
-  /* O perfil de acesso: master, ou o papel no Concierge quando existe, ou
-     simplesmente membro da empresa. */
-  const profile =
-    accessProfile(account) === "master"
+  /* ADM-02 · o perfil de acesso, tal como está guardado. Sem a 0026: master,
+     ou o papel no Concierge, ou simplesmente membro da empresa. */
+  const stored = account.profile ?? (bo.ok ? bo.identity.profile : null)
+  const profile = stored
+    ? getI18n().locale === "pt"
+      ? stored.labelPt
+      : stored.labelEn
+    : accessProfile(account) === "master"
       ? t("profile.roleMaster")
       : bo.ok
         ? t(`profile.roleBo.${bo.identity.role}`)

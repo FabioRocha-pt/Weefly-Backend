@@ -858,7 +858,8 @@
     "footerTitle": "One login.",
     "footerBody": "Reach every company without a PIN. Team management (RBAC) is coming soon.",
     "signOut": "Sign out",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "team": "Team"
   },
   "companyTypes": {
     "rental": "Car rental",
@@ -1810,7 +1811,14 @@
     "caseDepart": "Departure",
     "caseState": "Status",
     "caseCreated": "Created",
-    "caseClosed": "Closed"
+    "caseClosed": "Closed",
+    "suspendedTitle": "Account suspended",
+    "suspendedBody": "This account was suspended by whoever manages your company. If you think this is a mistake, contact them.",
+    "adminUsers": "Users and permissions",
+    "adminPartners": "Partners",
+    "adminB2g": "B2G",
+    "adminNumbers": "Numbers",
+    "adminRevenue": "Revenue"
   },
   "profile": {
     "title": "Profile",

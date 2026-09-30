@@ -68,7 +68,16 @@ interface Arrival {
   fresh: boolean
 }
 
-export function BoLiveUpdates() {
+/*
+ * TEN-03 · as tabelas que têm `partner_id`, e por isso se podem filtrar no
+ * próprio Realtime. As outras (pagamentos, comprovativos, passageiros…) não o
+ * têm: subscrevê-las entregava a um Admin WeeFly — que o RLS deixa ver tudo — as
+ * linhas dos casos do Alô, e o sino tocava na área da WeeFly. Com parceiro, só
+ * estas duas; o que muda nas filhas chega pelo batimento, que é por parceiro.
+ */
+const PARTNER_TABLES = ["booking_cases", "trip_requests"]
+
+export function BoLiveUpdates({ partnerId }: { partnerId?: string | null }) {
   const router = useRouter()
   const [arrival, setArrival] = useState<Arrival | null>(null)
   const [live, setLive] = useState(false)
@@ -145,10 +154,12 @@ export function BoLiveUpdates() {
 
     const channel = supabase.channel("bo-price-checker")
 
-    for (const table of TABLES) {
+    for (const table of partnerId ? PARTNER_TABLES : TABLES) {
       channel.on(
         "postgres_changes",
-        { event: "*", schema: "public", table },
+        partnerId
+          ? { event: "*", schema: "public", table, filter: `partner_id=eq.${partnerId}` }
+          : { event: "*", schema: "public", table },
         (payload) => {
           announce(table === "booking_cases" && payload.eventType === "INSERT")
           refreshWhenIdle()
@@ -168,7 +179,7 @@ export function BoLiveUpdates() {
       if (timer.current) clearTimeout(timer.current)
       void supabase.removeChannel(channel)
     }
-  }, [announce, refreshWhenIdle])
+  }, [announce, refreshWhenIdle, partnerId])
 
   /*
    * T-03 · o batimento, a correr sempre.

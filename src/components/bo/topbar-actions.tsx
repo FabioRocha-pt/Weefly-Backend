@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState } from "react"
 
 import { CURRENCIES } from "@/lib/pc/catalog"
+import { useLinkBase } from "@/components/bo/link-base"
 import { COUNTRIES, COUNTRY_BY_ISO, countryName, flagOf } from "@/lib/countries"
 
 interface Market {
@@ -119,13 +120,11 @@ export function LinkDrawer({
   const [lang, setLang] = useState("fr")
   const [currency, setCurrency] = useState("EUR")
   const [country, setCountry] = useState("FR")
-  const [origin, setOrigin] = useState("")
 
-  /* O endereço tem de ser o real, não "weefly.africa" em duro: em pré-produção o
-     link copiado tem de abrir a pré-produção. */
-  useEffect(() => {
-    setOrigin(window.location.origin)
-  }, [])
+  /* MIG-02 · o endereço vem da configuração (e do parceiro da sessão), nunca
+     do endereço em que o back-office foi aberto: aberto pelo endereço antigo,
+     o link copiado apontava para o endereço antigo. */
+  const origin = useLinkBase()
 
   function applyMarket(name: string) {
     setMarket(name)
@@ -145,10 +144,10 @@ export function LinkDrawer({
     /* PRO-06 · a empresa de quem cria o link. O servidor só a aceita se
        houver um vendedor activo dela com este `agent` (ver `lib/pc/intake`). */
     if (viewer.company) params.set("company", viewer.company)
-    return `${origin || "https://weefly.africa"}/pc?${params.toString()}`
+    return `${origin}/pc?${params.toString()}`
   }, [origin, lang, currency, country, agent, viewer.company])
 
-  const bare = `${origin || "https://weefly.africa"}/pc`
+  const bare = `${origin}/pc`
 
   const message = useMemo(() => {
     const greeting =

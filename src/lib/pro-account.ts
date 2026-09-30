@@ -1,8 +1,10 @@
 /**
  * WeeFly Pro · a conta de quem está ligado, e o que ela pode abrir.
  *
- * PRO-02 · módulos: Fornecedor e Agente para todas as contas, e Admin só para
- *          a conta master.
+ * PRO-02 · módulos: Fornecedor e Agente para todas as contas.
+ * TEN-06 · Admin para qualquer conta com o perfil Admin WeeFly (ADM-02,
+ *          migração 0026) — e não só para a do Dominik. O perfil vem da
+ *          `bo_allowlist`, a mesma linha que o RLS lê.
  * PRO-03 · Fornecedor aparece sempre, com cadeado: ainda não há nada lá dentro.
  * PRO-04 · os menus do Agente vêm da empresa (`partners.agent_menus`, 0022).
  *          Qual deles já tem conteúdo é código: hoje só Passagens.
@@ -22,7 +24,14 @@ import { redirect } from "next/navigation"
 
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
-import type { AgentMenuId } from "@/lib/pro-menus"
+import { AGENT_MENU_HREF, type AgentMenuId } from "@/lib/pro-menus"
+import {
+  ACCESS_ROLE_COLUMNS,
+  profileFromRow,
+  unwrapOne,
+  type AccessProfile,
+  type AccessRoleRow,
+} from "@/lib/access-roles"
 
 export type ProModule = "supplier" | "agent" | "admin"
 export const PRO_MODULES: readonly ProModule[] = ["supplier", "agent", "admin"]
@@ -40,7 +49,12 @@ export const AGENT_MENUS: readonly AgentMenu[] = [
 const MENUS_WITH_CONTENT: readonly AgentMenu[] = ["flights"]
 
 export type SellMode = "reseller" | "white_label"
-export type AccountStatus = "pending" | "approved" | "rejected"
+/**
+ * `suspended` não é uma coluna de `pro_accounts`: é a allowlist a dizer que a
+ * conta está suspensa (ADM-02). Suspender é reversível, por isso a aprovação
+ * fica onde está.
+ */
+export type AccountStatus = "pending" | "approved" | "rejected" | "suspended"
 
 export interface ProPartner {
   id: string
@@ -58,9 +72,15 @@ export interface ProAccount {
   email: string
   status: AccountStatus
   rejectionReason: string | null
+  /** TEN-06 · vê o módulo Admin. Vem do perfil; numa base sem a 0026, da
+      conta master. */
   isMaster: boolean
   lastModule: ProModule | null
   partner: ProPartner | null
+  /** ADM-02 · o perfil, quando a conta tem linha na allowlist. */
+  profile: AccessProfile | null
+  /** PRO-04 · os menus do Agente desta pessoa; nulo, os da empresa. */
+  userAgentMenus: string[] | null
   /**
    * A base ainda não tem a 0022. Toda a conta entra, como antes deste
    * módulo existir, e o Admin fica só para o Dominik. Sai quando a 0022
@@ -138,6 +158,8 @@ export const getProAccount = cache(async (): Promise<ProAccount | null> => {
     isMaster: MASTER_FALLBACK.includes(email),
     lastModule: null,
     partner: null,
+    profile: null,
+    userAgentMenus: null,
     legacy: true,
   }
 
@@ -167,17 +189,69 @@ export const getProAccount = cache(async (): Promise<ProAccount | null> => {
   }
 
   const row = data as unknown as AccountRow
+  const access = await readAccess(admin, row.email || email)
+
+  /* Sem a 0026 não há perfil, e o Admin continua a ser a conta master. Com
+     ela, é o perfil que decide — `is_master` deixa de contar. */
+  const isAdmin = access.migrated
+    ? Boolean(access.profile?.adminModule)
+    : row.is_master
+
+  const status: AccountStatus =
+    row.status === "approved" && access.active === false ? "suspended" : row.status
+
   return {
     userId: row.user_id,
     email: row.email || email,
-    status: row.status,
+    status,
     rejectionReason: row.rejection_reason,
-    isMaster: row.is_master && row.status === "approved",
+    isMaster: isAdmin && status === "approved",
     lastModule: row.last_module,
     partner: row.partner ? partnerFromRow(row.partner) : null,
+    profile: access.profile,
+    userAgentMenus: access.agentMenus,
     legacy: false,
   }
 })
+
+interface AccessRead {
+  /** A 0026 está aplicada. */
+  migrated: boolean
+  /** `null`: sem linha na allowlist. */
+  active: boolean | null
+  profile: AccessProfile | null
+  agentMenus: string[] | null
+}
+
+/** A linha da allowlist desta conta: o perfil e se está activa. */
+async function readAccess(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  email: string
+): Promise<AccessRead> {
+  const { data, error } = await admin
+    .from("bo_allowlist")
+    .select(`active, agent_menus, profile:access_roles(${ACCESS_ROLE_COLUMNS})`)
+    .ilike("email", email)
+    .maybeSingle()
+
+  if (error) {
+    if (!isSchemaNotMigrated(error)) console.error("[pro] perfil ilegível", error)
+    return { migrated: !isSchemaNotMigrated(error), active: null, profile: null, agentMenus: null }
+  }
+  if (!data) return { migrated: true, active: null, profile: null, agentMenus: null }
+
+  const row = data as unknown as {
+    active: boolean
+    agent_menus: string[] | null
+    profile: AccessRoleRow | AccessRoleRow[] | null
+  }
+  return {
+    migrated: true,
+    active: row.active,
+    profile: profileFromRow(unwrapOne(row.profile)),
+    agentMenus: row.agent_menus,
+  }
+}
 
 // ── módulos ──────────────────────────────────────────────────────────────────
 
@@ -196,6 +270,8 @@ export function moduleState(account: ProAccount, module: ProModule): ModuleState
     case "supplier":
       return "soon"
     case "agent":
+      /* ADM-02 · a secretária não entra no back-office: o módulo nem aparece. */
+      if (account.profile && !account.profile.backoffice) return "hidden"
       if (!account.partner) return account.legacy ? "open" : "soon"
       return account.partner.sellEnabled ? "open" : "soon"
     case "admin":
@@ -239,9 +315,12 @@ export async function requireApprovedAccount(): Promise<ProAccount> {
  * `open`: ligado e com conteúdo.
  */
 export function agentMenuState(account: ProAccount, menu: AgentMenu): ModuleState {
-  const enabled = account.partner
+  /* ADM-02 · os menus de uma pessoa estreitam os da empresa, nunca os
+     alargam: um menu desligado na empresa não se liga numa conta. */
+  const own = account.userAgentMenus ? account.userAgentMenus.includes(menu) : true
+  const enabled = own && (account.partner
     ? account.partner.agentMenus.includes(menu)
-    : /* Base antiga: só existe a WeeFly, que vê os cinco. */ account.legacy
+    : /* Base antiga: só existe a WeeFly, que vê os cinco. */ account.legacy)
   if (!enabled) return "hidden"
   return MENUS_WITH_CONTENT.includes(menu) ? "open" : "soon"
 }
@@ -253,6 +332,21 @@ export function visibleAgentMenus(
     const state = agentMenuState(account, menu)
     return state === "hidden" ? [] : [{ menu, state }]
   })
+}
+
+/**
+ * TEN-06 · "o login abre o Concierge por defeito".
+ *
+ * O Concierge é o menu Passagens do Agente. Abre-se directamente quando a
+ * conta o tem aberto e entra no back-office; senão, a escolha de módulo.
+ */
+export function homeFor(account: ProAccount): string {
+  if (account.status !== "approved") return "/pendente"
+  const concierge =
+    moduleState(account, "agent") === "open" &&
+    agentMenuState(account, "flights") === "open" &&
+    (account.profile ? account.profile.backoffice : account.legacy || Boolean(account.partner))
+  return concierge ? AGENT_MENU_HREF.flights : "/modulo"
 }
 
 /** O perfil de acesso, para o PRO-13. */

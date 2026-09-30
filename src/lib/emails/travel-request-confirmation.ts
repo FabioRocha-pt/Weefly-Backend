@@ -28,6 +28,7 @@ import {
   summaryRow,
 } from "./shared"
 import { DEFAULT_LOCALE, LOCALE_TAGS, type Locale } from "@/i18n/config"
+import { websiteUrl } from "@/lib/site-url"
 import { createTranslator, type Translator } from "@/i18n/translate"
 import ptDictionary from "@/i18n/dictionaries/pt.json"
 
@@ -136,7 +137,7 @@ export function buildTravelRequestConfirmationEmail(
               <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">
                 ${escapeHtml(t("email.confirmNoAction"))}
               </p>
-              <a href="https://weefly.africa" style="display:inline-block;background:${EMBER_RED};color:#ffffff;font-size:14px;font-weight:700;padding:13px 26px;border-radius:999px;">
+              <a href="${escapeHtml(websiteUrl())}" style="display:inline-block;background:${EMBER_RED};color:#ffffff;font-size:14px;font-weight:700;padding:13px 26px;border-radius:999px;">
                 ${escapeHtml(t("email.confirmCta"))}
               </a>
             </td>

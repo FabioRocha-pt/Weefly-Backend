@@ -5,17 +5,15 @@
  * empresa, juntado pelo email (ou pelo telefone, quando não há email). Assim a
  * lista nunca discorda dos casos — é uma leitura deles.
  *
- * O isolamento: cada empresa vê só os seus. Com a 0022 aplicada, a conta tem
- * empresa e filtra-se por `booking_cases.partner_id`. Na base antiga não há
- * empresa na conta, e qualquer registo novo entraria no Agente — por isso aí a
- * lista só abre a quem já tem acesso ao back-office (a allowlist), que é quem
- * hoje já vê estes casos no Price Checker.
+ * O isolamento (TEN-03 · A5): lido pelo cliente da sessão, com o RLS da 0020
+ * a decidir, e filtrado pelo parceiro da sessão (`getBoScope`). Quem não tem
+ * acesso ao back-office não tem clientes: os clientes são os dos casos, e os
+ * casos são do back-office.
  *
  * SÓ SERVIDOR.
  */
 
-import { createAdminClient } from "@/utils/supabase/admin"
-import { getBoAccess } from "@/lib/bo-access"
+import { getBoScope } from "@/lib/bo-scope"
 import type { ProAccount } from "@/lib/pro-account"
 
 export interface ClientCase {
@@ -77,11 +75,11 @@ export type ClientsResult =
 /**
  * Todos os clientes da empresa da conta, o mais recente primeiro.
  */
-export async function loadProClients(account: ProAccount): Promise<ClientsResult> {
-  const admin = createAdminClient()
-  if (!admin) return { ok: false, reason: "error" }
+export async function loadProClients(_account: ProAccount): Promise<ClientsResult> {
+  const scope = await getBoScope()
+  if (!scope) return { ok: false, reason: "no_access" }
 
-  let query = admin
+  let query = scope.db
     .from("booking_cases")
     .select(
       "id, stage, created_at, closed_at, lead:leads(id, full_name, email, phone_prefix, phone), trip:trip_requests(reference, origin, destination, depart_date)"
@@ -89,14 +87,7 @@ export async function loadProClients(account: ProAccount): Promise<ClientsResult
     .order("created_at", { ascending: false })
     .limit(LIMIT)
 
-  if (account.partner) {
-    query = query.eq("partner_id", account.partner.id)
-  } else {
-    /* Base antiga, ou conta sem empresa: só quem já vê estes casos no
-       back-office. Ver o cabeçalho. */
-    const access = await getBoAccess()
-    if (!access.ok || !account.legacy) return { ok: false, reason: "no_access" }
-  }
+  if (scope.partnerId) query = query.eq("partner_id", scope.partnerId)
 
   const { data, error } = await query
   if (error) {

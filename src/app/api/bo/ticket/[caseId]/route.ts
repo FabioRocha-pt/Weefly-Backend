@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { boIdentity } from "@/lib/bo-access"
+import { caseInScope } from "@/lib/bo-scope"
 import { loadTicketDocument } from "@/lib/tickets/store"
 
 export const runtime = "nodejs"
@@ -27,7 +28,10 @@ export async function GET(
   }
 
   const passengerId = new URL(request.url).searchParams.get("pax")
-  const document = await loadTicketDocument(params.caseId, passengerId)
+  /* TEN-03 · o bilhete de um caso de outro parceiro não existe aqui. */
+  const document = (await caseInScope(params.caseId))
+    ? await loadTicketDocument(params.caseId, passengerId)
+    : null
 
   if (!document) {
     return NextResponse.json(

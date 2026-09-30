@@ -858,7 +858,8 @@
     "footerTitle": "Une seule connexion.",
     "footerBody": "Accédez à toutes vos entreprises sans code PIN. La gestion d'équipe (RBAC) arrive bientôt.",
     "signOut": "Se déconnecter",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "team": "Équipe"
   },
   "companyTypes": {
     "rental": "Location de voitures",
@@ -1810,7 +1811,14 @@
     "caseDepart": "Départ",
     "caseState": "Statut",
     "caseCreated": "Créé",
-    "caseClosed": "Clôturé"
+    "caseClosed": "Clôturé",
+    "suspendedTitle": "Compte suspendu",
+    "suspendedBody": "Ce compte a été suspendu par la personne qui gère votre entreprise. Si vous pensez qu'il s'agit d'une erreur, contactez-la.",
+    "adminUsers": "Utilisateurs et permissions",
+    "adminPartners": "Partenaires",
+    "adminB2g": "B2G",
+    "adminNumbers": "Chiffres",
+    "adminRevenue": "Revenus"
   },
   "profile": {
     "title": "Profil",

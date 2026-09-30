@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { getBoAccess, listBoSellers } from "@/lib/bo-access"
 import { getCase, type BookingCaseRow } from "@/lib/booking-cases"
 import { loadBoCase } from "@/lib/pc/bo-queue"
+import { caseInScope, getBoScope } from "@/lib/bo-scope"
 import {
   ensureProposalForRender,
   paxOf,
@@ -56,6 +57,9 @@ export default async function BoCaseOffersPage({
   const access = await getBoAccess()
   if (!access.ok) return null
 
+  /* TEN-03 · um caso de outro parceiro, aberto pelo endereço, não existe. */
+  if (!(await caseInScope(params.id))) notFound()
+
   /*
    * C-22 · o back-office fala uma língua só, e é português.
    *
@@ -82,7 +86,7 @@ export default async function BoCaseOffersPage({
 
   const [bookingCase, detail, sellers] = await Promise.all([
     getCase(params.id),
-    loadBoCase(params.id),
+    loadBoCase(await getBoScope(), params.id),
     listBoSellers(),
   ])
   if (!bookingCase) notFound()

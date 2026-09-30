@@ -1,5 +1,6 @@
-import { type NextRequest } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { updateSession } from "@/utils/supabase/middleware"
+import { hostAllowed, servedHosts } from "@/lib/served-hosts"
 import {
   LOCALE_COOKIE,
   LOCALE_COOKIE_MAX_AGE,
@@ -7,6 +8,24 @@ import {
 } from "@/i18n/config"
 
 export async function middleware(request: NextRequest) {
+  /*
+   * MIG-02 · decisão de 30 de setembro: o endereço antigo é desligado e não se
+   * redirecciona. A lista dos endereços servidos é configuração
+   * (`SERVED_HOSTS`); um pedido para outro recebe 404 antes de qualquer outra
+   * coisa. O NGINX é a primeira barreira — esta é a segunda, para o caso de o
+   * DNS antigo continuar a apontar para este servidor.
+   */
+  const served = servedHosts()
+  if (served && !hostAllowed(request.headers.get("host"), served)) {
+    return new NextResponse("Not found", { status: 404 })
+  }
+
+  /* O /pc passa aqui só pela verificação do endereço: a autorização do cliente
+     é o token, não uma sessão — ver o `matcher`. */
+  if (request.nextUrl.pathname === "/pc" || request.nextUrl.pathname.startsWith("/pc/")) {
+    return NextResponse.next()
+  }
+
   // Refreshes the Supabase session and enforces route protection.
   const response = await updateSession(request)
 
@@ -42,15 +61,15 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico
      * - common image assets
-     * - /pc (o Price Checker): a autorização do cliente é o token no endereço,
-     *   não uma sessão, e os ecrãs não passam pelo dicionário da app. Sem isto,
-     *   cada abertura do link gastava uma validação de sessão que não é usada
-     *   por ninguém. O back-office dele continua atrás de /admin.
+     *
+     * O /pc (o Price Checker) entra, mas só para a verificação do endereço
+     * (MIG-02): a autorização do cliente é o token, não uma sessão, e o
+     * `middleware` devolve antes de validar sessão nenhuma.
      *
      * `mockups` e `price-checker` estavam aqui enquanto o Price Checker era um
      * HTML estático em public/. Saíram com ele.
      * Feel free to add more public asset extensions here.
      */
-    "/((?!_next/static|_next/image|favicon.ico|pc(?:/|$)|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 }

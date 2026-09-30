@@ -12,6 +12,7 @@
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import { listPassengerSeats } from "@/lib/issuance"
+import { caseClientLink } from "@/lib/case-partner"
 import { CARRIERS, carrierName } from "@/lib/pc/catalog"
 import type { OfferDirection } from "@/lib/proposal-math"
 
@@ -253,7 +254,8 @@ export async function loadTicketData(caseId: string): Promise<TicketLoad> {
 
   const carrierCode = (row.issuing_carrier as string | null) ?? null
   const fullName = String(lead?.full_name ?? "")
-  const base = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")
+  /* MIG-02 · o endereço do parceiro do caso, lido da configuração. */
+  const link = await caseClientLink(caseId, String(row.token))
 
   return {
     ok: true,
@@ -291,7 +293,7 @@ export async function loadTicketData(caseId: string): Promise<TicketLoad> {
         holdCount !== null
           ? bagPt(holdCount, "hold")
           : ((chosen.baggage_hold as string | null) ?? "—"),
-      link: base ? `${base}/pc/${row.token}` : "",
+      link,
     },
   }
 }

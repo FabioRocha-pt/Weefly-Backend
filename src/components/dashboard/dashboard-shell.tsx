@@ -23,6 +23,12 @@ const TITLE_KEYS: Record<string, string> = {
   "/agente/experiencias": "pro.menu.experiences",
   "/agente/comida": "pro.menu.food",
   "/gestao/contas": "pro.adminAccounts",
+  "/gestao/utilizadores": "pro.adminUsers",
+  "/gestao/parceiros": "pro.adminPartners",
+  "/gestao/b2g": "pro.adminB2g",
+  "/gestao/numeros": "pro.adminNumbers",
+  "/gestao/receita": "pro.adminRevenue",
+  "/agente/equipa": "nav.team",
   "/conta": "profile.title",
 }
 
@@ -31,15 +37,17 @@ export function DashboardShell({
   modules,
   agentMenus,
   companyName,
+  canManageTeam,
   children,
 }: {
   user: UserMenuData | null
   modules: SidebarModule[]
   agentMenus: SidebarAgentMenu[]
   companyName: string | null
+  canManageTeam?: boolean
   children: React.ReactNode
 }) {
-  const nav = { modules, agentMenus, companyName }
+  const nav = { modules, agentMenus, companyName, canManageTeam }
   const t = useT()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)

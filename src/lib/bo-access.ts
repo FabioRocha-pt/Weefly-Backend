@@ -27,6 +27,13 @@ import {
   type AllowlistTenantRow,
   type Tenant,
 } from "@/lib/tenancy"
+import {
+  ACCESS_ROLE_COLUMNS,
+  profileFromRow,
+  unwrapOne,
+  type AccessProfile,
+  type AccessRoleRow,
+} from "@/lib/access-roles"
 
 /** Contas convidadas de origem. Ver `bo_allowlist` na migração 0009. */
 const FALLBACK_EMAILS = ["fapi.rocha@gmail.com", "gocgo2008@gmail.com"]
@@ -44,12 +51,27 @@ export interface BoIdentity {
   userId: string
   email: string
   label: string
+  /**
+   * O poder sobre os casos: `admin` reabre casos fechados, revoga links e
+   * publica propostas alheias — dentro do seu parceiro. Vem do perfil
+   * (`supervises_cases`), não da coluna `role`, que desde a 0026 só diz quem
+   * aparece no seletor de vendedor.
+   */
   role: "admin" | "manager"
   /**
    * O parceiro da conta (TEN-06). Nulo só numa base sem a migração 0020, onde
    * o único parceiro que existe é o operador.
    */
   tenant: Tenant | null
+  /**
+   * ADM-02 · o perfil. Numa base sem a 0026, deduzido como a 0026 o deduz
+   * (quem vê todos os parceiros é Admin WeeFly).
+   */
+  profile: AccessProfile | null
+  /** O ministério, para o perfil Secretária. */
+  organisationId: string | null
+  /** PRO-04 · os menus do Agente desta pessoa; nulo, os da empresa. */
+  agentMenus: string[] | null
 }
 
 export type BoAccess =
@@ -83,8 +105,16 @@ export const getBoAccess = cache(async (): Promise<BoAccess> => {
   if (admin) {
     const { data, error } = await readAllowlistRow(admin, email)
 
-    // Erro de tabela ausente (migração 0009 não aplicada) cai no fallback.
-    if (!error) {
+    /* Um erro a sério fecha a porta. Cair na lista do ambiente deixava entrar
+       sem parceiro — e sem parceiro o `getBoScope` lê pela service role, sem
+       fronteira nenhuma (TEN-03). Os erros de "ainda não existe" já foram
+       tratados em `readAllowlistRow`. */
+    if (error) {
+      console.error(`[bo] allowlist ilegível para ${email}:`, error)
+      return { ok: false, reason: "not_allowed", email }
+    }
+
+    {
       if (!data || !data.active) {
         return { ok: false, reason: "not_allowed", email }
       }
@@ -98,14 +128,23 @@ export const getBoAccess = cache(async (): Promise<BoAccess> => {
         }
       }
 
+      /* ADM-02 · a secretária tem linha na allowlist e não entra no
+         back-office: só no link do ministério. */
+      if (data.profile && !data.profile.backoffice) {
+        return { ok: false, reason: "not_allowed", email }
+      }
+
       return {
         ok: true,
         identity: {
           userId: user.id,
           email,
           label: data.label ?? email,
-          role: data.role,
+          role: data.profile ? (data.profile.supervisesCases ? "admin" : "manager") : data.role,
           tenant,
+          profile: data.profile,
+          organisationId: data.organisationId,
+          agentMenus: data.agentMenus,
         },
       }
     }
@@ -117,7 +156,16 @@ export const getBoAccess = cache(async (): Promise<BoAccess> => {
 
   return {
     ok: true,
-    identity: { userId: user.id, email, label: email, role: "admin", tenant: null },
+    identity: {
+      userId: user.id,
+      email,
+      label: email,
+      role: "admin",
+      tenant: null,
+      profile: null,
+      organisationId: null,
+      agentMenus: null,
+    },
   }
 })
 
@@ -126,54 +174,108 @@ interface AllowlistRow {
   role: "admin" | "manager"
   active: boolean
   tenant: Tenant | null
+  profile: AccessProfile | null
+  organisationId: string | null
+  agentMenus: string[] | null
+}
+
+type RawRow = AllowlistTenantRow & {
+  label: string | null
+  role: "admin" | "manager"
+  active: boolean
+  organisation_id?: string | null
+  agent_menus?: string[] | null
+  profile?: AccessRoleRow | AccessRoleRow[] | null
 }
 
 /**
- * A linha da allowlist, com o parceiro quando a 0020 já está aplicada.
+ * A linha da allowlist, com o parceiro (0020) e o perfil (0026).
  *
- * Duas leituras e não uma porque o `main` e o `mvp2` partilham a mesma base:
- * enquanto a 0020 não correr em produção, pedir `partner_id` dá erro de coluna
- * inexistente, e esse erro não pode trancar a equipa fora. Nessa base só há um
- * parceiro — o operador — e `tenant` fica nulo. Quando a 0020 estiver aplicada
- * em todo o lado, a segunda leitura sai.
+ * Três leituras em escada e não uma porque o `main` e o `mvp2` partilham a
+ * mesma base: pedir uma coluna que uma migração ainda não criou dá erro, e
+ * esse erro não pode trancar a equipa fora. Cada degrau só desce no erro de
+ * "ainda não existe"; qualquer outro é devolvido como erro.
  */
 async function readAllowlistRow(
   admin: NonNullable<ReturnType<typeof createAdminClient>>,
   email: string
 ): Promise<{ data: AllowlistRow | null; error: unknown }> {
-  const rich = await admin
-    .from("bo_allowlist")
-    .select(`label, role, active, ${ALLOWLIST_TENANT_COLUMNS}`)
-    .ilike("email", email)
-    .maybeSingle()
+  const read = (columns: string) =>
+    admin.from("bo_allowlist").select(columns).ilike("email", email).maybeSingle()
 
-  if (!rich.error) {
-    if (!rich.data) return { data: null, error: null }
-    const row = rich.data as unknown as AllowlistTenantRow & Omit<AllowlistRow, "tenant">
+  const steps = [
+    `label, role, active, organisation_id, agent_menus, ${ALLOWLIST_TENANT_COLUMNS}, profile:access_roles(${ACCESS_ROLE_COLUMNS})`,
+    `label, role, active, ${ALLOWLIST_TENANT_COLUMNS}`,
+    "label, role, active",
+  ]
+
+  for (const columns of steps) {
+    const res = await read(columns)
+    if (res.error) {
+      if (isSchemaNotMigrated(res.error)) continue
+      return { data: null, error: res.error }
+    }
+    if (!res.data) return { data: null, error: null }
+
+    const row = res.data as unknown as RawRow
+    const tenant = row.partner ? tenantFromRow(row) : null
     return {
-      data: { label: row.label, role: row.role, active: row.active, tenant: tenantFromRow(row) },
+      data: {
+        label: row.label,
+        role: row.role,
+        active: row.active,
+        tenant,
+        profile: profileFromRow(unwrapOne(row.profile)) ?? legacyProfile(tenant),
+        organisationId: row.organisation_id ?? null,
+        agentMenus: row.agent_menus ?? null,
+      },
       error: null,
     }
   }
 
-  // Só o "ainda não existe" recua para a leitura antiga. Qualquer outro erro
-  // é devolvido como erro: recuar nele deixaria entrar sem parceiro uma conta
-  // que, com a 0020 aplicada, seria recusada.
-  if (!isSchemaNotMigrated(rich.error)) return { data: null, error: rich.error }
-
-  const legacy = await admin
-    .from("bo_allowlist")
-    .select("label, role, active")
-    .ilike("email", email)
-    .maybeSingle()
-
-  if (legacy.error) return { data: null, error: legacy.error }
-  if (!legacy.data) return { data: null, error: null }
-  const row = legacy.data as Omit<AllowlistRow, "tenant">
-  return { data: { ...row, tenant: null }, error: null }
+  return { data: null, error: null }
 }
 
-/** 42703: coluna inexistente. PGRST200: relação `partners` desconhecida. */
+/**
+ * Numa base sem a 0026: o perfil que a 0026 lhe daria. Sem parceiro (base sem
+ * a 0020), nenhum — e o código segue o `role` antigo.
+ */
+function legacyProfile(tenant: Tenant | null): AccessProfile | null {
+  if (!tenant) return null
+  const base = {
+    backoffice: true,
+    grantableByPartner: false,
+    needsOrganisation: false,
+  }
+  if (tenant.crossPartner) {
+    return {
+      ...base,
+      id: "weefly_admin",
+      labelPt: "Admin WeeFly",
+      labelEn: "WeeFly admin",
+      partnerKind: "operator",
+      adminModule: true,
+      crossPartner: true,
+      manageUsers: "all",
+      supervisesCases: true,
+      sort: 1,
+    }
+  }
+  return {
+    ...base,
+    id: tenant.isOperator ? "weefly_agent" : "partner_agent",
+    labelPt: tenant.isOperator ? "Agente WeeFly" : "Agente do parceiro",
+    labelEn: tenant.isOperator ? "WeeFly agent" : "Partner agent",
+    partnerKind: tenant.isOperator ? "operator" : "partner",
+    adminModule: false,
+    crossPartner: false,
+    manageUsers: "none",
+    supervisesCases: false,
+    sort: tenant.isOperator ? 2 : 4,
+  }
+}
+
+/** 42703: coluna inexistente. PGRST200: relação desconhecida. */
 function isSchemaNotMigrated(error: { code?: string } | null): boolean {
   return error?.code === "42703" || error?.code === "PGRST200"
 }
@@ -231,12 +333,28 @@ export async function listBoSellers(): Promise<BoSeller[]> {
    * recurso em `case-header.tsx`, que existe precisamente para não reescrever
    * o histórico.
    */
-  const { data, error } = await admin
-    .from("bo_allowlist")
-    .select("email, label, role")
-    .eq("active", true)
-    .eq("role", "manager")
-    .order("label", { ascending: true, nullsFirst: false })
+  /*
+   * TEN-03 · os vendedores do parceiro de quem pergunta, e só esses: o
+   * seletor de um agente do Alô não mostra a equipa da WeeFly. E a secretária
+   * (ADM-02) não é vendedora — tem linha na allowlist, mas não cota.
+   */
+  const identity = await boIdentity()
+  if (!identity) return []
+
+  const query = (withProfile: boolean) => {
+    let q = admin
+      .from("bo_allowlist")
+      .select("email, label, role")
+      .eq("active", true)
+      .eq("role", "manager")
+      .order("label", { ascending: true, nullsFirst: false })
+    if (identity.tenant) q = q.eq("partner_id", identity.tenant.partnerId)
+    if (withProfile) q = q.neq("role_id", "secretary")
+    return q
+  }
+
+  let { data, error } = await query(true)
+  if (error && isSchemaNotMigrated(error)) ({ data, error } = await query(false))
 
   if (error) {
     console.error("[bo] lista de vendedores falhou:", error.message)

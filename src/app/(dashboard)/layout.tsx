@@ -47,6 +47,7 @@ export default async function DashboardLayout({
         modules={modules}
         agentMenus={visibleAgentMenus(account)}
         companyName={account.partner?.name ?? null}
+        canManageTeam={account.profile?.manageUsers === "own_partner"}
       >
         {children}
       </DashboardShell>

@@ -62,26 +62,17 @@ export function tenantFromRow(row: AllowlistTenantRow): Tenant | null {
 /**
  * Pode esta conta entrar no back-office hoje?
  *
- * Duas razões para recusar, e só uma é definitiva:
+ * **Parceiro suspenso** (ADM-01): "suspension blocks login". Definitiva até o
+ * Admin reactivar.
  *
- * - **Parceiro suspenso** (ADM-01): "suspension blocks login". Definitiva até
- *   o Admin reactivar.
- *
- * - **Parceiro que não é o operador.** Temporária, e é a trava do TEN-03 do
- *   lado da aplicação. As leituras do back-office ainda passam pela service
- *   role, que ignora o RLS — uma conta do Alô entrava hoje e via os casos da
- *   WeeFly. A trava sai quando essas leituras passarem para o cliente da
- *   sessão; até lá, criar a conta do Alô na allowlist não abre nada.
+ * A trava que aqui existia — recusar toda a conta que não fosse do operador —
+ * saiu com o TEN-03: as leituras do back-office passaram para o cliente da
+ * sessão (`lib/bo-scope`), e cada caso é aberto só depois de o RLS dizer que a
+ * sessão o vê. Uma conta do Alô entra e vê o Alô.
  */
 export function tenantMayEnter(tenant: Tenant): { ok: true } | { ok: false; why: string } {
   if (tenant.partnerStatus !== "active") {
     return { ok: false, why: `parceiro ${tenant.partnerSlug} suspenso` }
-  }
-  if (!tenant.isOperator) {
-    return {
-      ok: false,
-      why: `parceiro ${tenant.partnerSlug} ainda sem isolamento no back-office (TEN-03)`,
-    }
   }
   return { ok: true }
 }

@@ -20,6 +20,7 @@
  */
 
 import { createAdminClient } from "@/utils/supabase/admin"
+import { getBoScope } from "@/lib/bo-scope"
 
 /*
  * PRO-11 · a janela.
@@ -102,19 +103,30 @@ function isMissingColumn(error: { code?: string; message?: string } | null) {
 
 async function buildFeed(userId: string): Promise<BoAlert[]> {
   const admin = createAdminClient()
-  if (!admin) return []
+  const scope = await getBoScope()
+  if (!admin || !scope) return []
 
-  const { data: rows, error } = await admin
+  /*
+   * TEN-03 · A8 · a campainha de uma conta do Alô não acende com casos da
+   * WeeFly. Lida pelo cliente da sessão (o RLS decide) e pelo parceiro dela,
+   * que chega ao acontecimento pelo caso — `!inner`, para que um acontecimento
+   * sem caso visível não venha.
+   */
+  let query = scope.db
     .from("case_events")
     .select(
       `id, case_id, kind, title, detail, actor_email, actor_kind, created_at,
-       booking_case:booking_cases (
+       booking_case:booking_cases!inner (
+         partner_id,
          trip_request:trip_requests ( reference, lead:leads ( full_name ) )
        )`
     )
     .in("kind", ALERT_KINDS)
     .order("created_at", { ascending: false })
     .limit(EVENT_WINDOW)
+  if (scope.partnerId) query = query.eq("booking_case.partner_id", scope.partnerId)
+
+  const { data: rows, error } = await query
 
   if (error) {
     console.error("[bo/alerts] leitura falhou:", error.message)

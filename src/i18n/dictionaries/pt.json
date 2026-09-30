@@ -858,7 +858,8 @@
     "footerTitle": "Login único.",
     "footerBody": "Acede a todas as empresas sem PIN. Gestão de equipa (RBAC) chega em breve.",
     "signOut": "Terminar sessão",
-    "notifications": "Notificações"
+    "notifications": "Notificações",
+    "team": "Equipa"
   },
   "companyTypes": {
     "rental": "Aluguer de carros",
@@ -1810,7 +1811,14 @@
     "caseDepart": "Partida",
     "caseState": "Estado",
     "caseCreated": "Criado",
-    "caseClosed": "Fechado"
+    "caseClosed": "Fechado",
+    "suspendedTitle": "Conta suspensa",
+    "suspendedBody": "Esta conta foi suspensa por quem administra a sua empresa. Se acha que é um engano, fale com essa pessoa.",
+    "adminUsers": "Utilizadores e permissões",
+    "adminPartners": "Parceiros",
+    "adminB2g": "B2G",
+    "adminNumbers": "Números",
+    "adminRevenue": "Receita"
   },
   "profile": {
     "title": "Perfil",

@@ -70,12 +70,21 @@ const CHECKS = [
   { migration: "0015", table: "case_payments", column: "pay_due_at", need: "T-11 · o prazo de pagamento" },
   { migration: "0015", table: "case_payments", column: "pay_instructions_sent_at", need: "T-11 · a hora do envio" },
   { migration: "0016", table: "bo_alert_reads", column: "event_id", need: "C-14 · a campainha" },
-  { migration: "0017", table: "case_offers", column: "airline_logo", need: "C-26 · logótipo da companhia" },
+  { migration: "0017", table: "airlines", column: "priority", need: "C-10 · as companhias do seletor" },
   { migration: "0018", table: "bo_allowlist", column: "active", need: "acessos ao back-office" },
   { migration: "0019", table: "case_events", column: "dedupe_key", need: "T-22 · um acontecimento, uma linha" },
   { migration: "0019", table: "case_segment_issuance", column: "fare_basis", need: "T-04 · emissão por voo" },
   { migration: "0019", table: "case_offer_segment_baggage", column: "checked_pieces", need: "T-10 · bagagem por voo" },
   { migration: "0019", table: "case_passenger_baggage", column: "checked_pieces", need: "T-04 · bagagem emitida" },
+  { migration: "0020", table: "booking_cases", column: "partner_id", need: "TEN-01 · o parceiro do caso" },
+  { migration: "0020", table: "organisations", column: "slug", need: "TEN-01 · os ministérios" },
+  { migration: "0021", table: "bo_alert_reads", column: "cleared_at", need: "PRO-12 · limpar avisos" },
+  { migration: "0022", table: "pro_accounts", column: "status", need: "PRO-09 · validação de contas" },
+  { migration: "0023", table: "booking_cases", column: "closed_reason", need: "PRO-10 · motivo do arquivo" },
+  { migration: "0026", table: "access_roles", column: "manage_users", need: "ADM-02 · os perfis" },
+  { migration: "0026", table: "bo_allowlist", column: "role_id", need: "ADM-02 · o perfil da conta" },
+  { migration: "0026", table: "access_audit", column: "actor_email", need: "ADM-02 · o registo de acessos" },
+  { migration: "0026", table: "booking_cases", column: "commission_amount", need: "ADM-07 · o campo da comissão" },
 ]
 
 /* O PostgREST devolve PGRST205 quando não conhece a tabela e o código do

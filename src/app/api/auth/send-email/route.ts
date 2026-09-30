@@ -5,6 +5,7 @@ import { Resend } from "resend"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { senderAddress } from "@/lib/notifications"
 import { safeNextPath } from "@/lib/safe-next"
+import { siteUrl } from "@/lib/site-url"
 import { BORDER, INK, MUTED, escapeHtml, masthead } from "@/lib/emails/shared"
 import { getTranslator, localeForClient } from "@/i18n/server"
 
@@ -82,7 +83,7 @@ const KNOWN = ["signup", "recovery", "magiclink", "invite", "email_change"] as c
 type Known = (typeof KNOWN)[number]
 
 function siteOrigin(payload: HookPayload): string {
-  const configured = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")
+  const configured = siteUrl()
   if (configured) return configured
   try {
     return new URL(payload.email_data.redirect_to || payload.email_data.site_url).origin

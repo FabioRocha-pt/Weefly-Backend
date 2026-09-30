@@ -194,6 +194,7 @@ export async function loadPcState(token: string): Promise<PcLookup> {
     .from("booking_cases")
     .select(
       `id, token, stage, created_at, pnr, issued_at,
+       partner:partners (status),
        links:case_links (id, stage, status),
        trip_request:trip_requests (
          id, reference, trip_type, origin, destination, depart_date, return_date,
@@ -222,6 +223,12 @@ export async function loadPcState(token: string): Promise<PcLookup> {
   }
 
   const row = raw as Record<string, any>
+
+  /* ADM-01 · "a suspensão bloqueia o login e congela os links dele". Um
+     parceiro suspenso não abre casos no /pc, nem para ver nem para escrever:
+     as acções do cliente passam todas por aqui. */
+  if (unwrap(row.partner)?.status === "suspended") return { ok: false, reason: "not_found" }
+
   const trip = unwrap(row.trip_request)
   if (!trip) return { ok: false, reason: "not_found" }
 

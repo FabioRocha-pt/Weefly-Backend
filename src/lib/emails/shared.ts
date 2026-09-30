@@ -10,6 +10,7 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 
 import type { Translator } from "@/i18n/translate"
+import { siteUrl } from "@/lib/site-url"
 
 export interface TravelRequestSummary {
   title: "mr" | "ms"
@@ -86,7 +87,8 @@ export function summaryRow(label: string, value: string): string {
 
 // ── T-14 · a faixa laranja, igual em todo o lado ─────────────────────────────
 
-const siteBase = () => (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")
+/* MIG-02 · o endereço vem da configuração, num sítio só. */
+const siteBase = () => siteUrl()
 
 /**
  * T-15 · o logótipo da marca, e não um "WeeFly" escrito à mão.

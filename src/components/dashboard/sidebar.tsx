@@ -3,8 +3,13 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  BarChart3,
   Building,
   Car,
+  Coins,
+  Handshake,
+  Landmark,
+  UserCog,
   Compass,
   Home,
   Lock,
@@ -69,19 +74,35 @@ const AGENT_TOOLS: NavItem[] = [
   { labelKey: "nav.wallet", href: "/agente/carteira", icon: <Wallet className="w-5 h-5" /> },
 ]
 
+/* O módulo Admin, com os menus da tabela do Bloco B. Os que ainda não têm
+   conteúdo aparecem com Brevemente e dizem de que item são. */
 const ADMIN_NAV: NavItem[] = [
   { labelKey: "pro.adminAccounts", href: "/gestao/contas", icon: <Building className="w-5 h-5" /> },
+  { labelKey: "pro.adminUsers", href: "/gestao/utilizadores", icon: <UserCog className="w-5 h-5" /> },
+  { labelKey: "pro.adminPartners", href: "/gestao/parceiros", icon: <Handshake className="w-5 h-5" /> },
+  { labelKey: "pro.adminB2g", href: "/gestao/b2g", icon: <Landmark className="w-5 h-5" />, soon: true },
+  { labelKey: "pro.adminNumbers", href: "/gestao/numeros", icon: <BarChart3 className="w-5 h-5" />, soon: true },
+  { labelKey: "pro.adminRevenue", href: "/gestao/receita", icon: <Coins className="w-5 h-5" />, soon: true },
 ]
+
+/* ADM-02 · o Admin do parceiro gere a equipa dele a partir do Agente. */
+const TEAM_ITEM: NavItem = {
+  labelKey: "nav.team",
+  href: "/agente/equipa",
+  icon: <UserCog className="w-5 h-5" />,
+}
 
 interface SidebarProps {
   modules: SidebarModule[]
   agentMenus: SidebarAgentMenu[]
   companyName: string | null
+  /** ADM-02 · mostra "Equipa" no Agente (perfil Admin do parceiro). */
+  canManageTeam?: boolean
   /** When provided, renders as a mobile drawer that can be closed. */
   onClose?: () => void
 }
 
-export function Sidebar({ modules, agentMenus, companyName, onClose }: SidebarProps) {
+export function Sidebar({ modules, agentMenus, companyName, canManageTeam, onClose }: SidebarProps) {
   const t = useT()
   const pathname = usePathname()
 
@@ -104,7 +125,7 @@ export function Sidebar({ modules, agentMenus, companyName, onClose }: SidebarPr
               soon: state === "soon",
             })),
           },
-          { titleKey: "pro.agentTools", items: AGENT_TOOLS },
+          { titleKey: "pro.agentTools", items: canManageTeam ? [...AGENT_TOOLS, TEAM_ITEM] : AGENT_TOOLS },
         ]
       : mode === "admin"
         ? [{ items: ADMIN_NAV }]
