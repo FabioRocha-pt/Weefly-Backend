@@ -13,8 +13,8 @@ import { BoProposalComposer } from "@/components/bo/proposal-composer"
 import { BoCaseHeader } from "@/components/bo/case-header"
 import { BoClaimGate } from "@/components/bo/claim-gate"
 import { elapsedSince } from "@/lib/case-status"
-import { getDictionary, getTranslator } from "@/i18n/server"
-import { DEFAULT_LOCALE } from "@/i18n/config"
+import { getBoI18n } from "@/i18n/bo-server"
+import type { Translator } from "@/i18n/translate"
 import { I18nProvider } from "@/i18n/provider"
 
 /**
@@ -61,28 +61,12 @@ export default async function BoCaseOffersPage({
   if (!(await caseInScope(params.id))) notFound()
 
   /*
-   * C-22 · o back-office fala uma língua só, e é português.
-   *
-   * Isto era `getI18n()`, que resolve o idioma pelo cookie e pelo
-   * Accept-Language de **quem está a atender**. O resto do back-office — o
-   * cabeçalho do caso, as abas, a aba Pagamento, os avisos — é português
-   * escrito no código. O resultado, visto num browser com preferência inglesa,
-   * é o critério do C-22 ao contrário: "Ver como cliente", "Fechar caso" e
-   * "ESTADO DOS LINKS" ao lado de "CLIENT'S REQUEST", "Outbound" e "Publish and
-   * notify client" — duas línguas no mesmo ecrã.
-   *
-   * Fixar em português é a correcção coerente com o resto do sprint: o
-   * seletor PT/EN do back-office está explicitamente no Sprint 4, e até lá quem
-   * lê este ecrã está em Cabo Verde. Os dicionários continuam a ser a fonte do
-   * texto do compositor — o que deixa de variar é qual deles se lê.
-   *
-   * O idioma do **cliente** não é tocado por isto: os emails e o /pc seguem o
-   * `lang` do lead (ver `localeForClient`), que é outra decisão e outro sítio.
+   * I18N-01 · a língua do ecrã é a do agente (Definições), PT ou EN. Era fixa
+   * em português (C-22) enquanto o back-office não tinha seletor. O idioma do
+   * **cliente** não é tocado: os emails e o /pc seguem o `lang` do lead (ver
+   * `localeForClient`).
    */
-  const locale = DEFAULT_LOCALE
-  const t = getTranslator(locale)
-  const dictionary = getDictionary(locale)
-  const fallback = undefined
+  const { locale, t, dictionary, fallback } = await getBoI18n()
 
   const [bookingCase, detail, sellers] = await Promise.all([
     getCase(params.id),
@@ -180,7 +164,7 @@ export default async function BoCaseOffersPage({
                 origin: bookingCase.trip_request?.origin ?? null,
                 destination: bookingCase.trip_request?.destination ?? null,
               }}
-              brief={<ClientBrief bookingCase={bookingCase} />}
+              brief={<ClientBrief bookingCase={bookingCase} t={t} />}
             />
           )}
         </div>
@@ -209,9 +193,8 @@ const FAILURE_MESSAGE: Record<ProposalFailure, string> = {
  * Renderizado no servidor e passado como filho ao compositor: é conteúdo
  * estático, não tem razão nenhuma para ir em JavaScript para o browser.
  */
-function ClientBrief({ bookingCase }: { bookingCase: BookingCaseRow }) {
-  /* C-22 · a mesma língua do resto do ecrã. Ver o comentário na página. */
-  const t = getTranslator(DEFAULT_LOCALE)
+function ClientBrief({ bookingCase, t }: { bookingCase: BookingCaseRow; t: Translator }) {
+  /* I18N-01 · a mesma língua do resto do ecrã: a do agente. */
   const trip = bookingCase.trip_request
   const link1 = bookingCase.links.find((l) => l.stage === 1)
 

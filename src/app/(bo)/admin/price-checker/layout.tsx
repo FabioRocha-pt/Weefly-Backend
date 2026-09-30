@@ -13,6 +13,8 @@ import { loadBoAlerts } from "@/lib/bo-alerts"
 import { BoUserMenu } from "@/components/bo/user-menu"
 import { BoLiveUpdates } from "@/components/bo/live-updates"
 import { LinkBaseProvider } from "@/components/bo/link-base"
+import { I18nProvider } from "@/i18n/provider"
+import { getBoI18n } from "@/i18n/bo-server"
 import { partnerSiteUrl } from "@/lib/site-url"
 
 /**
@@ -86,8 +88,11 @@ export default async function BoPriceCheckerLayout({
     ? await loadBoAlerts(access.identity.userId)
     : { alerts: [], unread: 0 }
 
+  /* I18N-01 · a língua do agente, escolhida nas Definições. */
+  const i18n = await getBoI18n()
+
   return (
-    <>
+    <I18nProvider locale={i18n.locale} dictionary={i18n.dictionary} fallback={i18n.fallback}>
       <style>{`:root{--font-jakarta:${jakarta.style.fontFamily};--font-plex-mono:${plexMono.style.fontFamily}}`}</style>
       <RoutePreloader background="#141A24" label="A carregar o back-office" />
 
@@ -156,7 +161,7 @@ export default async function BoPriceCheckerLayout({
           {children}
         </LinkBaseProvider>
       )}
-    </>
+    </I18nProvider>
   )
 }
 

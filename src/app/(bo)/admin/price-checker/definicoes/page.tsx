@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { getBoAccess } from "@/lib/bo-access"
+import { BoLanguageSetting } from "@/components/bo/language-setting"
 
 /**
  * BO-01 · as Definições, o destino da entrada no menu do avatar.
@@ -76,12 +77,9 @@ export default async function BoSettingsPage() {
           <h3>Preferências</h3>
         </div>
         <div className="panel-b">
-          <p className="note">
-            Ainda não há nada para escolher. Três preferências estão a caminho e
-            é aqui que vão ficar: o <b>idioma do back-office</b>, as{" "}
-            <b>preferências de avisos</b> e a nota de contexto de cada ecrã, que
-            se desliga a partir daqui.
-          </p>
+          {/* I18N-01 · a língua do back-office. As outras preferências (avisos,
+              nota de contexto) continuam por construir. */}
+          <BoLanguageSetting />
         </div>
       </div>
     </div>

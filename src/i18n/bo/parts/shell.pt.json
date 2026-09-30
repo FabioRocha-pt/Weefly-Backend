@@ -1,0 +1,14 @@
+{
+  "bo": {
+    "shell": {
+      "language": {
+        "title": "Língua do back-office",
+        "body": "Muda só o que vê no ecrã. Os clientes continuam a receber tudo na língua do caso.",
+        "pt": "Português",
+        "en": "English",
+        "invalid": "Língua desconhecida.",
+        "noSession": "A sessão expirou. Entre outra vez."
+      }
+    }
+  }
+}

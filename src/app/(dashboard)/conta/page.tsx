@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/current-user"
 import { accessProfile, requireApprovedAccount } from "@/lib/pro-account"
 import { getBoAccess } from "@/lib/bo-access"
 import { ProfileForm } from "@/components/pro/profile-form"
+import { BoLanguageSetting } from "@/components/bo/language-setting"
 import { getI18n } from "@/i18n/server"
 
 /**
@@ -45,6 +46,10 @@ export default async function ContaPage() {
         company={company}
         profile={profile}
       />
+      {/* I18N-01 · as Definições: a língua do back-office, guardada na conta. */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+        <BoLanguageSetting />
+      </div>
     </div>
   )
 }

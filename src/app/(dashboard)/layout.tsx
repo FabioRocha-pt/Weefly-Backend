@@ -7,9 +7,8 @@ import {
 } from "@/lib/pro-account"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import type { SidebarModule } from "@/components/dashboard/sidebar"
-import { DEFAULT_LOCALE } from "@/i18n/config"
 import { I18nProvider } from "@/i18n/provider"
-import { getDictionary, getLocale } from "@/i18n/server"
+import { getBoI18n } from "@/i18n/bo-server"
 
 /**
  * WeeFly Pro · a moldura dos módulos.
@@ -34,14 +33,12 @@ export default async function DashboardLayout({
     return state === "hidden" ? [] : [{ id, state }]
   })
 
-  const locale = getLocale()
+  /* I18N-01 · o WeeFly Pro é back-office: fala a língua que o utilizador
+     escolheu nas Definições (PT ou EN), e não a do cookie do site público. */
+  const i18n = await getBoI18n()
 
   return (
-    <I18nProvider
-      locale={locale}
-      dictionary={getDictionary(locale)}
-      fallback={locale === DEFAULT_LOCALE ? undefined : getDictionary(DEFAULT_LOCALE)}
-    >
+    <I18nProvider locale={i18n.locale} dictionary={i18n.dictionary} fallback={i18n.fallback}>
       <DashboardShell
         user={menuUser}
         modules={modules}

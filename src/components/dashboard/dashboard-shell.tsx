@@ -10,7 +10,6 @@ import {
   type SidebarModule,
 } from "@/components/dashboard/sidebar"
 import { UserMenu, type UserMenuData } from "@/components/dashboard/user-menu"
-import { LocaleSwitcher } from "@/i18n/locale-switcher"
 import { useT } from "@/i18n/provider"
 
 /** O título do cabeçalho é a mesma etiqueta que o menu lateral usa. */
@@ -93,8 +92,8 @@ export function DashboardShell({
           <div className="flex items-center gap-3">
             {/* A campainha que estava aqui não fazia nada e mostrava sempre um
                 ponto de "não lido". Os avisos a sério vivem no Concierge. */}
-            <LocaleSwitcher />
-            <div className="h-8 w-px bg-slate-200" />
+            {/* I18N-01 · a língua escolhe-se nas Definições (o perfil), não
+                aqui: "não no ecrã principal". */}
             <UserMenu user={user} />
           </div>
         </header>

@@ -1,0 +1,14 @@
+{
+  "bo": {
+    "shell": {
+      "language": {
+        "title": "Back-office language",
+        "body": "Only changes what you see on screen. Clients keep receiving everything in the case language.",
+        "pt": "Português",
+        "en": "English",
+        "invalid": "Unknown language.",
+        "noSession": "Your session has expired. Please sign in again."
+      }
+    }
+  }
+}

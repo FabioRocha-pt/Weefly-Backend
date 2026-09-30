@@ -121,7 +121,7 @@ function tableRow(line) {
 
 const isDivider = (line) => /^\|[\s|:-]+\|$/.test(line.trim())
 
-function convert(markdown) {
+function convert(markdown, baseDir = ROOT) {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n")
   const html = []
   let i = 0
@@ -185,6 +185,22 @@ function convert(markdown) {
         i++
       }
       html.push(`<ul>${items.join("")}</ul>`)
+      continue
+    }
+
+    // imagem sozinha numa linha: `![texto](caminho)`. Um SVG entra inline (o
+    // Chrome desenha-o com as fontes embebidas); o resto vai em base64.
+    const image = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/)
+    if (image) {
+      flushParagraph(paragraph)
+      const file = resolve(baseDir, image[2])
+      if (existsSync(file)) {
+        const body = file.toLowerCase().endsWith(".svg")
+          ? readFileSync(file, "utf8").replace("<svg ", '<svg style="max-width:100%;height:auto" ')
+          : `<img alt="${escape(image[1])}" style="max-width:100%" src="data:image/${file.split(".").pop()};base64,${readFileSync(file).toString("base64")}" />`
+        html.push(`<figure class="figure">${body}</figure>`)
+      }
+      i++
       continue
     }
 
@@ -309,6 +325,7 @@ table code{font-size:8.5pt}
 
 /* a tabela de duas colunas do cabeçalho do documento */
 table:first-of-type td:first-child{font-weight:700;width:26%}
+.figure{margin:12px 0 18px;break-inside:avoid}
 `
 
 function page(title, body, tag) {
@@ -363,7 +380,7 @@ const title = (markdown.match(/^#\s+(.*)$/m)?.[1] ?? basename(inputPath)).trim()
 
 const work = mkdtempSync(join(tmpdir(), "weefly-pdf-"))
 const htmlPath = join(work, "doc.html")
-writeFileSync(htmlPath, page(title, convert(markdown), tag), "utf8")
+writeFileSync(htmlPath, page(title, convert(markdown, dirname(inputPath)), tag), "utf8")
 
 const chrome = findChrome()
 
