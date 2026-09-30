@@ -110,11 +110,14 @@ pm2 save
 
 ```bash
 pm2 status
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3000/login
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: concierge.weefly.africa" http://127.0.0.1:3000/login
+ls .next/server/app/gestao/ | grep -E "numeros|casos"
 pm2 logs weefly-concierge --lines 30 --nostream
 ```
 
-`online` com `0` reinícios desde o reload, `200`, e nenhum `Error` nos registos.
+`online`, `200`, `numeros` e `casos` na lista (é o build novo), e nenhum `Error` nos registos depois da hora do reload.
+
+> **O `-H "Host: …"` é obrigatório.** Com `SERVED_HOSTS` ligado, a aplicação responde `404` a qualquer endereço que não esteja na lista, e um `curl` para `127.0.0.1` leva `127.0.0.1:3000` no `Host`. Sem o cabeçalho, o `404` é a protecção do `MIG-02` a funcionar, não uma avaria.
 
 **Se o `git pull` recusar** (`Not possible to fast-forward`): há alterações locais no servidor. Não forces — manda-me o `git status`.
 
