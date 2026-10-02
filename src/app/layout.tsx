@@ -1,20 +1,24 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { Preloader } from "@/components/Preloader"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { getI18n } from "@/i18n/server"
+import { pageMetadata, siteContext, themeColor } from "@/lib/site-meta"
 
 /**
- * O título e a descrição saem do dicionário, e por isso são calculados por
- * pedido em vez de serem uma constante — o cookie do idioma só existe quando o
- * pedido chega.
+ * SEO-01 · SEO-02 · o `<head>` por defeito: ícones, manifesto, cor, título,
+ * descrição e imagem de partilha da empresa do endereço (`lib/site-meta`).
+ * Calculados por pedido, porque dependem do `Host` e do cookie do idioma.
+ *
+ * SEO-03 · por defeito nada se indexa; só a página inicial do price checker
+ * o pede (`app/pc/page.tsx`).
  */
-export function generateMetadata(): Metadata {
-  const { t } = getI18n()
-  return {
-    title: t("meta.appTitle"),
-    description: t("meta.appDescription"),
-  }
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata(await siteContext())
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  return { themeColor: themeColor(await siteContext()) }
 }
 
 export default function RootLayout({

@@ -20,14 +20,25 @@ const nextConfig = {
   },
 
   /*
-   * Não há reescritas.
+   * SEO-01 · SEO-04 · os ícones, o manifesto e a imagem de partilha na raiz,
+   * resolvidos para a empresa do endereço por `app/api/brand/[file]`. Antes
+   * dos ficheiros de `public/` (`beforeFiles`): não há um favicon só.
    *
-   * Havia uma, /price-checker → public/mockups/price-checker.html, do tempo em
-   * que o Price Checker era um mockup HTML autónomo. Havia assim três endereços
-   * a responder à mesma pergunta — /pc, /price-checker e o ficheiro em
-   * /mockups/ — e dois deles mostravam um desenho que já não é o produto.
-   * O Price Checker é o /pc, em React, e é o único.
+   * Havia uma reescrita, /price-checker → public/mockups/price-checker.html,
+   * do tempo em que o Price Checker era um mockup HTML autónomo. Saiu: o Price
+   * Checker é o /pc, em React, e é o único.
    */
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source:
+            "/:file(favicon\\.ico|favicon\\.svg|favicon-16x16\\.png|favicon-32x32\\.png|favicon-48x48\\.png|apple-touch-icon\\.png|icon-192\\.png|icon-512\\.png|icon-512-maskable\\.png|og-image\\.jpg|site\\.webmanifest)",
+          destination: "/api/brand/:file",
+        },
+      ],
+    }
+  },
 };
 
 module.exports = nextConfig; // (ou export default nextConfig se for .mjs)

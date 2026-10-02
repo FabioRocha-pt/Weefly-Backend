@@ -3,6 +3,7 @@ import type { EmailOtpType } from "@supabase/supabase-js"
 
 import { createClient } from "@/utils/supabase/server"
 import { safeNextPath } from "@/lib/safe-next"
+import { requestOrigin } from "@/lib/request-origin"
 
 /**
  * Handles the link from the confirmation / magic-link / password-reset emails.
@@ -15,22 +16,29 @@ import { safeNextPath } from "@/lib/safe-next"
  *     (Auth → Email Templates) links here with `{{ .TokenHash }}`, which works
  *     on any device. Registering on the laptop and opening the email on the
  *     phone was landing on `/link-invalido`.
+ *
+ * OCT-01 · o destino monta-se com o endereço do pedido (`requestOrigin`), não
+ * com o `origin` do `request.url`: atrás do NGINX esse é `localhost:3000`.
  */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
+  const origin = requestOrigin(request.headers)
   const code = searchParams.get("code")
   const tokenHash = searchParams.get("token_hash")
   const type = searchParams.get("type") as EmailOtpType | null
-  const next = safeNextPath(searchParams.get("next")) ?? "/email-confirmado"
+  const fallback = type === "recovery" ? "/nova-password" : "/email-confirmado"
+  const next = safeNextPath(searchParams.get("next")) ?? fallback
 
   const supabase = createClient()
 
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash })
     if (!error) return NextResponse.redirect(`${origin}${next}`)
+    console.error("[auth/callback] verifyOtp falhou:", type, error.message)
   } else if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) return NextResponse.redirect(`${origin}${next}`)
+    console.error("[auth/callback] exchangeCode falhou:", error.message)
   }
 
   // No code, or the exchange failed (expired / already used link).

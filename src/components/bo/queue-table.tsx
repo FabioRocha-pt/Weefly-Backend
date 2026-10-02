@@ -8,11 +8,12 @@
  * renderizado no servidor está errado no minuto seguinte.
  */
 
-import { useMemo, useState, useTransition } from "react"
+import { Fragment, useMemo, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
-import { boClaimCase } from "@/actions/bo-price-checker"
+import { boArchiveCase, boClaimCase } from "@/actions/bo-price-checker"
+import { ARCHIVE_REASONS } from "@/lib/pc/archive"
 import {
   BO_STATE_CLASS,
   type BoBucket,
@@ -46,6 +47,23 @@ export function BoQueueTable({
   const [pending, startTransition] = useTransition()
   const [query, setQuery] = useState(search)
   const [claiming, setClaiming] = useState<string | null>(null)
+  /* OCT-22 · arquivar a partir da fila, com motivo obrigatório. */
+  const [archiving, setArchiving] = useState<{ caseId: string; reason: string; note: string } | null>(null)
+  const [archiveMsg, setArchiveMsg] = useState<{ caseId: string; ok: boolean; text: string } | null>(null)
+
+  const archive = (row: BoQueueRow) => {
+    if (!archiving || archiving.caseId !== row.caseId) return
+    if (!window.confirm(t("bo.caseView.header.archiveConfirm", { ref: row.reference ?? t("bo.caseView.header.thisCase") }))) return
+    const input = archiving
+    startTransition(async () => {
+      const result = await boArchiveCase({ caseId: input.caseId, reason: input.reason, note: input.note })
+      setArchiveMsg({ caseId: input.caseId, ok: result.ok, text: result.ok ? (result.notice ?? "") : result.error })
+      if (result.ok) {
+        setArchiving(null)
+        router.refresh()
+      }
+    })
+  }
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -106,8 +124,10 @@ export function BoQueueTable({
                   row.deadlineAt &&
                   Date.parse(row.deadlineAt) < Date.now() + 6 * 3600_000
 
+                const archiveOpen = archiving?.caseId === row.caseId
                 return (
-                  <tr key={row.caseId}>
+                  <Fragment key={row.caseId}>
+                  <tr>
                     <td>
                       <div className="ref mono">{row.reference}</div>
                       <div className="ref-sub">
@@ -172,6 +192,20 @@ export function BoQueueTable({
                             {t("bo.queue.table.claim")}
                           </button>
                         )}
+                        {row.state !== "fechado" && (
+                          <button
+                            className="btn btn-sm"
+                            type="button"
+                            disabled={pending}
+                            aria-expanded={archiveOpen}
+                            onClick={() => {
+                              setArchiveMsg(null)
+                              setArchiving(archiveOpen ? null : { caseId: row.caseId, reason: "fechado_fora_plataforma", note: "" })
+                            }}
+                          >
+                            {t("bo.caseView.header.archiveOpen")}
+                          </button>
+                        )}
                         <Link
                           className={`btn btn-sm${row.waiting === "bad" || mine ? " btn-primary" : ""}`}
                           href={`/admin/price-checker/${row.caseId}${
@@ -189,6 +223,58 @@ export function BoQueueTable({
                       </div>
                     </td>
                   </tr>
+                  {(archiveOpen || archiveMsg?.caseId === row.caseId) && (
+                    <tr>
+                      <td colSpan={9}>
+                        {archiveOpen && archiving && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+                            <div className="f">
+                              <label>{t("bo.caseView.header.archiveReason")}</label>
+                              <select
+                                value={archiving.reason}
+                                onChange={(e) => setArchiving({ ...archiving, reason: e.target.value })}
+                              >
+                                {ARCHIVE_REASONS.map((reason) => (
+                                  <option key={reason} value={reason}>
+                                    {t(`bo.queue.closedReason.${reason}`)}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="f" style={{ flex: 1, minWidth: 220 }}>
+                              <label>
+                                {archiving.reason === "outro"
+                                  ? t("bo.caseView.header.noteRequired")
+                                  : t("bo.caseView.header.noteOptional")}
+                              </label>
+                              <input
+                                value={archiving.note}
+                                onChange={(e) => setArchiving({ ...archiving, note: e.target.value })}
+                                placeholder={t("bo.caseView.header.notePlaceholder")}
+                              />
+                            </div>
+                            <button
+                              className="btn btn-sm btn-primary"
+                              type="button"
+                              disabled={pending || (archiving.reason === "outro" && !archiving.note.trim())}
+                              onClick={() => archive(row)}
+                            >
+                              {pending ? t("bo.caseView.header.archiving") : t("bo.caseView.header.archiveCase")}
+                            </button>
+                            <button className="btn btn-sm" type="button" onClick={() => setArchiving(null)}>
+                              {t("bo.caseView.common.cancel")}
+                            </button>
+                          </div>
+                        )}
+                        {archiveMsg?.caseId === row.caseId && archiveMsg.text && (
+                          <p role="status" style={{ marginTop: 6, color: archiveMsg.ok ? "#34d399" : "#f87171" }}>
+                            {archiveMsg.text}
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 )
               })}
             </tbody>

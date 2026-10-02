@@ -58,7 +58,7 @@
         "archiving": "A arquivar…",
         "archiveCase": "Arquivar caso",
         "messageLabel": "Mensagem para o cliente · vai como está",
-        "messagePlaceholder": "A TAP mudou o voo TP1553 de 06/09 das 14:20 para as 17:05. A ligação em Lisboa mantém-se com 2h10 de escala. Não é preciso fazer nada — se preferir outra data, diga-nos.",
+        "messagePlaceholder": "A TAP mudou o voo TP1553 de 06/09 das 14:20 para as 17:05. A ligação em Lisboa mantém-se com 2h10 de escala. Não é preciso fazer nada: se preferir outra data, diga-nos.",
         "messageHint": "Fica no registo com o seu nome e a hora, e aparece como alerta no link do cliente.",
         "sending": "A enviar…",
         "sendAndLog": "Enviar e registar"
@@ -100,7 +100,7 @@
         "published": "Propostas publicadas",
         "revision": "revisão R{n}",
         "none": "sem proposta",
-        "emptyNote": "Ainda não há proposta publicada. Compõe-se no separador Propostas — itinerário, preço e pré-visualização do cartão que o cliente vai ver — e o cliente só vê o resultado depois de publicares.",
+        "emptyNote": "Ainda não há proposta publicada. Compõe-se no separador Propostas, itinerário, preço e pré-visualização do cartão que o cliente vai ver, e o cliente só vê o resultado depois de publicares.",
         "unnamedOffer": "Oferta sem nome",
         "heldUntil": "retida ({source}) até {date}",
         "chosen": "escolhida",
@@ -144,14 +144,14 @@
         }
       },
       "warnings": {
-        "passportShort": "P{n} tem passaporte válido só até {date} — menos de 6 meses após o regresso.",
-        "accents": "P{n} tem acentos no nome ({name}) — o bilhete precisa da versão sem acentos.",
+        "passportShort": "P{n} tem passaporte válido só até {date}, menos de 6 meses após o regresso.",
+        "accents": "P{n} tem acentos no nome ({name}), o bilhete precisa da versão sem acentos.",
         "none": "Sem avisos automáticos: validades e nomes passam as verificações.",
         "checkBeforeIssue": "Verifique antes de emitir:"
       },
       "fareAge": {
         "title": "Muda de tarifa antes de partir:",
-        "lineStart": "{tag} {name} faz {turns} anos antes de {date} — na data da viagem já é",
+        "lineStart": "{tag} {name} faz {turns} anos antes de {date}, na data da viagem já é",
         "lineMid": "e não {from}.",
         "adultTail": "A tarifa de criança não é válida para este voo.",
         "seatTail": "Passa a ocupar lugar próprio.",
@@ -255,7 +255,7 @@
         "chosenFallback": "a oferta escolhida",
         "frozenBold": "{name} está congelada.",
         "frozenBody": "O caso já chegou ao pagamento: o preço que o cliente vê é o desta oferta, e o valor a cobrar foi calculado a partir dela. Editar o itinerário aqui mudaria a viagem por baixo de um pagamento em curso.",
-        "issued": "O caso está emitido. Mudar de voo é uma reemissão e passa pela companhia — não por este ecrã.",
+        "issued": "O caso está emitido. Mudar de voo é uma reemissão e passa pela companhia, não por este ecrã.",
         "paid": "O cliente já pagou. A partir daqui uma troca de voo é um reembolso ou uma alteração com a companhia, e nenhuma das duas se faz com um botão que diz “voltar atrás”.",
         "open": "Voltar um passo e mudar de voo",
         "openHint": "desfaz a escolha, fecha o link de pagamento, abre uma revisão e avisa o cliente",
@@ -270,7 +270,7 @@
         "title": "Construtor de bilhete",
         "noOffer": "O cliente ainda não escolheu uma oferta. Os detalhes de emissão pertencem à oferta escolhida, e por isso só aparecem depois dela.",
         "saved": "gravado",
-        "intro": "O que está aqui não muda a proposta que o cliente leu — nem o preço, nem as horas, nem a rota. São os campos que o bilhete precisa e a proposta não precisava.",
+        "intro": "O que está aqui não muda a proposta que o cliente leu, nem o preço, nem as horas, nem a rota. São os campos que o bilhete precisa e a proposta não precisava.",
         "fare": "Tarifa",
         "fareName": "Nome da tarifa",
         "changes": "Alterações",
@@ -291,7 +291,7 @@
         "bookingClass": "Classe de reserva",
         "terminalFrom": "Terminal de partida",
         "terminalTo": "Terminal de chegada",
-        "issuedNote": "O caso já está emitido. Mudar estes campos agora não muda o bilhete que a companhia emitiu — isso é uma reemissão, e passa por ela.",
+        "issuedNote": "O caso já está emitido. Mudar estes campos agora não muda o bilhete que a companhia emitiu, isso é uma reemissão, e passa por ela.",
         "save": "Guardar detalhes do bilhete",
         "legOut": "Ida",
         "legBack": "Volta"

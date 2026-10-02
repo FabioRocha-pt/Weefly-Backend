@@ -12,23 +12,23 @@
       "pc": {
         "notAllowed": "Your account does not have access to the Price Checker.",
         "confirmTick": "Tick the box confirming the amount has come in.",
-        "rejectReason": "Say why it doesn't work — the client will read this.",
+        "rejectReason": "Say why it doesn't work: the client will read this.",
         "archiveNote": "Write the reason.",
         "noteEmpty": "Write the note.",
         "noteEmptyFallback": "Empty note.",
         "pnrLength": "The PNR has 6 characters.",
         "ticketNumberShape": "Each ticket is 3 airline digits + 10 document digits.",
-        "noticeMessage": "Write the message — the client is the one who will read it.",
-        "unfreezeReason": "Write why the chosen flight is being reverted — the client will read this.",
+        "noticeMessage": "Write the message: the client is the one who will read it.",
+        "unfreezeReason": "Write why the chosen flight is being reverted, the client will read this.",
         "departInvalid": "Invalid departure date.",
-        "datesReason": "Write why the dates are changing — the client will read this sentence.",
+        "datesReason": "Write why the dates are changing, the client will read this sentence.",
         "noPayment": "This case has no payment.",
         "confirm": {
           "notConfirmed": "Tick the box before confirming.",
           "illegal": "The payment is already in a state that cannot be marked as paid.",
           "failed": "Could not record the payment.",
           "unknown": "Failed.",
-          "mismatch": "Payment confirmed — with an amount different from the one charged, recorded in the history.",
+          "mismatch": "Payment confirmed: with an amount different from the one charged, recorded in the history.",
           "done": "Payment confirmed. The case is ready to issue."
         },
         "proofRejected": "Proof rejected. The client can send another.",
@@ -66,10 +66,10 @@
           "alreadyConfirmed": "This payment is already confirmed.",
           "saveFailed": "Could not save.",
           "savedNotSent": "Instructions saved. They have not been sent yet.",
-          "sentAutoDue": "Instructions sent to the client. The deadline is {due} — time sent plus {hours}h.",
+          "sentAutoDue": "Instructions sent to the client. The deadline is {due}: time sent plus {hours}h.",
           "savedAndSent": "Instructions saved and sent to the client.",
           "alreadySent": "Instructions saved. These had already been sent to the client.",
-          "emailFailed": "The instructions were saved, but the email was NOT sent: {reason}. The client still doesn't know how to pay — send them the link on WhatsApp or try sending again."
+          "emailFailed": "The instructions were saved, but the email was NOT sent: {reason}. The client still doesn't know how to pay, send them the link on WhatsApp or try sending again."
         },
         "close": {
           "alreadyClosed": "The case is already closed.",
@@ -95,14 +95,14 @@
           "missingFields": "Document fields missing on {count} flight(s): {flights}.",
           "saveFailed": "Could not save the issuance.",
           "issued": "Issued. PNR {pnr}.",
-          "pdfFailed": "The PDF was not generated ({reason}) — use \"Generate again\" on the Issuance tab.",
+          "pdfFailed": "The PDF was not generated ({reason}), use \"Generate again\" on the Issuance tab.",
           "emailSent": "The client received the email with the PDF attached.",
-          "emailFailed": "The email to the client was not sent — see the Communications tab."
+          "emailFailed": "The email to the client was not sent, see the Communications tab."
         },
         "tickets": {
           "generated": "Ticket {number} generated.",
           "noneYet": "This case has no generated ticket yet. Use “Generate ticket” before resending.",
-          "resent": "Ticket {number} resent — the same document, not regenerated.",
+          "resent": "Ticket {number} resent: the same document, not regenerated.",
           "resendFailed": "Resending failed: {reason}",
           "generateFailed": "Could not generate the ticket: {reason}"
         },
@@ -127,7 +127,7 @@
         "link": {
           "adminOnly": "Only an administrator can revoke the link.",
           "failed": "Could not generate a new link.",
-          "done": "New link generated. The old one no longer opens — send the new one to the client."
+          "done": "New link generated. The old one no longer opens: send the new one to the client."
         },
         "unfreeze": {
           "issued": "This case is already issued. Changing flight is a reissue.",
@@ -145,7 +145,7 @@
           "done": "Dates updated and recorded.",
           "draft": "The proposal went back to draft as R{revision}.",
           "clientNotified": "The client was notified by email.",
-          "clientNotNotified": "Could not notify the client by email — contact them on WhatsApp."
+          "clientNotNotified": "Could not notify the client by email, contact them on WhatsApp."
         }
       },
       "access": {
@@ -178,7 +178,7 @@
         "invite": {
           "noServiceRole": "server has no service role",
           "noSiteUrl": "NEXT_PUBLIC_SITE_URL not configured",
-          "alreadyRegistered": "this person already has an account — they sign in with their own password."
+          "alreadyRegistered": "this person already has an account, they sign in with their own password."
         }
       },
       "partners": {
@@ -200,11 +200,40 @@
         "suspendNeedsReason": "A suspension needs a reason.",
         "operatorNotSuspendable": "The platform operator cannot be suspended.",
         "suspended": "Partner suspended. Its accounts can no longer sign in and its links no longer open.",
-        "reactivated": "Partner reactivated."
+        "reactivated": "Partner reactivated.",
+        "slugReserved": "That address is reserved by the platform. Choose another one.",
+        "createdNoAdmin": "Partner created. It has no admin account yet: create it under Users once you have the email.",
+        "upload": {
+          "missing": "Choose a file.",
+          "type": {
+            "logo": "The logo must be PNG or SVG.",
+            "icon": "The icon must be PNG or SVG.",
+            "share": "The share image must be JPG or PNG."
+          },
+          "tooBig": {
+            "logo": "The logo is larger than 2 MB.",
+            "icon": "The icon is larger than 2 MB.",
+            "share": "The share image is larger than 1 MB."
+          },
+          "icon": {
+            "small": "The icon must be at least 512 × 512.",
+            "unreadable": "This icon could not be read."
+          },
+          "share": {
+            "size": "The share image must be 1200 × 630.",
+            "unreadable": "This image could not be read."
+          },
+          "failed": "The file did not upload. Try again.",
+          "done": {
+            "logo": "Logo saved.",
+            "icon": "Icon saved. The favicon and icons were generated.",
+            "share": "Share image saved."
+          }
+        }
       },
       "pro": {
         "masterOnly": "Only the master account validates accounts.",
-        "slugShape": "The company address may only contain lowercase letters, numbers and hyphens.",
+        "slugShape": "The company address only takes lowercase letters, numbers and hyphens, 2 to 30 characters.",
         "companyNameMissing": "The company name is missing.",
         "pickCompany": "Choose the company.",
         "approveInvalid": "Invalid approval data.",
@@ -218,7 +247,11 @@
         "reasonTooLong": "The reason is too long.",
         "onlyPendingRejected": "Only a pending account can be rejected.",
         "rejected": "Account rejected. The email with the reason was sent.",
-        "rejectedEmailFailed": "Account rejected, but the email was not sent: {reason}"
+        "rejectedEmailFailed": "Account rejected, but the email was not sent: {reason}",
+        "slugReserved": "That address is reserved by the platform. Choose another one.",
+        "alreadyConfirmed": "This account's email is already confirmed.",
+        "resendFailed": "The confirmation email was not sent: {reason}",
+        "resendDone": "Confirmation email resent to {email}."
       }
     }
   }

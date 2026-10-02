@@ -90,7 +90,7 @@
         "waitingBefore": "The request from",
         "waitingMiddle": "has been in the queue for",
         "waitingAfter": "and nobody has claimed it.",
-        "explainBefore": "An offer written on a case with no owner can be overwritten by another agent working the same request, without either of them knowing. Claim the case and the composer opens — it is recorded as yours, with the time, and the case leaves",
+        "explainBefore": "An offer written on a case with no owner can be overwritten by another agent working the same request, without either of them knowing. Claim the case and the composer opens, it is recorded as yours, with the time, and the case leaves",
         "explainBucket": "new, unassigned",
         "explainAfter": ".",
         "claiming": "Claiming…",

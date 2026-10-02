@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
+import { usePathname } from "next/navigation"
 
 import { WEEFLY_LOGO_PATHS } from "@/components/weefly-logo"
 
@@ -30,10 +31,23 @@ const pathVariants: Variants = {
  * preloader vive no layout de raiz, acima de qualquer provider de tradução —
  * quem o desenha já tem o tradutor à mão e passa a frase feita.
  */
+/**
+ * OCT-20 · os links do cliente (o price checker e a aplicação do ministério)
+ * abrem sem preloader: o overlay ficava pelo menos 2,4 s e esperava pelo
+ * `load` da janela inteira, e o primeiro ecrã de um telemóvel em 4G passava
+ * dos 3 s só por causa dele.
+ */
+function isClientLink(pathname: string | null): boolean {
+  return Boolean(pathname && (pathname === "/pc" || pathname.startsWith("/pc/") || pathname.startsWith("/ministerios/")))
+}
+
 export function Preloader({ label }: { label: string }) {
-  const [isLoading, setIsLoading] = useState(true)
+  const pathname = usePathname()
+  const skip = isClientLink(pathname)
+  const [isLoading, setIsLoading] = useState(!skip)
 
   useEffect(() => {
+    if (skip) return
     // Reveal the app once BOTH the window has finished loading and a minimum
     // display window has elapsed (so the animation never gets cut short).
     const minDelay = new Promise<void>((resolve) =>
@@ -53,6 +67,7 @@ export function Preloader({ label }: { label: string }) {
     return () => {
       active = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Lock scrolling while the overlay is visible.

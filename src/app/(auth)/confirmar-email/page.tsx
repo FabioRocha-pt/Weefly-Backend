@@ -7,10 +7,11 @@ import { getI18n } from "@/i18n/server"
 import { readPendingSignup } from "@/lib/signup-cookie"
 
 /**
- * PRO-07 · "Enviámos um email para nome@exemplo.com", com reenviar e corrigir.
+ * PRO-07 · OCT-07 · "Enviámos um email para nome@exemplo.com", por escrito, com
+ * reenviar e voltar ao início de sessão. Sem corrigir o email (OCT-06).
  *
  * O endereço vem do cookie assinado do registo (ver `lib/signup-cookie.ts`),
- * nunca do URL. Sem cookie — link aberto noutro browser, ou passadas 24 h — o
+ * nunca do URL. Sem cookie (link aberto noutro browser, ou passadas 24 h) o
  * ecrã cai no texto genérico e pede o email para reenviar.
  */
 export default function ConfirmarEmailPage() {

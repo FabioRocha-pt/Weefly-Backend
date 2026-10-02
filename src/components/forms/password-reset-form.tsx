@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Key, ArrowLeft } from "lucide-react"
+import { AlertCircle, Key, ArrowLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,10 +12,13 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { passwordResetSchema, type PasswordResetFormData } from "@/lib/validations"
 import { useT } from "@/i18n/provider"
+import { translateMessage } from "@/i18n/translate"
+import { requestPasswordReset } from "@/actions/auth"
 
 export function PasswordResetRequestForm() {
   const t = useT()
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
 
   const form = useForm<PasswordResetFormData>({
     resolver: zodResolver(passwordResetSchema),
@@ -24,10 +27,22 @@ export function PasswordResetRequestForm() {
     },
   })
 
-  const onSubmit = (data: PasswordResetFormData) => {
-    console.log("Password reset request:", data)
-    // Handle password reset request
-    setIsSubmitted(true)
+  /* OCT-04 · o formulário só escrevia na consola: o email nunca era pedido. */
+  const onSubmit = async (data: PasswordResetFormData) => {
+    setServerError(null)
+    const fd = new FormData()
+    fd.set("email", data.email)
+    try {
+      const result = await requestPasswordReset(fd)
+      if (result.error) {
+        setServerError(result.error)
+        return
+      }
+      setIsSubmitted(true)
+    } catch (err) {
+      console.error("[recuperar-password] falhou", err)
+      setServerError("auth.emailSendFailed")
+    }
   }
 
   if (isSubmitted) {
@@ -88,6 +103,13 @@ export function PasswordResetRequestForm() {
               </p>
             )}
           </div>
+
+          {serverError && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{translateMessage(t, serverError)}</span>
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting

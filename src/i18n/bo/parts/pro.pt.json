@@ -30,12 +30,20 @@
         "agentMenus": "Menus do Agente",
         "none": "nenhum",
         "yes": "sim",
-        "no": "não"
+        "no": "não",
+        "subdomain": {
+          "available": "Disponível",
+          "taken": "Ocupado: já existe uma empresa com este endereço",
+          "reserved": "Reservado: este nome é da plataforma",
+          "shape": "Só minúsculas, números e hífen, de 2 a 30 caracteres, sem espaços nem acentos",
+          "checking": "A verificar…",
+          "unknown": "Não foi possível verificar agora"
+        }
       },
       "areas": {
         "b2g": {
           "title": "B2G",
-          "body": "Parceiros, ministérios, bolsas, alertas, casos e passagens — só de leitura por defeito (ADM-08, com ADM-04 e ADM-06). Entra no passo 5, com o backoffice da Alô."
+          "body": "Parceiros, ministérios, bolsas, alertas, casos e passagens, só de leitura por defeito (ADM-08, com ADM-04 e ADM-06). Entra no passo 5, com o backoffice da Alô."
         },
         "numeros": {
           "title": "Números",
@@ -43,7 +51,7 @@
         },
         "receita": {
           "title": "Receita",
-          "body": "Taxas e comissões (ADM-07). Bloqueado até às decisões C1, D1, D7 e D8 — o campo da comissão já existe no caso, vazio."
+          "body": "Taxas e comissões (ADM-07). Bloqueado até às decisões C1, D1, D7 e D8, o campo da comissão já existe no caso, vazio."
         }
       },
       "team": {
@@ -71,7 +79,7 @@
         "approveConfirm": "Aprovar {email} em {target}?",
         "approvedNotice": "Aprovada.",
         "reasonRequired": "A recusa leva um motivo.",
-        "rejectConfirm": "Recusar {email}? O motivo segue por email.",
+        "rejectConfirm": "Esta decisão não pode ser desfeita. Recusar a conta de {name}?",
         "rejectedNotice": "Recusada.",
         "registeredOn": "Registada a {date}",
         "emailConfirmed": "Email confirmado",
@@ -92,8 +100,10 @@
         "agent": "Agente",
         "confirmApproval": "Confirmar aprovação",
         "rejectReason": "Motivo da recusa",
-        "rejectReasonPlaceholder": "Vai no email para a pessoa.",
-        "confirmRejection": "Confirmar recusa"
+        "rejectReasonPlaceholder": "Obrigatória. Vai no email para a pessoa.",
+        "confirmRejection": "Confirmar recusa",
+        "resendConfirmation": "Reenviar confirmação",
+        "rejectTitle": "Recusar a conta de {name}"
       },
       "users": {
         "title": "Utilizadores e permissões",
@@ -102,7 +112,7 @@
         "searchPlaceholder": "Procurar por nome ou email",
         "newUser": "Novo utilizador",
         "suspendedSuffix": " · suspenso",
-        "chooseOption": "— escolha —",
+        "chooseOption": "· escolha.",
         "noMinistries": "Este parceiro ainda não tem ministérios (PAR-02).",
         "sameAsCompany": "Os mesmos da empresa",
         "sendInvite": "Enviar o convite por email agora",
@@ -163,7 +173,7 @@
         "customerFront": "O link do cliente mostra",
         "frontOwn": "O ecrã do parceiro, com Powered by WeeFly",
         "frontWeefly": "O ecrã WeeFly, sem alterações",
-        "brand": "Marca (TEN-02)",
+        "brand": "Marca",
         "logoUrl": "Logótipo (URL)",
         "colorPrimary": "Cor principal",
         "colorDark": "Cor escura",
@@ -173,8 +183,8 @@
         "whatsappNumber": "WhatsApp de apoio",
         "footer": "Rodapé",
         "poweredBy": "Mostrar “Powered by WeeFly” (TEN-05)",
-        "firstAdmin": "Primeira conta de administrador (recebe o convite)",
-        "createAndInvite": "Criar parceiro e enviar convite",
+        "firstAdmin": "Primeira conta de administrador (opcional, recebe o convite)",
+        "createAndInvite": "Criar parceiro",
         "colSales": "Venda",
         "colAccounts": "Contas",
         "whiteLabel": "White label",
@@ -184,7 +194,26 @@
         "suspendedCount": " · {count} suspensas",
         "active": "Activo",
         "suspended": "Suspenso",
-        "suspendConfirm": "Suspender {name}? As contas deixam de entrar e os links deixam de abrir."
+        "suspendConfirm": "Suspender {name}? As contas deixam de entrar e os links deixam de abrir.",
+        "uploadAfterCreate": "O logótipo, o ícone e a imagem de partilha carregam-se depois de criar o parceiro, em Editar.",
+        "upload": "Carregar",
+        "uploading": "A carregar…",
+        "logo": "Logótipo",
+        "logoHint": "PNG ou SVG, até 2 MB. Aparece no backoffice, nos emails e no price checker.",
+        "logoAlt": "Logótipo da {name}",
+        "icon": "Ícone",
+        "iconHint": "Quadrado, PNG de pelo menos 512 × 512, ou SVG. Gera o favicon e os ícones de ecrã inicial.",
+        "iconAlt": "Ícone da {name}",
+        "iconDefault": "Sem ícone: usa o da WeeFly",
+        "share": "Imagem de partilha",
+        "shareHint": "1200 × 630, JPG ou PNG, até 1 MB. Aparece quando o link segue por WhatsApp ou email.",
+        "shareDefault": "Sem imagem: usa a da WeeFly",
+        "noFile": "Sem ficheiro",
+        "previewTab": "No separador do browser",
+        "previewWhatsapp": "Numa mensagem de WhatsApp",
+        "colorAccent": "Cor de destaque",
+        "seoTitle": "Título do price checker (vazio: o por defeito)",
+        "seoDescription": "Descrição do price checker (vazio: a por defeito)"
       }
     }
   }

@@ -17,4 +17,4 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/weefly/pc-cron.env
-ExecStart=/usr/bin/curl -fsS -o /dev/null -H "Authorization: Bearer ${PC_CRON_TOKEN}" https://concierge.weefly.africa/api/b2g/alerts
+ExecStart=/usr/bin/curl -fsS -o /dev/null -H "Authorization: Bearer ${PC_CRON_TOKEN}" https://pro.weefly.africa/api/b2g/alerts

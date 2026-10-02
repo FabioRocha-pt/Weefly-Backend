@@ -810,7 +810,7 @@ function pageTwo(ctx: Ctx, data: TicketData): void {
 
   y = section(ctx, "Documentos que tem de levar", y)
   const checklist = [
-    "Passaporte válido — a maioria dos destinos exige seis meses de validade a contar da data de regresso.",
+    "Passaporte válido: a maioria dos destinos exige seis meses de validade a contar da data de regresso.",
     "Visto ou autorização de entrada, quando o destino o exigir. A responsabilidade de o ter é de quem viaja.",
     "Este bilhete, no telemóvel ou impresso. O localizador chega para o balcão.",
     "Comprovativos de alojamento e de regresso, que algumas fronteiras pedem à chegada.",
@@ -824,7 +824,7 @@ function pageTwo(ctx: Ctx, data: TicketData): void {
   y = section(ctx, "Antes de partir", y)
   paragraph(
     ctx,
-    "Confirme o horário do voo na véspera: as companhias mudam horas e as mudanças chegam-nos por email ou pelo sistema de reservas. Sempre que soubermos de uma alteração que lhe diga respeito, avisamos por email e por WhatsApp, e ela aparece também na sua página. Se precisar de mudar alguma coisa, fale connosco antes de falar com a companhia — uma alteração feita por fora pode anular condições da tarifa.",
+    "Confirme o horário do voo na véspera: as companhias mudam horas e as mudanças chegam-nos por email ou pelo sistema de reservas. Sempre que soubermos de uma alteração que lhe diga respeito, avisamos por email e por WhatsApp, e ela aparece também na sua página. Se precisar de mudar alguma coisa, fale connosco antes de falar com a companhia. Uma alteração feita por fora pode anular condições da tarifa.",
     { x: M, y, width: PAGE.w - M * 2 }
   )
 
@@ -1033,7 +1033,7 @@ export async function renderTicketGuidePdf(): Promise<Uint8Array> {
     ],
     [
       "Número de bilhete",
-      "Treze dígitos por pessoa: os três primeiros identificam a companhia, os dez seguintes o documento. Cada passageiro tem o seu — não são todos o mesmo, e é por isso que aparecem ao lado da etiqueta de cada um.",
+      "Treze dígitos por pessoa: os três primeiros identificam a companhia, os dez seguintes o documento. Cada passageiro tem o seu: não são todos o mesmo, e é por isso que aparecem ao lado da etiqueta de cada um.",
     ],
     [
       "P1, P2, P3",
@@ -1041,7 +1041,7 @@ export async function renderTicketGuidePdf(): Promise<Uint8Array> {
     ],
     [
       "Horas",
-      "São sempre horas locais do aeroporto de cada ponta — a de partida na cidade de onde parte, a de chegada na cidade onde aterra. Nunca é preciso converter fusos.",
+      "São sempre horas locais do aeroporto de cada ponta: a de partida na cidade de onde parte, a de chegada na cidade onde aterra. Nunca é preciso converter fusos.",
     ],
     [
       "Código quadrado",
@@ -1049,7 +1049,7 @@ export async function renderTicketGuidePdf(): Promise<Uint8Array> {
     ],
     [
       "Bagagem",
-      "A página 2 diz o que a sua tarifa inclui, de mão e de porão. Uma mala a mais compra-se à companhia — e sai quase sempre mais barato antes do aeroporto do que no balcão.",
+      "A página 2 diz o que a sua tarifa inclui, de mão e de porão. Uma mala a mais compra-se à companhia, e sai quase sempre mais barato antes do aeroporto do que no balcão.",
     ],
     [
       "Se o voo mudar",

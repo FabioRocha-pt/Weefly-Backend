@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { redirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google"
 
 import "@/styles/bo-pc.css"
@@ -9,6 +9,7 @@ import { RoutePreloader } from "@/components/route-preloader"
 import { WeeFlyLogo } from "@/components/weefly-logo"
 import { BoTopbarActions } from "@/components/bo/topbar-actions"
 import { BoNotificationBell } from "@/components/bo/notification-bell"
+import { TutorialButton } from "@/components/tutorial-button"
 import { loadBoAlerts } from "@/lib/bo-alerts"
 import { BoUserMenu } from "@/components/bo/user-menu"
 import { BoLiveUpdates } from "@/components/bo/live-updates"
@@ -17,7 +18,10 @@ import { PoweredByWeefly } from "@/components/powered-by"
 import { I18nProvider } from "@/i18n/provider"
 import { getBoI18n } from "@/i18n/bo-server"
 import type { Translator } from "@/i18n/translate"
-import { partnerSiteUrl } from "@/lib/site-url"
+import { pcSiteUrl } from "@/lib/site-url"
+import { hostPartnerSlug } from "@/lib/host-partner"
+import { Sidebar, type SidebarModule } from "@/components/dashboard/sidebar"
+import { PRO_MODULES, getProAccount, moduleState, visibleAgentMenus } from "@/lib/pro-account"
 
 /**
  * WeeFly — o back-office do Price Checker.
@@ -84,6 +88,12 @@ export default async function BoPriceCheckerLayout({
     redirect("/login?redirectedFrom=/admin/price-checker")
   }
 
+  /* DOM-01 · pelo subdomínio de outra empresa, 404: o mesmo backoffice, mas
+     só a empresa da conta (ou todas, para o Admin WeeFly). */
+  const hostSlug = hostPartnerSlug()
+  const tenant = access.ok ? access.identity.tenant : null
+  if (hostSlug && tenant && !tenant.crossPartner && tenant.partnerSlug !== hostSlug) notFound()
+
   /* C-14 · os alertas desta pessoa. Só depois de a allowlist a reconhecer: um
      feed lido antes disso seria trabalho para quem não vai ver o ecrã. */
   const feed = access.ok
@@ -92,6 +102,26 @@ export default async function BoPriceCheckerLayout({
 
   /* I18N-01 · a língua do agente, escolhida nas Definições. */
   const i18n = await getBoI18n()
+
+  /* OCT-19 · o menu lateral do WeeFly Pro também aqui, recolhido em ícones:
+     Passagens é um menu do Agente, e o resto do Agente tem de continuar à
+     mão. Só para contas aprovadas do WeeFly Pro; sem conta, a barra de topo
+     chega. */
+  const account = access.ok ? await getProAccount() : null
+  const sidebar =
+    account && account.status === "approved"
+      ? {
+          modules: PRO_MODULES.flatMap((id): SidebarModule[] => {
+            const state = moduleState(account, id)
+            return state === "hidden" ? [] : [{ id, state }]
+          }),
+          agentMenus: visibleAgentMenus(account),
+          companyName: account.partner?.name ?? null,
+          companyLogoUrl: account.partner && !account.partner.isOperator ? account.partner.logoUrl : null,
+          canManageTeam: account.profile?.manageUsers === "own_partner",
+          sellsB2g: Boolean(account.partner?.channels.includes("B2G")),
+        }
+      : null
 
   return (
     <I18nProvider locale={i18n.locale} dictionary={i18n.dictionary} fallback={i18n.fallback}>
@@ -104,7 +134,7 @@ export default async function BoPriceCheckerLayout({
         /* MIG-02 · os links copiados saem do endereço configurado, e do
            parceiro da sessão. */
         <LinkBaseProvider
-          base={partnerSiteUrl(
+          base={pcSiteUrl(
             access.identity.tenant
               ? {
                   slug: access.identity.tenant.partnerSlug,
@@ -113,6 +143,13 @@ export default async function BoPriceCheckerLayout({
               : null
           )}
         >
+          <div style={{ display: "flex", minHeight: "100vh" }}>
+          {sidebar && (
+            <div className="hidden lg:block">
+              <Sidebar {...sidebar} collapsible />
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
           <header className="topbar">
             <div className="topbar-in">
               <WeeFlyLogo className="logo" />
@@ -135,6 +172,8 @@ export default async function BoPriceCheckerLayout({
                 {/* C-14 · o contador é lido no servidor a cada render, e é o
                     `BoLiveUpdates` que força esse render quando a base muda. */}
                 <BoNotificationBell alerts={feed.alerts} unread={feed.unread} />
+                {/* OCT-23 · o tutorial do ecrã, ao lado do sino. */}
+                <TutorialButton variant="bo" />
                 {/* T-05 · o construtor de links cria-os em nome de quem está
                     autenticado, e por isso precisa de saber quem é. */}
                 <BoTopbarActions
@@ -163,6 +202,8 @@ export default async function BoPriceCheckerLayout({
           {children}
           {/* TEN-05 · o back-office de um parceiro diz de onde vem. */}
           {access.identity.tenant?.poweredByWeefly && <PoweredByWeefly />}
+          </div>
+          </div>
         </LinkBaseProvider>
       )}
     </I18nProvider>

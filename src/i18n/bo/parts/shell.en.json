@@ -37,7 +37,7 @@
         "profile": "Profile",
         "accessBefore": "Access to this back office is granted",
         "accessBold": "by email, one account at a time",
-        "accessAfter": ". To add or revoke someone, talk to whoever manages access — there is nothing to change here.",
+        "accessAfter": ". To add or revoke someone, talk to whoever manages access, there is nothing to change here.",
         "preferences": "Preferences"
       },
       "alerts": {
@@ -70,7 +70,7 @@
       "live": {
         "titleSound": "Real time, with sound alert. Click to mute.",
         "titleSilent": "Real time, muted. Click to turn the alert on.",
-        "titlePolling": "No websocket — the queue keeps updating every 4 seconds.",
+        "titlePolling": "No websocket: the queue keeps updating every 4 seconds.",
         "live": "live",
         "polling": "polling",
         "silent": "muted",
@@ -91,7 +91,7 @@
         "language": "Language",
         "currency": "Currency",
         "clientCountry": "Client country",
-        "paramsNote": "Language, currency and country are set here, so the client opens the link with everything right — the phone dialling code comes from the country ({dial}). They can change it, but by default they see what makes sense in their market.",
+        "paramsNote": "Language, currency and country are set here, so the client opens the link with everything right, the phone dialling code comes from the country ({dial}). They can change it, but by default they see what makes sense in their market.",
         "noAmountNote": "There is no amount to charge here: the payment link is generated automatically after the client chooses an offer and fills in the details of every passenger. Until then there is no amount and no passenger to charge.",
         "generated": "Generated link",
         "address": "Address",
@@ -103,6 +103,116 @@
         "close": "Close",
         "copy": "Copy",
         "copied": "Copied"
+      }
+    },
+    "tutorial": {
+      "open": "Tutorial for this screen",
+      "close": "Close",
+      "back": "Back",
+      "next": "Next",
+      "done": "Done",
+      "stepOf": "step {n} of {total}",
+      "queue": {
+        "title": "Work queue",
+        "steps": {
+          "0": {
+            "title": "The figures at the top",
+            "body": "Each card counts the cases that need an action: proofs to validate, paid without a ticket, new without an owner. Always start with the red ones."
+          },
+          "1": {
+            "title": "The tabs",
+            "body": "They filter the list by the same rule as the cards. Closed cases shows the issued and archived ones."
+          },
+          "2": {
+            "title": "Claim and quote",
+            "body": "A case without an owner has the Claim button. Claiming makes it yours, and the button on the right opens the case at the right step."
+          },
+          "3": {
+            "title": "Archive",
+            "body": "A case resolved by phone or at the counter is archived with a reason. It leaves the queues and stays in Closed cases; only an admin can reopen it."
+          }
+        }
+      },
+      "case": {
+        "title": "Case file",
+        "steps": {
+          "0": {
+            "title": "The header",
+            "body": "It shows the reference, client, status and owner. From here you claim, archive or close the case."
+          },
+          "1": {
+            "title": "Offers",
+            "body": "Build the options and publish the proposal. The client receives the link by email and WhatsApp."
+          },
+          "2": {
+            "title": "Payment",
+            "body": "When the client sends the proof of payment, validate it here. The case moves to paid without a ticket."
+          },
+          "3": {
+            "title": "Issuance",
+            "body": "Record the PNR and tickets. The client receives the ticket and the case closes as issued."
+          }
+        }
+      },
+      "agent": {
+        "title": "Agent area",
+        "steps": {
+          "0": {
+            "title": "The menus",
+            "body": "Flights opens the Concierge. Menus marked Coming soon are enabled for your company but have no content yet."
+          },
+          "1": {
+            "title": "Clients and wallet",
+            "body": "Clients groups every request from each person. The wallet shows the company's figures."
+          },
+          "2": {
+            "title": "Switch module",
+            "body": "The button at the top of the menu opens the module list. It switches without signing in again."
+          }
+        }
+      },
+      "admin": {
+        "title": "Admin",
+        "steps": {
+          "0": {
+            "title": "Dashboard",
+            "body": "The figures that need attention. Each card opens the list it comes from."
+          },
+          "1": {
+            "title": "Account validation",
+            "body": "Approve with the company, subdomain and menus, or reject with a note. The person receives the decision by email."
+          },
+          "2": {
+            "title": "Partners",
+            "body": "Under Edit you upload each company's logo, icon and share image, and choose its colours."
+          }
+        }
+      },
+      "modules": {
+        "title": "Module choice",
+        "steps": {
+          "0": {
+            "title": "Where to work",
+            "body": "Each card is a module the Admin gave you. The last one used is highlighted."
+          },
+          "1": {
+            "title": "Supplier",
+            "body": "The Supplier module is locked: it arrives in a later version."
+          }
+        }
+      },
+      "general": {
+        "title": "WeeFly PRO",
+        "steps": {
+          "0": {
+            "title": "The side menu",
+            "body": "Everything you can open is in the menu on the left. The button at the top switches module."
+          },
+          "1": {
+            "title": "Your account",
+            "body": "In the top right corner: your profile, the language and sign out."
+          }
+        }
       }
     }
   }

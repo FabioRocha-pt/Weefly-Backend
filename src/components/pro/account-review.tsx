@@ -4,13 +4,20 @@ import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
-import { approveProAccount, rejectProAccount } from "@/actions/pro"
-import { partnerHostPreview } from "@/lib/site-url"
+import { approveProAccount, rejectProAccount, resendAccountConfirmation } from "@/actions/pro"
+import { type SubdomainCheck } from "@/actions/subdomain"
+import { SubdomainField } from "@/components/pro/subdomain-field"
+import { toSubdomain } from "@/lib/subdomain"
 import { useT } from "@/i18n/provider"
 
 /**
  * PRO-09 · uma conta pendente: aprovar (empresa, tipo, módulo, menus) ou
  * recusar com motivo. As duas pedem confirmação.
+ *
+ * OCT-08 · o "Email confirmado" vem de `auth.users.email_confirmed_at`; por
+ * confirmar, há "Reenviar confirmação".
+ * OCT-10 · recusar abre uma janela com a nota obrigatória, que segue por email.
+ * OCT-12 · o subdomínio diz se está livre enquanto se escreve.
  */
 
 type Menu = "flights" | "cars" | "houses" | "experiences" | "food"
@@ -41,16 +48,6 @@ interface Props {
   partners: PartnerOption[]
 }
 
-function slugify(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 63)
-}
-
 export function AccountReview({ account, partners }: Props) {
   const t = useT()
   const router = useRouter()
@@ -61,13 +58,14 @@ export function AccountReview({ account, partners }: Props) {
   const [partnerChoice, setPartnerChoice] = useState<"new" | "existing">("new")
   const [partnerId, setPartnerId] = useState(partners[0]?.id ?? "")
   const [companyName, setCompanyName] = useState(account.companyHint ?? "")
-  const [slug, setSlug] = useState(slugify(account.companyHint ?? ""))
+  const [slug, setSlug] = useState(toSubdomain(account.companyHint ?? ""))
   const [slugTouched, setSlugTouched] = useState(false)
   const [sellMode, setSellMode] = useState<"reseller" | "white_label">("reseller")
   const [customerFront, setCustomerFront] = useState<"own" | "weefly">("weefly")
   const [agentEnabled, setAgentEnabled] = useState(true)
   const [menus, setMenus] = useState<Menu[]>(["flights"])
   const [reason, setReason] = useState("")
+  const [slugState, setSlugState] = useState<SubdomainCheck | "checking">("unknown")
 
   const selectedPartner = useMemo(
     () => partners.find((p) => p.id === partnerId) ?? null,
@@ -89,7 +87,22 @@ export function AccountReview({ account, partners }: Props) {
   const toggleMenu = (id: Menu) =>
     setMenus((current) => (current.includes(id) ? current.filter((m) => m !== id) : [...current, id]))
 
+  const resend = () =>
+    start(async () => {
+      setMessage(null)
+      const result = await resendAccountConfirmation(account.userId)
+      setMessage(result.ok ? { ok: true, text: result.notice ?? "" } : { ok: false, text: result.error })
+    })
+
+  /* OCT-12 · com um nome ocupado (ou ainda por verificar) não se aprova. */
+  const slugBlocked =
+    partnerChoice === "new" && slugState !== "available" && slugState !== "unknown"
+
   const approve = () => {
+    if (slugBlocked) {
+      setMessage({ ok: false, text: t(`bo.pro.common.subdomain.${slugState}`) })
+      return
+    }
     const target =
       partnerChoice === "new"
         ? companyName || t("bo.pro.review.newCompanyFallback")
@@ -118,12 +131,15 @@ export function AccountReview({ account, partners }: Props) {
       setMessage({ ok: false, text: t("bo.pro.review.reasonRequired") })
       return
     }
-    if (!window.confirm(t("bo.pro.review.rejectConfirm", { email: account.email }))) return
+    if (!window.confirm(t("bo.pro.review.rejectConfirm", { name: account.name, email: account.email }))) return
     start(async () => {
       setMessage(null)
       const result = await rejectProAccount({ userId: account.userId, reason })
       setMessage(result.ok ? { ok: true, text: result.notice ?? t("bo.pro.review.rejectedNotice") } : { ok: false, text: result.error })
-      if (result.ok) router.refresh()
+      if (result.ok) {
+        setMode("idle")
+        router.refresh()
+      }
     })
   }
 
@@ -144,6 +160,16 @@ export function AccountReview({ account, partners }: Props) {
           <p className={account.emailConfirmed ? "text-emerald-700" : "text-amber-700"}>
             {account.emailConfirmed ? t("bo.pro.review.emailConfirmed") : t("bo.pro.review.emailUnconfirmed")}
           </p>
+          {!account.emailConfirmed && (
+            <button
+              type="button"
+              onClick={resend}
+              disabled={pending}
+              className="mt-1 font-medium text-orange-600 hover:text-orange-700 disabled:opacity-60"
+            >
+              {t("bo.pro.review.resendConfirmation")}
+            </button>
+          )}
         </div>
       </header>
 
@@ -187,23 +213,21 @@ export function AccountReview({ account, partners }: Props) {
                     value={companyName}
                     onChange={(e) => {
                       setCompanyName(e.target.value)
-                      if (!slugTouched) setSlug(slugify(e.target.value))
+                      if (!slugTouched) setSlug(toSubdomain(e.target.value))
                     }}
                   />
                 </label>
                 <label className="text-sm space-y-1">
                   <span className="text-slate-600">{t("bo.pro.common.slugLabel")}</span>
-                  <input
-                    className={`${field} font-mono`}
+                  <SubdomainField
+                    className={field}
                     value={slug}
-                    onChange={(e) => {
+                    onStateChange={setSlugState}
+                    onChange={(value) => {
                       setSlugTouched(true)
-                      setSlug(e.target.value.toLowerCase())
+                      setSlug(value)
                     }}
                   />
-                  <span className="text-xs text-slate-500">
-                    {partnerHostPreview(slug) ?? t("bo.pro.common.slugPending", { slug: slug || "…" })}
-                  </span>
                 </label>
               </div>
             ) : (
@@ -276,7 +300,7 @@ export function AccountReview({ account, partners }: Props) {
           )}
 
           <div className="flex gap-2">
-            <Button size="sm" onClick={approve} disabled={pending}>
+            <Button size="sm" onClick={approve} disabled={pending || slugBlocked}>
               {t("bo.pro.review.confirmApproval")}
             </Button>
             <Button size="sm" variant="outline" onClick={() => setMode("idle")} disabled={pending}>
@@ -287,23 +311,42 @@ export function AccountReview({ account, partners }: Props) {
       )}
 
       {mode === "reject" && (
-        <div className="space-y-3 rounded-xl bg-slate-50 p-4">
-          <label className="text-sm space-y-1 block">
-            <span className="font-semibold text-slate-900">{t("bo.pro.review.rejectReason")}</span>
-            <textarea
-              className={`${field} min-h-[90px]`}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder={t("bo.pro.review.rejectReasonPlaceholder")}
-            />
-          </label>
-          <div className="flex gap-2">
-            <Button size="sm" variant="destructive" onClick={reject} disabled={pending}>
-              {t("bo.pro.review.confirmRejection")}
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setMode("idle")} disabled={pending}>
-              {t("bo.pro.common.cancel")}
-            </Button>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={`reject-${account.userId}`}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !pending) setMode("idle")
+          }}
+        >
+          <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-xl">
+            <h3 id={`reject-${account.userId}`} className="font-semibold text-slate-900">
+              {t("bo.pro.review.rejectTitle", { name: account.name })}
+            </h3>
+            <label className="text-sm space-y-1 block">
+              <span className="font-medium text-slate-700">{t("bo.pro.review.rejectReason")}</span>
+              <textarea
+                autoFocus
+                className={`${field} min-h-[110px]`}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={t("bo.pro.review.rejectReasonPlaceholder")}
+              />
+            </label>
+            {message && !message.ok && (
+              <p className="text-sm text-red-600" role="status">
+                {message.text}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={() => setMode("idle")} disabled={pending}>
+                {t("bo.pro.common.cancel")}
+              </Button>
+              <Button size="sm" variant="destructive" onClick={reject} disabled={pending || reason.trim().length < 3}>
+                {t("bo.pro.review.confirmRejection")}
+              </Button>
+            </div>
           </div>
         </div>
       )}

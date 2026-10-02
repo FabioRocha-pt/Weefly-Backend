@@ -30,9 +30,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { org, brand } = lookup.ministry
   return {
     title: `${org.name} · ${brand.name}`,
-    manifest: `/m/${org.slug}/${org.token}/manifest.webmanifest`,
+    manifest: `/ministerios/${org.slug}/${org.token}/manifest.webmanifest`,
     appleWebApp: { capable: true, title: org.name, statusBarStyle: "default" },
-    icons: brand.logoUrl ? { icon: brand.logoUrl, apple: brand.logoUrl } : undefined,
     robots: { index: false, follow: false },
   }
 }
@@ -41,7 +40,7 @@ export default async function MinistryLayout({ params, children }: Params & { ch
   const lookup = await resolveMinistry(params.org, params.token)
   if (!lookup.ok) notFound()
   const { org, brand } = lookup.ministry
-  const base = `/m/${org.slug}/${org.token}`
+  const base = `/ministerios/${org.slug}/${org.token}`
 
   return (
     <I18nProvider locale="pt" dictionary={getDictionary("pt")}>

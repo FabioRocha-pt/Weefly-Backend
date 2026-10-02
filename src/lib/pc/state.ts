@@ -420,7 +420,7 @@ export async function loadPcState(token: string): Promise<PcLookup> {
     state.ministry = {
       name: String(organisation.name),
       partnerName: String(unwrap(row.partner)?.commercial_name ?? ""),
-      appPath: organisation.link_token ? `/m/${organisation.slug}/${organisation.link_token}` : null,
+      appPath: organisation.link_token ? `/ministerios/${organisation.slug}/${organisation.link_token}` : null,
       fundsCover,
     }
   }

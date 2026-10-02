@@ -126,7 +126,7 @@
         "reversalReason": "Reason for reversal",
         "reverse": "Reverse",
         "reverseConfirm": "Reverse the payment? The balance is restored and issuance is blocked again.",
-        "reversedLine": "Reversed: {amount}, by {by} — {reason}",
+        "reversedLine": "Reversed: {amount}, by {by}, {reason}",
         "method": {
           "transfer": "Bank transfer",
           "deposit": "Deposit",

@@ -11,13 +11,17 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
+import { Resend } from "resend"
 
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getI18n } from "@/i18n/server"
 import { getBoI18n } from "@/i18n/bo-server"
 import { sendAccountDecisionEmail } from "@/lib/emails/account"
+import { senderAddress, teamRecipients } from "@/lib/notifications"
+import { escapeHtml } from "@/lib/emails/shared"
 import { siteUrl } from "@/lib/site-url"
+import { subdomainProblem } from "@/lib/subdomain"
 import {
   AGENT_MENUS,
   MODULE_HOME,
@@ -96,6 +100,58 @@ export async function updateProfile(formData: FormData): Promise<ProResult> {
   return { ok: true, notice: t("profile.saved") }
 }
 
+// ── OCT-05 · a conta pendente fala com a equipa ──────────────────────────────
+
+/**
+ * Uma mensagem curta da conta que espera aprovação (ou foi recusada) para a
+ * equipa WeeFly. Vai para os endereços da equipa (`CONCIERGE_TEAM_EMAIL`), com
+ * o email da conta como resposta: quem lê responde directamente à pessoa.
+ * O remetente é o da sessão, nunca um campo do formulário.
+ */
+export async function contactTeam(formData: FormData): Promise<ProResult> {
+  const { t } = getI18n()
+  const message = String(formData.get("message") ?? "").trim()
+  if (message.length < 5) return { ok: false, error: t("pro.contactTooShort") }
+  if (message.length > 2000) return { ok: false, error: t("pro.contactTooLong") }
+
+  const account = await getProAccount()
+  if (!account) return { ok: false, error: t("errors.sessionExpiredSignIn") }
+  if (!process.env.RESEND_API_KEY) return { ok: false, error: t("pro.contactFailed") }
+
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>
+  const name = [meta.first_name, meta.last_name].filter((v) => typeof v === "string" && v).join(" ")
+  const company = typeof meta.company === "string" ? meta.company : ""
+  const phone = typeof meta.phone === "string" ? meta.phone : ""
+
+  const header = [
+    `Conta: ${name || account.email} <${account.email}>`,
+    company ? `Empresa: ${company}` : "",
+    phone ? `Telefone: ${phone}` : "",
+    `Estado: ${account.status}`,
+  ].filter(Boolean)
+
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  const { error } = await resend.emails.send({
+    from: senderAddress(),
+    to: teamRecipients(),
+    replyTo: account.email,
+    subject: `WeeFly PRO · mensagem de ${name || account.email} (conta ${account.status})`,
+    text: [...header, "", message].join("\n"),
+    html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5">${header
+      .map((l) => `<p style="margin:0">${escapeHtml(l)}</p>`)
+      .join("")}<p style="margin:16px 0 0;white-space:pre-wrap">${escapeHtml(message)}</p></div>`,
+  })
+  if (error) {
+    console.error("[pro/contactTeam] falhou:", account.email, error.message)
+    return { ok: false, error: t("pro.contactFailed") }
+  }
+  return { ok: true, notice: t("pro.contactSent") }
+}
+
 // ── PRO-09 · validar contas ──────────────────────────────────────────────────
 
 async function requireMaster() {
@@ -104,7 +160,6 @@ async function requireMaster() {
   return account
 }
 
-const SLUG = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
 
 const approveSchema = z
   .object({
@@ -114,7 +169,7 @@ const approveSchema = z
     partnerChoice: z.enum(["new", "existing"]),
     partnerId: z.string().uuid().optional(),
     companyName: z.string().trim().max(120).optional(),
-    slug: z.string().trim().toLowerCase().max(63).optional(),
+    slug: z.string().trim().toLowerCase().max(30).optional(),
     sellMode: z.enum(["reseller", "white_label"]),
     customerFront: z.enum(["own", "weefly"]),
     agentEnabled: z.boolean(),
@@ -128,9 +183,9 @@ const approveSchema = z
       if (!v.companyName || v.companyName.length < 2) {
         ctx.addIssue({ code: "custom", path: ["companyName"], message: "name" })
       }
-      if (!v.slug || !SLUG.test(v.slug)) {
-        ctx.addIssue({ code: "custom", path: ["slug"], message: "slug" })
-      }
+      /* OCT-12 · 2 a 30, minúsculas, números e hífen, e fora dos reservados. */
+      const problem = v.slug ? subdomainProblem(v.slug) : "shape"
+      if (problem) ctx.addIssue({ code: "custom", path: ["slug"], message: problem })
     }
   })
 
@@ -194,7 +249,9 @@ export async function approveProAccount(input: {
       ok: false,
       error:
         field === "slug"
-          ? t("bo.actions.pro.slugShape")
+          ? parsed.error.issues[0]?.message === "reserved"
+            ? t("bo.actions.pro.slugReserved")
+            : t("bo.actions.pro.slugShape")
           : field === "companyName"
             ? t("bo.actions.pro.companyNameMissing")
             : field === "partnerId"
@@ -316,6 +373,40 @@ export async function approveProAccount(input: {
       ? t("bo.actions.pro.approved")
       : t("bo.actions.pro.approvedEmailFailed", { reason: sent.reason }),
   }
+}
+
+/**
+ * OCT-08 · reenviar o email de confirmação de uma conta pendente cujo email
+ * ainda não foi confirmado. Só a conta master; o endereço vem da conta, nunca
+ * do ecrã.
+ */
+export async function resendAccountConfirmation(userId: string): Promise<ProResult> {
+  const { t } = await getBoI18n()
+  const master = await requireMaster()
+  if (!master) return { ok: false, error: t("bo.actions.pro.masterOnly") }
+  if (!z.string().uuid().safeParse(userId).success) {
+    return { ok: false, error: t("bo.actions.pro.invalidAccount") }
+  }
+
+  const admin = createAdminClient()
+  if (!admin) return { ok: false, error: t("bo.actions.common.noServiceRole") }
+
+  const { data: found } = await admin.auth.admin.getUserById(userId)
+  const user = found?.user
+  if (!user?.email) return { ok: false, error: t("bo.actions.common.accountNotFound") }
+  if (user.email_confirmed_at) return { ok: false, error: t("bo.actions.pro.alreadyConfirmed") }
+
+  const supabase = createClient()
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: user.email,
+    options: { emailRedirectTo: `${siteUrl()}/auth/callback` },
+  })
+  if (error) {
+    console.error("[pro/resendAccountConfirmation] falhou:", user.email, error.message)
+    return { ok: false, error: t("bo.actions.pro.resendFailed", { reason: error.message }) }
+  }
+  return { ok: true, notice: t("bo.actions.pro.resendDone", { email: user.email }) }
 }
 
 /** Recusar: o motivo é obrigatório, e vai no email. */

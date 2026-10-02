@@ -69,7 +69,7 @@ export async function sendWhatsApp(input: {
     return {
       ok: false,
       reason: "not_configured",
-      error: "WhatsApp sem chaves configuradas — o aviso saiu só por email",
+      error: "WhatsApp sem chaves configuradas: o aviso saiu só por email",
     }
   }
 

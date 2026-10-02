@@ -8,8 +8,9 @@ import { resolveMinistry } from "@/lib/ministry"
  * aplicação certa — e um link regenerado dá um manifesto que já não abre o
  * antigo.
  *
- * O ícone é a versão compacta do logótipo do parceiro (TEN-02) quando existir;
- * até lá, o logótipo que houver. Sem nenhum, o browser usa o dele.
+ * SEO-04 · os ícones são os da empresa (gerados a partir do ícone dela, ver
+ * `api/brand/[file]`), que no endereço da empresa respondem na raiz. Sem
+ * ícone próprio, os da WeeFly.
  */
 
 export const dynamic = "force-dynamic"
@@ -18,8 +19,8 @@ export async function GET(_: Request, { params }: { params: { org: string; token
   const lookup = await resolveMinistry(params.org, params.token)
   if (!lookup.ok) return new NextResponse("Not found", { status: 404 })
   const { org, brand } = lookup.ministry
-  const base = `/m/${org.slug}/${org.token}`
-  const icon = brand.logoUrl
+  const base = `/ministerios/${org.slug}/${org.token}`
+  const v = `?v=${brand.brandVersion}`
 
   return NextResponse.json(
     {
@@ -30,12 +31,11 @@ export async function GET(_: Request, { params }: { params: { org: string; token
       display: "standalone",
       background_color: "#ffffff",
       theme_color: brand.colorPrimary ?? "#ffffff",
-      icons: icon
-        ? [
-            { src: icon, sizes: "192x192", purpose: "any" },
-            { src: icon, sizes: "512x512", purpose: "any" },
-          ]
-        : [],
+      icons: [
+        { src: `/icon-192.png${v}`, sizes: "192x192", type: "image/png" },
+        { src: `/icon-512.png${v}`, sizes: "512x512", type: "image/png" },
+        { src: `/icon-512-maskable.png${v}`, sizes: "512x512", type: "image/png", purpose: "maskable" },
+      ],
     },
     { headers: { "content-type": "application/manifest+json", "cache-control": "no-store" } }
   )

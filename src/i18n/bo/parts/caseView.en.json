@@ -58,7 +58,7 @@
         "archiving": "Archiving…",
         "archiveCase": "Archive case",
         "messageLabel": "Message to the client · sent as written",
-        "messagePlaceholder": "TAP moved flight TP1553 on 06/09 from 14:20 to 17:05. The Lisbon connection stays, with a 2h10 layover. No action needed — if you prefer another date, let us know.",
+        "messagePlaceholder": "TAP moved flight TP1553 on 06/09 from 14:20 to 17:05. The Lisbon connection stays, with a 2h10 layover. No action needed: if you prefer another date, let us know.",
         "messageHint": "It is logged with your name and the time, and shows up as an alert on the client's link.",
         "sending": "Sending…",
         "sendAndLog": "Send and log"
@@ -100,7 +100,7 @@
         "published": "Published proposals",
         "revision": "revision R{n}",
         "none": "no proposal",
-        "emptyNote": "No proposal published yet. It is put together in the Proposals tab — itinerary, price and a preview of the card the client will see — and the client only sees the result once you publish.",
+        "emptyNote": "No proposal published yet. It is put together in the Proposals tab, itinerary, price and a preview of the card the client will see, and the client only sees the result once you publish.",
         "unnamedOffer": "Unnamed offer",
         "heldUntil": "held ({source}) until {date}",
         "chosen": "chosen",
@@ -144,14 +144,14 @@
         }
       },
       "warnings": {
-        "passportShort": "P{n} has a passport valid only until {date} — less than 6 months after return.",
-        "accents": "P{n} has accents in the name ({name}) — the ticket needs the unaccented version.",
+        "passportShort": "P{n} has a passport valid only until {date}, less than 6 months after return.",
+        "accents": "P{n} has accents in the name ({name}), the ticket needs the unaccented version.",
         "none": "No automatic warnings: expiry dates and names pass the checks.",
         "checkBeforeIssue": "Check before issuing:"
       },
       "fareAge": {
         "title": "Changes fare type before departure:",
-        "lineStart": "{tag} {name} turns {turns} before {date} — on the travel date they are already",
+        "lineStart": "{tag} {name} turns {turns} before {date}, on the travel date they are already",
         "lineMid": "and not {from}.",
         "adultTail": "The child fare is not valid for this flight.",
         "seatTail": "They now need their own seat.",
@@ -255,7 +255,7 @@
         "chosenFallback": "the chosen offer",
         "frozenBold": "{name} is frozen.",
         "frozenBody": "The case has reached payment: the price the client sees is this offer's, and the amount to charge was calculated from it. Editing the itinerary here would change the trip underneath a payment in progress.",
-        "issued": "The case is issued. Changing flight is a reissue and goes through the airline — not through this screen.",
+        "issued": "The case is issued. Changing flight is a reissue and goes through the airline, not through this screen.",
         "paid": "The client has already paid. From here a flight change is a refund or a change with the airline, and neither is done with a button that says “go back”.",
         "open": "Go back a step and change flight",
         "openHint": "undoes the choice, closes the payment link, opens a revision and notifies the client",
@@ -270,7 +270,7 @@
         "title": "Ticket builder",
         "noOffer": "The client has not chosen an offer yet. Issuance details belong to the chosen offer, so they only appear after it.",
         "saved": "saved",
-        "intro": "What is here does not change the proposal the client read — not the price, the times or the route. These are the fields the ticket needs and the proposal did not.",
+        "intro": "What is here does not change the proposal the client read, not the price, the times or the route. These are the fields the ticket needs and the proposal did not.",
         "fare": "Fare",
         "fareName": "Fare name",
         "changes": "Changes",
@@ -291,7 +291,7 @@
         "bookingClass": "Booking class",
         "terminalFrom": "Departure terminal",
         "terminalTo": "Arrival terminal",
-        "issuedNote": "The case is already issued. Changing these fields now does not change the ticket the airline issued — that is a reissue, and goes through the airline.",
+        "issuedNote": "The case is already issued. Changing these fields now does not change the ticket the airline issued, that is a reissue, and goes through the airline.",
         "save": "Save ticket details",
         "legOut": "Outbound",
         "legBack": "Return"

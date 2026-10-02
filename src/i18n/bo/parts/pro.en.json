@@ -30,12 +30,20 @@
         "agentMenus": "Agent menus",
         "none": "none",
         "yes": "yes",
-        "no": "no"
+        "no": "no",
+        "subdomain": {
+          "available": "Available",
+          "taken": "Taken: another company already uses this address",
+          "reserved": "Reserved: this name belongs to the platform",
+          "shape": "Lowercase letters, numbers and hyphens only, 2 to 30 characters, no spaces or accents",
+          "checking": "Checking…",
+          "unknown": "Could not check right now"
+        }
       },
       "areas": {
         "b2g": {
           "title": "B2G",
-          "body": "Partners, ministries, scholarships, alerts, cases and tickets — read-only by default (ADM-08, with ADM-04 and ADM-06). Arrives in step 5, with the Alô back office."
+          "body": "Partners, ministries, scholarships, alerts, cases and tickets, read-only by default (ADM-08, with ADM-04 and ADM-06). Arrives in step 5, with the Alô back office."
         },
         "numeros": {
           "title": "Numbers",
@@ -43,7 +51,7 @@
         },
         "receita": {
           "title": "Revenue",
-          "body": "Fees and commissions (ADM-07). Blocked until decisions C1, D1, D7 and D8 — the commission field already exists on the case, empty."
+          "body": "Fees and commissions (ADM-07). Blocked until decisions C1, D1, D7 and D8, the commission field already exists on the case, empty."
         }
       },
       "team": {
@@ -71,7 +79,7 @@
         "approveConfirm": "Approve {email} in {target}?",
         "approvedNotice": "Approved.",
         "reasonRequired": "A rejection needs a reason.",
-        "rejectConfirm": "Reject {email}? The reason is sent by email.",
+        "rejectConfirm": "This decision cannot be undone. Reject {name}'s account?",
         "rejectedNotice": "Rejected.",
         "registeredOn": "Registered on {date}",
         "emailConfirmed": "Email confirmed",
@@ -92,8 +100,10 @@
         "agent": "Agent",
         "confirmApproval": "Confirm approval",
         "rejectReason": "Reason for rejection",
-        "rejectReasonPlaceholder": "It goes in the email to the person.",
-        "confirmRejection": "Confirm rejection"
+        "rejectReasonPlaceholder": "Required. It goes in the email to the person.",
+        "confirmRejection": "Confirm rejection",
+        "resendConfirmation": "Resend confirmation",
+        "rejectTitle": "Reject {name}'s account"
       },
       "users": {
         "title": "Users and permissions",
@@ -102,7 +112,7 @@
         "searchPlaceholder": "Search by name or email",
         "newUser": "New user",
         "suspendedSuffix": " · suspended",
-        "chooseOption": "— choose —",
+        "chooseOption": "· choose.",
         "noMinistries": "This partner has no ministries yet (PAR-02).",
         "sameAsCompany": "Same as the company",
         "sendInvite": "Send the invitation by email now",
@@ -163,7 +173,7 @@
         "customerFront": "The customer link shows",
         "frontOwn": "The partner's screen, with Powered by WeeFly",
         "frontWeefly": "The WeeFly screen, unchanged",
-        "brand": "Brand (TEN-02)",
+        "brand": "Brand",
         "logoUrl": "Logo (URL)",
         "colorPrimary": "Primary colour",
         "colorDark": "Dark colour",
@@ -173,8 +183,8 @@
         "whatsappNumber": "Support WhatsApp",
         "footer": "Footer",
         "poweredBy": "Show “Powered by WeeFly” (TEN-05)",
-        "firstAdmin": "First administrator account (receives the invitation)",
-        "createAndInvite": "Create partner and send invitation",
+        "firstAdmin": "First admin account (optional, receives the invitation)",
+        "createAndInvite": "Create partner",
         "colSales": "Sales",
         "colAccounts": "Accounts",
         "whiteLabel": "White label",
@@ -184,7 +194,26 @@
         "suspendedCount": " · {count} suspended",
         "active": "Active",
         "suspended": "Suspended",
-        "suspendConfirm": "Suspend {name}? Accounts can no longer sign in and links stop opening."
+        "suspendConfirm": "Suspend {name}? Accounts can no longer sign in and links stop opening.",
+        "uploadAfterCreate": "The logo, icon and share image are uploaded after creating the partner, under Edit.",
+        "upload": "Upload",
+        "uploading": "Uploading…",
+        "logo": "Logo",
+        "logoHint": "PNG or SVG, up to 2 MB. Shown in the back office, emails and price checker.",
+        "logoAlt": "{name} logo",
+        "icon": "Icon",
+        "iconHint": "Square, PNG of at least 512 × 512, or SVG. Generates the favicon and home screen icons.",
+        "iconAlt": "{name} icon",
+        "iconDefault": "No icon: uses WeeFly's",
+        "share": "Share image",
+        "shareHint": "1200 × 630, JPG or PNG, up to 1 MB. Shown when the link is sent by WhatsApp or email.",
+        "shareDefault": "No image: uses WeeFly's",
+        "noFile": "No file",
+        "previewTab": "In the browser tab",
+        "previewWhatsapp": "In a WhatsApp message",
+        "colorAccent": "Accent colour",
+        "seoTitle": "Price checker title (empty: the default)",
+        "seoDescription": "Price checker description (empty: the default)"
       }
     }
   }

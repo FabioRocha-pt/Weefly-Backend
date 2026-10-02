@@ -21,6 +21,17 @@
  *                                 enquanto o DNS e o certificado wildcard não
  *                                 existirem.
  *   NEXT_PUBLIC_WEBSITE_URL       o site público. Sem ela, o do concierge.
+ *   NEXT_PUBLIC_PC_SITE_URL       DOM-01 · onde vive o price checker da WeeFly
+ *                                 (`https://weefly.africa`, servido em `/pc`
+ *                                 ao lado do site público). Sem ela, o
+ *                                 `NEXT_PUBLIC_SITE_URL`.
+ *
+ * DOM-01 · a estrutura de produção:
+ *
+ *   NEXT_PUBLIC_SITE_URL=https://pro.weefly.africa
+ *   NEXT_PUBLIC_PC_SITE_URL=https://weefly.africa
+ *   NEXT_PUBLIC_WEBSITE_URL=https://weefly.africa
+ *   NEXT_PUBLIC_PARTNER_SITE_URL=https://{slug}.weefly.africa
  *
  * Sem imports de servidor: é lido pelos dois lados.
  */
@@ -37,6 +48,11 @@ export function siteUrl(): string {
 /** O site público (a pesquisa). */
 export function websiteUrl(): string {
   return clean(process.env.NEXT_PUBLIC_WEBSITE_URL) || siteUrl()
+}
+
+/** DOM-01 · o price checker da WeeFly Global (`weefly.africa/pc`). */
+export function weeflyPcSiteUrl(): string {
+  return clean(process.env.NEXT_PUBLIC_PC_SITE_URL) || siteUrl()
 }
 
 export interface LinkPartner {
@@ -57,9 +73,18 @@ export function partnerSiteUrl(partner: LinkPartner | null | undefined): string 
   return template.replace("{slug}", partner.slug)
 }
 
+/**
+ * DOM-01 · o endereço do price checker de um parceiro: o subdomínio dele, ou
+ * `weefly.africa` para a WeeFly (e para quem não tem parceiro).
+ */
+export function pcSiteUrl(partner: LinkPartner | null | undefined): string {
+  if (!partner || partner.isOperator) return weeflyPcSiteUrl()
+  return partnerSiteUrl(partner)
+}
+
 /** O link do cliente para um caso: `/pc/{token}` no endereço do parceiro. */
 export function caseClientUrl(token: string, partner?: LinkPartner | null): string {
-  const base = partnerSiteUrl(partner)
+  const base = pcSiteUrl(partner)
   return base ? `${base}/pc/${token}` : ""
 }
 

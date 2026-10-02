@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Eye, EyeOff, Lock } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, Lock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,12 +11,16 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { newPasswordSchema, getPasswordStrength, type NewPasswordFormData } from "@/lib/validations"
 import { useT } from "@/i18n/provider"
+import { translateMessage } from "@/i18n/translate"
+import { updatePassword } from "@/actions/auth"
 
-export function NewPasswordForm() {
+export function NewPasswordForm({ email }: { email: string | null }) {
   const t = useT()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [password, setPassword] = useState("")
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
 
   const form = useForm<NewPasswordFormData>({
     resolver: zodResolver(newPasswordSchema),
@@ -33,9 +37,24 @@ export function NewPasswordForm() {
   const strengthBarColor =
     passwordStrength.level === "weak" ? "bg-red-500" : "bg-green-500"
 
-  const onSubmit = (data: NewPasswordFormData) => {
-    console.log("New password set:", data)
-    // Handle new password submission
+  /* OCT-04 · o formulário só escrevia na consola: a password nunca mudava.
+     Corre com a sessão que o link de recuperação abriu (`auth/callback`). */
+  const onSubmit = async (data: NewPasswordFormData) => {
+    setServerError(null)
+    const fd = new FormData()
+    fd.set("password", data.password)
+    try {
+      const result = await updatePassword(fd)
+      if (result.error) {
+        setServerError(result.error)
+        return
+      }
+      setDone(true)
+      window.location.assign("/modulo")
+    } catch (err) {
+      console.error("[nova-password] falhou", err)
+      setServerError("errors.unexpected")
+    }
   }
 
   return (
@@ -55,7 +74,7 @@ export function NewPasswordForm() {
 
         {/* Description */}
         <p className="text-slate-600 text-center mb-8 max-w-sm mx-auto">
-          {t("auth.newPasswordBody")}
+          {email ? t("auth.newPasswordFor", { email }) : t("auth.newPasswordNoSession")}
         </p>
 
         {/* Form */}
@@ -71,7 +90,7 @@ export function NewPasswordForm() {
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value)
-                  form.setValue("password", e.target.value)
+                  form.setValue("password", e.target.value, { shouldValidate: form.formState.isSubmitted })
                 }}
               />
               <button
@@ -84,6 +103,12 @@ export function NewPasswordForm() {
               </button>
             </div>
           </div>
+
+          {form.formState.errors.password && (
+            <p className="text-sm text-red-500">
+              {t(form.formState.errors.password.message ?? "")}
+            </p>
+          )}
 
           {/* Password strength indicator — 4 segmented bars */}
           {password && (
@@ -138,8 +163,15 @@ export function NewPasswordForm() {
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting
+          {serverError && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{translateMessage(t, serverError)}</span>
+            </div>
+          )}
+
+          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || done}>
+            {form.formState.isSubmitting || done
               ? t("auth.newPasswordSubmitting")
               : t("auth.newPasswordSubmit")}
           </Button>

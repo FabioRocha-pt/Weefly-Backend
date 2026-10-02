@@ -3,12 +3,16 @@ import { Clock, XCircle } from "lucide-react"
 
 import { signOut } from "@/actions/auth"
 import { Button } from "@/components/ui/button"
+import { ContactTeam } from "@/components/pro/contact-team"
 import { getI18n } from "@/i18n/server"
 import { getProAccount } from "@/lib/pro-account"
 
 /**
- * PRO-09 · a conta existe mas ainda não foi validada pelo Dominik — ou foi
+ * PRO-09 · a conta existe mas ainda não foi validada pelo Dominik, ou foi
  * recusada, e aqui lê-se o motivo.
+ *
+ * OCT-05 · a conta pendente entra e fica aqui: não vê módulo nenhum, e pode
+ * escrever à equipa WeeFly. O email de contacto é `common.supportEmail`.
  */
 export default async function PendentePage() {
   const { t } = getI18n()
@@ -51,6 +55,7 @@ export default async function PendentePage() {
           {account.rejectionReason}
         </blockquote>
       )}
+      {!suspended && <ContactTeam supportEmail={t("common.supportEmail")} />}
       <form action={signOut} className="mt-6">
         <Button type="submit" variant="outline">
           {t("nav.signOut")}

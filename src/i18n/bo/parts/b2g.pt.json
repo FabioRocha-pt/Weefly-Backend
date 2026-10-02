@@ -126,7 +126,7 @@
         "reversalReason": "Motivo da reversão",
         "reverse": "Reverter",
         "reverseConfirm": "Reverter o pagamento? O saldo é reposto e a emissão volta a ficar presa.",
-        "reversedLine": "Revertido: {amount}, por {by} — {reason}",
+        "reversedLine": "Revertido: {amount}, por {by}, {reason}",
         "method": {
           "transfer": "Transferência",
           "deposit": "Depósito",

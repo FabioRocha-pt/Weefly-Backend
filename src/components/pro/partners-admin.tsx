@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { createPartner, setPartnerStatus, updatePartner } from "@/actions/partners"
-import { partnerHostPreview } from "@/lib/site-url"
+import { type SubdomainCheck } from "@/actions/subdomain"
+import { SubdomainField } from "@/components/pro/subdomain-field"
+import { BrandUploads } from "@/components/pro/brand-uploads"
+import { toSubdomain } from "@/lib/subdomain"
 import { useT } from "@/i18n/provider"
 
 /**
@@ -43,6 +46,11 @@ export interface PartnerRowView {
   logoUrl: string | null
   colorPrimary: string | null
   colorDark: string | null
+  colorAccent: string | null
+  iconUrl: string | null
+  ogImageUrl: string | null
+  seoTitle: string | null
+  seoDescription: string | null
   senderName: string | null
   senderEmail: string | null
   replyTo: string | null
@@ -73,6 +81,11 @@ type Form = {
   logoUrl: string
   colorPrimary: string
   colorDark: string
+  colorAccent: string
+  iconUrl: string
+  ogImageUrl: string
+  seoTitle: string
+  seoDescription: string
   senderName: string
   senderEmail: string
   replyTo: string
@@ -103,6 +116,11 @@ const EMPTY: Form = {
   logoUrl: "",
   colorPrimary: "",
   colorDark: "",
+  colorAccent: "",
+  iconUrl: "",
+  ogImageUrl: "",
+  seoTitle: "",
+  seoDescription: "",
   senderName: "",
   senderEmail: "",
   replyTo: "",
@@ -135,6 +153,11 @@ function fromRow(p: PartnerRowView): Form {
     logoUrl: p.logoUrl ?? "",
     colorPrimary: p.colorPrimary ?? "",
     colorDark: p.colorDark ?? "",
+    colorAccent: p.colorAccent ?? "",
+    iconUrl: p.iconUrl ?? "",
+    ogImageUrl: p.ogImageUrl ?? "",
+    seoTitle: p.seoTitle ?? "",
+    seoDescription: p.seoDescription ?? "",
     senderName: p.senderName ?? "",
     senderEmail: p.senderEmail ?? "",
     replyTo: p.replyTo ?? "",
@@ -142,16 +165,6 @@ function fromRow(p: PartnerRowView): Form {
     poweredByWeefly: p.poweredByWeefly,
     whatsappNumber: p.whatsappNumber ?? "",
   }
-}
-
-function slugify(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 63)
 }
 
 const field =
@@ -164,6 +177,7 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [editing, setEditing] = useState<{ id: string | null; form: Form; slugTouched: boolean } | null>(null)
   const [suspending, setSuspending] = useState<{ id: string; reason: string } | null>(null)
+  const [slugState, setSlugState] = useState<SubdomainCheck | "checking">("unknown")
 
   const run = (
     action: () => Promise<{ ok: true; notice?: string } | { ok: false; error: string }>,
@@ -182,6 +196,11 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
   const save = () => {
     if (!editing) return
     const { form } = editing
+    /* OCT-12 · um parceiro novo não se cria com um subdomínio ocupado. */
+    if (!editing.id && slugState !== "available" && slugState !== "unknown") {
+      setMessage({ ok: false, text: t(`bo.pro.common.subdomain.${slugState}`) })
+      return
+    }
     const payload = {
       commercialName: form.commercialName,
       legalName: form.legalName,
@@ -201,6 +220,9 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
       logoUrl: form.logoUrl,
       colorPrimary: form.colorPrimary,
       colorDark: form.colorDark,
+      colorAccent: form.colorAccent,
+      seoTitle: form.seoTitle,
+      seoDescription: form.seoDescription,
       senderName: form.senderName,
       senderEmail: form.senderEmail,
       replyTo: form.replyTo,
@@ -284,7 +306,7 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                           form: {
                             ...cur.form,
                             commercialName: name,
-                            slug: cur.id || cur.slugTouched ? cur.form.slug : slugify(name),
+                            slug: cur.id || cur.slugTouched ? cur.form.slug : toSubdomain(name),
                           },
                         }
                       : cur
@@ -294,19 +316,15 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
             </label>
             <label className="text-sm space-y-1">
               <span className="text-slate-600">{t("bo.pro.common.slugLabel")}</span>
-              <input
-                className={`${field} font-mono`}
+              <SubdomainField
+                className={field}
                 value={editing.form.slug}
                 disabled={Boolean(editing.id)}
-                onChange={(e) => {
-                  const slug = e.target.value.toLowerCase()
+                onStateChange={setSlugState}
+                onChange={(slug) =>
                   setEditing((cur) => (cur ? { ...cur, slugTouched: true, form: { ...cur.form, slug } } : cur))
-                }}
+                }
               />
-              <span className="text-xs text-slate-500">
-                {partnerHostPreview(editing.form.slug) ??
-                  t("bo.pro.common.slugPending", { slug: editing.form.slug || "…" })}
-              </span>
             </label>
             {input("legalName", t("bo.pro.partners.legalName"))}
             {input("nif", t("bo.pro.partners.nif"))}
@@ -391,11 +409,28 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
 
           <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <legend className="text-sm font-semibold text-slate-900 mb-2">{t("bo.pro.partners.brand")}</legend>
-            {input("logoUrl", t("bo.pro.partners.logoUrl"))}
-            <div className="grid grid-cols-2 gap-3">
+            <BrandUploads
+              partnerId={editing.id}
+              slug={editing.form.slug}
+              name={editing.form.commercialName}
+              title={editing.form.seoTitle}
+              description={editing.form.seoDescription}
+              urls={{
+                logoUrl: editing.form.logoUrl,
+                iconUrl: editing.form.iconUrl,
+                ogImageUrl: editing.form.ogImageUrl,
+              }}
+              onUploaded={(kind, url) =>
+                set(kind === "logo" ? "logoUrl" : kind === "icon" ? "iconUrl" : "ogImageUrl", url)
+              }
+            />
+            <div className="grid grid-cols-3 gap-3 md:col-span-2">
               {input("colorPrimary", t("bo.pro.partners.colorPrimary"), { placeholder: "#02A9FF" })}
+              {input("colorAccent", t("bo.pro.partners.colorAccent"), { placeholder: "#FF6A02" })}
               {input("colorDark", t("bo.pro.partners.colorDark"), { placeholder: "#0078E8" })}
             </div>
+            {input("seoTitle", t("bo.pro.partners.seoTitle"), { maxLength: 120 })}
+            {input("seoDescription", t("bo.pro.partners.seoDescription"), { maxLength: 300 })}
             {input("senderName", t("bo.pro.partners.senderName"))}
             {input("senderEmail", t("bo.pro.partners.senderEmail"), { type: "email" })}
             {input("replyTo", t("bo.pro.partners.replyTo"), { type: "email" })}

@@ -72,7 +72,7 @@ export function passengersSummary(
 /** Departure date, plus the return leg when the trip is a round trip. */
 export function datesSummary(data: TravelRequestSummary): string {
   return data.tripType === "round_trip"
-    ? `${formatDate(data.departDate)} — ${formatDate(data.returnDate)}`
+    ? `${formatDate(data.departDate)} → ${formatDate(data.returnDate)}`
     : formatDate(data.departDate)
 }
 

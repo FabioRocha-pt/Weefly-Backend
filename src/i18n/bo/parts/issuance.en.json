@@ -54,7 +54,7 @@
         "noPersonalItem": "no personal item",
         "cabinValue": "cabin {value}",
         "checkedValue": "hold {value}",
-        "drifted": "Different from the proposal — {promise}",
+        "drifted": "Different from the proposal: {promise}",
         "promised": "Proposal: {promise}",
         "legend": "seat · cabin (pieces × kg) · hold (pieces × kg)"
       },
@@ -75,7 +75,7 @@
         "airlinePnrHint": "the airline's PNR, if different from ours",
         "coupon": "Coupon no.",
         "fareBasis": "Fare basis",
-        "baggageThrough": "Baggage is checked through to the final destination — the passenger does not collect it at the {airport} connection"
+        "baggageThrough": "Baggage is checked through to the final destination, the passenger does not collect it at the {airport} connection"
       },
       "common": {
         "titleShared": "Fields common to the ticket",
@@ -85,10 +85,10 @@
       "errors": {
         "title_one": "{count} field missing before you can issue",
         "title_other": "{count} fields missing before you can issue",
-        "notPaid": "The payment is not confirmed yet — confirm it in the Payment tab.",
+        "notPaid": "The payment is not confirmed yet, confirm it in the Payment tab.",
         "pnr": "The PNR must have 6 characters.",
         "ticketNumber": "{pax} {name}: the ticket number is 3 airline digits + 10 document digits.",
-        "duplicated": "There are repeated ticket numbers — each passenger has their own.",
+        "duplicated": "There are repeated ticket numbers, each passenger has their own.",
         "flightGaps": "{flight}: missing {fields}.",
         "gapFareBasis": "fare basis",
         "gapCoupon": "coupon",

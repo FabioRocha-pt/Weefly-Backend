@@ -45,6 +45,14 @@ export interface AdminPartner {
   logoUrl: string | null
   colorPrimary: string | null
   colorDark: string | null
+  /* OCT-13 · SEO-02 · SEO-04 · migração 0031. */
+  colorAccent: string | null
+  iconUrl: string | null
+  iconsBaseUrl: string | null
+  ogImageUrl: string | null
+  brandVersion: number
+  seoTitle: string | null
+  seoDescription: string | null
   senderName: string | null
   senderEmail: string | null
   replyTo: string | null
@@ -97,7 +105,7 @@ export interface AccessAdminData {
 }
 
 export const PARTNER_ADMIN_COLUMNS =
-  "id, slug, commercial_name, legal_name, nif, country, address, contact_name, contact_email, contact_phone, contract_start, status, suspend_reason, is_operator, supply_enabled, sell_enabled, sell_mode, channels, customer_front, agent_menus, logo_url, color_primary, color_dark, sender_name, sender_email, reply_to, footer_text, powered_by_weefly, whatsapp_number, created_at"
+  "id, slug, commercial_name, legal_name, nif, country, address, contact_name, contact_email, contact_phone, contract_start, status, suspend_reason, is_operator, supply_enabled, sell_enabled, sell_mode, channels, customer_front, agent_menus, logo_url, color_primary, color_dark, color_accent, icon_url, icons_base_url, og_image_url, brand_version, seo_title, seo_description, sender_name, sender_email, reply_to, footer_text, powered_by_weefly, whatsapp_number, created_at"
 
 export function partnerFromAdminRow(r: Record<string, any>): AdminPartner {
   return {
@@ -124,6 +132,13 @@ export function partnerFromAdminRow(r: Record<string, any>): AdminPartner {
     logoUrl: r.logo_url ?? null,
     colorPrimary: r.color_primary ?? null,
     colorDark: r.color_dark ?? null,
+    colorAccent: r.color_accent ?? null,
+    iconUrl: r.icon_url ?? null,
+    iconsBaseUrl: r.icons_base_url ?? null,
+    ogImageUrl: r.og_image_url ?? null,
+    brandVersion: r.brand_version ?? 1,
+    seoTitle: r.seo_title ?? null,
+    seoDescription: r.seo_description ?? null,
     senderName: r.sender_name ?? null,
     senderEmail: r.sender_email ?? null,
     replyTo: r.reply_to ?? null,

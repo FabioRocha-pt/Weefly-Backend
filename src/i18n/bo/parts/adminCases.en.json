@@ -4,7 +4,7 @@
       "nav": "Cases",
       "title": "Cases across all partners",
       "subtitle": "By partner, then by ministry. What each partner has in progress and what it has issued.",
-      "readOnly": "Read only. To change another partner's case, open it and use “Intervene” — it is recorded.",
+      "readOnly": "Read only. To change another partner's case, open it and use “Intervene”, it is recorded.",
       "partner": "Partner",
       "status": "Status",
       "ministries": "Ministries",
@@ -45,6 +45,30 @@
         "notFound": "Case not found.",
         "unavailable": "Could not record it right now. Try again."
       }
+    },
+    "adminClients": {
+      "nav": "Clients",
+      "title": "Clients of all partners",
+      "partner": "Partner",
+      "allPartners": "All partners",
+      "searchPlaceholder": "Name, phone or email",
+      "search": "Search",
+      "noMatch": "No clients match these filters."
+    },
+    "adminDashboard": {
+      "nav": "Dashboard",
+      "title": "Dashboard",
+      "subtitle": "What needs attention now. Each figure opens the matching list.",
+      "pending": "Accounts waiting",
+      "pendingHint": "waiting for approval",
+      "partners": "Active partners",
+      "partnersHint": "companies working",
+      "openCases": "Open cases",
+      "openCasesHint": "across all partners",
+      "issued": "Tickets issued",
+      "issuedHint": "this month",
+      "alerts": "Balance alerts",
+      "alertsHint": "in the last 7 days"
     }
   }
 }

@@ -25,7 +25,7 @@
         "cabinKg": "Mão · kg",
         "checkedPieces": "Porão · peças",
         "checkedKg": "Porão · kg",
-        "noWeight": "— sem peso indicado"
+        "noWeight": "· sem peso indicado"
       },
       "conditions": {
         "baggage": "Bagagem",

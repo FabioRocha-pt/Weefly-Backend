@@ -60,7 +60,7 @@ export function OrganisationDetailView({
         <div className="flex items-center gap-3">
           {org.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={org.logoUrl} alt="" className="h-12 w-auto" />
+            <img src={org.logoUrl} alt={org.name} className="h-12 w-auto" />
           )}
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{org.name}</h1>

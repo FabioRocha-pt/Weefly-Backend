@@ -4,13 +4,8 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import { createClient } from "@/utils/supabase/server"
-import { createAdminClient } from "@/utils/supabase/admin"
 import { getI18n } from "@/i18n/server"
-import {
-  clearPendingSignup,
-  readPendingSignup,
-  setPendingSignup,
-} from "@/lib/signup-cookie"
+import { readPendingSignup, setPendingSignup } from "@/lib/signup-cookie"
 import { safeNextPath } from "@/lib/safe-next"
 import { siteUrl } from "@/lib/site-url"
 
@@ -157,53 +152,19 @@ export async function resendSignupEmail(formData: FormData): Promise<ResendState
   return { ok: true, message: t("auth.resendDone").replace("{email}", email) }
 }
 
-/**
- * PRO-07 · corrigir o email de um registo que ainda não foi confirmado.
- *
- * Só a conta do cookie assinado, e só enquanto não estiver confirmada: trocar
- * o email de uma conta activa é outra coisa (e pede a password). Depois de
- * trocar, reenvia para o endereço novo.
- */
-export async function changeSignupEmail(formData: FormData): Promise<ResendState> {
-  const { t } = getI18n()
-  const pending = readPendingSignup()
-  const email = field(formData, "email").toLowerCase()
-
-  if (!pending) return { ok: false, message: t("auth.changeEmailExpired") }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { ok: false, message: t("auth.changeEmailInvalid") }
-  }
-
-  const admin = createAdminClient()
-  if (!admin) return { ok: false, message: t("errors.unexpected") }
-
-  const { data: found } = await admin.auth.admin.getUserById(pending.userId)
-  if (!found?.user || found.user.email_confirmed_at) {
-    clearPendingSignup()
-    return { ok: false, message: t("auth.changeEmailExpired") }
-  }
-
-  const { error } = await admin.auth.admin.updateUserById(pending.userId, {
-    email,
-  })
-  if (error) return { ok: false, message: authEmailError(error, t) }
-
-  setPendingSignup({ userId: pending.userId, email })
-
-  const supabase = createClient()
-  const sent = await supabase.auth.resend({
-    type: "signup",
-    email,
-    options: { emailRedirectTo: callbackUrl() },
-  })
-  if (sent.error) return { ok: false, message: authEmailError(sent.error, t) }
-
-  revalidatePath("/confirmar-email")
-  return { ok: true, message: t("auth.resendDone").replace("{email}", email) }
+export type SignInState = AuthActionState & {
+  /** OCT-02 · o email ainda não foi confirmado: o ecrã oferece reenviar. */
+  unconfirmed?: boolean
 }
 
-/** Sign in with email + password. */
-export async function signIn(formData: FormData): Promise<AuthActionState> {
+/**
+ * Sign in with email + password.
+ *
+ * OCT-02 · cada falha volta com uma frase. Uma conta à espera de aprovação,
+ * recusada ou suspensa entra e vê o estado dela no `/pendente` (OCT-05): o
+ * `/modulo` manda-a para lá.
+ */
+export async function signIn(formData: FormData): Promise<SignInState> {
   const { t } = getI18n()
   const email = field(formData, "email")
   const password = field(formData, "password")
@@ -222,16 +183,28 @@ export async function signIn(formData: FormData): Promise<AuthActionState> {
       password,
     })
 
-    if (error) return { error: error.message }
-  } catch (err) {
-    return {
-      error: err instanceof Error ? err.message : t("errors.signInUnexpected"),
+    if (error) {
+      const code = error.code ?? ""
+      if (code === "email_not_confirmed" || /email not confirmed/i.test(error.message)) {
+        return { error: t("auth.loginUnconfirmed"), unconfirmed: true }
+      }
+      if (code === "invalid_credentials" || /invalid login credentials/i.test(error.message)) {
+        return { error: t("auth.loginInvalid") }
+      }
+      if (code === "over_request_rate_limit" || error.status === 429) {
+        return { error: t("auth.loginRateLimited") }
+      }
+      console.error("[auth/signIn] falhou:", email, code, error.status, error.message)
+      return { error: t("errors.signInUnexpected") }
     }
+  } catch (err) {
+    console.error("[auth/signIn] excepção:", email, err)
+    return { error: t("errors.signInUnexpected") }
   }
 
   revalidatePath("/", "layout")
-  /* TEN-06 · sem destino pedido, o Concierge (ver `/entrar`). */
-  redirect(next ?? "/entrar")
+  /* OCT-18 · sem destino pedido, a escolha de módulo. */
+  redirect(next ?? "/modulo")
 }
 
 /** Destroy the session and return to the login screen. */

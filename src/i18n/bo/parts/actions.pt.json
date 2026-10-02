@@ -12,23 +12,23 @@
       "pc": {
         "notAllowed": "A sua conta não tem acesso ao Price Checker.",
         "confirmTick": "Marque a caixa que confirma que o valor entrou.",
-        "rejectReason": "Diga porque não serve — o cliente vai ler.",
+        "rejectReason": "Diga porque não serve: o cliente vai ler.",
         "archiveNote": "Escreva o motivo.",
         "noteEmpty": "Escreva a nota.",
         "noteEmptyFallback": "Nota vazia.",
         "pnrLength": "O PNR tem 6 caracteres.",
         "ticketNumberShape": "Cada bilhete são 3 dígitos de companhia + 10 do documento.",
-        "noticeMessage": "Escreva a mensagem — é o cliente que a vai ler.",
-        "unfreezeReason": "Escreva porque o voo escolhido volta atrás — o cliente vai ler.",
+        "noticeMessage": "Escreva a mensagem: é o cliente que a vai ler.",
+        "unfreezeReason": "Escreva porque o voo escolhido volta atrás, o cliente vai ler.",
         "departInvalid": "Data de ida inválida.",
-        "datesReason": "Escreva porque as datas mudam — o cliente vai ler esta frase.",
+        "datesReason": "Escreva porque as datas mudam, o cliente vai ler esta frase.",
         "noPayment": "Este caso não tem pagamento.",
         "confirm": {
           "notConfirmed": "Marque a caixa antes de confirmar.",
           "illegal": "O pagamento já está num estado que não permite ser marcado como pago.",
           "failed": "Não foi possível registar o pagamento.",
           "unknown": "Falhou.",
-          "mismatch": "Pagamento confirmado — com valor diferente do cobrado, registado no histórico.",
+          "mismatch": "Pagamento confirmado: com valor diferente do cobrado, registado no histórico.",
           "done": "Pagamento confirmado. O caso está pronto a emitir."
         },
         "proofRejected": "Comprovativo rejeitado. O cliente pode enviar outro.",
@@ -66,10 +66,10 @@
           "alreadyConfirmed": "Este pagamento já está confirmado.",
           "saveFailed": "Não foi possível gravar.",
           "savedNotSent": "Instruções gravadas. Ainda não foram enviadas.",
-          "sentAutoDue": "Instruções enviadas ao cliente. O prazo ficou em {due} — hora do envio mais {hours}h.",
+          "sentAutoDue": "Instruções enviadas ao cliente. O prazo ficou em {due}: hora do envio mais {hours}h.",
           "savedAndSent": "Instruções gravadas e enviadas ao cliente.",
           "alreadySent": "Instruções gravadas. Estas já tinham sido enviadas ao cliente.",
-          "emailFailed": "As instruções ficaram gravadas, mas o email NÃO saiu: {reason}. O cliente continua sem saber por onde pagar — mande-lhe o link por WhatsApp ou tente enviar outra vez."
+          "emailFailed": "As instruções ficaram gravadas, mas o email NÃO saiu: {reason}. O cliente continua sem saber por onde pagar, mande-lhe o link por WhatsApp ou tente enviar outra vez."
         },
         "close": {
           "alreadyClosed": "O caso já está fechado.",
@@ -95,14 +95,14 @@
           "missingFields": "Faltam campos do documento em {count} voo(s): {flights}.",
           "saveFailed": "Não foi possível gravar a emissão.",
           "issued": "Emitido. PNR {pnr}.",
-          "pdfFailed": "O PDF não foi gerado ({reason}) — use \"Gerar de novo\" na aba da Emissão.",
+          "pdfFailed": "O PDF não foi gerado ({reason}), use \"Gerar de novo\" na aba da Emissão.",
           "emailSent": "O cliente recebeu o email com o PDF em anexo.",
-          "emailFailed": "O email ao cliente não saiu — veja a aba Comunicações."
+          "emailFailed": "O email ao cliente não saiu: veja a aba Comunicações."
         },
         "tickets": {
           "generated": "Bilhete {number} gerado.",
           "noneYet": "Este caso ainda não tem bilhete gerado. Use “Gerar bilhete” antes de reenviar.",
-          "resent": "Bilhete {number} reenviado — o mesmo documento, sem regenerar.",
+          "resent": "Bilhete {number} reenviado: o mesmo documento, sem regenerar.",
           "resendFailed": "O reenvio falhou: {reason}",
           "generateFailed": "Não foi possível gerar o bilhete: {reason}"
         },
@@ -127,7 +127,7 @@
         "link": {
           "adminOnly": "Só um administrador pode revogar o link.",
           "failed": "Não foi possível gerar um link novo.",
-          "done": "Link novo gerado. O antigo deixou de abrir — envie o novo ao cliente."
+          "done": "Link novo gerado. O antigo deixou de abrir: envie o novo ao cliente."
         },
         "unfreeze": {
           "issued": "Este caso já está emitido. Mudar de voo é uma reemissão.",
@@ -145,7 +145,7 @@
           "done": "Datas atualizadas e registadas.",
           "draft": "A proposta voltou a rascunho como R{revision}.",
           "clientNotified": "O cliente foi avisado por email.",
-          "clientNotNotified": "Não foi possível avisar o cliente por email — fale com ele pelo WhatsApp."
+          "clientNotNotified": "Não foi possível avisar o cliente por email, fale com ele pelo WhatsApp."
         }
       },
       "access": {
@@ -178,7 +178,7 @@
         "invite": {
           "noServiceRole": "servidor sem service role",
           "noSiteUrl": "NEXT_PUBLIC_SITE_URL por configurar",
-          "alreadyRegistered": "esta pessoa já tem conta — entra com a password dela."
+          "alreadyRegistered": "esta pessoa já tem conta: entra com a password dela."
         }
       },
       "partners": {
@@ -200,11 +200,40 @@
         "suspendNeedsReason": "A suspensão leva um motivo.",
         "operatorNotSuspendable": "O operador da plataforma não se suspende.",
         "suspended": "Parceiro suspenso. As contas dele deixam de entrar e os links deixam de abrir.",
-        "reactivated": "Parceiro reactivado."
+        "reactivated": "Parceiro reactivado.",
+        "slugReserved": "Esse endereço é reservado da plataforma. Escolha outro.",
+        "createdNoAdmin": "Parceiro criado. Ainda não tem conta de administrador: crie-a em Utilizadores quando houver o email.",
+        "upload": {
+          "missing": "Escolha um ficheiro.",
+          "type": {
+            "logo": "O logótipo tem de ser PNG ou SVG.",
+            "icon": "O ícone tem de ser PNG ou SVG.",
+            "share": "A imagem de partilha tem de ser JPG ou PNG."
+          },
+          "tooBig": {
+            "logo": "O logótipo tem mais de 2 MB.",
+            "icon": "O ícone tem mais de 2 MB.",
+            "share": "A imagem de partilha tem mais de 1 MB."
+          },
+          "icon": {
+            "small": "O ícone tem de ter pelo menos 512 × 512.",
+            "unreadable": "Não foi possível ler este ícone."
+          },
+          "share": {
+            "size": "A imagem de partilha tem de ter 1200 × 630.",
+            "unreadable": "Não foi possível ler esta imagem."
+          },
+          "failed": "O ficheiro não subiu. Tente outra vez.",
+          "done": {
+            "logo": "Logótipo guardado.",
+            "icon": "Ícone guardado. O favicon e os ícones foram gerados.",
+            "share": "Imagem de partilha guardada."
+          }
+        }
       },
       "pro": {
         "masterOnly": "Só a conta master valida contas.",
-        "slugShape": "O endereço da empresa só leva minúsculas, números e hífen.",
+        "slugShape": "O endereço da empresa só leva minúsculas, números e hífen, de 2 a 30 caracteres.",
         "companyNameMissing": "Falta o nome da empresa.",
         "pickCompany": "Escolha a empresa.",
         "approveInvalid": "Dados de aprovação inválidos.",
@@ -218,7 +247,11 @@
         "reasonTooLong": "O motivo é demasiado longo.",
         "onlyPendingRejected": "Só se recusa uma conta pendente.",
         "rejected": "Conta recusada. O email com o motivo foi enviado.",
-        "rejectedEmailFailed": "Conta recusada, mas o email não saiu: {reason}"
+        "rejectedEmailFailed": "Conta recusada, mas o email não saiu: {reason}",
+        "slugReserved": "Esse endereço é reservado da plataforma. Escolha outro.",
+        "alreadyConfirmed": "O email desta conta já está confirmado.",
+        "resendFailed": "O email de confirmação não saiu: {reason}",
+        "resendDone": "Email de confirmação reenviado para {email}."
       }
     }
   }

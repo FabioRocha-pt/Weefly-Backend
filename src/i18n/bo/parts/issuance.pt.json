@@ -54,7 +54,7 @@
         "noPersonalItem": "sem artigo pessoal",
         "cabinValue": "mão {value}",
         "checkedValue": "porão {value}",
-        "drifted": "Diferente da proposta — {promise}",
+        "drifted": "Diferente da proposta: {promise}",
         "promised": "Proposta: {promise}",
         "legend": "lugar · mão (peças × kg) · porão (peças × kg)"
       },
@@ -75,7 +75,7 @@
         "airlinePnrHint": "o PNR da companhia, se for diferente do nosso",
         "coupon": "Nº do cupão",
         "fareBasis": "Fare basis",
-        "baggageThrough": "A bagagem segue directa até ao destino final — o passageiro não a levanta na escala de {airport}"
+        "baggageThrough": "A bagagem segue directa até ao destino final, o passageiro não a levanta na escala de {airport}"
       },
       "common": {
         "titleShared": "Campos comuns ao bilhete",
@@ -85,10 +85,10 @@
       "errors": {
         "title_one": "Falta {count} campo para poder emitir",
         "title_other": "Faltam {count} campos para poder emitir",
-        "notPaid": "O pagamento ainda não está confirmado — confirme-o na aba Pagamento.",
+        "notPaid": "O pagamento ainda não está confirmado, confirme-o na aba Pagamento.",
         "pnr": "O PNR tem de ter 6 caracteres.",
         "ticketNumber": "{pax} {name}: o número de bilhete são 3 dígitos de companhia + 10 do documento.",
-        "duplicated": "Há números de bilhete repetidos — cada passageiro tem o seu.",
+        "duplicated": "Há números de bilhete repetidos, cada passageiro tem o seu.",
         "flightGaps": "{flight}: falta {fields}.",
         "gapFareBasis": "base tarifária",
         "gapCoupon": "cupão",

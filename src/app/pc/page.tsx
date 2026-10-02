@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 
 import { RequestWizard } from "@/components/pc/request-wizard"
@@ -9,6 +10,7 @@ import { COUNTRY_BY_ISO, countryOfDial } from "@/lib/countries"
 import { I18nProvider } from "@/i18n/provider"
 import { getDictionary, getLocale } from "@/i18n/server"
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/config"
+import { pageMetadata, siteContext } from "@/lib/site-meta"
 
 /**
  * /pc — o pedido novo.
@@ -29,6 +31,11 @@ import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/config"
  */
 
 export const dynamic = "force-dynamic"
+
+/** SEO-02 · SEO-03 · a única página indexada: o price checker da empresa. */
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata(await siteContext(), { path: "/pc", indexable: true })
+}
 
 export default async function PriceCheckerPage({
   searchParams,

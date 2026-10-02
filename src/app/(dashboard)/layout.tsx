@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/current-user"
+import { assertHostAllowsAccount } from "@/lib/host-partner"
 import {
   moduleState,
   requireApprovedAccount,
@@ -23,6 +24,8 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const [account, user] = await Promise.all([requireApprovedAccount(), getCurrentUser()])
+  /* DOM-01 · por `<outra>.weefly.africa`, 404. */
+  assertHostAllowsAccount(account)
 
   const menuUser = user
     ? { fullName: user.fullName, email: user.email, initials: user.initials }
@@ -44,6 +47,7 @@ export default async function DashboardLayout({
         modules={modules}
         agentMenus={visibleAgentMenus(account)}
         companyName={account.partner?.name ?? null}
+        companyLogoUrl={account.partner && !account.partner.isOperator ? account.partner.logoUrl : null}
         canManageTeam={account.profile?.manageUsers === "own_partner"}
         sellsB2g={Boolean(account.partner?.channels.includes("B2G"))}
         poweredByWeefly={Boolean(account.partner && !account.partner.isOperator && account.partner.poweredByWeefly)}

@@ -101,7 +101,7 @@ export function BoUserMenu({
             <span className="who-role">WeeFly Concierge</span>
           </div>
 
-          <Link className="who-item" role="menuitem" href="/inicio" onClick={() => setOpen(false)}>
+          <Link className="who-item" role="menuitem" href="/conta" onClick={() => setOpen(false)}>
             {t("bo.shell.userMenu.profile")}
           </Link>
 

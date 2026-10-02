@@ -1,15 +1,18 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Building,
+  ChevronDown,
   Car,
   Coins,
   FolderSearch,
   Handshake,
   Landmark,
+  LayoutDashboard,
   UserCog,
   Compass,
   Home,
@@ -23,6 +26,8 @@ import {
   UtensilsCrossed,
   Wallet,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { WeeFlyLogo } from "@/components/weefly-logo"
@@ -79,9 +84,13 @@ const AGENT_TOOLS: NavItem[] = [
 /* O módulo Admin, com os menus da tabela do Bloco B. Os que ainda não têm
    conteúdo aparecem com Brevemente e dizem de que item são. */
 const ADMIN_NAV: NavItem[] = [
+  /* OCT-15 · o primeiro menu, aberto por defeito. */
+  { labelKey: "bo.adminDashboard.nav", href: "/gestao/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
   { labelKey: "pro.adminAccounts", href: "/gestao/contas", icon: <Building className="w-5 h-5" /> },
   { labelKey: "pro.adminUsers", href: "/gestao/utilizadores", icon: <UserCog className="w-5 h-5" /> },
   { labelKey: "pro.adminPartners", href: "/gestao/parceiros", icon: <Handshake className="w-5 h-5" /> },
+  /* OCT-17 · os clientes de todos os parceiros. */
+  { labelKey: "bo.adminClients.nav", href: "/gestao/clientes", icon: <Users className="w-5 h-5" /> },
   { labelKey: "pro.adminB2g", href: "/gestao/b2g", icon: <Landmark className="w-5 h-5" /> },
   /* ADM-04 · os casos de todos os parceiros, em leitura. */
   { labelKey: "bo.adminCases.nav", href: "/gestao/casos", icon: <FolderSearch className="w-5 h-5" /> },
@@ -116,19 +125,68 @@ interface SidebarProps {
   modules: SidebarModule[]
   agentMenus: SidebarAgentMenu[]
   companyName: string | null
+  companyLogoUrl?: string | null
   /** ADM-02 · mostra "Equipa" no Agente (perfil Admin do parceiro). */
   canManageTeam?: boolean
   /** PAR-02 · o parceiro vende ao Estado (B2G). */
   sellsB2g?: boolean
   /** When provided, renders as a mobile drawer that can be closed. */
   onClose?: () => void
+  /**
+   * OCT-19 · dentro de Passagens o menu recolhe para ícones. Ao passar o rato
+   * (ou com o foco do teclado) mostra os nomes por cima do ecrã, sem o
+   * empurrar; o botão fixa-o aberto ou recolhido, e a escolha fica guardada
+   * neste browser.
+   */
+  collapsible?: boolean
 }
 
-export function Sidebar({ modules, agentMenus, companyName, canManageTeam, sellsB2g, onClose }: SidebarProps) {
+const COLLAPSE_KEY = "weefly.sidebar.collapsed"
+
+export function Sidebar({
+  modules,
+  agentMenus,
+  companyName,
+  companyLogoUrl,
+  canManageTeam,
+  sellsB2g,
+  onClose,
+  collapsible = false,
+}: SidebarProps) {
   const t = useT()
   const pathname = usePathname()
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(collapsible)
+  const [peek, setPeek] = useState(false)
 
-  const mode: SidebarModule["id"] | null = pathname.startsWith("/agente")
+  useEffect(() => {
+    if (!collapsible) return
+    try {
+      const saved = window.localStorage.getItem(COLLAPSE_KEY)
+      if (saved !== null) setCollapsed(saved === "1")
+    } catch {
+      /* sem armazenamento: fica recolhido */
+    }
+  }, [collapsible])
+
+  const toggleCollapsed = () => {
+    setCollapsed((was) => {
+      const next = !was
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0")
+      } catch {
+        /* sem armazenamento: vale só para esta página */
+      }
+      return next
+    })
+    setPeek(false)
+  }
+
+  /* Recolhido e sem o rato por cima: só os ícones. */
+  const compact = collapsible && collapsed && !peek
+  const hide = compact ? "hidden" : undefined
+
+  const mode: SidebarModule["id"] | null = pathname.startsWith("/agente") || pathname.startsWith("/admin/price-checker")
     ? "agent"
     : pathname.startsWith("/gestao")
       ? "admin"
@@ -160,19 +218,33 @@ export function Sidebar({ modules, agentMenus, companyName, canManageTeam, sells
         ? [{ items: ADMIN_NAV }]
         : []
 
-  return (
+  const aside = (
     <aside
+      onMouseEnter={collapsible && collapsed ? () => setPeek(true) : undefined}
+      onMouseLeave={
+        collapsible
+          ? () => {
+              setPeek(false)
+              setSwitcherOpen(false)
+            }
+          : undefined
+      }
+      onFocus={collapsible && collapsed ? () => setPeek(true) : undefined}
       className={cn(
-        "w-64 shrink-0 min-h-screen flex flex-col transition-colors duration-300",
+        "shrink-0 min-h-screen flex flex-col transition-[width,colors] duration-200",
+        compact ? "w-16" : "w-64",
+        collapsible && "absolute inset-y-0 left-0 z-40 overflow-y-auto",
+        collapsible && peek && collapsed && "shadow-2xl",
         isDark ? "sidebar-dark text-gray-300" : "bg-white border-r border-slate-200 text-slate-700"
       )}
     >
       {/* Logo */}
-      <div className={cn("p-6 flex items-center justify-between border-b", isDark ? "border-gray-800" : "border-slate-200")}>
+      <div className={cn("flex items-center justify-between border-b", compact ? "p-3 flex-col gap-2" : "p-6", isDark ? "border-gray-800" : "border-slate-200")}>
         <Link href="/modulo" className="flex items-center gap-2">
-          <WeeFlyLogo className="h-7 w-auto" />
+          <WeeFlyLogo className={compact ? "h-5 w-auto" : "h-7 w-auto"} />
           <span
             className={cn(
+              hide,
               "text-xs px-2 py-0.5 rounded-md font-bold tracking-wide",
               isDark ? "bg-orange-500/15 text-orange-500" : "bg-slate-900 text-white"
             )}
@@ -180,6 +252,17 @@ export function Sidebar({ modules, agentMenus, companyName, canManageTeam, sells
             {mode === "agent" ? t("nav.agentBadge") : t("auth.proBadge")}
           </span>
         </Link>
+        {collapsible && (
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className={cn("p-1 rounded", isDark ? "text-gray-400 hover:text-white" : "text-slate-400 hover:text-slate-700")}
+            aria-label={collapsed ? t("nav.sidebarPin") : t("nav.sidebarCollapse")}
+            title={collapsed ? t("nav.sidebarPin") : t("nav.sidebarCollapse")}
+          >
+            {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          </button>
+        )}
         {onClose && (
           <button
             onClick={onClose}
@@ -191,66 +274,90 @@ export function Sidebar({ modules, agentMenus, companyName, canManageTeam, sells
         )}
       </div>
 
-      {/* PRO-02 · module switcher */}
-      <div className="p-4">
-        <div className={cn("rounded-lg p-1 flex gap-1", isDark ? "bg-gray-800" : "bg-slate-100")}>
-          {modules.map(({ id, state }) => {
-            const active = mode === id
-            const cls = cn(
-              "flex-1 py-2 px-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5",
-              active
-                ? "bg-orange-600 text-white shadow-sm"
-                : state === "soon"
-                  ? isDark
-                    ? "text-gray-500 cursor-not-allowed"
-                    : "text-slate-400 cursor-not-allowed"
-                  : isDark
-                    ? "text-gray-300 hover:text-white"
-                    : "text-slate-500 hover:text-slate-900"
-            )
-            if (state === "soon") {
-              return (
-                <span
-                  key={id}
-                  className={cls}
-                  aria-disabled="true"
-                  title={t("pro.soon")}
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>{t(`pro.module.${id}`)}</span>
-                </span>
-              )
-            }
-            return (
-              <form key={id} action={enterModule} className="flex-1 flex">
-                <input type="hidden" name="module" value={id} />
-                <button type="submit" className={cls} aria-current={active ? "page" : undefined}>
-                  {MODULE_ICON[id]}
-                  <span>{t(`pro.module.${id}`)}</span>
-                </button>
-              </form>
-            )
-          })}
-        </div>
-        {companyName && (
-          <p
+      {/* PRO-02 · OCT-16 · o seletor de módulo: o actual é um botão, e a lista
+          dos outros abre ao clicar. Lado a lado, o Admin ficava cortado. */}
+      <div className={compact ? "p-2" : "p-4"}>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setSwitcherOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-expanded={switcherOpen}
             className={cn(
-              "mt-3 px-1 text-xs truncate",
-              isDark ? "text-gray-400" : "text-slate-500"
+              "w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              isDark ? "bg-gray-800 text-white hover:bg-gray-700" : "bg-slate-100 text-slate-900 hover:bg-slate-200"
             )}
           >
-            {companyName}
-          </p>
+            {mode ? MODULE_ICON[mode] : <Compass className="w-4 h-4" />}
+            <span className={cn(hide, "flex-1 text-left")}>{mode ? t(`pro.module.${mode}`) : t("pro.switchModule")}</span>
+            <ChevronDown className={cn(hide, "w-4 h-4 transition-transform", switcherOpen && "rotate-180")} />
+          </button>
+          {switcherOpen && !compact && (
+            <div
+              role="menu"
+              className={cn(
+                "absolute left-0 right-0 mt-1 z-20 rounded-lg border p-1 shadow-lg",
+                isDark ? "bg-gray-900 border-gray-700" : "bg-white border-slate-200"
+              )}
+            >
+              {modules
+                .filter(({ id }) => id !== mode)
+                .map(({ id, state }) => {
+                  const cls = cn(
+                    "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm",
+                    state === "soon"
+                      ? isDark
+                        ? "text-gray-500 cursor-not-allowed"
+                        : "text-slate-400 cursor-not-allowed"
+                      : isDark
+                        ? "text-gray-300 hover:bg-white/5 hover:text-white"
+                        : "text-slate-700 hover:bg-slate-100"
+                  )
+                  if (state === "soon") {
+                    return (
+                      <span key={id} role="menuitem" aria-disabled="true" className={cls}>
+                        <Lock className="w-4 h-4" />
+                        <span className="flex-1">{t(`pro.module.${id}`)}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wide">{t("pro.soon")}</span>
+                      </span>
+                    )
+                  }
+                  return (
+                    <form key={id} action={enterModule}>
+                      <input type="hidden" name="module" value={id} />
+                      <button type="submit" role="menuitem" className={cls}>
+                        {MODULE_ICON[id]}
+                        <span className="flex-1 text-left">{t(`pro.module.${id}`)}</span>
+                      </button>
+                    </form>
+                  )
+                })}
+            </div>
+          )}
+        </div>
+        {companyName && !compact && (
+          <div className="mt-3 px-1 flex items-center gap-2 min-w-0">
+            {companyLogoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={companyLogoUrl}
+                alt={t("nav.companyLogoAlt", { name: companyName })}
+                className="h-6 w-auto max-w-[96px] object-contain rounded bg-white px-1"
+              />
+            )}
+            <p className={cn("text-xs truncate", isDark ? "text-gray-400" : "text-slate-500")}>{companyName}</p>
+          </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-3 space-y-5">
+      <nav className={cn("flex-1 py-3 space-y-5", compact ? "px-2" : "px-4")}>
         {sections.map((section, i) => (
           <div key={section.titleKey ?? i}>
             {section.titleKey && (
               <p
                 className={cn(
+                  hide,
                   "text-xs font-semibold uppercase tracking-wider mb-2 px-1",
                   isDark ? "text-gray-500" : "text-slate-400"
                 )}
@@ -260,14 +367,17 @@ export function Sidebar({ modules, agentMenus, companyName, canManageTeam, sells
             )}
             <ul className="space-y-1">
               {section.items.map((item) => {
-                const active = pathname === item.href
+                const active = pathname === item.href || (item.href === "/admin/price-checker" && pathname.startsWith(item.href))
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
                       onClick={onClose}
+                      title={compact ? t(item.labelKey) : undefined}
+                      aria-label={compact ? t(item.labelKey) : undefined}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+                        "flex items-center gap-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                        compact ? "justify-center px-0" : "px-4",
                         active
                           ? isDark
                             ? "bg-orange-600/20 text-orange-500"
@@ -278,8 +388,8 @@ export function Sidebar({ modules, agentMenus, companyName, canManageTeam, sells
                       )}
                     >
                       {item.icon}
-                      <span className="flex-1">{t(item.labelKey)}</span>
-                      {item.soon && (
+                      <span className={cn(hide, "flex-1")}>{t(item.labelKey)}</span>
+                      {item.soon && !compact && (
                         <span
                           className={cn(
                             "shrink-0 whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5",
@@ -299,7 +409,7 @@ export function Sidebar({ modules, agentMenus, companyName, canManageTeam, sells
       </nav>
 
       {/* Footer */}
-      <div className={cn("m-4 p-4 rounded-xl", isDark ? "bg-gray-800" : "bg-slate-50")}>
+      <div className={cn(hide, "m-4 p-4 rounded-xl", isDark ? "bg-gray-800" : "bg-slate-50")}>
         <p className={cn("text-sm font-semibold", isDark ? "text-white" : "text-slate-900")}>
           {t("nav.footerTitle")}
         </p>
@@ -309,4 +419,8 @@ export function Sidebar({ modules, agentMenus, companyName, canManageTeam, sells
       </div>
     </aside>
   )
+
+  /* Recolhível: um lugar de 64 px no ecrã, e o menu por cima quando abre. */
+  if (!collapsible) return aside
+  return <div className={cn("relative shrink-0", collapsed ? "w-16" : "w-64")}>{aside}</div>
 }

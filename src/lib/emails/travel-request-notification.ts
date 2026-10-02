@@ -183,7 +183,7 @@ export function buildTravelRequestNotificationEmail(
 </html>`
 
   const text = [
-    `NOVO PEDIDO DE VIAGEM — ${data.origin} -> ${data.destination}`,
+    `NOVO PEDIDO DE VIAGEM: ${data.origin} -> ${data.destination}`,
     "",
     "Contacto:",
     `- Nome: ${t(`titles.${data.title}`)} ${data.fullName}`,

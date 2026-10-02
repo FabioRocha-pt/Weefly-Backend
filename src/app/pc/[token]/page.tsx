@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { loadPcState, touchLink } from "@/lib/pc/state"
@@ -9,6 +10,7 @@ import { PcScreenRouter } from "@/components/pc/screen-router"
 import { I18nProvider } from "@/i18n/provider"
 import { getDictionary } from "@/i18n/server"
 import { DEFAULT_LOCALE } from "@/i18n/config"
+import { pageMetadata, siteContext } from "@/lib/site-meta"
 
 /**
  * /pc/{token} — o pedido do cliente, em qualquer ponto do percurso.
@@ -28,6 +30,15 @@ import { DEFAULT_LOCALE } from "@/i18n/config"
  */
 
 export const dynamic = "force-dynamic"
+
+/**
+ * SEO-03 · um link privado não se indexa, mas mostra a imagem de partilha da
+ * empresa quando segue por WhatsApp ou email (S5). O endereço do link é o da
+ * empresa do caso (`caseClientUrl`), e é dele que a marca sai.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata(await siteContext(), { indexable: false })
+}
 
 export default async function PriceCheckerCasePage({
   params,

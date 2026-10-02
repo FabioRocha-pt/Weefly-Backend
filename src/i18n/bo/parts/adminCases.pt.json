@@ -4,7 +4,7 @@
       "nav": "Casos",
       "title": "Casos de todos os parceiros",
       "subtitle": "Por parceiro, depois por ministério. O que cada parceiro tem em curso e o que já emitiu.",
-      "readOnly": "Só leitura. Para mudar um caso de outro parceiro, abra-o e use «Intervir» — fica registado.",
+      "readOnly": "Só leitura. Para mudar um caso de outro parceiro, abra-o e use «Intervir», fica registado.",
       "partner": "Parceiro",
       "status": "Estado",
       "ministries": "Ministérios",
@@ -45,6 +45,30 @@
         "notFound": "Caso não encontrado.",
         "unavailable": "Não foi possível registar agora. Tente de novo."
       }
+    },
+    "adminClients": {
+      "nav": "Clientes",
+      "title": "Clientes de todos os parceiros",
+      "partner": "Parceiro",
+      "allPartners": "Todos os parceiros",
+      "searchPlaceholder": "Nome, telefone ou email",
+      "search": "Procurar",
+      "noMatch": "Nenhum cliente com estes filtros."
+    },
+    "adminDashboard": {
+      "nav": "Dashboard",
+      "title": "Dashboard",
+      "subtitle": "O que pede atenção agora. Cada número abre a lista correspondente.",
+      "pending": "Contas à espera",
+      "pendingHint": "à espera de aprovação",
+      "partners": "Parceiros ativos",
+      "partnersHint": "empresas a trabalhar",
+      "openCases": "Casos abertos",
+      "openCasesHint": "em todos os parceiros",
+      "issued": "Passagens emitidas",
+      "issuedHint": "este mês",
+      "alerts": "Alertas de saldo",
+      "alertsHint": "nos últimos 7 dias"
     }
   }
 }

@@ -10,8 +10,8 @@ import { safeNextPath } from "@/lib/safe-next"
  * dashboard/onboarding/auth routes, update the lists below.
  */
 const LOGIN_ROUTE = "/login"
-/** TEN-06 · depois do login, o Concierge por defeito (ver `/entrar`). */
-const DASHBOARD_HOME = "/entrar"
+/** OCT-18 · depois do login, sempre a escolha de módulo. */
+const DASHBOARD_HOME = "/modulo"
 
 /** Auth pages an already-signed-in user should be bounced away from. */
 const AUTH_ROUTES: readonly string[] = ["/login", "/registro"]

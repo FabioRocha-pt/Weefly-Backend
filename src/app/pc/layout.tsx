@@ -1,8 +1,6 @@
-import type { Metadata } from "next"
 import { IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google"
 
 import "@/styles/pc.css"
-import { RoutePreloader } from "@/components/route-preloader"
 
 /**
  * WeeFly Price Checker — o fluxo público, P1 → P9.
@@ -31,12 +29,6 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 })
 
-export const metadata: Metadata = {
-  title: "WeeFly Concierge · Price Checker",
-  description:
-    "Tell us where you are going. Our team searches several airlines and comes back with the best options.",
-}
-
 export default function PriceCheckerLayout({
   children,
 }: {
@@ -52,16 +44,11 @@ export default function PriceCheckerLayout({
        */}
       <style>{`:root{--font-jakarta:${jakarta.style.fontFamily};--font-plex-mono:${plexMono.style.fontFamily}}`}</style>
       {/*
-        Sprint 3.1 · sem `label`, que cai no "A carregar" por omissão.
-
-        Dizia "Loading WeeFly" em duro, e este layout está **fora** do
-        `I18nProvider` — que cada página monta por dentro, porque é lá que se
-        sabe a língua do caso. Traduzir aqui obrigava a resolver o idioma no
-        layout e a passá-lo às duas rotas para nada: é uma palavra que aparece
-        durante a transição entre ecrãs. O valor por omissão do componente já
-        está em português, que é a língua base.
+        OCT-20 · sem RoutePreloader. Entrava no HTML já visível e só saía 900 ms
+        depois da hidratação: o primeiro ecrã do cliente ficava tapado até o
+        JavaScript inteiro chegar e correr. Os ecrãs do percurso mudam sem
+        overlay.
       */}
-      <RoutePreloader background="#F1F5F9" />
       {/*
         T-08 · o rodapé e o botão flutuante desceram para dentro das páginas.
 

@@ -3,9 +3,13 @@
 /**
  * PRO-07 · o que se pode fazer depois de "enviámos um email para…".
  *
- * Reenviar (com espera de 60 s, o mesmo limite que o Supabase aplica) e
- * corrigir o endereço, se estiver errado. No ecrã de link inválido não há
- * registo em curso, e o formulário pede o email (`askEmail`).
+ * Reenviar, com espera de 60 s (o mesmo limite que o Supabase aplica). No ecrã
+ * de link inválido não há registo em curso, e o formulário pede o email
+ * (`askEmail`).
+ *
+ * OCT-06 · corrigir o endereço saiu: dava erro ("This registration can no
+ * longer be changed here") e, depois de voltar atrás, a conta deixava de
+ * conseguir entrar. Quem se enganou no email regista-se de novo.
  */
 
 import { useEffect, useState, useTransition } from "react"
@@ -13,11 +17,7 @@ import { RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  changeSignupEmail,
-  resendSignupEmail,
-  type ResendState,
-} from "@/actions/auth"
+import { resendSignupEmail, type ResendState } from "@/actions/auth"
 import { useT } from "@/i18n/provider"
 
 const COOLDOWN_S = 60
@@ -33,8 +33,7 @@ export function SignupEmailActions({
   const [pending, startTransition] = useTransition()
   const [state, setState] = useState<ResendState>({ ok: false, message: null })
   const [wait, setWait] = useState(0)
-  const [editing, setEditing] = useState(false)
-  const [typed, setTyped] = useState(askEmail ? "" : (email ?? ""))
+  const [typed, setTyped] = useState("")
 
   useEffect(() => {
     if (wait <= 0) return
@@ -42,22 +41,23 @@ export function SignupEmailActions({
     return () => clearTimeout(id)
   }, [wait])
 
-  function run(action: (fd: FormData) => Promise<ResendState>, value?: string) {
+  function resend() {
     const fd = new FormData()
-    if (value) fd.set("email", value)
+    if (askEmail) fd.set("email", typed)
     startTransition(async () => {
-      const result = await action(fd)
-      setState(result)
-      if (result.ok) {
-        setWait(COOLDOWN_S)
-        setEditing(false)
+      try {
+        const result = await resendSignupEmail(fd)
+        setState(result)
+        if (result.ok) setWait(COOLDOWN_S)
+      } catch {
+        setState({ ok: false, message: t("auth.emailSendFailed") })
       }
     })
   }
 
   return (
     <div className="w-full flex flex-col items-center gap-3 mb-6">
-      {(askEmail || editing) && (
+      {askEmail && (
         <Input
           type="email"
           value={typed}
@@ -68,45 +68,16 @@ export function SignupEmailActions({
         />
       )}
 
-      {editing ? (
-        <div className="flex gap-2">
-          <Button
-            disabled={pending || !typed}
-            className="bg-orange-600 hover:bg-orange-700"
-            onClick={() => run(changeSignupEmail, typed)}
-          >
-            {t("auth.changeEmailSave")}
-          </Button>
-          <Button variant="ghost" onClick={() => setEditing(false)}>
-            {t("auth.changeEmailCancel")}
-          </Button>
-        </div>
-      ) : (
-        <Button
-          variant={askEmail ? "default" : "outline"}
-          className={askEmail ? "bg-orange-600 hover:bg-orange-700" : undefined}
-          disabled={pending || wait > 0 || (askEmail && !typed)}
-          onClick={() => run(resendSignupEmail, askEmail ? typed : undefined)}
-        >
-          <RefreshCw className={`w-4 h-4 mr-2${pending ? " animate-spin" : ""}`} />
-          {askEmail ? t("auth.invalidCta") : t("auth.confirmEmailResend")}
-          {wait > 0 ? ` (${wait}s)` : ""}
-        </Button>
-      )}
-
-      {!askEmail && email && !editing && (
-        <button
-          type="button"
-          className="text-sm text-orange-600 hover:text-orange-700 font-medium"
-          onClick={() => {
-            setTyped(email)
-            setEditing(true)
-            setState({ ok: false, message: null })
-          }}
-        >
-          {t("auth.changeEmailCta")}
-        </button>
-      )}
+      <Button
+        variant={askEmail ? "default" : "outline"}
+        className={askEmail ? "bg-orange-600 hover:bg-orange-700" : undefined}
+        disabled={pending || wait > 0 || (askEmail && !typed)}
+        onClick={resend}
+      >
+        <RefreshCw className={`w-4 h-4 mr-2${pending ? " animate-spin" : ""}`} />
+        {askEmail ? t("auth.invalidCta") : t("auth.confirmEmailResend")}
+        {wait > 0 ? ` (${wait}s)` : ""}
+      </Button>
 
       {state.message && (
         <p

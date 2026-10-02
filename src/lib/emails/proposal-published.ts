@@ -177,7 +177,7 @@ function offerCard(
         ${badgeHtml}
         <p style="margin:${badges.length ? "4px" : "0"} 0 10px;font-size:16px;font-weight:700;color:${INK};">${escapeHtml(offer.name || t("email.proposalUnnamed"))}</p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${legs}</table>
-        ${codes ? `<p style="margin:10px 0 0;font-size:11px;color:${MUTED};font-family:monospace;">${escapeHtml(codes)}${offer.fare_name ? ` — ${escapeHtml(offer.fare_name)}` : ""}</p>` : ""}
+        ${codes ? `<p style="margin:10px 0 0;font-size:11px;color:${MUTED};font-family:monospace;">${escapeHtml(codes)}${offer.fare_name ? ` · ${escapeHtml(offer.fare_name)}` : ""}</p>` : ""}
         ${offer.agent_note ? `<p style="margin:10px 0 0;background:${SURFACE_ALT};border-radius:8px;padding:10px 11px;font-size:12.5px;line-height:1.5;color:${MUTED};">${escapeHtml(offer.agent_note)}</p>` : ""}
       </td>
     </tr>
@@ -312,7 +312,7 @@ export function buildProposalPublishedEmail(
     "",
     ...data.offers.flatMap((offer) => {
       const lines = [
-        `— ${offer.name || t("email.proposalUnnamed")} — ${formatMoney(offerTotal(offer, data.pax), data.currency)}`,
+        `· ${offer.name || t("email.proposalUnnamed")}: ${formatMoney(offerTotal(offer, data.pax), data.currency)}`,
       ]
       const ida = legLine(offer, "ida", locale)
       const volta = legLine(offer, "volta", locale)

@@ -133,7 +133,7 @@ export function OrganisationForm({
               set("slug", e.target.value.toLowerCase())
             }}
           />
-          <span className="text-xs text-slate-500">/m/{v.slug || "…"}/…</span>
+          <span className="text-xs text-slate-500">/ministerios/{v.slug || "…"}/…</span>
         </label>
         <label className="text-sm space-y-1 md:col-span-2">
           <Label>{t("bo.b2g.form.logo")}</Label>

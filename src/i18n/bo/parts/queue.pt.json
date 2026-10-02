@@ -90,7 +90,7 @@
         "waitingBefore": "O pedido de",
         "waitingMiddle": "está na fila há",
         "waitingAfter": "e ninguém o reclamou.",
-        "explainBefore": "Uma proposta escrita num caso sem responsável pode ser sobreposta por outro agente a trabalhar o mesmo pedido, sem que nenhum dos dois saiba. Reclame o caso e o compositor abre — fica registado que é seu, com a hora, e o caso sai de",
+        "explainBefore": "Uma proposta escrita num caso sem responsável pode ser sobreposta por outro agente a trabalhar o mesmo pedido, sem que nenhum dos dois saiba. Reclame o caso e o compositor abre, fica registado que é seu, com a hora, e o caso sai de",
         "explainBucket": "novos sem dono",
         "explainAfter": ".",
         "claiming": "A reclamar…",

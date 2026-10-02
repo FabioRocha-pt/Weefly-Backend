@@ -2,14 +2,14 @@
 
 import { createContext, useContext } from "react"
 
-import { siteUrl } from "@/lib/site-url"
+import { weeflyPcSiteUrl } from "@/lib/site-url"
 
 /**
  * MIG-02 · o endereço base dos links que o back-office copia.
  *
  * Era `window.location.origin`: um agente que abrisse o back-office pelo
  * endereço antigo copiava links para o endereço antigo. Vem do servidor, que o
- * lê da configuração e do parceiro da sessão (`partnerSiteUrl`).
+ * lê da configuração e do parceiro da sessão (`pcSiteUrl`, DOM-01).
  */
 const LinkBaseContext = createContext<string>("")
 
@@ -18,5 +18,5 @@ export function LinkBaseProvider({ base, children }: { base: string; children: R
 }
 
 export function useLinkBase(): string {
-  return useContext(LinkBaseContext) || siteUrl()
+  return useContext(LinkBaseContext) || weeflyPcSiteUrl()
 }

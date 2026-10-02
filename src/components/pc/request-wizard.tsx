@@ -1174,7 +1174,7 @@ export function RequestWizard({
               trip === "multi"
                 ? legs.map((l) => fmtDate(l.date, t)).filter(Boolean).join(" · ")
                 : trip === "round" && ret
-                  ? `${fmtDate(depart, t)} — ${fmtDate(ret, t)}`
+                  ? `${fmtDate(depart, t)} → ${fmtDate(ret, t)}`
                   : fmtDate(depart, t)
             }
             onEdit={() => goToStep(1, trip === "multi" ? "dt0" : "dep")}

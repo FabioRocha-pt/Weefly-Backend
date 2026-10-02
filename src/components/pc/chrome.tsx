@@ -91,7 +91,7 @@ function BrandLogo() {
     <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
       {brand.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img className="logo" src={brand.logoUrl} alt={brand.name} style={{ height: 32, width: "auto" }} />
+        <img className="logo" src={brand.logoUrl} alt={brand.name} height={32} decoding="async" style={{ height: 32, width: "auto" }} />
       ) : (
         <b style={{ fontSize: 17 }}>{brand.name}</b>
       )}

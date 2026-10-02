@@ -22,6 +22,7 @@
 import { cache } from "react"
 
 import { createAdminClient } from "@/utils/supabase/admin"
+import { siteUrl } from "@/lib/site-url"
 
 export interface Brand {
   /** `weefly` quando o que se mostra é a WeeFly, mesmo num caso de parceiro. */
@@ -32,6 +33,18 @@ export interface Brand {
   logoUrl: string | null
   colorPrimary: string | null
   colorDark: string | null
+  /** OCT-13 · a cor de destaque (o laranja do Alô). */
+  colorAccent: string | null
+  /** SEO-04 · o ícone quadrado de origem, e a pasta dos ícones gerados. */
+  iconUrl: string | null
+  iconsBaseUrl: string | null
+  /** SEO-04 · a imagem de partilha (1200 × 630). */
+  ogImageUrl: string | null
+  /** SEO-04 · o `?v=` dos ícones. */
+  brandVersion: number
+  /** SEO-02 · ⚠ editáveis no Admin. Nulos: os textos por defeito. */
+  seoTitle: string | null
+  seoDescription: string | null
   footerText: string | null
   /** TEN-05 · só faz sentido numa marca de parceiro. */
   poweredByWeefly: boolean
@@ -45,7 +58,26 @@ export interface Brand {
 }
 
 const COLUMNS =
+  "id, slug, commercial_name, is_operator, sell_mode, customer_front, logo_url, color_primary, color_dark, color_accent, icon_url, icons_base_url, og_image_url, brand_version, seo_title, seo_description, footer_text, powered_by_weefly, whatsapp_number, sender_name, sender_email, reply_to"
+
+/** As colunas de antes da 0031: enquanto ela não estiver aplicada, a marca
+    continua a ler-se (sem ícones nem textos de SEO próprios). */
+const LEGACY_COLUMNS =
   "id, slug, commercial_name, is_operator, sell_mode, customer_front, logo_url, color_primary, color_dark, footer_text, powered_by_weefly, whatsapp_number, sender_name, sender_email, reply_to"
+
+type Admin = NonNullable<ReturnType<typeof createAdminClient>>
+
+async function readPartnerRow(
+  admin: Admin,
+  column: "is_operator" | "id" | "slug",
+  value: string | boolean
+): Promise<PartnerBrandRow | null> {
+  const first = await admin.from("partners").select(COLUMNS).eq(column, value).maybeSingle()
+  if (!first.error) return first.data as PartnerBrandRow | null
+  if (first.error.code !== "42703") return null
+  const legacy = await admin.from("partners").select(LEGACY_COLUMNS).eq(column, value).maybeSingle()
+  return (legacy.data as PartnerBrandRow | null) ?? null
+}
 
 interface PartnerBrandRow {
   id: string
@@ -57,6 +89,13 @@ interface PartnerBrandRow {
   logo_url: string | null
   color_primary: string | null
   color_dark: string | null
+  color_accent?: string | null
+  icon_url?: string | null
+  icons_base_url?: string | null
+  og_image_url?: string | null
+  brand_version?: number | null
+  seo_title?: string | null
+  seo_description?: string | null
   footer_text: string | null
   powered_by_weefly: boolean | null
   whatsapp_number: string | null
@@ -65,15 +104,36 @@ interface PartnerBrandRow {
   reply_to: string | null
 }
 
+/**
+ * OCT-13 · um caminho da própria aplicação (`/brand/alo/alo-logo.png`) passa a
+ * endereço absoluto: um email e o WhatsApp não sabem resolver um relativo.
+ */
+export function absoluteAssetUrl(url: string | null | undefined): string | null {
+  const value = (url ?? "").trim()
+  if (!value) return null
+  if (value.startsWith("/") && !value.startsWith("//")) {
+    const base = siteUrl()
+    return base ? `${base}${value}` : value
+  }
+  return value
+}
+
 function fromRow(row: PartnerBrandRow, kind: Brand["kind"]): Brand {
   return {
     kind,
     partnerId: row.id,
     partnerSlug: row.slug,
     name: row.commercial_name,
-    logoUrl: row.logo_url,
+    logoUrl: absoluteAssetUrl(row.logo_url),
     colorPrimary: row.color_primary,
     colorDark: row.color_dark,
+    colorAccent: row.color_accent ?? null,
+    iconUrl: absoluteAssetUrl(row.icon_url),
+    iconsBaseUrl: absoluteAssetUrl(row.icons_base_url),
+    ogImageUrl: absoluteAssetUrl(row.og_image_url),
+    brandVersion: row.brand_version ?? 1,
+    seoTitle: row.seo_title ?? null,
+    seoDescription: row.seo_description ?? null,
     footerText: row.footer_text,
     poweredByWeefly: kind === "partner" && row.powered_by_weefly !== false,
     whatsapp: row.whatsapp_number,
@@ -88,8 +148,8 @@ function fromRow(row: PartnerBrandRow, kind: Brand["kind"]): Brand {
 export const weeflyBrand = cache(async (): Promise<Brand> => {
   const admin = createAdminClient()
   if (admin) {
-    const { data } = await admin.from("partners").select(COLUMNS).eq("is_operator", true).maybeSingle()
-    if (data) return fromRow(data as PartnerBrandRow, "weefly")
+    const data = await readPartnerRow(admin, "is_operator", true)
+    if (data) return fromRow(data, "weefly")
   }
   return {
     kind: "weefly",
@@ -99,6 +159,13 @@ export const weeflyBrand = cache(async (): Promise<Brand> => {
     logoUrl: null,
     colorPrimary: null,
     colorDark: null,
+    colorAccent: null,
+    iconUrl: null,
+    iconsBaseUrl: null,
+    ogImageUrl: null,
+    brandVersion: 1,
+    seoTitle: null,
+    seoDescription: null,
     footerText: null,
     poweredByWeefly: false,
     whatsapp: null,
@@ -122,8 +189,7 @@ export const clientBrandForPartner = cache(async (partnerId: string | null): Pro
   if (!partnerId) return weeflyBrand()
   const admin = createAdminClient()
   if (!admin) return weeflyBrand()
-  const { data } = await admin.from("partners").select(COLUMNS).eq("id", partnerId).maybeSingle()
-  const row = data as PartnerBrandRow | null
+  const row = await readPartnerRow(admin, "id", partnerId)
   if (!row || !showsOwnBrand(row)) return weeflyBrand()
   return fromRow(row, "partner")
 })
@@ -132,8 +198,7 @@ export const clientBrandForPartner = cache(async (partnerId: string | null): Pro
 export const clientBrandForSlug = cache(async (slug: string): Promise<Brand | null> => {
   const admin = createAdminClient()
   if (!admin) return null
-  const { data } = await admin.from("partners").select(COLUMNS).eq("slug", slug).maybeSingle()
-  const row = data as PartnerBrandRow | null
+  const row = await readPartnerRow(admin, "slug", slug)
   if (!row) return null
   return showsOwnBrand(row) ? fromRow(row, "partner") : weeflyBrand()
 })
@@ -169,6 +234,9 @@ export function brandCssVars(brand: Brand): Record<string, string> {
   }
   if (brand.colorDark) {
     vars["--ember-dk"] = brand.colorDark
+  }
+  if (brand.colorAccent) {
+    vars["--brand-accent"] = brand.colorAccent
   }
   return vars
 }

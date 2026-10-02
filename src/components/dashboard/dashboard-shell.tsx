@@ -9,6 +9,7 @@ import {
   type SidebarAgentMenu,
   type SidebarModule,
 } from "@/components/dashboard/sidebar"
+import { TutorialButton } from "@/components/tutorial-button"
 import { UserMenu, type UserMenuData } from "@/components/dashboard/user-menu"
 import { PoweredByWeefly } from "@/components/powered-by"
 import { useT } from "@/i18n/provider"
@@ -22,6 +23,7 @@ const TITLE_KEYS: Record<string, string> = {
   "/agente/casas": "pro.menu.houses",
   "/agente/experiencias": "pro.menu.experiences",
   "/agente/comida": "pro.menu.food",
+  "/gestao/dashboard": "bo.adminDashboard.nav",
   "/gestao/contas": "pro.adminAccounts",
   "/gestao/utilizadores": "pro.adminUsers",
   "/gestao/parceiros": "pro.adminPartners",
@@ -40,6 +42,7 @@ export function DashboardShell({
   modules,
   agentMenus,
   companyName,
+  companyLogoUrl,
   canManageTeam,
   poweredByWeefly,
   sellsB2g,
@@ -49,13 +52,15 @@ export function DashboardShell({
   modules: SidebarModule[]
   agentMenus: SidebarAgentMenu[]
   companyName: string | null
+  /** OCT-13 · o logótipo da empresa da conta (não da WeeFly). */
+  companyLogoUrl?: string | null
   canManageTeam?: boolean
   /** TEN-05 · o parceiro da conta tem o interruptor ligado. */
   poweredByWeefly?: boolean
   sellsB2g?: boolean
   children: React.ReactNode
 }) {
-  const nav = { modules, agentMenus, companyName, canManageTeam, sellsB2g }
+  const nav = { modules, agentMenus, companyName, companyLogoUrl, canManageTeam, sellsB2g }
   const t = useT()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -103,6 +108,8 @@ export function DashboardShell({
                 ponto de "não lido". Os avisos a sério vivem no Concierge. */}
             {/* I18N-01 · a língua escolhe-se nas Definições (o perfil), não
                 aqui: "não no ecrã principal". */}
+            {/* OCT-23 · o tutorial do ecrã actual. */}
+            <TutorialButton />
             <UserMenu user={user} />
           </div>
         </header>

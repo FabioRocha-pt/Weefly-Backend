@@ -25,7 +25,7 @@ export function ministryLink(
   org: { slug: string; link_token: string }
 ): string {
   const base = partnerSiteUrl({ slug: partner.slug, isOperator: partner.is_operator })
-  return base ? `${base}/m/${org.slug}/${org.link_token}` : ""
+  return base ? `${base}/ministerios/${org.slug}/${org.link_token}` : ""
 }
 
 export async function sendMinistryWelcome(

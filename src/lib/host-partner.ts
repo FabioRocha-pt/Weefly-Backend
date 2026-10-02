@@ -1,49 +1,38 @@
 /**
- * WeeFly · MVP 2 · TEN-04 · o parceiro que o endereço identifica.
+ * WeeFly · MVP 2 · TEN-04 · DOM-01 · o parceiro que o endereço identifica.
  *
- * "O subdomínio identifica o parceiro; o caminho identifica o ministério."
- * O modelo do endereço de um parceiro é o mesmo que os links usam
- * (`NEXT_PUBLIC_PARTNER_SITE_URL`, ex.: `https://{slug}.weefly.africa`): se o
- * pedido chegou por um endereço com essa forma, o `{slug}` é o parceiro.
+ * "O subdomínio identifica a empresa." O modelo do endereço de um parceiro é
+ * o mesmo que os links usam (`NEXT_PUBLIC_PARTNER_SITE_URL`, ex.:
+ * `https://{slug}.weefly.africa`): se o pedido chegou por um endereço com essa
+ * forma, o `{slug}` é o parceiro. A classificação é a de `lib/site-host`, a
+ * mesma que o middleware usa.
  *
- * Sem o modelo configurado — ou num pedido pelo endereço da WeeFly — não há
- * parceiro no endereço, e a resposta é `null`. É o que acontece hoje, enquanto
- * o DNS e o certificado wildcard não existem.
+ * Sem o modelo configurado, ou num pedido por `pro.weefly.africa` ou por
+ * `weefly.africa`, não há parceiro no endereço e a resposta é `null`.
  *
  * SÓ SERVIDOR.
  */
 
 import { headers } from "next/headers"
+import { notFound } from "next/navigation"
 
-import { siteUrl } from "@/lib/site-url"
-
-/** O slug que um `host` identifica, dado o modelo. Puro: testável sem pedido. */
-export function slugFromHost(host: string | null | undefined, template: string | undefined): string | null {
-  const h = (host ?? "").trim().toLowerCase().replace(/:\d+$/, "")
-  const t = (template ?? "").trim().toLowerCase()
-  if (!h || !t.includes("{slug}")) return null
-
-  let pattern: string
-  try {
-    pattern = new URL(t.replace("{slug}", "slug-placeholder")).hostname
-  } catch {
-    return null
-  }
-  const [prefix, suffix] = pattern.split("slug-placeholder")
-  if (!h.startsWith(prefix) || !h.endsWith(suffix)) return null
-  const slug = h.slice(prefix.length, h.length - suffix.length)
-  if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(slug)) return null
-
-  /* O endereço da própria WeeFly não é um parceiro, mesmo que tenha a mesma
-     forma (ex.: `concierge.weefly.africa` com o modelo `{slug}.weefly.africa`). */
-  try {
-    if (new URL(siteUrl()).hostname === h) return null
-  } catch {
-    /* sem NEXT_PUBLIC_SITE_URL: nada a excluir */
-  }
-  return slug
-}
+import { classifyHost } from "@/lib/site-host"
+import type { ProAccount } from "@/lib/pro-account"
 
 export function hostPartnerSlug(): string | null {
-  return slugFromHost(headers().get("host"), process.env.NEXT_PUBLIC_PARTNER_SITE_URL)
+  const h = headers()
+  return classifyHost(h.get("x-forwarded-host") || h.get("host")).slug
+}
+
+/**
+ * DOM-01 · "uma conta só vê a sua empresa; em `<outra>.weefly.africa/admin`
+ * recebe 404". É sempre o mesmo backoffice: por `pro.weefly.africa` entra-se
+ * em tudo o que a conta pode ver; pelo subdomínio de uma empresa, só se a
+ * conta for dessa empresa. O Admin WeeFly (que vê todas) entra em qualquer.
+ */
+export function assertHostAllowsAccount(account: ProAccount | null): void {
+  const slug = hostPartnerSlug()
+  if (!slug || !account || account.legacy) return
+  if (account.profile?.crossPartner) return
+  if (account.partner?.slug !== slug) notFound()
 }

@@ -3,6 +3,7 @@ import { Compass, Lock, ShieldCheck, Store } from "lucide-react"
 import { enterModule } from "@/actions/pro"
 import { getI18n } from "@/i18n/server"
 import { cn } from "@/lib/utils"
+import { assertHostAllowsAccount } from "@/lib/host-partner"
 import {
   moduleState,
   requireApprovedAccount,
@@ -25,6 +26,7 @@ const ORDER: ProModule[] = ["supplier", "agent", "admin"]
 export default async function ModuloPage() {
   const { t } = getI18n()
   const account = await requireApprovedAccount()
+  assertHostAllowsAccount(account)
 
   const modules = ORDER.map((id) => ({ id, state: moduleState(account, id) })).filter(
     (m) => m.state !== "hidden"

@@ -1,7 +1,7 @@
 /**
  * WeeFly · MVP 2 · MIN-01 · o link do ministério, resolvido.
  *
- * `/m/<ministério>/<token>` no endereço do parceiro (TEN-04). O token é a
+ * `/ministerios/<ministério>/<token>` (DOM-01) no endereço do parceiro (TEN-04). O token é a
  * autorização, como o do `/pc`: 192 bits, sem nada sequencial, e regenerar o
  * link mata o antigo de imediato (PAR-04).
  *

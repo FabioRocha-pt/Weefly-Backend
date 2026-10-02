@@ -24,7 +24,7 @@ import { redirect } from "next/navigation"
 
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
-import { AGENT_MENU_HREF, type AgentMenuId } from "@/lib/pro-menus"
+import { type AgentMenuId } from "@/lib/pro-menus"
 import {
   ACCESS_ROLE_COLUMNS,
   profileFromRow,
@@ -69,6 +69,8 @@ export interface ProPartner {
   poweredByWeefly: boolean
   /** A quem vende: B2C, B2G. */
   channels: string[]
+  /** OCT-13 · o logótipo, para o backoffice da empresa. */
+  logoUrl: string | null
 }
 
 export interface ProAccount {
@@ -97,7 +99,7 @@ export interface ProAccount {
 const MASTER_FALLBACK = ["dominik@weefly.africa"]
 
 export const PARTNER_COLUMNS =
-  "id, slug, commercial_name, sell_mode, supply_enabled, sell_enabled, agent_menus, is_operator, powered_by_weefly, channels"
+  "id, slug, commercial_name, sell_mode, supply_enabled, sell_enabled, agent_menus, is_operator, powered_by_weefly, channels, logo_url"
 
 export interface PartnerRow {
   id: string
@@ -110,6 +112,7 @@ export interface PartnerRow {
   is_operator: boolean
   powered_by_weefly?: boolean | null
   channels?: string[] | null
+  logo_url?: string | null
 }
 
 export function partnerFromRow(row: PartnerRow): ProPartner {
@@ -126,6 +129,7 @@ export function partnerFromRow(row: PartnerRow): ProPartner {
     isOperator: row.is_operator,
     poweredByWeefly: row.powered_by_weefly !== false,
     channels: row.channels ?? [],
+    logoUrl: row.logo_url ?? null,
   }
 }
 
@@ -290,7 +294,7 @@ export function moduleState(account: ProAccount, module: ProModule): ModuleState
 export const MODULE_HOME: Record<ProModule, string> = {
   supplier: "/empresa/dashboard",
   agent: "/agente",
-  admin: "/gestao/contas",
+  admin: "/gestao/dashboard",
 }
 
 /**
@@ -343,18 +347,12 @@ export function visibleAgentMenus(
 }
 
 /**
- * TEN-06 · "o login abre o Concierge por defeito".
- *
- * O Concierge é o menu Passagens do Agente. Abre-se directamente quando a
- * conta o tem aberto e entra no back-office; senão, a escolha de módulo.
+ * OCT-18 · depois de entrar abre sempre o `/modulo`, com o último módulo
+ * destacado. Substitui a regra do TEN-06 ("o login abre o Concierge por
+ * defeito"). Uma conta que ainda não foi aprovada vê o estado dela.
  */
 export function homeFor(account: ProAccount): string {
-  if (account.status !== "approved") return "/pendente"
-  const concierge =
-    moduleState(account, "agent") === "open" &&
-    agentMenuState(account, "flights") === "open" &&
-    (account.profile ? account.profile.backoffice : account.legacy || Boolean(account.partner))
-  return concierge ? AGENT_MENU_HREF.flights : "/modulo"
+  return account.status === "approved" ? "/modulo" : "/pendente"
 }
 
 /** O perfil de acesso, para o PRO-13. */

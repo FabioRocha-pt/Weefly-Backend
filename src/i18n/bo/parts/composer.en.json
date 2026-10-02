@@ -25,7 +25,7 @@
         "cabinKg": "Cabin · kg",
         "checkedPieces": "Hold · pieces",
         "checkedKg": "Hold · kg",
-        "noWeight": "— no weight stated"
+        "noWeight": "· no weight stated"
       },
       "conditions": {
         "baggage": "Baggage",

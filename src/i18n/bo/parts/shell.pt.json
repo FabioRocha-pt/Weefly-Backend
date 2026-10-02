@@ -37,7 +37,7 @@
         "profile": "Perfil",
         "accessBefore": "O acesso a este back-office é dado",
         "accessBold": "por email, uma conta de cada vez",
-        "accessAfter": ". Para acrescentar ou revogar alguém, fala com quem administra — não há nada a mudar aqui.",
+        "accessAfter": ". Para acrescentar ou revogar alguém, fala com quem administra, não há nada a mudar aqui.",
         "preferences": "Preferências"
       },
       "alerts": {
@@ -70,7 +70,7 @@
       "live": {
         "titleSound": "Em tempo real, com aviso sonoro. Clique para silenciar.",
         "titleSilent": "Em tempo real, silencioso. Clique para ligar o aviso.",
-        "titlePolling": "Sem websocket — a fila continua a actualizar a cada 4 segundos.",
+        "titlePolling": "Sem websocket: a fila continua a actualizar a cada 4 segundos.",
         "live": "ao vivo",
         "polling": "a sondar",
         "silent": "silencioso",
@@ -91,7 +91,7 @@
         "language": "Idioma",
         "currency": "Moeda",
         "clientCountry": "País do cliente",
-        "paramsNote": "O idioma, a moeda e o país são definidos aqui e o cliente já abre o link com tudo certo — o indicativo do telefone vem do país ({dial}). Pode trocar, mas por omissão vê o que faz sentido no mercado dele.",
+        "paramsNote": "O idioma, a moeda e o país são definidos aqui e o cliente já abre o link com tudo certo, o indicativo do telefone vem do país ({dial}). Pode trocar, mas por omissão vê o que faz sentido no mercado dele.",
         "noAmountNote": "Não há aqui nenhum valor a cobrar: o link de pagamento é gerado automaticamente depois de o cliente escolher uma oferta e preencher os dados de todos os passageiros. Até aí não há montante nem passageiro a quem o cobrar.",
         "generated": "Link gerado",
         "address": "Endereço",
@@ -103,6 +103,116 @@
         "close": "Fechar",
         "copy": "Copiar",
         "copied": "Copiado"
+      }
+    },
+    "tutorial": {
+      "open": "Tutorial deste ecrã",
+      "close": "Fechar",
+      "back": "Anterior",
+      "next": "Seguinte",
+      "done": "Concluir",
+      "stepOf": "passo {n} de {total}",
+      "queue": {
+        "title": "Fila de trabalho",
+        "steps": {
+          "0": {
+            "title": "Os números do topo",
+            "body": "Cada cartão conta os casos que pedem uma ação: comprovativos por validar, pagos sem bilhete, novos sem dono. Comece sempre pelos vermelhos."
+          },
+          "1": {
+            "title": "Os separadores",
+            "body": "Filtram a lista pelo mesmo critério dos cartões. Casos fechados mostra os emitidos e os arquivados."
+          },
+          "2": {
+            "title": "Reclamar e cotar",
+            "body": "Um caso sem dono tem o botão Reclamar. Ao reclamar fica seu, e o botão da direita abre o caso no passo certo."
+          },
+          "3": {
+            "title": "Arquivar",
+            "body": "Um caso resolvido por telefone ou ao balcão arquiva-se com um motivo. Sai das filas e fica em Casos fechados; só um administrador o reabre."
+          }
+        }
+      },
+      "case": {
+        "title": "Ficha do caso",
+        "steps": {
+          "0": {
+            "title": "O cabeçalho",
+            "body": "Mostra a referência, o cliente, o estado e o dono. Daqui reclama-se, arquiva-se ou fecha-se o caso."
+          },
+          "1": {
+            "title": "Ofertas",
+            "body": "Componha as opções e publique a proposta. O cliente recebe o link por email e WhatsApp."
+          },
+          "2": {
+            "title": "Pagamento",
+            "body": "Quando o cliente envia o comprovativo, valide-o aqui. O caso passa a pago sem bilhete."
+          },
+          "3": {
+            "title": "Emissão",
+            "body": "Registe o PNR e os bilhetes. O cliente recebe o bilhete e o caso fecha como emitido."
+          }
+        }
+      },
+      "agent": {
+        "title": "Área do Agente",
+        "steps": {
+          "0": {
+            "title": "Os menus",
+            "body": "Passagens abre o Concierge. Os menus com Brevemente estão ligados para a sua empresa mas ainda sem conteúdo."
+          },
+          "1": {
+            "title": "Clientes e carteira",
+            "body": "Clientes junta todos os pedidos de cada pessoa. A carteira mostra os valores da empresa."
+          },
+          "2": {
+            "title": "Mudar de módulo",
+            "body": "O botão no topo do menu abre a lista dos módulos. Muda sem voltar a entrar."
+          }
+        }
+      },
+      "admin": {
+        "title": "Admin",
+        "steps": {
+          "0": {
+            "title": "Dashboard",
+            "body": "Os números que pedem atenção. Cada cartão abre a lista de onde vem."
+          },
+          "1": {
+            "title": "Validação de contas",
+            "body": "Aprove com a empresa, o subdomínio e os menus, ou recuse com uma nota. A pessoa recebe a decisão por email."
+          },
+          "2": {
+            "title": "Parceiros",
+            "body": "Em Editar carrega-se o logótipo, o ícone e a imagem de partilha de cada empresa, e escolhem-se as cores."
+          }
+        }
+      },
+      "modules": {
+        "title": "Escolha de módulo",
+        "steps": {
+          "0": {
+            "title": "Onde trabalhar",
+            "body": "Cada cartão é um módulo que o Admin lhe deu. O último usado fica destacado."
+          },
+          "1": {
+            "title": "Fornecedor",
+            "body": "O módulo Fornecedor está com cadeado: chega numa próxima versão."
+          }
+        }
+      },
+      "general": {
+        "title": "WeeFly PRO",
+        "steps": {
+          "0": {
+            "title": "O menu lateral",
+            "body": "Tudo o que pode abrir está no menu à esquerda. O botão no topo muda de módulo."
+          },
+          "1": {
+            "title": "A sua conta",
+            "body": "No canto superior direito: o seu perfil, a língua e sair."
+          }
+        }
       }
     }
   }

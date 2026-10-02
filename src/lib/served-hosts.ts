@@ -4,7 +4,7 @@
  * `SERVED_HOSTS` no ambiente, separados por vírgula. Aceita um curinga à
  * esquerda para os subdomínios dos parceiros (TEN-04):
  *
- *   SERVED_HOSTS=concierge.weefly.africa,*.weefly.africa,localhost:3000
+ *   SERVED_HOSTS=pro.weefly.africa,weefly.africa,*.weefly.africa
  *
  * Sem a variável, serve tudo — é o que se quer em desenvolvimento. Nenhum
  * endereço vive aqui: desligar um domínio é tirá-lo da lista.

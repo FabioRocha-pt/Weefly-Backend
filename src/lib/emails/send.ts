@@ -336,7 +336,7 @@ export async function sendRequestReceivedEmail(
 
   const dates =
     ctx.returnDate && ctx.tripType === "round_trip"
-      ? `${formatDate(ctx.departDate ?? undefined)} — ${formatDate(ctx.returnDate)}`
+      ? `${formatDate(ctx.departDate ?? undefined)} → ${formatDate(ctx.returnDate)}`
       : formatDate(ctx.departDate ?? undefined)
 
   const passengers = [
@@ -446,7 +446,7 @@ export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome
     ? `vendedor ${seller}`
     : ctx.agentSlug
       ? `sem vendedor atribuído · link de ${ctx.agentSlug}`
-      : "SEM VENDEDOR ATRIBUÍDO — ninguém está a tratar deste pedido"
+      : "SEM VENDEDOR ATRIBUÍDO: ninguém está a tratar deste pedido"
 
   const subject = `Pedido novo · ${route} · ${ctx.clientName}${seller ? "" : " · sem vendedor"}`
 
@@ -747,7 +747,7 @@ export async function sendPaymentInstructionsEmail(
       id: null,
       status: "failed",
       reason:
-        "sem link nem referência de pagamento — o cliente não teria como pagar",
+        "sem link nem referência de pagamento: o cliente não teria como pagar",
     }
   }
 
@@ -1297,8 +1297,8 @@ export async function sendPaymentDeclaredEmail(
     : `${ctx.clientName} declarou ter pago ${amount}`
 
   const explain = withProof
-    ? `Abra o ficheiro, compare o valor com o extrato e marque a caixa de confirmação na ficha do caso. É essa caixa — e só ela — que avisa o cliente e liberta a emissão.${deadline ? ` O prazo de validação termina a ${deadline}; passado esse prazo o link fecha-se e o caso volta à fila.` : ""}`
-    : "É uma declaração do cliente, não uma confirmação. Confirme a entrada do dinheiro e depois marque o pagamento como recebido na ficha do caso — é isso que avisa o cliente e liberta a emissão."
+    ? `Abra o ficheiro, compare o valor com o extrato e marque a caixa de confirmação na ficha do caso. É essa caixa, e só ela, que avisa o cliente e liberta a emissão.${deadline ? ` O prazo de validação termina a ${deadline}; passado esse prazo o link fecha-se e o caso volta à fila.` : ""}`
+    : "É uma declaração do cliente, não uma confirmação. Confirme a entrada do dinheiro e depois marque o pagamento como recebido na ficha do caso. É isso que avisa o cliente e liberta a emissão."
 
   const meta = [
     route,
