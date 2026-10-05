@@ -24,6 +24,9 @@ export const RESERVED_SUBDOMAINS: readonly string[] = [
   "pc",
   "static",
   "assets",
+  /* O endereço antigo do backoffice, enquanto convive com o pro (decisão Q3):
+     sem isto, com o modelo `{slug}.weefly.africa`, abria "empresa inexistente". */
+  "concierge",
 ]
 
 export type SubdomainProblem = "shape" | "reserved"
