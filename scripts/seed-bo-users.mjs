@@ -44,6 +44,7 @@ const ACCOUNTS = [
   { email: "fapi.rocha@gmail.com", label: "Fábio Rocha",  envKey: "BO_PASSWORD_FAPI_ROCHA" },
   { email: "gocgo2008@gmail.com",  label: "WeeFly Admin", envKey: "BO_PASSWORD_GOCGO2008" },
   { email: "ivandrodebarros@gmail.com", label: "Ivandro de Barros", envKey: "BO_PASSWORD_IVANDRO" },
+  { email: "dominik@weefly.africa", label: "Dominik", envKey: "BO_PASSWORD_DOMINIK" },
 ]
 
 // ── env ─────────────────────────────────────────────────────────────────────
