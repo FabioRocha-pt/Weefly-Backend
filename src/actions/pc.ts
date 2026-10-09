@@ -23,6 +23,7 @@ import { getTranslator, localeForClient } from "@/i18n/server"
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import { hostPartnerSlug } from "@/lib/host-partner"
+import { secretaryForLinkToken } from "@/lib/ministry"
 import {
   RATE_LIMIT,
   countRecentSubmissions,
@@ -251,6 +252,19 @@ export async function submitPcRequest(
   const v = parsed.data
   const head = headers()
 
+  /*
+   * B2G-07 · "Sem PIN não há pedido." Um pedido de ministério só entra com a
+   * sessão aberta pelo PIN da secretária dona deste link (o cookie httpOnly
+   * do caminho dela). O token sozinho já não basta.
+   */
+  let ministrySecretaryId: string | null = null
+  if (v.ministryToken) {
+    ministrySecretaryId = await secretaryForLinkToken(v.ministryToken)
+    if (!ministrySecretaryId) {
+      return { ok: false, error: pcError("ministrySession", { stored: input.locale }) }
+    }
+  }
+
   /* Atrás de um proxy o `x-forwarded-for` traz a cadeia; o primeiro é o cliente. */
   const ip =
     head.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -317,6 +331,7 @@ export async function submitPcRequest(
     agentSlug: v.agentSlug ?? null,
     companySlug: v.companySlug ?? null,
     ministryToken: v.ministryToken ?? null,
+    ministrySecretaryId,
     vipToken: v.vipToken ?? null,
     /* TEN-04 · o parceiro do subdomínio, lido dos cabeçalhos — nunca do
        formulário. */

@@ -78,3 +78,54 @@ Verificação: `bash supabase/tests/run.sh` OK · `npm run build` OK · `npm run
 1. **Ligar B2C (e VIP) à Alô nos dados.** A 0031 semeia a Alô só com `B2G`; com esta regra, os agentes da Alô deixam de ver o menu Público e a opção Público no construtor até alguém ligar B2C no Admin (um clique) ou o script do bloco 8 o fazer. Não o pus numa migração para não escrever `alo` no código.
 2. A mensagem do link público continua a dizer "da WeeFly" (já era assim): num white label devia dizer o nome da empresa. A mensagem do link VIP já é neutra.
 3. O VIP tem de voltar a marcar o consentimento a cada pedido (o contacto vem preenchido). Se preferirem saltar o passo como na secretária, é uma linha no `RequestWizard`.
+
+## Bloco 3 · Ministérios e secretárias (B2G-05, B2G-23, B2G-06, B2G-07)
+
+### Feito
+
+**Migração `0034_ministry_secretaries.sql`** (idempotente, corre duas vezes no `run.sh`):
+- `organisations.crest_url` (B2G-05). `organisations.link_token` fica, mas **deixou de ser credencial** (comentário na coluna).
+- D-10 · `organisations_manage` substituída por `organisations_insert`/`_delete` (só `cross_partner`) e `organisations_update` (`can_manage_partner`), mais o gatilho `organisations_guard_identity`: uma sessão que não seja da WeeFly não muda empresa, nome, slug, logótipos nem `active` (muda limites e `secretary_sees_balance`). A service role passa.
+- `organisation_requests` (pendente/aprovado/recusado, motivo obrigatório na recusa, `decided_by_email/at`, `organisation_id` obrigatório na aprovação, caminhos dos logótipos no bucket `brand`, `requested_by_email`). RLS: a empresa lê os seus, o master todos; nenhuma escrita por sessão. Um nome só fica pendente uma vez por empresa.
+- `ministry_secretaries` (empresa forçada pelo gatilho a partir do ministério; ministério e link imutáveis; `link_token` ≥ 192 bits e único; `active = (deactivated_at is null)`; `created_by_email`, `last_access_at`). Leitura: back-office da empresa e master; sem escrita por sessão.
+- `ministry_secretary_secrets` (hash do PIN, `pin_version`, quem/quando, falhas, `locked_until`) e `ministry_secretary_sessions` (só o sha256 do token): RLS sem políticas e `revoke all` a `anon`/`authenticated`.
+- Funções SECURITY DEFINER, só `service_role`: `secretary_pin_failure` (atómica, 5 seguidas → 15 min; o prazo não estica; expirado recomeça), `secretary_pin_success`, `secretary_set_pin` (só aceita hash `scrypt$…`, sobe a versão, limpa o bloqueio e apaga as sessões), `secretary_session_check` (12 h absolutas, 30 min sem uso, versão do PIN, secretária/ministério/empresa activos; refresca ou apaga). Desactivar uma secretária apaga as sessões dela (gatilho).
+- `booking_cases.secretary_id` com chave composta `(secretary_id, organisation_id)` (a secretária é do ministério do caso) e `check` "sem ministério não há secretária". **Já feito para o bloco 4** (a 0035 não precisa de o criar).
+- Dados antigos: a secretária de `organisations.secretary_*` e cada conta `secretary` da allowlist passam a uma linha de `ministry_secretaries` **sem PIN** (as suspensas entram desactivadas). Provado à parte num Postgres descartável (idempotente).
+- Testes novos: `supabase/tests/test_secretaries.sql` (S1–S9) e `test_ministry_requests.sql` (R1–R7). Sondas novas em `scripts/check-migrations.mjs`.
+
+**Servidor** · `src/lib/secretary-auth.ts`: PIN `crypto.randomInt` de 6 dígitos (recusa 000000/123456 e afins), scrypt com sal de 16 bytes, comparação `timingSafeEqual`; sem hash, compara contra um hash fictício (mesmo tempo). Token de sessão de 32 bytes no cookie `wf_sec`: httpOnly, SameSite=Strict, Secure em produção, `path=/ministerios/<org>/<token>` (o cookie de uma secretária nunca vai no link de outra), 12 h. Travão leve por IP (30 tentativas / 15 min, em memória). O PIN não vai para logs, `access_audit` nem email.
+
+**B2G-06 · secretárias** (`src/actions/secretaries.ts`, `components/b2g/secretaries.tsx`): criar (link + PIN mostrado uma vez, com copiar; email opcional só com o link), gerar PIN novo (quem criou, Admin da empresa ou WeeFly; a versão sobe e as sessões morrem), editar, desactivar/reactivar, reenviar link. Quem gere: WeeFly e qualquer conta do back-office da empresa do ministério (decisão 5), com o canal B2G. Cada acção no `access_audit` (`secretary_created/updated/pin_generated/deactivated/reactivated`; `secretary_pin_locked` quando o bloqueio dispara). Na ficha do ministério (empresa e Admin): quem gerou o PIN e quando, último acesso, bloqueio, quem desactivou. O email de boas-vindas (`lib/emails/ministry-welcome.ts`) passou a ser por secretária e diz que o PIN é entregue pela empresa.
+
+**B2G-07 · sem PIN não há pedido**
+- `resolveMinistry` (`lib/ministry.ts`) resolve pelo link da secretária (activa, ministério activo, empresa activa com B2G, subdomínio da empresa). O link antigo do ministério dá 404.
+- `/ministerios/[org]/[token]`: a moldura mostra o ecrã do PIN (`components/ministry/pin-screen.tsx`) enquanto não houver sessão **desta** secretária; as páginas (Novo pedido, Minhas passagens) verificam por si e não renderizam nada sem sessão. Botão "Terminar sessão neste dispositivo".
+- Mensagem igual para link desconhecido e PIN errado (e o scrypt corre sempre); só o bloqueio tem mensagem própria.
+- `submitPcRequest` (`actions/pc.ts`): um pedido com `ministryToken` exige a sessão da secretária dona desse link; o intake (`lib/pc/intake.ts`) volta a verificar a cadeia e grava `secretary_id` no caso, com o nome dela no `case_events` ("Pedido submetido por …").
+- `/ministerios/[org]` (sem token): página de passagem, igual para qualquer slug, sem formulário nem acção.
+- O caminho de volta da ficha `/pc/[token]` de um caso de ministério é o link pessoal da autora (`lib/pc/state.ts`).
+
+**B2G-23 · pedir um ministério** (`src/actions/ministry-requests.ts`, `components/b2g/ministry-requests.tsx`): no menu Ministérios a empresa deixa de ter "Novo ministério" e passa a ter **Pedir ministério novo** (nome, logótipo horizontal obrigatório, brasão opcional; PNG/JPEG até 2 MB com a assinatura do ficheiro verificada; sobem para `brand/ministry-requests/<empresa>/<pedido>/` pela service role) e a lista dos seus pedidos com estado e motivo (o aviso na aplicação). Admin › B2G: pedidos pendentes de todas as empresas, **aprovar** (nome e slug editáveis; cria o ministério pela sessão do master com `logo_url`/`crest_url`) ou **recusar com motivo**; quem pediu recebe email (`lib/emails/ministry-request-decision.ts`). O master continua a criar directamente ("Novo ministério" em Admin › B2G › empresa). Editar um ministério: a empresa só edita os limites (nome/slug/logótipos desligados, e recusados no servidor e na base).
+
+**B2G-05 · B2G-24** · o brasão aparece sempre ao lado do nome: lista de ministérios, pedidos, ficha, construtor de links. Formulário com "Logótipo horizontal" e "Brasão".
+
+**B2G-03 · construtor de links** · `ministries: LinkMinistry[]` (ministérios activos da empresa, secretárias activas, `path` pessoal, `crestUrl`) passado em `src/app/(bo)/admin/price-checker/layout.tsx`; a opção Ministério liga-se quando há uma secretária.
+
+Verificação: `bash supabase/tests/run.sh` OK · `npm run build` OK · `npm run i18n:check` OK (textos novos em `src/i18n/bo/parts/ministries.{pt,en}.json`; `ministry.pin.*`, `ministry.landing.*` e `pc.errors.ministrySession` em PT/EN/FR). Teste à parte do PIN (formato, sal, certo/errado, mesmo tempo com e sem hash).
+
+### Falta
+- **Os passos dentro de `/pc/[token]` de um caso de ministério** (escolher a opção, passageiros, `findMinistryTraveller`) continuam autorizados pelo token do caso, como antes. O bloco 6 leva a ficha do caso para dentro do espaço do ministério (com sessão) e redirecciona o `/pc/{token}`.
+- `actor_kind = 'secretary'` no `case_events` e a urgência: bloco 4 (a autora já está em `booking_cases.secretary_id` e no título/payload do evento).
+- A deduplicação de duplo clique e o limite por IP do intake ainda se aplicam a pedidos de ministério (B2G-10, bloco 4).
+- Os alertas de passaporte e de saldo ainda vão para `organisations.secretary_email` (o contacto antigo); "todas as secretárias activas" (decisão 8) entra com as notificações do bloco 6.
+- Não há campainha para a decisão de um pedido de ministério (a campainha é por caso): fica o email e o estado na lista do menu Ministérios.
+- O espaço do ministério não foi aberto num browser (sem base local com dados; `.env.local` aponta para o Supabase real, não usado). Testar com o script de dados do bloco 8.
+- `graphify update .` não correu (não está instalado).
+
+### Para decidir (humano)
+1. **As secretárias que já existem ficam sem acesso** até alguém lhes gerar um PIN e enviar o link novo (o antigo, do ministério, deixou de abrir). É o que a especificação pede ("sem PIN não há pedido"), mas tem de ser avisado antes de aplicar a 0034.
+2. Cookie SameSite=Strict (decisão 4): ao abrir o link a partir do email, a secretária volta a ver o ecrã do PIN mesmo com sessão aberta. Se incomodar, `Lax` resolve sem abrir o envio de pedidos a outros sites (as server actions são POST).
+3. O ecrã do PIN diz "Olá, <nome>" a quem tiver o link. Se preferirem não mostrar o nome antes do PIN, é uma linha.
+4. Brasão opcional no pedido de ministério (os três brasões são o mesmo emblema). Se for obrigatório, é uma linha.
+5. O travão por IP é em memória (por processo); com várias instâncias, o travão a sério continua a ser o bloqueio por secretária na base.

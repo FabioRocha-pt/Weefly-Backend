@@ -3,10 +3,10 @@
 /**
  * WeeFly · MVP 2 · B2G · as acções dos ministérios e da bolsa.
  *
- * PAR-02 · criar e gerir ministérios, com link único que se regenera.
+ * PAR-02 · gerir ministérios (B2G-23 · criar é só da WeeFly; a empresa pede).
  * PAR-03 · crédito manual (reforço), com a referência do documento.
- * PAR-04 · troca de secretária: a conta que sai é suspensa (nunca apagada), a
- *          nova herda o ministério, o link é regenerado e o antigo morre já.
+ * PAR-04 · B2G-06 · as secretárias passaram para `actions/secretaries` (uma
+ *          por pessoa, com link pessoal e PIN).
  * PAR-05 · o limite de alerta.
  * PAR-07 · confirmar o pagamento externo (desconta da bolsa e liberta a
  *          emissão) e revertê-lo (repõe o saldo).
@@ -20,7 +20,6 @@
  * que o saldo cobre.
  */
 
-import { randomBytes } from "crypto"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
@@ -33,18 +32,12 @@ import { applyPaymentStatus } from "@/lib/payments"
 import { logCaseEvent } from "@/lib/case-events"
 import { parseMoney } from "@/lib/proposal-math"
 import { checkBudgetAlert } from "@/lib/budget-alerts"
-import { sendMinistryWelcome } from "@/lib/emails/ministry-welcome"
 import { getBoI18n } from "@/i18n/bo-server"
-import { translateMessage, type Translator } from "@/i18n/translate"
+import { translateMessage } from "@/i18n/translate"
 
 export type B2gResult = { ok: true; notice?: string } | { ok: false; error: string }
 
 const SLUG = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
-
-function mintLinkToken(): string {
-  /* 192 bits, como o token do /pc (LNK-08): sem nome, sem nada sequencial. */
-  return randomBytes(24).toString("base64url")
-}
 
 function touch(orgId?: string) {
   revalidatePath("/agente/ministerios")
@@ -85,22 +78,22 @@ async function visibleOrg(orgId: string) {
   } | null
 }
 
-// ── PAR-02 · ministérios ─────────────────────────────────────────────────────
+// ── PAR-02 · B2G-23 · ministérios ────────────────────────────────────────────
+//
+// D-10 · a empresa não cria nem renomeia ministérios: pede-os ao master
+// (`actions/ministry-requests`). Aqui, a empresa muda só o que não é
+// identidade (limites, o que a secretária vê); a WeeFly (`cross_partner`)
+// cria ministérios directamente no Admin e muda tudo. O RLS e o gatilho da
+// 0034 dizem o mesmo por baixo.
 
 const orgSchema = z.object({
   id: z.string().uuid().optional(),
+  /** Só a WeeFly: a empresa onde nasce o ministério (no Admin). */
+  partnerId: z.string().uuid().optional(),
   name: z.string().trim().min(2, "bo.b2g.errors.nameMissing").max(160),
   slug: z.string().trim().toLowerCase().regex(SLUG, "bo.b2g.errors.slugShape"),
   logoUrl: z.string().trim().max(500).optional().transform((v) => v || null),
-  secretaryName: z.string().trim().max(120).optional().transform((v) => v || null),
-  secretaryEmail: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .optional()
-    .transform((v) => v || null)
-    .refine((v) => v === null || z.string().email().safeParse(v).success, "bo.b2g.errors.emailInvalid"),
-  secretaryPhone: z.string().trim().max(40).optional().transform((v) => v || null),
+  crestUrl: z.string().trim().max(500).optional().transform((v) => v || null),
   alertThresholdAmount: z.string().trim().max(30).optional(),
   alertThresholdPercent: z.string().trim().max(10).optional(),
   secretarySeesBalance: z.boolean().optional(),
@@ -110,6 +103,7 @@ export async function saveOrganisation(input: z.input<typeof orgSchema>): Promis
   const { t } = await getBoI18n()
   const identity = await boIdentity()
   if (!isManager(identity) || !identity.tenant) return { ok: false, error: t("bo.b2g.errors.onlyManagers") }
+  const crossPartner = Boolean(identity.profile?.crossPartner)
 
   const parsed = orgSchema.safeParse(input)
   if (!parsed.success) {
@@ -123,43 +117,47 @@ export async function saveOrganisation(input: z.input<typeof orgSchema>): Promis
     return { ok: false, error: t("bo.b2g.errors.percentRange") }
   }
 
-  const fields = {
-    name: v.name,
-    slug: v.slug,
-    logo_url: v.logoUrl,
-    secretary_name: v.secretaryName,
-    secretary_email: v.secretaryEmail,
-    secretary_phone: v.secretaryPhone,
+  /* O que a empresa pode mudar. */
+  const settings = {
     alert_threshold_amount: amount,
     alert_threshold_percent: amount != null ? null : percent,
     secretary_sees_balance: Boolean(v.secretarySeesBalance),
+  }
+  /* B2G-05 · a identidade do ministério: só a WeeFly. */
+  const identityFields = {
+    name: v.name,
+    slug: v.slug,
+    logo_url: v.logoUrl,
+    crest_url: v.crestUrl,
   }
 
   const db = createClient()
   if (v.id) {
     const org = await visibleOrg(v.id)
     if (!org) return { ok: false, error: t("bo.b2g.errors.notFound") }
-    const { error } = await db.from("organisations").update(fields).eq("id", v.id)
+    const { error } = await db
+      .from("organisations")
+      .update(crossPartner ? { ...settings, ...identityFields } : settings)
+      .eq("id", v.id)
     if (error) return { ok: false, error: error.code === "23505" ? t("bo.b2g.errors.slugTaken") : error.message }
     await audit(identity, org.partner_id, "organisation_updated", org.slug)
     touch(v.id)
     return { ok: true, notice: t("bo.b2g.notice.saved"), id: v.id }
   }
 
-  /* Um ministério nasce no parceiro da sessão, e com link (PAR-02: "o link é
-     gerado na criação"). B2G-02 · sem o canal Ministérios, não nasce nenhum.
-     (Mudar um que já existe passa pelo `visibleOrg`, que olha para o canal da
-     empresa do ministério.) */
-  if (!(await partnerHasChannel(identity.tenant.partnerId, "B2G"))) {
+  /* D-10 · criar directamente é só da WeeFly (no Admin, para qualquer
+     empresa). As outras empresas pedem (`requestMinistry`). */
+  if (!crossPartner) return { ok: false, error: t("bo.ministryRequests.errors.onlyMaster") }
+  const partnerId = v.partnerId ?? identity.tenant.partnerId
+  if (!(await partnerHasChannel(partnerId, "B2G"))) {
     return { ok: false, error: t("bo.b2g.errors.channelOff") }
   }
   const { data, error } = await db
     .from("organisations")
     .insert({
-      ...fields,
-      partner_id: identity.tenant.partnerId,
-      link_token: mintLinkToken(),
-      link_rotated_at: new Date().toISOString(),
+      ...settings,
+      ...identityFields,
+      partner_id: partnerId,
       created_by_email: identity.email,
     })
     .select("id")
@@ -167,151 +165,9 @@ export async function saveOrganisation(input: z.input<typeof orgSchema>): Promis
   if (error) return { ok: false, error: error.code === "23505" ? t("bo.b2g.errors.slugTaken") : error.message }
   const id = (data as { id: string }).id
 
-  await audit(identity, identity.tenant.partnerId, "organisation_created", v.slug)
-
-  /* A secretária de origem, se já foi indicada: conta com o perfil Secretária
-     (ADM-02), presa a este ministério, e o email de boas-vindas (MIN-05). */
-  let notice = t("bo.b2g.notice.created")
-  if (v.secretaryEmail) {
-    const created = await createSecretaryAccount(t, identity, id, identity.tenant.partnerId, {
-      email: v.secretaryEmail,
-      name: v.secretaryName ?? v.secretaryEmail,
-    })
-    if (!created.ok) notice += ` ${created.error}`
-    const sent = await sendMinistryWelcome(id)
-    notice += sent.ok ? ` ${t("bo.b2g.notice.welcomeSent")}` : ` ${t("bo.b2g.notice.welcomeFailed", { reason: sent.reason })}`
-  }
-
+  await audit(identity, partnerId, "organisation_created", v.slug)
   touch(id)
-  return { ok: true, notice, id }
-}
-
-export async function rotateOrganisationLink(orgId: string): Promise<B2gResult> {
-  const { t } = await getBoI18n()
-  const identity = await boIdentity()
-  if (!isManager(identity)) return { ok: false, error: t("bo.b2g.errors.onlyManagers") }
-  const org = await visibleOrg(orgId)
-  if (!org) return { ok: false, error: t("bo.b2g.errors.notFound") }
-
-  const db = createClient()
-  const { error } = await db
-    .from("organisations")
-    .update({ link_token: mintLinkToken(), link_rotated_at: new Date().toISOString() })
-    .eq("id", orgId)
-  if (error) return { ok: false, error: error.message }
-
-  await audit(identity, org.partner_id, "organisation_link_rotated", org.slug)
-  const sent = org.secretary_email ? await sendMinistryWelcome(orgId) : null
-  touch(orgId)
-  return {
-    ok: true,
-    notice:
-      t("bo.b2g.notice.linkRotated") +
-      (sent ? (sent.ok ? ` ${t("bo.b2g.notice.welcomeSent")}` : ` ${t("bo.b2g.notice.welcomeFailed", { reason: sent.reason })}`) : ""),
-  }
-}
-
-// ── PAR-04 · troca de secretária ─────────────────────────────────────────────
-
-const secretarySchema = z.object({
-  orgId: z.string().uuid(),
-  name: z.string().trim().min(2, "bo.b2g.errors.nameMissing").max(120),
-  email: z.string().trim().toLowerCase().email("bo.b2g.errors.emailInvalid"),
-  phone: z.string().trim().max(40).optional(),
-})
-
-export async function changeSecretary(input: z.input<typeof secretarySchema>): Promise<B2gResult> {
-  const { t } = await getBoI18n()
-  const identity = await boIdentity()
-  if (!isManager(identity)) return { ok: false, error: t("bo.b2g.errors.onlyManagers") }
-
-  const parsed = secretarySchema.safeParse(input)
-  if (!parsed.success) {
-    return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.b2g.errors.invalid") }
-  }
-  const v = parsed.data
-  const org = await visibleOrg(v.orgId)
-  if (!org) return { ok: false, error: t("bo.b2g.errors.notFound") }
-
-  const db = createClient()
-
-  /* A conta que sai é suspensa, não apagada: o histórico fica ligado ao
-     ministério, e quem fez o quê continua a ler-se. */
-  const { data: current } = await db
-    .from("bo_allowlist")
-    .select("email")
-    .eq("organisation_id", v.orgId)
-    .eq("role_id", "secretary")
-    .eq("active", true)
-  for (const row of (current ?? []) as { email: string }[]) {
-    if (row.email === v.email) continue
-    await db
-      .from("bo_allowlist")
-      .update({
-        active: false,
-        suspended_by: identity.email,
-        suspend_reason: t("bo.b2g.secretaryReplaced"),
-        changed_by_email: identity.email,
-      })
-      .eq("email", row.email)
-  }
-
-  const created = await createSecretaryAccount(t, identity, v.orgId, org.partner_id, { email: v.email, name: v.name })
-  if (!created.ok) return created
-
-  /* O link antigo morre já: um token novo, e o ministério com os contactos da
-     secretária nova. */
-  const { error } = await db
-    .from("organisations")
-    .update({
-      secretary_name: v.name,
-      secretary_email: v.email,
-      secretary_phone: v.phone || null,
-      link_token: mintLinkToken(),
-      link_rotated_at: new Date().toISOString(),
-    })
-    .eq("id", v.orgId)
-  if (error) return { ok: false, error: error.message }
-
-  await audit(identity, org.partner_id, "organisation_link_rotated", org.slug, t("bo.b2g.secretaryReplaced"))
-  const sent = await sendMinistryWelcome(v.orgId)
-  touch(v.orgId)
-  return {
-    ok: true,
-    notice:
-      t("bo.b2g.notice.secretaryChanged") +
-      (sent.ok ? ` ${t("bo.b2g.notice.welcomeSent")}` : ` ${t("bo.b2g.notice.welcomeFailed", { reason: sent.reason })}`),
-  }
-}
-
-async function createSecretaryAccount(
-  t: Translator,
-  identity: BoIdentity,
-  orgId: string,
-  partnerId: string,
-  person: { email: string; name: string }
-): Promise<B2gResult> {
-  const db = createClient()
-  const { data: existing } = await db.from("bo_allowlist").select("email").eq("email", person.email).maybeSingle()
-  const row = {
-    label: person.name,
-    role_id: "secretary",
-    role: "admin",
-    partner_id: partnerId,
-    organisation_id: orgId,
-    active: true,
-    changed_by_email: identity.email,
-  }
-  const { error } = existing
-    ? await db.from("bo_allowlist").update(row).eq("email", person.email)
-    : await db.from("bo_allowlist").insert({ ...row, email: person.email })
-  if (error) {
-    return {
-      ok: false,
-      error: error.code === "42501" ? t("bo.b2g.errors.secretaryDenied") : error.message,
-    }
-  }
-  return { ok: true }
+  return { ok: true, notice: t("bo.b2g.notice.created"), id }
 }
 
 // ── PAR-03 · a bolsa ─────────────────────────────────────────────────────────

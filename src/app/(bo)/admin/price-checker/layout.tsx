@@ -26,6 +26,7 @@ import { hasChannel, normaliseChannels, type PartnerChannel } from "@/lib/channe
 import { partnerChannels } from "@/lib/channel-gate"
 import { getBoScope } from "@/lib/bo-scope"
 import { listVipClients } from "@/lib/vip"
+import { listLinkMinistries } from "@/lib/b2g"
 
 /**
  * WeeFly — o back-office do Price Checker.
@@ -114,6 +115,11 @@ export default async function BoPriceCheckerLayout({
         }))
       : []
 
+  /* B2G-03 · B2G-06 · a opção Ministério: os ministérios activos da empresa
+     com as secretárias activas e o link pessoal de cada uma. */
+  const linkScope = tenant && hasChannel(linkChannels, "B2G") ? await getBoScope() : null
+  const linkMinistries = linkScope && tenant ? await listLinkMinistries(linkScope, tenant.partnerId) : []
+
   const feed = access.ok
     ? await loadBoAlerts(access.identity.userId)
     : { alerts: [], unread: 0 }
@@ -199,7 +205,7 @@ export default async function BoPriceCheckerLayout({
                 <BoTopbarActions
                   channels={linkChannels}
                   vipClients={linkVips}
-                  /* Bloco 3 · `ministries` (ministérios + secretárias) entra aqui. */
+                  ministries={linkMinistries}
                   viewer={{
                     label: access.identity.label,
                     email: access.identity.email,

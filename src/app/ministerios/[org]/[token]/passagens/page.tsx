@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 
 import { PcTopbar } from "@/components/pc/chrome"
 import { InstallCard } from "@/components/pc/screens-status"
-import { listMinistryTrips, ministryBalance, resolveMinistry, type MinistryTrip } from "@/lib/ministry"
+import { listMinistryTrips, loadSecretarySpace, ministryBalance, type MinistryTrip } from "@/lib/ministry"
 import { formatAmount } from "@/lib/case-status"
 import { getTranslator } from "@/i18n/server"
 
@@ -18,8 +18,10 @@ import { getTranslator } from "@/i18n/server"
 export const dynamic = "force-dynamic"
 
 export default async function MinistryTripsPage({ params }: { params: { org: string; token: string } }) {
-  const lookup = await resolveMinistry(params.org, params.token)
+  /* B2G-07 · sem a sessão do PIN desta secretária, nada (a moldura mostra o PIN). */
+  const { lookup, signedIn } = await loadSecretarySpace(params.org, params.token)
   if (!lookup.ok) notFound()
+  if (!signedIn) return null
   const { org } = lookup.ministry
   const t = getTranslator("pt")
 

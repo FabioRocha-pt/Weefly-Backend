@@ -208,7 +208,7 @@ export async function loadPcState(token: string): Promise<PcLookup> {
     .select(
       `id, token, stage, created_at, pnr, issued_at, organisation_id,
        partner:partners (status, commercial_name),
-       organisation:organisations (name, slug, link_token),
+       organisation:organisations (name, slug),
        links:case_links (id, stage, status),
        trip_request:trip_requests (
          id, reference, trip_type, origin, destination, depart_date, return_date,
@@ -417,10 +417,21 @@ export async function loadPcState(token: string): Promise<PcLookup> {
       const { data: balance } = await admin.rpc("organisation_balance", { p_org: row.organisation_id })
       fundsCover = balance != null ? Number(balance) >= Number(totals[selectedOfferId]) : null
     }
+    /* B2G-06 · o caminho de volta é o link pessoal da secretária que fez o
+       pedido (o do ministério deixou de ser credencial, 0034). Lido à parte:
+       numa base sem a 0034 não há coluna, e o caso abre na mesma. */
+    let appPath: string | null = null
+    const { data: author } = await admin
+      .from("booking_cases")
+      .select("secretary:ministry_secretaries (link_token, active)")
+      .eq("id", row.id)
+      .maybeSingle()
+    const secretary = unwrap((author as Record<string, any> | null)?.secretary)
+    if (secretary?.active && secretary.link_token) appPath = `/ministerios/${organisation.slug}/${secretary.link_token}`
     state.ministry = {
       name: String(organisation.name),
       partnerName: String(unwrap(row.partner)?.commercial_name ?? ""),
-      appPath: organisation.link_token ? `/ministerios/${organisation.slug}/${organisation.link_token}` : null,
+      appPath,
       fundsCover,
     }
   }

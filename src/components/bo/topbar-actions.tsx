@@ -41,6 +41,8 @@ export interface LinkVipClient {
 export interface LinkMinistry {
   id: string
   name: string
+  /** B2G-24 · o brasão, sempre ao lado do nome. */
+  crestUrl?: string | null
   secretaries: { id: string; name: string; /** `/ministerios/<org>/<token>` */ path: string }[]
 }
 
@@ -390,6 +392,15 @@ export function LinkDrawer({
                     ))}
                   </select>
                 </div>
+                {ministry && (
+                  <div className="f s12" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {ministry.crestUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={ministry.crestUrl} alt="" style={{ width: 28, height: 28, objectFit: "contain" }} />
+                    )}
+                    <b>{ministry.name}</b>
+                  </div>
+                )}
                 <div className="f s6">
                   <label>{t("bo.linkChannels.pickSecretary")}</label>
                   <select value={secretaryId} onChange={(e) => setSecretaryId(e.target.value)} disabled={!ministry}>

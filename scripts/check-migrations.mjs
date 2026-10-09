@@ -96,6 +96,10 @@ const CHECKS = [
   { migration: "0032", table: "booking_cases", column: "channel", need: "B2G-02 · B2G-21 · o canal do caso" },
   { migration: "0033", table: "vip_clients", column: "link_token", need: "B2G-22 · os clientes VIP e o link pessoal" },
   { migration: "0033", table: "booking_cases", column: "vip_client_id", need: "B2G-21 · o VIP do caso" },
+  { migration: "0034", table: "organisations", column: "crest_url", need: "B2G-05 · o brasão do ministério" },
+  { migration: "0034", table: "organisation_requests", column: "status", need: "B2G-23 · pedir um ministério ao master" },
+  { migration: "0034", table: "ministry_secretaries", column: "link_token", need: "B2G-06 · as secretárias e o link pessoal" },
+  { migration: "0034", table: "booking_cases", column: "secretary_id", need: "B2G-06 · quem fez o pedido" },
 ]
 
 /* O PostgREST devolve PGRST205 quando não conhece a tabela e o código do

@@ -77,6 +77,12 @@ export interface PcIntake {
    */
   ministryToken?: string | null
   /**
+   * B2G-06 · B2G-07 · a secretária cuja sessão (PIN) a server action já
+   * verificou para este `ministryToken`. Sem ela, um pedido de ministério não
+   * entra; com ela, o caso fica com a autora (`booking_cases.secretary_id`).
+   */
+  ministrySecretaryId?: string | null
+  /**
    * B2G-22 · o token do link pessoal de um cliente VIP. Quando resolve, o caso
    * é `vip`, desse cliente e da empresa dele — e ganha ao subdomínio e ao
    * link, como o do ministério.
@@ -334,12 +340,12 @@ export async function createPriceCheckerCase(
      * `partner_id` de cada uma, e um caso do Alô com o lead e o pedido na
      * WeeFly ficava invisível na fila do Alô.
      */
-    const ministry = await resolveMinistry(admin, input.ministryToken)
+    const ministry = await resolveMinistry(admin, input.ministryToken, input.ministrySecretaryId)
     /* B2G-02 · um pedido do espaço de um ministério que já não abre (link
        regenerado, ministério inactivo, canal desligado) não se transforma num
        pedido público: não se guarda. */
     if (input.ministryToken && !ministry) {
-      console.warn("[pc] pedido de ministério recusado: link sem ministério activo com o canal B2G.")
+      console.warn("[pc] pedido de ministério recusado: link sem secretária activa, sem sessão, ou sem o canal B2G.")
       return null
     }
     /* B2G-22 · o mesmo para o link de um VIP: desactivado, de uma empresa sem
@@ -431,7 +437,7 @@ export async function createPriceCheckerCase(
         trip_request_id: tripRequestId,
         lead_id: leadId,
         ...(partnerId ? { partner_id: partnerId } : {}),
-        ...(ministry ? { organisation_id: ministry.organisationId } : {}),
+        ...(ministry ? { organisation_id: ministry.organisationId, secretary_id: ministry.secretaryId } : {}),
         /* B2G-21 · o canal decide-o o gatilho da 0033 a partir do VIP; vai
            escrito na mesma, para quem lê o código. */
         ...(vip ? { vip_client_id: vip.vipClientId, channel: "vip" } : {}),
@@ -463,9 +469,9 @@ export async function createPriceCheckerCase(
     await logCaseEvent({
       caseId,
       kind: "request_submitted",
-      title: "Pedido submetido pelo cliente",
+      title: ministry ? `Pedido submetido por ${ministry.secretaryName}` : "Pedido submetido pelo cliente",
       detail: [
-        vip ? "VIP" : "Price Checker",
+        ministry ? `Ministério · ${ministry.secretaryName}` : vip ? "VIP" : "Price Checker",
         input.agentSlug ? `agent=${input.agentSlug}` : "sem agente",
         `lang=${input.locale}`,
         `cur=${input.currency}`,
@@ -474,6 +480,7 @@ export async function createPriceCheckerCase(
       actorKind: "client",
       payload: {
         reference,
+        ...(ministry ? { secretaryId: ministry.secretaryId } : {}),
         trip: input.trip,
         cabin: input.cabin,
         pax: {
@@ -536,27 +543,30 @@ async function resolveLinkPartner(
   return matches ? partnerId : null
 }
 
-/** MIN-01 · o ministério do link, activo e de um parceiro activo. */
+/**
+ * MIN-01 · B2G-06 · o ministério do link pessoal de uma secretária: a
+ * secretária activa (a mesma cuja sessão a acção verificou), o ministério
+ * activo, a empresa activa e com o canal B2G. O token do ministério
+ * (`organisations.link_token`) já não serve.
+ */
 async function resolveMinistry(
   admin: NonNullable<ReturnType<typeof createAdminClient>>,
-  token: string | null | undefined
-): Promise<{ organisationId: string; partnerId: string } | null> {
-  if (!token) return null
+  token: string | null | undefined,
+  secretaryId: string | null | undefined
+): Promise<{ organisationId: string; partnerId: string; secretaryId: string; secretaryName: string } | null> {
+  if (!token || !secretaryId) return null
   const { data } = await admin
-    .from("organisations")
-    .select("id, partner_id, active, partner:partners(status, channels)")
+    .from("ministry_secretaries")
+    .select("id, name, active, organisation:organisations(id, partner_id, active, partner:partners(status, channels))")
     .eq("link_token", token)
+    .eq("id", secretaryId)
     .maybeSingle()
-  const row = data as {
-    id: string
-    partner_id: string
-    active: boolean
-    partner: { status: string; channels: string[] | null } | { status: string; channels: string[] | null }[] | null
-  } | null
-  const partner = Array.isArray(row?.partner) ? row?.partner[0] : row?.partner
+  const sec = data as Record<string, any> | null
+  const org = sec ? (Array.isArray(sec.organisation) ? sec.organisation[0] : sec.organisation) : null
+  const partner = org ? (Array.isArray(org.partner) ? org.partner[0] : org.partner) : null
   /* B2G-02 · um ministério de uma empresa sem o canal Ministérios não recebe pedidos. */
-  if (!row || !row.active || partner?.status !== "active" || !hasChannel(partner.channels, "B2G")) return null
-  return { organisationId: row.id, partnerId: row.partner_id }
+  if (!sec?.active || !org?.active || partner?.status !== "active" || !hasChannel(partner.channels, "B2G")) return null
+  return { organisationId: org.id, partnerId: org.partner_id, secretaryId: sec.id, secretaryName: sec.name }
 }
 
 /**

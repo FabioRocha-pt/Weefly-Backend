@@ -33,6 +33,12 @@ export default async function MinisterioPage({ params }: { params: { id: string 
       canManage={canManage}
       recipients={recipients}
       travellers={travellers}
+      viewer={{
+        email: access.identity.email,
+        isManager: canManage,
+        crossPartner: Boolean(access.identity.profile?.crossPartner),
+        backoffice: Boolean(access.identity.profile?.backoffice),
+      }}
       t={t}
       locale={locale}
     />

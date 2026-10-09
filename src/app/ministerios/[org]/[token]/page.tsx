@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 
 import { RequestWizard } from "@/components/pc/request-wizard"
-import { resolveMinistry } from "@/lib/ministry"
+import { loadSecretarySpace } from "@/lib/ministry"
 import { countryOfDial, toE164 } from "@/lib/countries"
 
 /**
@@ -20,8 +20,10 @@ export default async function MinistryNewRequestPage({
 }: {
   params: { org: string; token: string }
 }) {
-  const lookup = await resolveMinistry(params.org, params.token)
+  /* B2G-07 · sem a sessão do PIN desta secretária, nada (a moldura mostra o PIN). */
+  const { lookup, signedIn } = await loadSecretarySpace(params.org, params.token)
   if (!lookup.ok) notFound()
+  if (!signedIn) return null
   const { org } = lookup.ministry
 
   /* O telefone da secretária chega como foi escrito ("+238 991 23 45"): o

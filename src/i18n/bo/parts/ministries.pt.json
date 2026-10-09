@@ -1,0 +1,109 @@
+{
+  "bo": {
+    "b2g": {
+      "form": {
+        "logo": "Logótipo horizontal (URL da imagem)",
+        "crest": "Brasão (URL da imagem)",
+        "identityLocked": "O nome, o endereço e os logótipos são definidos pela WeeFly. Para mudar, fale com a WeeFly."
+      }
+    },
+    "secretaries": {
+      "title": "Secretárias",
+      "subtitle": "Cada secretária tem o seu link pessoal e o seu PIN. Todas veem os pedidos do ministério.",
+      "empty": "Ainda não há secretárias. Sem secretária com PIN, o ministério não faz pedidos.",
+      "new": "Nova secretária",
+      "explain": "O link pessoal e o PIN são gerados agora. O PIN aparece uma só vez, aqui: entregue-o à secretária (nunca vai por email).",
+      "name": "Nome",
+      "email": "Email",
+      "phone": "Telefone",
+      "sendWelcome": "Enviar o link por email (só o link; o PIN entrega-o você)",
+      "create": "Criar secretária",
+      "inactive": "desactivada",
+      "locked": "bloqueada até {until}",
+      "noPin": "Sem PIN: não entra até gerar um",
+      "pinBy": "PIN gerado por {email} · {when}",
+      "lastAccess": "Último acesso: {when}",
+      "neverAccessed": "Ainda não entrou",
+      "createdBy": "Criada por {email}",
+      "deactivatedBy": "Desactivada por {email} · {when}",
+      "copyLink": "Copiar link",
+      "copied": "Copiado",
+      "generate": "Gerar PIN",
+      "regenerate": "Gerar PIN novo",
+      "regenerateConfirm": "Gerar um PIN novo para {name}? O PIN atual deixa de funcionar e as sessões abertas terminam.",
+      "sendLink": "Reenviar link",
+      "deactivate": "Desactivar",
+      "reactivate": "Reactivar",
+      "deactivateConfirm": "Desactivar {name}? O acesso dela termina já; os pedidos ficam.",
+      "pin": {
+        "title": "PIN de {name}",
+        "copy": "Copiar PIN",
+        "once": "Este PIN não volta a ser mostrado nem é enviado por email. Entregue-o à secretária por um canal seguro.",
+        "done": "Já entreguei / fechar"
+      },
+      "notice": {
+        "created": "Secretária criada.",
+        "updated": "Secretária actualizada.",
+        "pinRegenerated": "PIN novo gerado. O antigo deixou de funcionar.",
+        "deactivated": "Secretária desactivada: o acesso terminou.",
+        "reactivated": "Secretária reactivada.",
+        "welcomeSent": "Link enviado por email.",
+        "welcomeFailed": "O email não foi enviado: {reason}."
+      },
+      "errors": {
+        "notAllowed": "Sem permissão para gerir as secretárias deste ministério.",
+        "notFound": "Secretária não encontrada.",
+        "orgInactive": "O ministério está inactivo.",
+        "inactive": "A secretária está desactivada. Reactive-a primeiro.",
+        "pinNotAllowed": "Só quem criou a secretária, um Admin da empresa ou a WeeFly gera um PIN novo.",
+        "pinFailed": "Não foi possível gerar o PIN. Tente de novo.",
+        "nameMissing": "Indique o nome.",
+        "emailInvalid": "Email inválido.",
+        "phoneInvalid": "Telefone inválido.",
+        "invalid": "Dados inválidos.",
+        "saveFailed": "Não foi possível guardar. Tente de novo."
+      }
+    },
+    "ministryRequests": {
+      "new": "Pedir ministério novo",
+      "explain": "O ministério é criado pela WeeFly. Envie o nome e os logótipos; recebe a decisão por email e aqui.",
+      "name": "Nome do ministério",
+      "logo": "Logótipo horizontal",
+      "crest": "Brasão (opcional)",
+      "fileRules": "PNG ou JPEG, até 2 MB cada.",
+      "submit": "Enviar pedido",
+      "ownTitle": "Ministérios pedidos",
+      "status": {
+        "pending": "Pendente",
+        "approved": "Aprovado",
+        "rejected": "Recusado"
+      },
+      "pendingTitle": "Ministérios pedidos pelas empresas",
+      "pendingEmpty": "Nenhum pedido à espera.",
+      "approve": "Aprovar",
+      "approveConfirm": "Criar {name} na empresa {partner}?",
+      "reject": "Recusar",
+      "reason": "Motivo da recusa",
+      "notice": {
+        "requested": "Pedido enviado à WeeFly.",
+        "approved": "Ministério criado.",
+        "rejected": "Pedido recusado.",
+        "notified": "A empresa foi avisada por email."
+      },
+      "errors": {
+        "notAllowed": "Sem permissão para pedir ministérios.",
+        "onlyMaster": "Só a WeeFly cria ministérios. Use \"Pedir ministério novo\".",
+        "nameMissing": "Indique o nome do ministério.",
+        "logoMissing": "Junte o logótipo horizontal.",
+        "imageType": "A imagem tem de ser PNG ou JPEG.",
+        "imageSize": "A imagem tem mais de 2 MB.",
+        "duplicate": "Este ministério já está pedido e à espera de decisão.",
+        "uploadFailed": "Não foi possível carregar a imagem. Tente de novo.",
+        "saveFailed": "Não foi possível guardar. Tente de novo.",
+        "unavailable": "Serviço indisponível. Tente de novo daqui a pouco.",
+        "notPending": "Este pedido já foi decidido.",
+        "reasonMissing": "Indique o motivo (pelo menos 3 caracteres)."
+      }
+    }
+  }
+}

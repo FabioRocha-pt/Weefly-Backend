@@ -1774,7 +1774,8 @@
       "fileTooBig": "Ce fichier dépasse 8 Mo.",
       "badFileType": "Envoyez un JPG, un PNG ou un PDF.",
       "paymentClosed": "Ce paiement est déjà clôturé. Parlez-nous sur WhatsApp.",
-      "uploadFailed": "Nous n'avons pas pu enregistrer le fichier. Réessayez."
+      "uploadFailed": "Nous n'avons pas pu enregistrer le fichier. Réessayez.",
+      "ministrySession": "Votre session a expiré. Saisissez à nouveau votre PIN pour envoyer la demande."
     }
   },
   "pro": {
@@ -1952,6 +1953,23 @@
       "iosWhy": "*Elle s'ouvre toujours au bon endroit.* Avec l'icône sur l'écran d'accueil, plus besoin de chercher le lien dans vos e-mails.",
       "title": "Enregistrez {name} sur votre téléphone",
       "why": "*Elle s'ouvre toujours au bon endroit.* Avec l'icône sur l'écran d'accueil, plus besoin de chercher le lien dans vos e-mails."
+    },
+    "pin": {
+      "hello": "Bonjour, {name}. Saisissez votre code PIN à 6 chiffres.",
+      "label": "PIN",
+      "enter": "Entrer",
+      "checking": "Vérification…",
+      "wrong": "PIN incorrect, ou lien invalide.",
+      "shape": "Le PIN comporte 6 chiffres.",
+      "locked": "Trop de tentatives erronées. L’accès est bloqué pendant 15 minutes.",
+      "tooMany": "Trop de tentatives depuis cette connexion. Réessayez dans quelques minutes.",
+      "unavailable": "Impossible de vérifier le PIN pour le moment. Réessayez dans un instant.",
+      "help": "Votre PIN vous a été remis par la personne qui a créé votre accès. Oublié ? Demandez-en un nouveau : l’ancien ne fonctionnera plus.",
+      "leave": "Se déconnecter sur cet appareil"
+    },
+    "landing": {
+      "title": "Espace voyages du ministère",
+      "body": "Pour faire une demande, ouvrez le lien personnel reçu par e-mail et saisissez votre PIN. Si vous n’avez pas d’accès, contactez l’agence de voyages de votre ministère."
     }
   },
   "seo": {

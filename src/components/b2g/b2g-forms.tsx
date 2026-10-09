@@ -17,12 +17,10 @@ import { Button } from "@/components/ui/button"
 import { useI18n } from "@/i18n/provider"
 import {
   adjustBudget,
-  changeSecretary,
   confirmExternalPayment,
   creditBudget,
   removeAlertRecipient,
   reverseExternalPayment,
-  rotateOrganisationLink,
   saveAlertRecipient,
   saveOrganisation,
   setAlertThreshold,
@@ -58,22 +56,22 @@ function Label({ children }: { children: React.ReactNode }) {
   return <span className="text-slate-600">{children}</span>
 }
 
-// ── PAR-02 · o ministério ────────────────────────────────────────────────────
+// ── PAR-02 · B2G-23 · o ministério ───────────────────────────────────────────
 
 export interface OrgFormValues {
   id?: string
+  /** B2G-23 · só a WeeFly: a empresa onde nasce o ministério. */
+  partnerId?: string
   name: string
   slug: string
   logoUrl: string
-  secretaryName: string
-  secretaryEmail: string
-  secretaryPhone: string
+  crestUrl: string
   alertThresholdAmount: string
   alertThresholdPercent: string
   secretarySeesBalance: boolean
 }
 
-function slugify(value: string): string {
+export function slugify(value: string): string {
   return value
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -84,11 +82,17 @@ function slugify(value: string): string {
     .slice(0, 63)
 }
 
+/**
+ * D-10 · `identityEditable`: o nome, o endereço e os logótipos só a WeeFly os
+ * muda. Para a empresa ficam à vista, desligados (o servidor recusa na mesma).
+ */
 export function OrganisationForm({
   initial,
+  identityEditable,
   onDone,
 }: {
   initial?: Partial<OrgFormValues>
+  identityEditable: boolean
   onDone?: () => void
 }) {
   const { t } = useI18n()
@@ -98,9 +102,7 @@ export function OrganisationForm({
     name: "",
     slug: "",
     logoUrl: "",
-    secretaryName: "",
-    secretaryEmail: "",
-    secretaryPhone: "",
+    crestUrl: "",
     alertThresholdAmount: "",
     alertThresholdPercent: "",
     secretarySeesBalance: false,
@@ -111,12 +113,14 @@ export function OrganisationForm({
 
   return (
     <div className="rounded-2xl border border-orange-200 bg-orange-50/40 p-5 space-y-4">
+      {!identityEditable && <p className="text-xs text-slate-500">{t("bo.b2g.form.identityLocked")}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label className="text-sm space-y-1">
           <Label>{t("bo.b2g.form.name")}</Label>
           <input
             className={field}
             value={v.name}
+            disabled={!identityEditable}
             onChange={(e) => {
               const name = e.target.value
               setV((c) => ({ ...c, name, slug: slugTouched ? c.slug : slugify(name) }))
@@ -128,33 +132,22 @@ export function OrganisationForm({
           <input
             className={`${field} font-mono`}
             value={v.slug}
+            disabled={!identityEditable}
             onChange={(e) => {
               setSlugTouched(true)
               set("slug", e.target.value.toLowerCase())
             }}
           />
-          <span className="text-xs text-slate-500">/ministerios/{v.slug || "…"}/…</span>
+          <span className="text-xs text-slate-500">/ministerios/{v.slug || "…"}</span>
         </label>
-        <label className="text-sm space-y-1 md:col-span-2">
+        <label className="text-sm space-y-1">
           <Label>{t("bo.b2g.form.logo")}</Label>
-          <input className={field} value={v.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} placeholder="https://…" />
+          <input className={field} value={v.logoUrl} disabled={!identityEditable} onChange={(e) => set("logoUrl", e.target.value)} placeholder="https://…" />
         </label>
-        {!editing && (
-          <>
-            <label className="text-sm space-y-1">
-              <Label>{t("bo.b2g.form.secretaryName")}</Label>
-              <input className={field} value={v.secretaryName} onChange={(e) => set("secretaryName", e.target.value)} />
-            </label>
-            <label className="text-sm space-y-1">
-              <Label>{t("bo.b2g.form.secretaryEmail")}</Label>
-              <input className={field} type="email" value={v.secretaryEmail} onChange={(e) => set("secretaryEmail", e.target.value)} />
-            </label>
-            <label className="text-sm space-y-1">
-              <Label>{t("bo.b2g.form.secretaryPhone")}</Label>
-              <input className={field} value={v.secretaryPhone} onChange={(e) => set("secretaryPhone", e.target.value)} />
-            </label>
-          </>
-        )}
+        <label className="text-sm space-y-1">
+          <Label>{t("bo.b2g.form.crest")}</Label>
+          <input className={field} value={v.crestUrl} disabled={!identityEditable} onChange={(e) => set("crestUrl", e.target.value)} placeholder="https://…" />
+        </label>
         <label className="text-sm space-y-1">
           <Label>{t("bo.b2g.form.thresholdAmount")}</Label>
           <input className={field} inputMode="decimal" value={v.alertThresholdAmount} onChange={(e) => set("alertThresholdAmount", e.target.value)} />
@@ -183,12 +176,12 @@ export function OrganisationForm({
   )
 }
 
-/** Abre o formulário de um ministério novo. */
-export function NewOrganisation() {
+/** B2G-23 · só a WeeFly: abre o formulário de um ministério novo, na empresa dada. */
+export function NewOrganisation({ partnerId }: { partnerId?: string }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   return open ? (
-    <OrganisationForm onDone={() => setOpen(false)} />
+    <OrganisationForm initial={{ partnerId }} identityEditable onDone={() => setOpen(false)} />
   ) : (
     <Button size="sm" onClick={() => setOpen(true)}>
       {t("bo.b2g.list.new")}
@@ -196,97 +189,15 @@ export function NewOrganisation() {
   )
 }
 
-export function EditOrganisation({ initial }: { initial: OrgFormValues }) {
+export function EditOrganisation({ initial, identityEditable }: { initial: OrgFormValues; identityEditable: boolean }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   return open ? (
-    <OrganisationForm initial={initial} onDone={() => setOpen(false)} />
+    <OrganisationForm initial={initial} identityEditable={identityEditable} onDone={() => setOpen(false)} />
   ) : (
     <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
       {t("bo.b2g.detail.edit")}
     </Button>
-  )
-}
-
-// ── o link ───────────────────────────────────────────────────────────────────
-
-export function OrgLink({ orgId, link, canManage }: { orgId: string; link: string; canManage: boolean }) {
-  const { t } = useI18n()
-  const { pending, run, note } = useAction()
-  const [copied, setCopied] = useState(false)
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <code className="rounded bg-slate-100 px-2 py-1 text-xs break-all">{link || t("bo.b2g.detail.noLink")}</code>
-        {link && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={async () => {
-              await navigator.clipboard.writeText(link)
-              setCopied(true)
-              setTimeout(() => setCopied(false), 1500)
-            }}
-          >
-            {copied ? t("bo.b2g.detail.copied") : t("bo.b2g.detail.copy")}
-          </Button>
-        )}
-        {canManage && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(t("bo.b2g.detail.rotateConfirm"))) run(() => rotateOrganisationLink(orgId))
-            }}
-          >
-            {t("bo.b2g.detail.rotate")}
-          </Button>
-        )}
-      </div>
-      {note}
-    </div>
-  )
-}
-
-// ── PAR-04 · a secretária ────────────────────────────────────────────────────
-
-export function ChangeSecretary({ orgId }: { orgId: string }) {
-  const { t } = useI18n()
-  const { pending, run, note } = useAction()
-  const [open, setOpen] = useState(false)
-  const [v, setV] = useState({ name: "", email: "", phone: "" })
-  if (!open) {
-    return (
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-        {t("bo.b2g.secretary.change")}
-      </Button>
-    )
-  }
-  return (
-    <div className="space-y-3 rounded-xl bg-slate-50 p-4">
-      <p className="text-sm text-slate-600">{t("bo.b2g.secretary.explain")}</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <input className={field} placeholder={t("bo.b2g.form.secretaryName")} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
-        <input className={field} type="email" placeholder={t("bo.b2g.form.secretaryEmail")} value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />
-        <input className={field} placeholder={t("bo.b2g.form.secretaryPhone")} value={v.phone} onChange={(e) => setV({ ...v, phone: e.target.value })} />
-      </div>
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          disabled={pending}
-          onClick={() => {
-            if (window.confirm(t("bo.b2g.secretary.confirm"))) run(() => changeSecretary({ orgId, ...v }), () => setOpen(false))
-          }}
-        >
-          {t("bo.b2g.secretary.submit")}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => setOpen(false)}>
-          {t("bo.b2g.form.cancel")}
-        </Button>
-      </div>
-      {note}
-    </div>
   )
 }
 

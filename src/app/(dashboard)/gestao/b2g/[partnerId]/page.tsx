@@ -5,9 +5,12 @@ import { getBoScope } from "@/lib/bo-scope"
 import { listAlertRecipients, listOrganisations } from "@/lib/b2g"
 import { getBoI18n } from "@/i18n/bo-server"
 import { OrganisationList } from "@/components/b2g/org-list"
-import { RecipientsEditor } from "@/components/b2g/b2g-forms"
+import { NewOrganisation, RecipientsEditor } from "@/components/b2g/b2g-forms"
 
-/** ADM-08 · os ministérios de um parceiro, e os destinatários dos alertas (ADM-06). */
+/**
+ * ADM-08 · os ministérios de um parceiro, e os destinatários dos alertas (ADM-06).
+ * B2G-23 · o master pode criar um ministério directamente nesta empresa.
+ */
 export default async function B2gPartnerPage({ params }: { params: { partnerId: string } }) {
   const scope = await getBoScope()
   if (!scope?.identity.profile?.crossPartner) notFound()
@@ -33,6 +36,7 @@ export default async function B2gPartnerPage({ params }: { params: { partnerId: 
         <h1 className="text-2xl font-bold text-slate-900 mt-1">{p.commercial_name}</h1>
         <p className="text-slate-500 mt-1">{t("bo.b2g.admin.readOnly")}</p>
       </div>
+      <NewOrganisation partnerId={p.id} />
       <OrganisationList orgs={orgs} hrefFor={(id) => `/gestao/b2g/m/${id}`} t={t} locale={locale} />
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="mb-3 font-semibold text-slate-900">{t("bo.b2g.recipients.title")}</h2>

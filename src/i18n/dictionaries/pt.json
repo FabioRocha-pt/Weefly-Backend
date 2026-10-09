@@ -1774,7 +1774,8 @@
       "fileTooBig": "Esse ficheiro tem mais de 8 MB.",
       "badFileType": "Envie um JPG, um PNG ou um PDF.",
       "paymentClosed": "Este pagamento já está fechado. Fale connosco no WhatsApp.",
-      "uploadFailed": "Não conseguimos guardar o ficheiro. Tente outra vez."
+      "uploadFailed": "Não conseguimos guardar o ficheiro. Tente outra vez.",
+      "ministrySession": "A sua sessão terminou. Introduza o PIN outra vez para enviar o pedido."
     }
   },
   "pro": {
@@ -1952,6 +1953,23 @@
       "iosWhy": "*Abre sempre no sítio certo.* Com o ícone no ecrã principal não precisa de procurar o link no email.",
       "title": "Guarde {name} no seu telemóvel",
       "why": "*Abre sempre no sítio certo.* Com o ícone no ecrã principal não precisa de procurar o link no email."
+    },
+    "pin": {
+      "hello": "Olá, {name}. Introduza o seu PIN de 6 dígitos.",
+      "label": "PIN",
+      "enter": "Entrar",
+      "checking": "A verificar…",
+      "wrong": "PIN incorreto, ou link inválido.",
+      "shape": "O PIN tem 6 dígitos.",
+      "locked": "Demasiadas tentativas erradas. O acesso fica bloqueado durante 15 minutos.",
+      "tooMany": "Demasiadas tentativas a partir desta ligação. Tente de novo daqui a alguns minutos.",
+      "unavailable": "Não foi possível verificar o PIN agora. Tente de novo daqui a pouco.",
+      "help": "O PIN foi-lhe entregue por quem criou o seu acesso. Esqueceu-se? Peça um novo: o antigo deixa de funcionar.",
+      "leave": "Terminar sessão neste dispositivo"
+    },
+    "landing": {
+      "title": "Espaço de viagens do ministério",
+      "body": "Para fazer pedidos, abra o link pessoal que recebeu por email e introduza o seu PIN. Se não tem acesso, fale com a empresa de viagens do seu ministério."
     }
   },
   "seo": {

@@ -44,6 +44,12 @@ export default async function B2gOrganisationPage({ params }: { params: { orgId:
         canManage
         recipients={recipients}
         travellers={travellers}
+        viewer={{
+          email: scope.identity.email,
+          isManager: true,
+          crossPartner: true,
+          backoffice: true,
+        }}
         t={t}
         locale={locale}
       />

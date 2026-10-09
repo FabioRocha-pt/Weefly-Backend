@@ -16,6 +16,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { getBoScope, type BoScope } from "@/lib/bo-scope"
+import { createAdminClient } from "@/utils/supabase/admin"
 
 export interface Organisation {
   id: string
@@ -23,6 +24,8 @@ export interface Organisation {
   slug: string
   name: string
   logoUrl: string | null
+  /** B2G-05 · o brasão. Numa lista, sempre ao lado do nome (B2G-24). */
+  crestUrl: string | null
   secretaryName: string | null
   secretaryEmail: string | null
   secretaryPhone: string | null
@@ -66,10 +69,12 @@ export interface OrganisationSummary extends Organisation {
   threshold: number | null
   requests: number
   lastAlertAt: string | null
+  /** B2G-06 · as secretárias activas (nomes). */
+  activeSecretaries: string[]
 }
 
 export const ORG_COLUMNS =
-  "id, partner_id, slug, name, logo_url, secretary_name, secretary_email, secretary_phone, active, link_token, link_rotated_at, currency, alert_threshold_amount, alert_threshold_percent, secretary_sees_balance, created_at"
+  "id, partner_id, slug, name, logo_url, crest_url, secretary_name, secretary_email, secretary_phone, active, link_token, link_rotated_at, currency, alert_threshold_amount, alert_threshold_percent, secretary_sees_balance, created_at"
 
 export function orgFromRow(r: Record<string, any>): Organisation {
   return {
@@ -78,6 +83,7 @@ export function orgFromRow(r: Record<string, any>): Organisation {
     slug: r.slug,
     name: r.name,
     logoUrl: r.logo_url ?? null,
+    crestUrl: r.crest_url ?? null,
     secretaryName: r.secretary_name ?? null,
     secretaryEmail: r.secretary_email ?? null,
     secretaryPhone: r.secretary_phone ?? null,
@@ -128,7 +134,7 @@ async function summarise(db: SupabaseClient, orgs: Organisation[]): Promise<Orga
   if (orgs.length === 0) return []
   const ids = orgs.map((o) => o.id)
 
-  const [movRes, caseRes, alertRes] = await Promise.all([
+  const [movRes, caseRes, alertRes, secRes] = await Promise.all([
     db
       .from("budget_movements")
       .select("organisation_id, kind, delta, created_at")
@@ -140,7 +146,9 @@ async function summarise(db: SupabaseClient, orgs: Organisation[]): Promise<Orga
       .select("organisation_id, created_at")
       .in("organisation_id", ids)
       .order("created_at", { ascending: false }),
+    db.from("ministry_secretaries").select("organisation_id, name").in("organisation_id", ids).eq("active", true).order("created_at"),
   ])
+  const secretaries = (secRes.data ?? []) as { organisation_id: string; name: string }[]
 
   const movements = (movRes.data ?? []) as { organisation_id: string; kind: string; delta: number }[]
   const cases = (caseRes.data ?? []) as { organisation_id: string }[]
@@ -154,6 +162,7 @@ async function summarise(db: SupabaseClient, orgs: Organisation[]): Promise<Orga
       threshold: thresholdOf(org, own),
       requests: cases.filter((c) => c.organisation_id === org.id).length,
       lastAlertAt: alerts.find((a) => a.organisation_id === org.id)?.created_at ?? null,
+      activeSecretaries: secretaries.filter((x) => x.organisation_id === org.id).map((x) => x.name),
     }
   })
 }
@@ -188,8 +197,75 @@ export interface OrganisationDetail {
     createdAt: string
     externalPaid: boolean
   }[]
-  /** As contas de secretária deste ministério (a activa e as que saíram). */
-  secretaries: { email: string; label: string | null; active: boolean; suspendedAt: string | null }[]
+  /** B2G-06 · as secretárias deste ministério (activas e desactivadas). */
+  secretaries: MinistrySecretary[]
+}
+
+/** B2G-06 · uma secretária, como o back-office a vê (nunca o PIN nem o hash). */
+export interface MinistrySecretary {
+  id: string
+  name: string
+  email: string | null
+  phone: string | null
+  active: boolean
+  /** `/ministerios/<slug>/<token>` */
+  path: string
+  createdByEmail: string
+  createdAt: string
+  lastAccessAt: string | null
+  deactivatedAt: string | null
+  deactivatedByEmail: string | null
+  hasPin: boolean
+  pinSetByEmail: string | null
+  pinSetAt: string | null
+  lockedUntil: string | null
+}
+
+/**
+ * As secretárias de um ministério já aberto pela sessão. As linhas vêm pelo
+ * RLS; o estado do PIN (quem o gerou, quando, se está bloqueado — nunca o
+ * hash) pela service role, só para estas linhas.
+ */
+export async function listSecretaries(db: SupabaseClient, org: { id: string; slug: string }): Promise<MinistrySecretary[]> {
+  const { data, error } = await db
+    .from("ministry_secretaries")
+    .select("id, name, email, phone, active, link_token, created_by_email, created_at, last_access_at, deactivated_at, deactivated_by_email")
+    .eq("organisation_id", org.id)
+    .order("created_at")
+  if (error) {
+    console.error("[b2g] secretárias:", error.message)
+    return []
+  }
+  const rows = (data ?? []) as Record<string, any>[]
+  const admin = createAdminClient()
+  const secrets = new Map<string, Record<string, any>>()
+  if (admin && rows.length) {
+    const { data: s } = await admin
+      .from("ministry_secretary_secrets")
+      .select("secretary_id, pin_set_by_email, pin_set_at, locked_until, pin_version")
+      .in("secretary_id", rows.map((r) => r.id))
+    for (const r of (s ?? []) as Record<string, any>[]) secrets.set(r.secretary_id, r)
+  }
+  return rows.map((r) => {
+    const sec = secrets.get(r.id)
+    return {
+      id: r.id,
+      name: r.name,
+      email: r.email ?? null,
+      phone: r.phone ?? null,
+      active: Boolean(r.active),
+      path: `/ministerios/${org.slug}/${r.link_token}`,
+      createdByEmail: r.created_by_email,
+      createdAt: r.created_at,
+      lastAccessAt: r.last_access_at ?? null,
+      deactivatedAt: r.deactivated_at ?? null,
+      deactivatedByEmail: r.deactivated_by_email ?? null,
+      hasPin: Boolean(sec && Number(sec.pin_version) > 0),
+      pinSetByEmail: sec?.pin_set_by_email ?? null,
+      pinSetAt: sec?.pin_set_at ?? null,
+      lockedUntil: sec?.locked_until && new Date(sec.locked_until).getTime() > Date.now() ? sec.locked_until : null,
+    }
+  })
 }
 
 /**
@@ -211,7 +287,7 @@ export async function loadOrganisation(
   if (!data) return null
   const org = orgFromRow(data as Record<string, any>)
 
-  const [movRes, alertRes, caseRes, secRes, extRes] = await Promise.all([
+  const [movRes, alertRes, caseRes, secretaries, extRes] = await Promise.all([
     scope.db
       .from("budget_movements")
       .select(
@@ -232,11 +308,7 @@ export async function loadOrganisation(
       .eq("organisation_id", orgId)
       .order("created_at", { ascending: false })
       .limit(300),
-    scope.db
-      .from("bo_allowlist")
-      .select("email, label, active, suspended_at")
-      .eq("organisation_id", orgId)
-      .order("created_at", { ascending: false }),
+    listSecretaries(scope.db, org),
     scope.db
       .from("case_external_payments")
       .select("case_id, case:booking_cases!inner(organisation_id)")
@@ -271,12 +343,7 @@ export async function loadOrganisation(
         externalPaid: paid.has(c.id),
       }
     }),
-    secretaries: ((secRes.data ?? []) as Record<string, any>[]).map((s) => ({
-      email: s.email,
-      label: s.label ?? null,
-      active: Boolean(s.active),
-      suspendedAt: s.suspended_at ?? null,
-    })),
+    secretaries,
   }
 }
 
@@ -348,5 +415,99 @@ export async function listAlertRecipients(partnerId: string): Promise<AlertRecip
     email: r.email ?? null,
     whatsapp: r.whatsapp ?? null,
     active: Boolean(r.active),
+  }))
+}
+
+// ── B2G-23 · os pedidos de ministério ────────────────────────────────────────
+
+export interface OrganisationRequest {
+  id: string
+  partnerId: string
+  partnerName: string | null
+  name: string
+  logoUrl: string | null
+  crestUrl: string | null
+  status: "pending" | "approved" | "rejected"
+  reason: string | null
+  requestedByEmail: string
+  decidedByEmail: string | null
+  decidedAt: string | null
+  organisationId: string | null
+  createdAt: string
+}
+
+/**
+ * Os pedidos que esta sessão vê (RLS: a empresa os seus, o master todos).
+ * `partnerId` restringe a uma empresa; `status`, a um estado.
+ */
+export async function listOrganisationRequests(
+  scope: BoScope,
+  options: { partnerId?: string | null; status?: OrganisationRequest["status"] } = {}
+): Promise<OrganisationRequest[]> {
+  let q = scope.db
+    .from("organisation_requests")
+    .select(
+      "id, partner_id, name, logo_path, crest_path, status, reason, requested_by_email, decided_by_email, decided_at, organisation_id, created_at, partner:partners(commercial_name)"
+    )
+    .order("created_at", { ascending: false })
+    .limit(200)
+  if (options.partnerId) q = q.eq("partner_id", options.partnerId)
+  if (options.status) q = q.eq("status", options.status)
+  const { data, error } = await q
+  if (error) {
+    /* Numa base sem a 0034 não há pedidos: a página abre na mesma. */
+    if (error.code !== "PGRST205" && error.code !== "42P01") console.error("[b2g] pedidos:", error.message)
+    return []
+  }
+  const admin = createAdminClient()
+  const url = (path: string | null) => (path && admin ? admin.storage.from("brand").getPublicUrl(path).data.publicUrl : null)
+  return ((data ?? []) as Record<string, any>[]).map((r) => {
+    const partner = Array.isArray(r.partner) ? r.partner[0] : r.partner
+    return {
+      id: r.id,
+      partnerId: r.partner_id,
+      partnerName: partner?.commercial_name ?? null,
+      name: r.name,
+      logoUrl: url(r.logo_path ?? null),
+      crestUrl: url(r.crest_path ?? null),
+      status: r.status,
+      reason: r.reason ?? null,
+      requestedByEmail: r.requested_by_email,
+      decidedByEmail: r.decided_by_email ?? null,
+      decidedAt: r.decided_at ?? null,
+      organisationId: r.organisation_id ?? null,
+      createdAt: r.created_at,
+    }
+  })
+}
+
+// ── B2G-03 · os ministérios no construtor de links ──────────────────────────
+
+export interface LinkMinistryRow {
+  id: string
+  name: string
+  crestUrl: string | null
+  secretaries: { id: string; name: string; path: string }[]
+}
+
+/** Os ministérios activos de uma empresa com as secretárias activas e o link de cada uma. */
+export async function listLinkMinistries(scope: BoScope, partnerId: string): Promise<LinkMinistryRow[]> {
+  const { data, error } = await scope.db
+    .from("organisations")
+    .select("id, slug, name, crest_url, active, secretaries:ministry_secretaries(id, name, link_token, active)")
+    .eq("partner_id", partnerId)
+    .eq("active", true)
+    .order("name")
+  if (error) {
+    console.error("[b2g] link de ministérios:", error.message)
+    return []
+  }
+  return ((data ?? []) as Record<string, any>[]).map((o) => ({
+    id: o.id,
+    name: o.name,
+    crestUrl: o.crest_url ?? null,
+    secretaries: ((o.secretaries ?? []) as Record<string, any>[])
+      .filter((s) => s.active)
+      .map((s) => ({ id: s.id, name: s.name, path: `/ministerios/${o.slug}/${s.link_token}` })),
   }))
 }

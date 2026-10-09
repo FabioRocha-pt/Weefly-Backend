@@ -9,6 +9,10 @@
  * Em português: é para uma secretária de um ministério de Cabo Verde, e a
  * aplicação do ministério fala português.
  *
+ * B2G-06 · desde a 0034 é por secretária: leva o link pessoal **dela** e mais
+ * nada. **O PIN nunca vai por email** — é mostrado uma vez a quem o gerou, e
+ * é essa pessoa que o entrega.
+ *
  * SÓ SERVIDOR.
  */
 
@@ -29,32 +33,27 @@ export function ministryLink(
 }
 
 export async function sendMinistryWelcome(
-  orgId: string
+  secretaryId: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const admin = createAdminClient()
   if (!admin) return { ok: false, reason: "sem service role" }
   if (!process.env.RESEND_API_KEY) return { ok: false, reason: "RESEND_API_KEY por configurar" }
 
   const { data } = await admin
-    .from("organisations")
-    .select("id, slug, name, link_token, secretary_name, secretary_email, partner:partners(id, slug, is_operator)")
-    .eq("id", orgId)
+    .from("ministry_secretaries")
+    .select("id, name, email, active, link_token, organisation:organisations(id, slug, name, partner:partners(id, slug, is_operator))")
+    .eq("id", secretaryId)
     .maybeSingle()
-  const row = data as {
-    id: string
-    slug: string
-    name: string
-    link_token: string | null
-    secretary_name: string | null
-    secretary_email: string | null
-    partner: { id: string; slug: string; is_operator: boolean } | { id: string; slug: string; is_operator: boolean }[]
-  } | null
-  if (!row) return { ok: false, reason: "ministério não encontrado" }
-  if (!row.secretary_email) return { ok: false, reason: "sem email da secretária" }
-  if (!row.link_token) return { ok: false, reason: "sem link" }
+  const sec = data as Record<string, any> | null
+  if (!sec) return { ok: false, reason: "secretária não encontrada" }
+  if (!sec.active) return { ok: false, reason: "secretária desactivada" }
+  if (!sec.email) return { ok: false, reason: "sem email da secretária" }
+  const org = Array.isArray(sec.organisation) ? sec.organisation[0] : sec.organisation
+  if (!org) return { ok: false, reason: "ministério não encontrado" }
+  const row = { name: String(org.name), secretary_name: String(sec.name), secretary_email: String(sec.email) }
 
-  const partner = Array.isArray(row.partner) ? row.partner[0] : row.partner
-  const link = ministryLink(partner, { slug: row.slug, link_token: row.link_token })
+  const partner = (Array.isArray(org.partner) ? org.partner[0] : org.partner) as { id: string; slug: string; is_operator: boolean }
+  const link = ministryLink(partner, { slug: org.slug, link_token: sec.link_token })
   if (!link) return { ok: false, reason: "NEXT_PUBLIC_SITE_URL por configurar" }
 
   const brand = await clientBrandForPartner(partner.id)
@@ -64,12 +63,13 @@ export async function sendMinistryWelcome(
 
   const steps: [string, string][] = [
     ["O que é", `A aplicação de viagens do ${row.name}, com a ${brandName}. Pede viagens, escolhe ofertas, dá os dados dos passageiros e vê as passagens emitidas.`],
+    ["Entrar", `O link pede um PIN de 6 dígitos. O PIN é entregue pela ${brandName} (nunca por email) e é só seu. Cinco PIN errados seguidos bloqueiam o acesso durante 15 minutos.`],
     ["Novo pedido", "A aba que abre primeiro: datas, destino, passageiros e percurso."],
     ["Minhas passagens", "A viagem activa em cima e, por baixo, o arquivo das passagens emitidas, usadas e expiradas do ministério."],
     ["Android", "Abra o link no Chrome, toque em ⋮ e depois em «Instalar aplicação» (ou «Adicionar ao ecrã principal»)."],
     ["iPhone", "Abra o link no Safari, toque em Partilhar (□↑), escolha «Adicionar ao ecrã principal» e confirme em «Adicionar»."],
     ["Computador", "No Chrome ou no Edge, clique no ícone de instalar na barra de endereço, ou guarde o link nos favoritos."],
-    ["Ajuda", wa ? `Toque no botão de WhatsApp dentro da aplicação, ou escreva para ${wa}. Se perder o acesso, peça um link novo por aí.` : `Fale com a ${brandName}. Se perder o acesso, peça um link novo.`],
+    ["Ajuda", wa ? `Toque no botão de WhatsApp dentro da aplicação, ou escreva para ${wa}. Se esquecer o PIN, peça um novo por aí.` : `Fale com a ${brandName}. Se esquecer o PIN, peça um novo.`],
   ]
 
   const subject = `${row.name} · a sua aplicação de viagens`
@@ -81,7 +81,7 @@ export async function sendMinistryWelcome(
       ${partnerBrand ? masthead(null, { background: partnerBrand.colorPrimary ?? undefined, brand: partnerBrand }) : masthead(null)}
       <tr><td style="padding:32px;">
         <h1 style="margin:0 0 8px;font-size:22px;font-weight:800;">${escapeHtml(hello)}</h1>
-        <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${MUTED};">Este é o link da aplicação de viagens do <b>${escapeHtml(row.name)}</b>. É pessoal: não o partilhe. Um link novo substitui este, e este deixa de funcionar.</p>
+        <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${MUTED};">Este é o link da aplicação de viagens do <b>${escapeHtml(row.name)}</b>. É pessoal: não o partilhe. Ao abrir, peça-lhe o PIN que a ${escapeHtml(brandName)} lhe entregou.</p>
         <p style="margin:0 0 24px;"><a href="${escapeHtml(link)}" style="display:inline-block;background:${partnerBrand?.colorPrimary ?? "#EE5128"};color:#ffffff;font-size:15px;font-weight:700;padding:13px 26px;border-radius:999px;text-decoration:none;">Abrir a aplicação</a></p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
           ${steps
@@ -102,7 +102,7 @@ export async function sendMinistryWelcome(
     hello,
     "",
     `Este é o link da aplicação de viagens do ${row.name}: ${link}`,
-    "É pessoal: não o partilhe. Um link novo substitui este.",
+    `É pessoal: não o partilhe. Ao abrir, use o PIN que a ${brandName} lhe entregou.`,
     "",
     ...steps.map(([k, v]) => `${k}: ${v}`),
   ].join("\n")

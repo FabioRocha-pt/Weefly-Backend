@@ -1,24 +1,23 @@
 import Link from "next/link"
 
 import { formatAmount } from "@/lib/case-status"
-import { ministryLink } from "@/lib/emails/ministry-welcome"
+import { partnerSiteUrl } from "@/lib/site-url"
 import type { OrganisationDetail, AlertRecipient } from "@/lib/b2g"
 import { passportExpiringSoon, type Traveller } from "@/lib/travellers"
 import { LOCALE_TAGS } from "@/i18n/config"
 import type { Translator } from "@/i18n/translate"
 import {
   AdjustForm,
-  ChangeSecretary,
   CreditForm,
   EditOrganisation,
-  OrgLink,
   RecipientsEditor,
   ThresholdForm,
 } from "@/components/b2g/b2g-forms"
+import { SecretaryManager } from "@/components/b2g/secretaries"
 
 /**
- * WeeFly · B2G · um ministério, por inteiro: saldo, link, secretária, limite,
- * movimentos, alertas e casos.
+ * WeeFly · B2G · um ministério, por inteiro: saldo, secretárias (B2G-06),
+ * limite, movimentos, alertas e casos.
  *
  * O mesmo ecrã para o backoffice do parceiro (PAR-02 a PAR-05) e para o espaço
  * B2G do Admin (ADM-08). No Admin é só de leitura, com uma excepção explícita:
@@ -31,6 +30,7 @@ export function OrganisationDetailView({
   canManage,
   recipients,
   travellers = [],
+  viewer,
   t,
   locale,
 }: {
@@ -41,15 +41,21 @@ export function OrganisationDetailView({
   recipients: AlertRecipient[]
   /** DAT-01 · as fichas dos viajantes do ministério. */
   travellers?: Traveller[]
+  /** B2G-06 · quem está a ver: decide quem gere secretárias e gera PIN. */
+  viewer: { email: string; isManager: boolean; crossPartner: boolean; backoffice: boolean }
   t: Translator
   locale: "pt" | "en"
 }) {
   const { org } = detail
   const money = (v: number) => formatAmount(v, org.currency)
   const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short" })
-  const link = org.linkToken ? ministryLink(partner, { slug: org.slug, link_token: org.linkToken }) : ""
-  const below = org.threshold != null && org.balance < org.threshold
+  const siteBase = partnerSiteUrl({ slug: partner.slug, isOperator: partner.is_operator })
+  /* Decisão 5 · secretárias: qualquer conta do back-office da empresa, ou a WeeFly. */
+  const manageSecretaries = viewer.crossPartner || (mode === "partner" && viewer.backoffice)
   const writable = mode === "partner" && canManage
+  /* D-10 · editar: a empresa muda os limites; a WeeFly, também o nome e os logótipos. */
+  const editable = writable || (mode === "admin" && viewer.crossPartner)
+  const below = org.threshold != null && org.balance < org.threshold
   /* ADM-04 · no Admin, o caso abre em leitura. */
   const caseHref = (id: string) => (mode === "partner" ? `/admin/price-checker/${id}` : `/gestao/casos/c/${id}`)
   const expiring = travellers.filter((tr) => passportExpiringSoon(tr.passportExpiry)).length
@@ -58,10 +64,13 @@ export function OrganisationDetailView({
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          {org.logoUrl && (
+          {org.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={org.logoUrl} alt={org.name} className="h-12 w-auto" />
-          )}
+          ) : org.crestUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={org.crestUrl} alt="" className="h-12 w-12 object-contain" />
+          ) : null}
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{org.name}</h1>
             <p className="text-slate-500 text-sm">
@@ -70,16 +79,15 @@ export function OrganisationDetailView({
             </p>
           </div>
         </div>
-        {writable && (
+        {editable && (
           <EditOrganisation
+            identityEditable={viewer.crossPartner}
             initial={{
               id: org.id,
               name: org.name,
               slug: org.slug,
               logoUrl: org.logoUrl ?? "",
-              secretaryName: org.secretaryName ?? "",
-              secretaryEmail: org.secretaryEmail ?? "",
-              secretaryPhone: org.secretaryPhone ?? "",
+              crestUrl: org.crestUrl ?? "",
               alertThresholdAmount: org.alertThresholdAmount != null ? String(org.alertThresholdAmount / 100) : "",
               alertThresholdPercent: org.alertThresholdPercent != null ? String(org.alertThresholdPercent) : "",
               secretarySeesBalance: org.secretarySeesBalance,
@@ -104,9 +112,9 @@ export function OrganisationDetailView({
           {below && <p className="mt-1 text-sm font-semibold text-red-700">{t("bo.b2g.detail.below")}</p>}
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{t("bo.b2g.detail.secretary")}</p>
-          <p className="mt-1 font-semibold text-slate-900">{org.secretaryName ?? "—"}</p>
-          <p className="text-sm text-slate-500">{[org.secretaryEmail, org.secretaryPhone].filter(Boolean).join(" · ") || "—"}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{t("bo.secretaries.title")}</p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">{org.activeSecretaries.length}</p>
+          <p className="text-sm text-slate-500">{org.activeSecretaries.join(", ") || "—"}</p>
           <p className="mt-1 text-xs text-slate-500">
             {org.secretarySeesBalance ? t("bo.b2g.detail.secretarySees") : t("bo.b2g.detail.secretaryNotSees")}
           </p>
@@ -121,21 +129,15 @@ export function OrganisationDetailView({
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
-        <h2 className="font-semibold text-slate-900">{t("bo.b2g.detail.link")}</h2>
-        <OrgLink orgId={org.id} link={link} canManage={writable} />
-        {org.linkRotatedAt && (
-          <p className="text-xs text-slate-500">{t("bo.b2g.detail.linkSince", { when: dt.format(new Date(org.linkRotatedAt)) })}</p>
-        )}
-        {writable && <ChangeSecretary orgId={org.id} />}
-        {detail.secretaries.length > 0 && (
-          <ul className="text-xs text-slate-500">
-            {detail.secretaries.map((s) => (
-              <li key={s.email}>
-                {s.label ?? s.email} · {s.email} · {s.active ? t("bo.b2g.detail.accountActive") : t("bo.b2g.detail.accountSuspended")}
-              </li>
-            ))}
-          </ul>
-        )}
+        <h2 className="font-semibold text-slate-900">{t("bo.secretaries.title")}</h2>
+        <p className="text-sm text-slate-500">{t("bo.secretaries.subtitle")}</p>
+        <SecretaryManager
+          orgId={org.id}
+          secretaries={detail.secretaries}
+          siteBase={siteBase}
+          viewer={{ email: viewer.email, isManager: viewer.isManager, crossPartner: viewer.crossPartner }}
+          canManage={manageSecretaries && org.active}
+        />
       </section>
 
       {writable && (
