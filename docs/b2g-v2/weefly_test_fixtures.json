@@ -1,0 +1,202 @@
+{
+  "_leia_primeiro": "Dados de teste para o guião por persona. Tudo começa por TESTE para a próxima limpeza ser uma pesquisa. Os emails com <gmail> são preenchidos pelo Ivandro antes de correr. Nenhuma password vai neste ficheiro.",
+  "versao": "2.0",
+  "ambiente": "producao",
+  "prefixo_de_teste": "TESTE",
+  "emails": {
+    "_nota": "Endereços com + no Gmail chegam todos à mesma caixa. Uma só caixa recebe os avisos das seis personas, e o + mostra de quem é cada um.",
+    "dominik": "dominik@weefly.africa",
+    "agente_alo": "ivandrodebarros+alo@gmail.com",
+    "secretaria_a": "ivandrodebarros+saude.a@gmail.com",
+    "secretaria_b": "ivandrodebarros+saude.b@gmail.com",
+    "empresa_teste": "ivandrodebarros+empresateste@gmail.com",
+    "cliente_b2c": "ivandrodebarros+b2c@gmail.com",
+    "cliente_vip": "ivandrodebarros+vip@gmail.com"
+  },
+  "parceiros": [
+    {
+      "id_logico": "weefly_global",
+      "nome": "WeeFly Global",
+      "subdominio": null,
+      "tipo": "empresa_weefly",
+      "ferramentas": {
+        "viagens": {
+          "publico": true,
+          "vip": true,
+          "ministerios": true
+        }
+      }
+    },
+    {
+      "id_logico": "weefly_mz",
+      "nome": "WeeFly Moçambique",
+      "subdominio": "mz",
+      "tipo": "empresa_weefly",
+      "ferramentas": {
+        "viagens": {
+          "publico": true,
+          "vip": true,
+          "ministerios": false
+        }
+      },
+      "_nota": "Proposta D-13. Precisa do certificado *.weefly.africa."
+    },
+    {
+      "id_logico": "alo",
+      "nome": "Alô Cabo Verde Tour",
+      "subdominio": "alo",
+      "tipo": "white_label",
+      "ja_existe": true,
+      "ferramentas": {
+        "viagens": {
+          "publico": true,
+          "vip": true,
+          "ministerios": true
+        }
+      }
+    },
+    {
+      "id_logico": "empresa_teste",
+      "nome": "Empresa Teste",
+      "subdominio": null,
+      "tipo": "white_label",
+      "ja_existe": true,
+      "ferramentas": {
+        "viagens": {
+          "publico": true,
+          "vip": false,
+          "ministerios": false
+        }
+      },
+      "_nota": "O controlo. Só Público: não pode ver VIP, ministérios, nem nada da Alô."
+    }
+  ],
+  "contas": [
+    {
+      "persona": "Dominik",
+      "email_ref": "dominik",
+      "parceiro": null,
+      "perfil": "master",
+      "modulos": [
+        "fornecedor",
+        "agente",
+        "admin"
+      ],
+      "estado": "aprovada",
+      "_nota": "Master sem empresa. Vê todas."
+    },
+    {
+      "persona": "Agente da Alô",
+      "email_ref": "agente_alo",
+      "nome": "TESTE Agente Alô",
+      "parceiro": "alo",
+      "perfil": "agente",
+      "modulos": [
+        "fornecedor",
+        "agente"
+      ],
+      "menus_agente": [
+        "passagens",
+        "cliente",
+        "carteira"
+      ],
+      "estado": "aprovada"
+    },
+    {
+      "persona": "Empresa Teste",
+      "email_ref": "empresa_teste",
+      "nome": "TESTE Agente Empresa",
+      "parceiro": "empresa_teste",
+      "perfil": "agente",
+      "modulos": [
+        "fornecedor",
+        "agente"
+      ],
+      "menus_agente": [
+        "passagens",
+        "cliente",
+        "carteira"
+      ],
+      "estado": "aprovada"
+    }
+  ],
+  "ministerios": [
+    {
+      "parceiro": "alo",
+      "nome": "TESTE Ministério da Saúde",
+      "slug": "teste-saude",
+      "logotipo_horizontal": "assets/ministerios/ministerio_saude_horizontal.png",
+      "brasao": "assets/ministerios/ministerio_saude_brasao.png",
+      "ativo": true
+    },
+    {
+      "parceiro": "alo",
+      "nome": "TESTE Ministério da Educação",
+      "slug": "teste-educacao",
+      "logotipo_horizontal": "assets/ministerios/ministerio_educacao_horizontal.png",
+      "brasao": "assets/ministerios/ministerio_educacao_brasao.png",
+      "ativo": true
+    },
+    {
+      "parceiro": "alo",
+      "nome": "TESTE Ministério das Finanças",
+      "slug": "teste-financas",
+      "logotipo_horizontal": "assets/ministerios/ministerio_financas_horizontal.png",
+      "brasao": "assets/ministerios/ministerio_financas_brasao.png",
+      "ativo": true
+    }
+  ],
+  "secretarias": [
+    {
+      "persona": "Secretária A",
+      "nome": "TESTE Secretária A",
+      "ministerio": "teste-saude",
+      "email_ref": "secretaria_a",
+      "telefone": "<telefone do Ivandro ou de quem testa>",
+      "acesso": "link pessoal e PIN de 6 dígitos gerado pelo sistema, mostrado uma vez a quem a criou",
+      "criada_por": "Agente da Alô, no menu Ministérios"
+    },
+    {
+      "persona": "Secretária B",
+      "nome": "TESTE Secretária B",
+      "ministerio": "teste-saude",
+      "email_ref": "secretaria_b",
+      "telefone": "<telefone do Ivandro ou de quem testa>",
+      "acesso": "link pessoal e PIN de 6 dígitos gerado pelo sistema, mostrado uma vez a quem a criou",
+      "criada_por": "Agente da Alô, no menu Ministérios"
+    }
+  ],
+  "pedidos_do_cenario": {
+    "_nota": "Criados pelas secretárias durante o teste, não pelo script. Ficam aqui para o Fábio saber o que esperar nos registos.",
+    "itens": [
+      {
+        "passo": "3.1",
+        "por": "Secretária A",
+        "pessoas": 4,
+        "origem": "RAI",
+        "destino": "LIS",
+        "tipo": "ida e volta",
+        "urgencia": "Normal",
+        "notas": "TESTE · conferência"
+      },
+      {
+        "passo": "3.2",
+        "por": "Secretária B",
+        "pessoas": 2,
+        "origem": "RAI",
+        "destino": "DSS",
+        "tipo": "só ida",
+        "urgencia": "Urgente",
+        "notas": "TESTE · missão"
+      }
+    ]
+  },
+  "vip_de_teste": [
+    {
+      "parceiro": "alo",
+      "nome": "TESTE Cliente VIP",
+      "email_ref": "cliente_vip",
+      "criado_por": "Agente da Alô, no menu VIP"
+    }
+  ]
+}
