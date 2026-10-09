@@ -41,9 +41,9 @@ function isClientLink(pathname: string | null): boolean {
   return Boolean(pathname && (pathname === "/pc" || pathname.startsWith("/pc/") || pathname.startsWith("/ministerios/")))
 }
 
-export function Preloader({ label }: { label: string }) {
+export function Preloader({ label, disabled = false }: { label: string; disabled?: boolean }) {
   const pathname = usePathname()
-  const skip = isClientLink(pathname)
+  const skip = disabled || isClientLink(pathname)
   const [isLoading, setIsLoading] = useState(!skip)
 
   useEffect(() => {

@@ -21,7 +21,7 @@ export async function generateViewport(): Promise<Viewport> {
   return { themeColor: themeColor(await siteContext()) }
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
@@ -32,11 +32,13 @@ export default function RootLayout({
    * para a correção ortográfica dos formulários.
    */
   const { locale, t } = getI18n()
+  /* DOM-01 · no endereço de uma empresa com marca própria, sem o logótipo animado da WeeFly. */
+  const { partnerBrand } = await siteContext()
 
   return (
     <html lang={LOCALE_TAGS[locale]}>
       <body>
-        <Preloader label={t("common.loadingApp")} />
+        <Preloader label={t("common.loadingApp")} disabled={partnerBrand} />
         {children}
       </body>
     </html>
