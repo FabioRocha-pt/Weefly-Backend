@@ -150,17 +150,17 @@ begin
        '/brand/ministerios/ministerio_saude_horizontal.png',
        '/brand/ministerios/ministerio_saude_brasao.png',
        true, 'dominik@weefly.africa',
-       rtrim(translate(encode(gen_random_bytes(24), 'base64'), '+/', '-_'), '=')),
+       rtrim(translate(encode(extensions.gen_random_bytes(24), 'base64'), '+/', '-_'), '=')),
       (v_alo, 'teste-educacao', 'TESTE Ministério da Educação',
        '/brand/ministerios/ministerio_educacao_horizontal.png',
        '/brand/ministerios/ministerio_educacao_brasao.png',
        true, 'dominik@weefly.africa',
-       rtrim(translate(encode(gen_random_bytes(24), 'base64'), '+/', '-_'), '=')),
+       rtrim(translate(encode(extensions.gen_random_bytes(24), 'base64'), '+/', '-_'), '=')),
       (v_alo, 'teste-financas', 'TESTE Ministério das Finanças',
        '/brand/ministerios/ministerio_financas_horizontal.png',
        '/brand/ministerios/ministerio_financas_brasao.png',
        true, 'dominik@weefly.africa',
-       rtrim(translate(encode(gen_random_bytes(24), 'base64'), '+/', '-_'), '='))
+       rtrim(translate(encode(extensions.gen_random_bytes(24), 'base64'), '+/', '-_'), '='))
     on conflict (partner_id, slug) do update
       set name      = excluded.name,
           logo_url  = excluded.logo_url,
