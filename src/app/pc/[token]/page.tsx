@@ -38,7 +38,7 @@ export const dynamic = "force-dynamic"
  * empresa do caso (`caseClientUrl`), e é dele que a marca sai.
  */
 export async function generateMetadata(): Promise<Metadata> {
-  return pageMetadata(await siteContext(), { indexable: false })
+  return pageMetadata(await siteContext(), { indexable: false, customer: true })
 }
 
 export default async function PriceCheckerCasePage({

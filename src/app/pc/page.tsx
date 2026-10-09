@@ -34,7 +34,7 @@ export const dynamic = "force-dynamic"
 
 /** SEO-02 · SEO-03 · a única página indexada: o price checker da empresa. */
 export async function generateMetadata(): Promise<Metadata> {
-  return pageMetadata(await siteContext(), { path: "/pc", indexable: true })
+  return pageMetadata(await siteContext(), { path: "/pc", indexable: true, customer: true })
 }
 
 export default async function PriceCheckerPage({

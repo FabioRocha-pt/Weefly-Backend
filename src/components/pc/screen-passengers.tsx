@@ -372,7 +372,7 @@ export function ScreenP7({
         <h1>
           <Sentence text={t("pc.pax.heading")} />
         </h1>
-        <p>{t("pc.pax.intro")}</p>
+        <p>{ministry ? t("pc.pax.introMinistry") : t("pc.pax.intro")}</p>
       </section>
 
       <PickedOption state={state} />
@@ -803,7 +803,7 @@ export function ScreenP7({
 
       <div className="card tight" style={{ marginTop: 12 }}>
         <button className="btn btn-primary" type="button" disabled={pending} onClick={submit}>
-          {pending ? t("pc.pax.saving") : t("pc.pax.continue")}
+          {pending ? t("pc.pax.saving") : ministry ? t("pc.pax.continueMinistry") : t("pc.pax.continue")}
         </button>
         <p className="subnote">{ministry ? t("pc.pax.noPaymentMinistry") : t("pc.pax.nothingCharged")}</p>
       </div>

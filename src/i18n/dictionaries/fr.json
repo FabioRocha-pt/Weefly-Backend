@@ -616,6 +616,7 @@
     "createAccount": "Créer un compte",
     "loginTitle": "Connexion",
     "loginSubtitle": "Bon retour sur WeeFlyPro.",
+    "loginSubtitlePartner": "Espace réservé de {name}.",
     "email": "E-mail",
     "emailPlaceholder": "nom@entreprise.cv",
     "password": "Mot de passe",
@@ -1449,6 +1450,8 @@
         "dismiss": "Non, une autre personne"
       },
       "noPaymentMinistry": "Aucun paiement sur la plateforme : une fois enregistrée, la demande est prête à être émise.",
+      "introMinistry": "Saisissez les données exactement comme sur le passeport. Il n’y a pas de paiement sur la plateforme.",
+      "continueMinistry": "Enregistrer les passagers",
       "savedList": {
         "title": "Passagers enregistrés du ministère",
         "search": "Rechercher par nom ou passeport",

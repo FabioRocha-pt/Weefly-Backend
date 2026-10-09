@@ -616,6 +616,7 @@
     "createAccount": "Create account",
     "loginTitle": "Sign in",
     "loginSubtitle": "Welcome back to WeeFlyPro.",
+    "loginSubtitlePartner": "{name} team area.",
     "email": "Email",
     "emailPlaceholder": "name@company.cv",
     "password": "Password",
@@ -1449,6 +1450,8 @@
         "dismiss": "No, someone else"
       },
       "noPaymentMinistry": "No payment on the platform: once saved, the request is ready to issue.",
+      "introMinistry": "Enter the details exactly as they appear in the passport. There is no payment on the platform.",
+      "continueMinistry": "Save the passengers",
       "savedList": {
         "title": "Ministry's saved passengers",
         "search": "Search by name or passport",

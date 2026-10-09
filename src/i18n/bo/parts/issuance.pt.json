@@ -12,6 +12,7 @@
         "charged": "Cobrado",
         "issuedAt": "Emitido em",
         "critical": "Este é o estado mais crítico do sistema. O cliente já pagou e ainda não tem bilhete.",
+        "criticalMinistry": "Pronto a emitir: a secretária já escolheu e registou os passageiros, e ainda não tem bilhete.",
         "confirmFirst": "Confirme o pagamento na aba anterior antes de emitir."
       },
       "document": {

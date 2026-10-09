@@ -105,12 +105,15 @@ const LINK_STATE_TONE: Record<LinkState, string> = {
 
 const formatDt = (tag: string, iso: string | null | undefined, withTime = true): string => {
   if (!iso) return "—"
+  /* Uma data sem hora ("2026-11-16") é lida como meia-noite UTC: na hora de
+     Cabo Verde (UTC−1) caía no dia anterior. Fica no dia que foi pedido. */
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso)
   return new Date(iso).toLocaleString(tag, {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
-    timeZone: "Atlantic/Cape_Verde",
+    ...(withTime && !dateOnly ? { hour: "2-digit", minute: "2-digit" } : {}),
+    timeZone: dateOnly ? "UTC" : "Atlantic/Cape_Verde",
   })
 }
 

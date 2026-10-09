@@ -616,6 +616,7 @@
     "createAccount": "Criar conta",
     "loginTitle": "Entrar",
     "loginSubtitle": "Bem-vindo de volta ao WeeFlyPro.",
+    "loginSubtitlePartner": "Área reservada da {name}.",
     "email": "Email",
     "emailPlaceholder": "nome@empresa.cv",
     "password": "Password",
@@ -1449,6 +1450,8 @@
         "dismiss": "Não, é outra pessoa"
       },
       "noPaymentMinistry": "Sem pagamento na plataforma: depois de gravar, o pedido fica pronto a emitir.",
+      "introMinistry": "Escreva os dados exactamente como aparecem no passaporte. Não há pagamento na plataforma.",
+      "continueMinistry": "Gravar os passageiros",
       "savedList": {
         "title": "Passageiros guardados do ministério",
         "search": "Pesquisar por nome ou passaporte",

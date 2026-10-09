@@ -16,7 +16,7 @@ import { resendSignupEmail, signIn } from "@/actions/auth"
 import { useT } from "@/i18n/provider"
 import { translateMessage } from "@/i18n/translate"
 
-export function LoginForm({ next }: { next?: string | null }) {
+export function LoginForm({ next, brandName = null }: { next?: string | null; brandName?: string | null }) {
   const t = useT()
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -85,14 +85,18 @@ export function LoginForm({ next }: { next?: string | null }) {
   }
 
   return (
-    <AuthCard title={t("auth.loginTitle")} description={t("auth.loginSubtitle")}>
+    <AuthCard title={t("auth.loginTitle")} description={brandName ? t("auth.loginSubtitlePartner", { name: brandName }) : t("auth.loginSubtitle")}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Email */}
         <div className="space-y-2">
-          <Label htmlFor="email">{t("auth.email")}</Label>
+          <Label htmlFor="email">
+            {t("auth.email")} <span aria-hidden="true" className="text-red-500">*</span>
+          </Label>
           <Input
             id="email"
             type="email"
+            autoComplete="email"
+            aria-required="true"
             placeholder={t("auth.emailPlaceholder")}
             {...form.register("email")}
           />
@@ -105,11 +109,15 @@ export function LoginForm({ next }: { next?: string | null }) {
 
         {/* Password */}
         <div className="space-y-2">
-          <Label htmlFor="password">{t("auth.password")}</Label>
+          <Label htmlFor="password">
+            {t("auth.password")} <span aria-hidden="true" className="text-red-500">*</span>
+          </Label>
           <div className="relative">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              aria-required="true"
               placeholder={t("auth.passwordDots")}
               {...form.register("password")}
             />

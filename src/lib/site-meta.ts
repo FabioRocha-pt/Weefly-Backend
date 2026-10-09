@@ -121,15 +121,19 @@ function iconMetadata(ctx: SiteContext): Pick<Metadata, "icons" | "manifest"> {
  * checker (SEO-03).
  */
 export function pageMetadata(
-  ctx: SiteContext,
-  input: { path?: string; title?: string; description?: string; indexable?: boolean } = {}
+  site: SiteContext,
+  input: { path?: string; title?: string; description?: string; indexable?: boolean; customer?: boolean } = {}
 ): Metadata {
+  /* SEO-02 · o price checker é do cliente: aberto no endereço do PRO, partilha
+     como WeeFly (título, descrição e imagem), e não como a plataforma B2B. */
+  const ctx: SiteContext =
+    input.customer && site.site.kind === "pro" ? { ...site, site: { ...site.site, kind: "weefly" } } : site
   const texts = defaultTexts(ctx)
   const title = input.title ?? texts.title
   const description = input.description ?? texts.description
   const image = shareImage(ctx)
   const url = input.path ? absolute(ctx.origin, input.path) : undefined
-  const indexable = Boolean(input.indexable) && indexingAllowed() && ctx.site.kind !== "pro"
+  const indexable = Boolean(input.indexable) && indexingAllowed() && site.site.kind !== "pro"
 
   let metadataBase: URL | undefined
   try {

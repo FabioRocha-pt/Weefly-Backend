@@ -12,7 +12,7 @@ const NAV_MENU = [
   { key: "auth.navHelp", href: "/ajuda" },
 ]
 
-export function AuthNavbar() {
+export function AuthNavbar({ brand = null }: { brand?: { name: string; logoUrl: string | null } | null }) {
   const { t } = getI18n()
 
   return (
@@ -21,10 +21,21 @@ export function AuthNavbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo and brand */}
           <Link href="/inicio" className="flex items-center gap-2">
-            <WeeFlyLogo className="h-7 w-auto" />
-            <span className="bg-slate-900 text-white text-xs px-2 py-0.5 rounded-md font-bold tracking-wide">
-              {t("auth.proBadge")}
-            </span>
+            {brand ? (
+              brand.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={brand.logoUrl} alt={brand.name} className="h-8 w-auto" decoding="async" />
+              ) : (
+                <span className="font-bold text-slate-900">{brand.name}</span>
+              )
+            ) : (
+              <>
+                <WeeFlyLogo className="h-7 w-auto" />
+                <span className="bg-slate-900 text-white text-xs px-2 py-0.5 rounded-md font-bold tracking-wide">
+                  {t("auth.proBadge")}
+                </span>
+              </>
+            )}
           </Link>
 
           {/* Main navigation */}

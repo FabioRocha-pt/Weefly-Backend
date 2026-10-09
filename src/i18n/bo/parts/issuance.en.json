@@ -12,6 +12,7 @@
         "charged": "Charged",
         "issuedAt": "Issued on",
         "critical": "This is the most critical state in the system. The customer has already paid and still has no ticket.",
+        "criticalMinistry": "Ready to issue: the secretary has chosen and registered the passengers, and has no ticket yet.",
         "confirmFirst": "Confirm the payment in the previous tab before issuing."
       },
       "document": {

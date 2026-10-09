@@ -616,7 +616,7 @@ export function BoIssuancePanel({
 
           {paid && !issued && (
             <p className="note bad" style={{ marginTop: 12 }}>
-              {t("bo.issuance.summary.critical")}
+              {ministry && !paidOut ? t("bo.issuance.summary.criticalMinistry") : t("bo.issuance.summary.critical")}
             </p>
           )}
           {!paid && (

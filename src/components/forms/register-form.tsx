@@ -10,13 +10,25 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { registerSchema, type RegisterFormData } from "@/lib/validations"
 import { AuthCard } from "@/components/auth/auth-card"
-import { COUNTRIES, PHONE_PREFIXES } from "@/types"
+import { COUNTRIES, DEFAULT_COUNTRY, countryName } from "@/lib/countries"
+import { LOCALE_TAGS } from "@/i18n/config"
 import { signUp } from "@/actions/auth"
-import { useT } from "@/i18n/provider"
+import { useI18n, useT } from "@/i18n/provider"
 import { translateMessage } from "@/i18n/translate"
 
 export function RegisterForm() {
   const t = useT()
+  const { locale } = useI18n()
+  /* OCT-26 · todos os países e indicativos (a mesma lista do price checker),
+     por nome na língua de quem se regista, com Cabo Verde primeiro. */
+  const tag = LOCALE_TAGS[locale]
+  const countryOptions = COUNTRIES.map((c) => ({ iso: c.iso, name: countryName(c.iso, tag) })).sort((a, b) =>
+    a.iso === DEFAULT_COUNTRY ? -1 : b.iso === DEFAULT_COUNTRY ? 1 : a.name.localeCompare(b.name, tag)
+  )
+  const cvDial = COUNTRIES.find((c) => c.iso === DEFAULT_COUNTRY)?.dial ?? "+238"
+  const dialOptions = [cvDial, ...Array.from(new Set(COUNTRIES.map((c) => c.dial)))
+    .filter((d) => d !== cvDial)
+    .sort((a, b) => Number(a.replace(/\D/g, "")) - Number(b.replace(/\D/g, "")))]
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [phonePrefix, setPhonePrefix] = useState("+238")
@@ -135,9 +147,9 @@ export function RegisterForm() {
               className="flex h-11 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
               {...form.register("country")}
             >
-              {COUNTRIES.map((country) => (
-                <option key={country.value} value={country.value}>
-                  {t(country.labelKey)}
+              {countryOptions.map((country) => (
+                <option key={country.iso} value={country.iso}>
+                  {country.name}
                 </option>
               ))}
             </select>
@@ -157,9 +169,9 @@ export function RegisterForm() {
                 onChange={(e) => setPhonePrefix(e.target.value)}
                 className="w-24 h-11 rounded-l-lg border border-r-0 border-slate-300 bg-white px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
-                {PHONE_PREFIXES.map((prefix) => (
-                  <option key={prefix.value} value={prefix.value}>
-                    {prefix.value}
+                {dialOptions.map((dial) => (
+                  <option key={dial} value={dial}>
+                    {dial}
                   </option>
                 ))}
               </select>
