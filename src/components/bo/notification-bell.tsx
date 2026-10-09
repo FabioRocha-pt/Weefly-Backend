@@ -255,7 +255,8 @@ export function BoNotificationBell({
                     {/* Quem o provocou. Um acontecimento do cliente não tem
                         email — tem o cliente, e dizer "sistema" ali era mentir
                         sobre quem agiu. */}
-                    {alert.actorKind === "client"
+                    {/* B2G-08 · a secretária é o "cliente" do caso de ministério (o lead). */}
+                    {alert.actorKind === "client" || alert.actorKind === "secretary"
                       ? (alert.clientName ?? t("bo.shell.alerts.actorClient"))
                       : alert.actorKind === "system"
                         ? t("bo.shell.alerts.actorSystem")

@@ -114,6 +114,29 @@ export async function generateIconSet(source: Buffer, brandColor: string | null)
   ]
 }
 
+/**
+ * B2G-08 · B2G-24 · o ícone da aplicação do ministério, a partir do brasão
+ * (quadrado, fundo transparente). O brasão sozinho só aqui: em listas e
+ * seletores leva sempre o nome.
+ */
+export type CrestIconFile = "icon-192.png" | "icon-512.png" | "icon-512-maskable.png" | "apple-touch-icon.png" | "favicon-32x32.png"
+
+export async function crestIcon(source: Buffer, file: CrestIconFile): Promise<Buffer> {
+  const WHITE = { r: 255, g: 255, b: 255, alpha: 1 }
+  switch (file) {
+    case "icon-192.png":
+      return square(source, 192, 0.9, TRANSPARENT)
+    case "icon-512.png":
+      return square(source, 512, 0.9, TRANSPARENT)
+    case "icon-512-maskable.png":
+      return square(source, 512, 0.6, WHITE)
+    case "apple-touch-icon.png":
+      return square(source, 180, 0.8, WHITE)
+    case "favicon-32x32.png":
+      return square(source, 32, 1, TRANSPARENT)
+  }
+}
+
 /** SEO-04 · a imagem de partilha: 1200 × 630, JPG, até 1 MB. */
 export async function checkShareImage(source: Buffer): Promise<"ok" | "size" | "unreadable"> {
   try {

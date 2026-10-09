@@ -129,3 +129,49 @@ Verificação: `bash supabase/tests/run.sh` OK · `npm run build` OK · `npm run
 3. O ecrã do PIN diz "Olá, <nome>" a quem tiver o link. Se preferirem não mostrar o nome antes do PIN, é uma linha.
 4. Brasão opcional no pedido de ministério (os três brasões são o mesmo emblema). Se for obrigatório, é uma linha.
 5. O travão por IP é em memória (por processo); com várias instâncias, o travão a sério continua a ser o bloqueio por secretária na base.
+
+## Bloco 4 · Espaço da secretária (B2G-08, B2G-24, B2G-09, B2G-10)
+
+### Feito
+
+**Migração `0035_b2g_requests.sql`** (idempotente, corre duas vezes no `run.sh`):
+- `booking_cases.urgency` (`smallint`, 0 Normal · 1 Urgente · 2 Muito urgente, por omissão 0, `check` 0–2), `urgency_changed_at`, `urgency_changed_by_email`; índice `(partner_id, channel, closed_at, urgency desc, created_at)` para a fila do bloco 5.
+- `trip_requests.adults` passa de 1–9 a **1–50** (D-7: o pedido do ministério guarda só N, como adultos). O formulário público continua a limitar a 9 no servidor.
+- `case_events.actor_kind` aceita `secretary`, com `actor_secretary_id` (FK); `check`: `secretary` ⇔ há secretária; gatilho `case_events_secretary_scope`: a secretária é do ministério do caso.
+- `ministry_travellers.created_by_secretary_id` / `updated_by_secretary_id` e `ministry_traveller_changes.changed_by_secretary_id`, com chave composta `(secretária, ministério)`. A autora não muda; uma alteração com `last_source='backoffice'` nunca fica em nome de uma secretária; o gatilho do histórico (`ministry_traveller_log`) grava a secretária e não conta as colunas novas como dados da ficha.
+- Teste novo `supabase/tests/test_b2g_requests.sql` (Q1–Q6: urgência, 50/51 pessoas, três pedidos iguais seguidos ficam os três e são do ministério, `actor_kind` da secretária e isolamento por ministério, autoria das fichas, índice). Sondas novas em `scripts/check-migrations.mjs`.
+
+**B2G-09 · formulário simples** (`components/ministry/request-form.tsx`, `actions/ministry-space.ts`): substitui o `RequestWizard` em `/ministerios/[org]/[token]`. Só: pessoas (1–50), de onde (Praia/RAI por omissão, editável, D-1), para onde (o mesmo `AirportField` + `/api/airports` do Price Checker, agora exportado), ida (não no passado), volta (opcional, não antes da ida), urgência (Normal por omissão, D-6), notas. Os obrigatórios em falta e os inválidos aparecem listados por cima do botão e destacados no campo; o servidor repete as regras e devolve a lista. Enviar mostra a referência.
+- A acção exige a sessão do PIN da secretária dona do link (`secretaryForLinkToken` + `resolveMinistry`, como no bloco 3) e cria o caso pelo intake de sempre (`createPriceCheckerCase`): canal `ministerio`, ministério, `secretary_id`, `urgency`, `adults = N`, `special_requests = notas`, contacto = a secretária (nome, email, telefone; sem email fica um endereço `…@ministerio.invalid` que nunca recebe nada — `lib/emails/send.ts`). Os mesmos avisos (email à secretária, alerta à equipa) e o `request_submitted` que acende a campainha e o pulso.
+- `request_submitted` com `actor_kind='secretary'` + `actor_secretary_id` (`logCaseEvent` ganhou `actorSecretaryId`); se a base ainda não tiver a 0035, cai para `client` em vez de se perder. A campainha mostra o nome da secretária nesses acontecimentos.
+
+**B2G-10 · sem limite** · um pedido de ministério não passa pela deduplicação de 15 min nem pelo limite por IP (no formulário novo e no `submitPcRequest`, se um pedido antigo chegar por lá). Fica um travão **por secretária**: 30 pedidos por hora (`SECRETARY_FLOOD`, erro `pc.errors.ministryFlood`).
+
+**B2G-08 · três áreas** (`components/ministry/tab-bar.tsx`): **Novo pedido · Os meus pedidos · Passageiros**.
+- `/pedidos` (`listMinistryRequests`): todos os pedidos do ministério (D-4: as colegas veem os pedidos umas das outras), com referência, rota, datas, pessoas, urgência, estado (recebido, em tratamento, opções disponíveis, opção escolhida, emitido, viagem feita, fechado, cancelado), autora e o registo de actividade. O registo é uma **lista fechada** de acontecimentos (`PUBLIC_TIMELINE_KINDS`) com frases do dicionário: nunca o título, o detalhe nem o payload gravados (notas internas, custos, emails de agentes não saem). O saldo (decisão O2) e o cartão de instalar passaram para aqui. `/passagens` redirecciona para `/pedidos`.
+- `/passageiros` (`listMinistryTravellers`): os passageiros guardados do ministério, pesquisa por nome ou passaporte (sem acentos), passaporte só pelos últimos 3 caracteres, aviso "expirado" / "expira em menos de 6 meses". Só leitura (editar e escolher: bloco 6).
+- Textos novos `ministry.form.*`, `ministry.urgency.*`, `ministry.requests.*`, `ministry.timeline.*`, `ministry.travellers.*`, `ministry.tabs.*` em PT/EN/FR (saíram `ministry.trips.*` e `ministry.status.*`). Email de boas-vindas actualizado com as três áreas.
+
+**B2G-24 · marca**
+- Cabeçalho: logótipo da empresa e logótipo horizontal do ministério lado a lado, **separados por uma linha fina** (`BrandLogo` em `components/pc/chrome.tsx`). "Powered by WeeFly" continua no rodapé (`PcFooter`, segundo `powered_by_weefly` da empresa).
+- Título da página = **nome do ministério**; `applicationName` e `appleWebApp.title` também.
+- Manifesto: `name` = ministério, `short_name` = a última palavra com sentido ("Saúde"), `id`/`start_url`/`scope` no link pessoal. Ícones = o **brasão** (`organisations.crest_url`), gerados com `sharp` nos tamanhos declarados (192, 512, 512 maskable, 180 apple, 32 favicon) pela rota nova `/ministerios/[org]/[token]/icon/[file]` — sem brasão, os ícones da empresa (ou da WeeFly). O carregador de ficheiros de marca saiu de `api/brand/[file]` para `lib/brand-asset-load.ts` (o mesmo código).
+- O brasão aparece sozinho só no ícone; no ecrã do PIN vai com o nome.
+
+**Fila** · `loadBoQueue` devolve `urgency` em cada linha (com recuo numa base sem a 0035). A ordenação e o "reclamar" ficam para o bloco 5.
+
+Verificação: `bash supabase/tests/run.sh` OK · `npm run build` OK · `npm run i18n:check` OK. Geração dos ícones testada à parte com o brasão da Saúde (192/512/512/180, PNG).
+
+### Falta
+- O espaço do ministério não foi aberto num browser (sem base local com dados; `.env.local` aponta para o Supabase real, não usado). Testar com o script de dados do bloco 8: B2G-09 (3 pessoas, Praia → Lisboa, ida e volta, nota), B2G-10 (três seguidos, as duas secretárias), instalação no telemóvel.
+- "Abrir o pedido" em *Os meus pedidos* continua a levar ao `/pc/{token}` (autorizado pelo token do caso). O bloco 6 traz a ficha para dentro do espaço com sessão; até lá a colega do mesmo ministério também abre o `/pc` dos pedidos da outra (D-4 diz que pode ver).
+- `urgency_changed` já está na lista do registo público, mas só o bloco 5 o escreve (mudança pelo agente).
+- `listMinistryTrips` (lib) ficou sem uso; pode servir às passagens emitidas do bloco 6.
+- `graphify update .` não correu (não está instalado).
+
+### Para decidir (humano)
+1. **A 0035 tem de ir antes do código**: sem ela, o pedido do ministério não se grava (a coluna `urgency` e o limite de 50 pessoas). O resto (fila, campainha, Público, VIP) tem recuo e continua a funcionar.
+2. **Secretária sem email**: o lead do caso fica com `secretaria-<id>@ministerio.invalid` (o lead exige email). Ela não recebe a confirmação por email; vê o pedido em *Os meus pedidos*. Alternativa: tornar o email obrigatório ao criar a secretária.
+3. **Travão de 30 pedidos/hora por secretária**: valor escolhido por mim; ajustável em `SECRETARY_FLOOD` (`lib/pc/intake.ts`).
+4. **"Powered by WeeFly" no espaço do ministério** segue o interruptor da empresa (`powered_by_weefly`). A especificação diz "em todos os terminais da Alô": confirmar que está ligado na Alô.
+5. O número de passaporte na lista *Passageiros* aparece só pelos 3 últimos caracteres; o bloco 6 (editar) mostra-o inteiro na ficha.

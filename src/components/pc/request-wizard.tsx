@@ -81,7 +81,7 @@ import type { Locale } from "@/i18n/config"
 import { useT } from "@/i18n/provider"
 
 /** Um aeroporto como o campo o mostra, depois de escolhido da lista. */
-interface Place {
+export interface Place {
   iata: string
   city: string
   name: string
@@ -1560,7 +1560,7 @@ function Counter({
  * sem ter escolhido da lista, o texto é limpo. Sem isso o cliente ficava
  * convencido de ter escrito "Lisboa" e o pedido seguia sem origem.
  */
-function AirportField({
+export function AirportField({
   id,
   label,
   placeholder,

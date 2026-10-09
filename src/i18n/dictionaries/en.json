@@ -1775,7 +1775,8 @@
       "badFileType": "Send a JPG, a PNG or a PDF.",
       "paymentClosed": "This payment is already closed. Talk to us on WhatsApp.",
       "uploadFailed": "We could not store the file. Please try again.",
-      "ministrySession": "Your session has ended. Enter your PIN again to send the request."
+      "ministrySession": "Your session has ended. Enter your PIN again to send the request.",
+      "ministryFlood": "You have sent many requests in the last hour. Please wait a little, or contact the travel company on WhatsApp."
     }
   },
   "pro": {
@@ -1924,21 +1925,8 @@
     "tabs": {
       "label": "Navigation",
       "new": "New request",
-      "trips": "My tickets"
-    },
-    "trips": {
-      "title": "My tickets",
-      "current": "Active trip",
-      "archive": "Archive",
-      "none": "No trips yet. New requests appear here.",
-      "balance": "Available balance"
-    },
-    "status": {
-      "active": "In progress",
-      "issued": "Issued",
-      "used": "Used",
-      "expired": "Expired",
-      "cancelled": "Cancelled"
+      "requests": "My requests",
+      "travellers": "Passengers"
     },
     "pay": {
       "title": "Nothing to pay on this side",
@@ -1970,6 +1958,99 @@
     "landing": {
       "title": "Ministry travel space",
       "body": "To make requests, open the personal link you received by email and enter your PIN. If you have no access, contact your ministry’s travel company."
+    },
+    "form": {
+      "title": "New request",
+      "intro": "How many people are travelling, where to and when. Passenger details come later.",
+      "people": "Number of people",
+      "peopleHint": "From 1 to 50",
+      "origin": "From",
+      "destination": "To",
+      "airportPlaceholder": "City or airport",
+      "departDate": "Departure date",
+      "returnDate": "Return date",
+      "returnHint": "Leave empty for one way",
+      "urgency": "Urgency",
+      "notes": "Notes",
+      "notesPlaceholder": "E.g. meeting in Lisbon on the 14th at 9am; direct flight preferred.",
+      "optional": "optional",
+      "submit": "Send request",
+      "sending": "Sending…",
+      "missingTitle": "Still to fill in:",
+      "invalidTitle": "Please fix:",
+      "errors": {
+        "missing": "Some required fields are missing.",
+        "invalid": "Some fields have values that can't be used.",
+        "people": "Between 1 and 50 people.",
+        "airport": "Choose an airport from the list.",
+        "sameAirport": "The destination must differ from the origin.",
+        "departPast": "The departure date can't be in the past.",
+        "returnBefore": "The return can't be before the departure.",
+        "notes": "Notes are limited to 1000 characters."
+      },
+      "done": {
+        "title": "Request sent",
+        "body": "The request reference is {reference}. {partner} has been notified.",
+        "another": "Make another request",
+        "view": "See my requests"
+      }
+    },
+    "urgency": {
+      "0": "Normal",
+      "1": "Urgent",
+      "2": "Very urgent"
+    },
+    "requests": {
+      "title": "My requests",
+      "intro": "All requests from {ministry}, by every secretary.",
+      "none": "No requests yet. New requests appear here.",
+      "people": "{count} person(s)",
+      "oneway": "one way",
+      "by": "Requested by {name}",
+      "notes": "Notes",
+      "activity": "Activity log",
+      "noActivity": "No activity yet.",
+      "open": "Open the request",
+      "balance": "Available balance",
+      "status": {
+        "received": "Received",
+        "handling": "Being handled",
+        "options": "Options available",
+        "chosen": "Option chosen",
+        "issued": "Issued",
+        "used": "Travelled",
+        "closed": "Closed",
+        "cancelled": "Cancelled"
+      }
+    },
+    "timeline": {
+      "request_submitted": "Request sent",
+      "request_submittedBy": "Request sent by {name}",
+      "case_claimed": "Request being handled",
+      "urgency_changed": "Urgency changed",
+      "proposal_published": "Flight options available",
+      "offer_selected": "Option chosen",
+      "passengers_submitted": "Passenger details sent",
+      "ministry_ready_to_issue": "Ready for issuing",
+      "tickets_issued": "Tickets issued",
+      "request_cancelled": "Request cancelled",
+      "case_closed": "Request closed",
+      "case_reopened": "Request reopened"
+    },
+    "travellers": {
+      "title": "Passengers",
+      "intro": "Passengers already registered by {ministry}.",
+      "search": "Search by name or passport",
+      "searchButton": "Search",
+      "clear": "Clear",
+      "none": "No saved passengers yet. They appear here once you fill in a request's passengers.",
+      "noMatch": "No passenger found for “{q}”.",
+      "count": "{count} passenger(s)",
+      "passport": "Passport {number}",
+      "validUntil": "valid until {date}",
+      "born": "Born: {date}",
+      "expired": "Passport expired",
+      "soon": "Passport expires in less than 6 months"
     }
   },
   "seo": {

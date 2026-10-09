@@ -215,3 +215,233 @@ export async function ministryBalance(orgId: string): Promise<number | null> {
   if (error) return null
   return Number(data)
 }
+
+// ── B2G-08 · B2G-10 · "Os meus pedidos" ─────────────────────────────────────
+
+/** B2G-09 · D-6 · 0 Normal, 1 Urgente, 2 Muito urgente. */
+export type Urgency = 0 | 1 | 2
+
+export type MinistryRequestStatus =
+  | "received"
+  | "handling"
+  | "options"
+  | "chosen"
+  | "issued"
+  | "used"
+  | "closed"
+  | "cancelled"
+
+/**
+ * O registo de actividade que a secretária vê: uma lista **fechada** de
+ * acontecimentos, cada um com a frase do dicionário (`ministry.timeline.*`).
+ * Nunca o título, o detalhe nem o payload gravados: são escritos para o
+ * back-office e podem levar notas internas, custos ou o email de um agente.
+ */
+export const PUBLIC_TIMELINE_KINDS = [
+  "request_submitted",
+  "case_claimed",
+  "urgency_changed",
+  "proposal_published",
+  "offer_selected",
+  "passengers_submitted",
+  "ministry_ready_to_issue",
+  "tickets_issued",
+  "request_cancelled",
+  "case_closed",
+  "case_reopened",
+] as const
+export type PublicTimelineKind = (typeof PUBLIC_TIMELINE_KINDS)[number]
+
+export interface MinistryTimelineEntry {
+  kind: PublicTimelineKind
+  at: string
+  /** Só no `request_submitted`: a secretária que enviou. */
+  secretaryName: string | null
+}
+
+export interface MinistryRequest {
+  caseId: string
+  token: string
+  reference: string | null
+  origin: string | null
+  destination: string | null
+  departDate: string | null
+  returnDate: string | null
+  people: number
+  urgency: Urgency
+  notes: string | null
+  status: MinistryRequestStatus
+  /** D-4 · quem fez o pedido (as colegas veem os pedidos umas das outras). */
+  secretaryName: string | null
+  pnr: string | null
+  createdAt: string
+  timeline: MinistryTimelineEntry[]
+}
+
+/**
+ * B2G-08 · D-4 · todos os pedidos do ministério — de todas as secretárias
+ * dele, e só dele —, do mais recente para o mais antigo, com o estado e o
+ * registo de actividade (lista fechada) de cada um.
+ */
+export async function listMinistryRequests(orgId: string): Promise<MinistryRequest[]> {
+  const admin = createAdminClient()
+  if (!admin) return []
+
+  const columns = (withUrgency: boolean) =>
+    `id, token, stage, pnr, closed_at, claimed_at, created_at, secretary_id,${withUrgency ? " urgency," : ""}
+     trip_request:trip_requests (reference, origin, destination, depart_date, return_date, adults, special_requests),
+     proposals:case_proposals (status, selected_offer_id)`
+  const run = (withUrgency: boolean) =>
+    admin
+      .from("booking_cases")
+      .select(columns(withUrgency))
+      .eq("organisation_id", orgId)
+      .order("created_at", { ascending: false })
+      .limit(300)
+
+  /* Numa base sem a 0035 a lista abre na mesma, tudo Normal. */
+  let { data, error } = await run(true)
+  if (error?.code === "42703") ({ data, error } = await run(false))
+  if (error) {
+    console.error("[ministério] pedidos:", error.message)
+    return []
+  }
+  const rows = (data ?? []) as Record<string, any>[]
+  if (!rows.length) return []
+
+  const [{ data: secs }, { data: events }] = await Promise.all([
+    admin.from("ministry_secretaries").select("id, name").eq("organisation_id", orgId),
+    admin
+      .from("case_events")
+      .select("case_id, kind, created_at, payload")
+      .in("case_id", rows.map((r) => r.id as string))
+      .in("kind", [...PUBLIC_TIMELINE_KINDS])
+      .order("created_at", { ascending: true })
+      .limit(3000),
+  ])
+  const names = new Map(((secs ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]))
+
+  const timelines = new Map<string, MinistryTimelineEntry[]>()
+  for (const e of (events ?? []) as Record<string, any>[]) {
+    const list = timelines.get(e.case_id) ?? []
+    const payloadSec = e.kind === "request_submitted" ? (e.payload?.secretaryId as string | undefined) : undefined
+    list.push({
+      kind: e.kind as PublicTimelineKind,
+      at: e.created_at,
+      secretaryName: payloadSec ? names.get(payloadSec) ?? null : null,
+    })
+    timelines.set(e.case_id, list)
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+  return rows.map((r) => {
+    const trip = Array.isArray(r.trip_request) ? r.trip_request[0] : r.trip_request
+    const proposals = (Array.isArray(r.proposals) ? r.proposals : r.proposals ? [r.proposals] : []) as {
+      status: string
+      selected_offer_id: string | null
+    }[]
+    const lastDay = trip?.return_date ?? trip?.depart_date ?? null
+    let status: MinistryRequestStatus
+    if (r.stage === "cancelado") status = "cancelled"
+    else if (r.pnr) status = lastDay && lastDay < today ? "used" : "issued"
+    else if (r.closed_at) status = "closed"
+    else if (proposals.some((p) => p.selected_offer_id)) status = "chosen"
+    else if (proposals.some((p) => p.status === "publicada")) status = "options"
+    else if (r.claimed_at) status = "handling"
+    else status = "received"
+    const urgency = Number(r.urgency ?? 0)
+    return {
+      caseId: r.id,
+      token: r.token,
+      reference: trip?.reference ?? null,
+      origin: trip?.origin ?? null,
+      destination: trip?.destination ?? null,
+      departDate: trip?.depart_date ?? null,
+      returnDate: trip?.return_date ?? null,
+      people: Number(trip?.adults ?? 1),
+      urgency: (urgency === 1 || urgency === 2 ? urgency : 0) as Urgency,
+      notes: trip?.special_requests ?? null,
+      status,
+      secretaryName: r.secretary_id ? names.get(r.secretary_id) ?? null : null,
+      pnr: r.pnr ?? null,
+      createdAt: r.created_at,
+      timeline: timelines.get(r.id) ?? [],
+    }
+  })
+}
+
+// ── B2G-25 · Passageiros (só leitura neste bloco) ───────────────────────────
+
+export interface MinistryTraveller {
+  id: string
+  firstName: string
+  lastName: string
+  birthDate: string | null
+  nationality: string | null
+  /** Só os últimos caracteres: a lista não precisa do número inteiro. */
+  passportTail: string | null
+  passportExpiry: string | null
+  /** Expirado ou a menos de seis meses de expirar (B2G-25). */
+  passportWarning: "expired" | "soon" | null
+  updatedAt: string
+}
+
+/** `months` meses depois de `today` (AAAA-MM-DD). */
+function plusMonths(today: string, months: number): string {
+  const d = new Date(`${today}T12:00:00Z`)
+  d.setUTCMonth(d.getUTCMonth() + months)
+  return d.toISOString().slice(0, 10)
+}
+
+const foldText = (v: string) =>
+  v
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim()
+
+/**
+ * B2G-25 · os passageiros guardados do ministério — só desse —, por apelido.
+ * `query` filtra por nome ou passaporte (sem acentos, sem maiúsculas).
+ */
+export async function listMinistryTravellers(orgId: string, query?: string | null): Promise<MinistryTraveller[]> {
+  const admin = createAdminClient()
+  if (!admin) return []
+  const { data, error } = await admin
+    .from("ministry_travellers")
+    .select("id, first_name, last_name, birth_date, nationality, passport_number, passport_expiry, updated_at")
+    .eq("organisation_id", orgId)
+    .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true })
+    .limit(1000)
+  if (error) {
+    console.error("[ministério] passageiros:", error.message)
+    return []
+  }
+
+  const q = query ? foldText(query) : ""
+  const today = new Date().toISOString().slice(0, 10)
+  const horizon = plusMonths(today, 6)
+
+  return ((data ?? []) as Record<string, any>[])
+    .filter((r) => {
+      if (!q) return true
+      const hay = foldText(`${r.first_name ?? ""} ${r.last_name ?? ""} ${r.passport_number ?? ""}`)
+      return q.split(/\s+/).every((part) => hay.includes(part))
+    })
+    .map((r) => {
+      const expiry = (r.passport_expiry as string | null) ?? null
+      const passport = (r.passport_number as string | null) ?? null
+      return {
+        id: r.id,
+        firstName: r.first_name,
+        lastName: r.last_name,
+        birthDate: r.birth_date ?? null,
+        nationality: r.nationality ?? null,
+        passportTail: passport ? `•••${passport.slice(-3)}` : null,
+        passportExpiry: expiry,
+        passportWarning: !expiry ? null : expiry < today ? "expired" : expiry < horizon ? "soon" : null,
+        updatedAt: r.updated_at,
+      }
+    })
+}

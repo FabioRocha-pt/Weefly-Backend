@@ -6,14 +6,16 @@ import { usePathname } from "next/navigation"
 import { useT } from "@/i18n/provider"
 
 /**
- * MIN-01 · a barra inferior, fixa e sempre visível: Novo pedido e Minhas
- * passagens. A mesma nos ecrãs do caso (`/pc/…`) de um ministério, para que a
- * secretária nunca fique sem caminho de volta.
+ * MIN-01 · B2G-08 · a barra inferior, fixa e sempre visível, com as três
+ * áreas: Novo pedido, Os meus pedidos e Passageiros. A mesma nos ecrãs do caso
+ * (`/pc/…`) de um ministério, para que a secretária nunca fique sem caminho de
+ * volta.
  */
 export function MinistryTabBar({ base }: { base: string }) {
   const t = useT()
   const pathname = usePathname()
-  const onTrips = pathname.startsWith(`${base}/passagens`)
+  const onRequests = pathname.startsWith(`${base}/pedidos`)
+  const onTravellers = pathname.startsWith(`${base}/passageiros`)
   const onNew = pathname === base
 
   const tab = (href: string, active: boolean, icon: string, label: string) => (
@@ -59,7 +61,8 @@ export function MinistryTabBar({ base }: { base: string }) {
         }}
       >
         {tab(base, onNew, "＋", t("ministry.tabs.new"))}
-        {tab(`${base}/passagens`, onTrips, "✈", t("ministry.tabs.trips"))}
+        {tab(`${base}/pedidos`, onRequests, "✈", t("ministry.tabs.requests"))}
+        {tab(`${base}/passageiros`, onTravellers, "☺", t("ministry.tabs.travellers"))}
       </nav>
     </>
   )

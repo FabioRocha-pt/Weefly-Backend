@@ -64,8 +64,9 @@ export async function sendMinistryWelcome(
   const steps: [string, string][] = [
     ["O que é", `A aplicação de viagens do ${row.name}, com a ${brandName}. Pede viagens, escolhe ofertas, dá os dados dos passageiros e vê as passagens emitidas.`],
     ["Entrar", `O link pede um PIN de 6 dígitos. O PIN é entregue pela ${brandName} (nunca por email) e é só seu. Cinco PIN errados seguidos bloqueiam o acesso durante 15 minutos.`],
-    ["Novo pedido", "A aba que abre primeiro: datas, destino, passageiros e percurso."],
-    ["Minhas passagens", "A viagem activa em cima e, por baixo, o arquivo das passagens emitidas, usadas e expiradas do ministério."],
+    ["Novo pedido", "A aba que abre primeiro: quantas pessoas, de onde, para onde, as datas, a urgência e uma nota. Os dados dos passageiros vêm depois."],
+    ["Os meus pedidos", "Todos os pedidos do ministério (também os das colegas), com o estado e o registo de cada um."],
+    ["Passageiros", "Os passageiros já registados pelo ministério, com aviso quando o passaporte expira em menos de seis meses."],
     ["Android", "Abra o link no Chrome, toque em ⋮ e depois em «Instalar aplicação» (ou «Adicionar ao ecrã principal»)."],
     ["iPhone", "Abra o link no Safari, toque em Partilhar (□↑), escolha «Adicionar ao ecrã principal» e confirme em «Adicionar»."],
     ["Computador", "No Chrome ou no Edge, clique no ícone de instalar na barra de endereço, ou guarde o link nos favoritos."],

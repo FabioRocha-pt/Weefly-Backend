@@ -1775,7 +1775,8 @@
       "badFileType": "Envoyez un JPG, un PNG ou un PDF.",
       "paymentClosed": "Ce paiement est déjà clôturé. Parlez-nous sur WhatsApp.",
       "uploadFailed": "Nous n'avons pas pu enregistrer le fichier. Réessayez.",
-      "ministrySession": "Votre session a expiré. Saisissez à nouveau votre PIN pour envoyer la demande."
+      "ministrySession": "Votre session a expiré. Saisissez à nouveau votre PIN pour envoyer la demande.",
+      "ministryFlood": "Vous avez envoyé beaucoup de demandes au cours de la dernière heure. Patientez un peu, ou contactez l’agence de voyages sur WhatsApp."
     }
   },
   "pro": {
@@ -1924,21 +1925,8 @@
     "tabs": {
       "label": "Navigation",
       "new": "Nouvelle demande",
-      "trips": "Mes billets"
-    },
-    "trips": {
-      "title": "Mes billets",
-      "current": "Voyage en cours",
-      "archive": "Archives",
-      "none": "Aucun voyage pour l'instant. Les nouvelles demandes apparaissent ici.",
-      "balance": "Solde disponible"
-    },
-    "status": {
-      "active": "En cours",
-      "issued": "Émis",
-      "used": "Utilisé",
-      "expired": "Expiré",
-      "cancelled": "Annulé"
+      "requests": "Mes demandes",
+      "travellers": "Passagers"
     },
     "pay": {
       "title": "Rien à payer de ce côté",
@@ -1970,6 +1958,99 @@
     "landing": {
       "title": "Espace voyages du ministère",
       "body": "Pour faire une demande, ouvrez le lien personnel reçu par e-mail et saisissez votre PIN. Si vous n’avez pas d’accès, contactez l’agence de voyages de votre ministère."
+    },
+    "form": {
+      "title": "Nouvelle demande",
+      "intro": "Combien de personnes voyagent, où et quand. Les données des passagers viennent ensuite.",
+      "people": "Nombre de personnes",
+      "peopleHint": "De 1 à 50",
+      "origin": "Départ",
+      "destination": "Destination",
+      "airportPlaceholder": "Ville ou aéroport",
+      "departDate": "Date aller",
+      "returnDate": "Date retour",
+      "returnHint": "Vide pour un aller simple",
+      "urgency": "Urgence",
+      "notes": "Notes",
+      "notesPlaceholder": "Ex. : réunion à Lisbonne le 14 à 9 h ; vol direct de préférence.",
+      "optional": "facultatif",
+      "submit": "Envoyer la demande",
+      "sending": "Envoi…",
+      "missingTitle": "À remplir :",
+      "invalidTitle": "À corriger :",
+      "errors": {
+        "missing": "Des champs obligatoires manquent.",
+        "invalid": "Certains champs ont des valeurs inutilisables.",
+        "people": "Entre 1 et 50 personnes.",
+        "airport": "Choisissez un aéroport de la liste.",
+        "sameAirport": "La destination doit être différente du départ.",
+        "departPast": "La date aller ne peut pas être dans le passé.",
+        "returnBefore": "Le retour ne peut pas être avant l’aller.",
+        "notes": "Les notes sont limitées à 1000 caractères."
+      },
+      "done": {
+        "title": "Demande envoyée",
+        "body": "La référence de la demande est {reference}. {partner} a été prévenue.",
+        "another": "Faire une autre demande",
+        "view": "Voir mes demandes"
+      }
+    },
+    "urgency": {
+      "0": "Normale",
+      "1": "Urgente",
+      "2": "Très urgente"
+    },
+    "requests": {
+      "title": "Mes demandes",
+      "intro": "Toutes les demandes de {ministry}, de toutes les secrétaires.",
+      "none": "Aucune demande pour l’instant. Les nouvelles demandes apparaissent ici.",
+      "people": "{count} personne(s)",
+      "oneway": "aller simple",
+      "by": "Demandé par {name}",
+      "notes": "Notes",
+      "activity": "Journal d’activité",
+      "noActivity": "Pas encore d’activité.",
+      "open": "Ouvrir la demande",
+      "balance": "Solde disponible",
+      "status": {
+        "received": "Reçue",
+        "handling": "En traitement",
+        "options": "Options disponibles",
+        "chosen": "Option choisie",
+        "issued": "Émise",
+        "used": "Voyage effectué",
+        "closed": "Fermée",
+        "cancelled": "Annulée"
+      }
+    },
+    "timeline": {
+      "request_submitted": "Demande envoyée",
+      "request_submittedBy": "Demande envoyée par {name}",
+      "case_claimed": "Demande en traitement",
+      "urgency_changed": "Urgence modifiée",
+      "proposal_published": "Options de vol disponibles",
+      "offer_selected": "Option choisie",
+      "passengers_submitted": "Données des passagers envoyées",
+      "ministry_ready_to_issue": "Prête pour l’émission",
+      "tickets_issued": "Billets émis",
+      "request_cancelled": "Demande annulée",
+      "case_closed": "Demande fermée",
+      "case_reopened": "Demande rouverte"
+    },
+    "travellers": {
+      "title": "Passagers",
+      "intro": "Les passagers déjà enregistrés par {ministry}.",
+      "search": "Rechercher par nom ou passeport",
+      "searchButton": "Rechercher",
+      "clear": "Effacer",
+      "none": "Aucun passager enregistré pour l’instant. Ils apparaissent ici une fois les passagers d’une demande remplis.",
+      "noMatch": "Aucun passager trouvé pour « {q} ».",
+      "count": "{count} passager(s)",
+      "passport": "Passeport {number}",
+      "validUntil": "valable jusqu’au {date}",
+      "born": "Naissance : {date}",
+      "expired": "Passeport expiré",
+      "soon": "Le passeport expire dans moins de 6 mois"
     }
   },
   "seo": {

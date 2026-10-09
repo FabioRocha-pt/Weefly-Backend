@@ -95,11 +95,15 @@ function BrandLogo() {
       ) : (
         <b style={{ fontSize: 17 }}>{brand.name}</b>
       )}
-      {/* TEN-02 · o brasão do ministério ao lado; sem brasão, nada — nem
-          espaço vazio nem imagem partida. */}
+      {/* TEN-02 · B2G-08 · B2G-24 · o logótipo horizontal do ministério ao
+          lado, separado por uma linha fina; sem logótipo, nada — nem espaço
+          vazio nem imagem partida. */}
       {brand.organisation?.logoUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={brand.organisation.logoUrl} alt={brand.organisation.name} style={{ height: 32, width: "auto" }} />
+        <>
+          <span aria-hidden style={{ alignSelf: "stretch", width: 1, minHeight: 28, background: "var(--line)" }} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={brand.organisation.logoUrl} alt={brand.organisation.name} style={{ height: 32, width: "auto", maxWidth: "48vw", objectFit: "contain" }} />
+        </>
       )}
     </span>
   )

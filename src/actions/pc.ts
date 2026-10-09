@@ -26,7 +26,9 @@ import { hostPartnerSlug } from "@/lib/host-partner"
 import { secretaryForLinkToken } from "@/lib/ministry"
 import {
   RATE_LIMIT,
+  SECRETARY_FLOOD,
   countRecentSubmissions,
+  countSecretaryRequests,
   createPriceCheckerCase,
   findRecentSubmission,
 } from "@/lib/pc/intake"
@@ -282,7 +284,18 @@ export async function submitPcRequest(
    * já fez, em vez de partir a conversa em dois casos e pôr duas linhas iguais
    * na fila de quem atende.
    */
-  const repeated = await findRecentSubmission({
+  /*
+   * B2G-10 · um pedido de ministério não se deduplica nem conta no limite por
+   * IP: três pedidos iguais seguidos são três pedidos. Fica o travão por
+   * secretária.
+   */
+  if (ministrySecretaryId) {
+    if ((await countSecretaryRequests(ministrySecretaryId)) >= SECRETARY_FLOOD.max) {
+      return { ok: false, error: pcError("ministryFlood", { stored: input.locale }) }
+    }
+  }
+
+  const repeated = ministrySecretaryId ? null : await findRecentSubmission({
     email: v.email,
     origin,
     destination,
@@ -298,7 +311,7 @@ export async function submitPcRequest(
    * quem escrever um script — e agora que cada pedido gera um aviso à equipa,
    * seria também uma caixa de correio inundada.
    */
-  if (await countRecentSubmissions(ip) >= RATE_LIMIT.max) {
+  if (!ministrySecretaryId && (await countRecentSubmissions(ip)) >= RATE_LIMIT.max) {
     return {
       ok: false,
       error:

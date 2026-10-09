@@ -10,9 +10,12 @@ import { I18nProvider } from "@/i18n/provider"
 import { getDictionary } from "@/i18n/server"
 
 /**
- * MIN-01 · a moldura da aplicação do ministério: a marca do parceiro com o
- * brasão (MIN-02), o WhatsApp do parceiro (MIN-04), a barra inferior fixa e o
- * manifesto para instalar como aplicação (MIN-06).
+ * MIN-01 · a moldura da aplicação do ministério: a marca do parceiro e o
+ * logótipo horizontal do ministério, lado a lado e separados por uma linha
+ * fina (B2G-08, B2G-24), o WhatsApp do parceiro (MIN-04), "Powered by
+ * WeeFly" discreto em baixo, a barra inferior fixa com as três áreas e o
+ * manifesto para instalar como aplicação (MIN-06), com o brasão no ícone e o
+ * nome do ministério no título.
  *
  * Em português: é a língua dos ministérios de Cabo Verde, e a secretária não
  * tem de escolher nada.
@@ -33,10 +36,22 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const lookup = await resolveMinistry(params.org, params.token)
   if (!lookup.ok) return { title: "—" }
   const { org, brand } = lookup.ministry
+  const base = `/ministerios/${org.slug}/${org.token}`
+  const v = `?v=${brand.brandVersion}`
   return {
-    title: `${org.name} · ${brand.name}`,
-    manifest: `/ministerios/${org.slug}/${org.token}/manifest.webmanifest`,
+    /* B2G-08 · o nome do ministério no título (e no ícone instalado). */
+    title: { absolute: org.name },
+    applicationName: org.name,
+    manifest: `${base}/manifest.webmanifest`,
     appleWebApp: { capable: true, title: org.name, statusBarStyle: "default" },
+    /* B2G-24 · o brasão só no ícone da aplicação (ver `icon/[file]`). */
+    icons: {
+      icon: [
+        { url: `${base}/icon/favicon-32x32.png${v}`, sizes: "32x32", type: "image/png" },
+        { url: `${base}/icon/icon-192.png${v}`, sizes: "192x192", type: "image/png" },
+      ],
+      apple: [{ url: `${base}/icon/apple-touch-icon.png${v}`, sizes: "180x180", type: "image/png" }],
+    },
     robots: { index: false, follow: false },
   }
 }

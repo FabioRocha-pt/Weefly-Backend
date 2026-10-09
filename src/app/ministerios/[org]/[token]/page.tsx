@@ -1,19 +1,22 @@
 import { notFound } from "next/navigation"
 
-import { RequestWizard } from "@/components/pc/request-wizard"
+import { MinistryRequestForm } from "@/components/ministry/request-form"
+import { airportByIata } from "@/lib/airports"
 import { loadSecretarySpace } from "@/lib/ministry"
-import { countryOfDial, toE164 } from "@/lib/countries"
 
 /**
- * MIN-01 · Novo pedido — a aba que abre primeiro. O passo 1 do Price Checker
- * (datas, destino, passageiros, percurso); quem pede é conhecido, e por isso o
- * passo do contacto salta-se quando o ministério o tem completo.
+ * MIN-01 · B2G-09 · Novo pedido — a aba que abre primeiro.
  *
- * "Um componente, duas configurações": é o mesmo formulário do link de um
- * cliente particular, com o ministério a dizer quem pede.
+ * Já não é o passo 1 do Price Checker: o ministério tem o formulário simples
+ * (pessoas, de onde, para onde, datas, urgência, notas). Quem pede é a
+ * secretária da sessão, e por isso não há passo do contacto nem dados de
+ * passageiros aqui.
  */
 
 export const dynamic = "force-dynamic"
+
+/** D-1 · "Origem com a Praia por defeito, editável". */
+const DEFAULT_ORIGIN = "RAI"
 
 export default async function MinistryNewRequestPage({
   params,
@@ -26,29 +29,18 @@ export default async function MinistryNewRequestPage({
   if (!signedIn) return null
   const { org } = lookup.ministry
 
-  /* O telefone da secretária chega como foi escrito ("+238 991 23 45"): o
-     formulário quer o país e o número nacional. */
-  const raw = (org.secretaryPhone ?? "").replace(/\s+/g, "")
-  const dial = raw.startsWith("+") ? raw.match(/^\+\d{1,3}/)?.[0] ?? "+238" : "+238"
-  const country = countryOfDial(dial) || "CV"
-  const national = raw.startsWith("+") ? raw.slice(dial.length) : raw
-  const phoneOk = Boolean(national && toE164(dial, national))
+  const praia = airportByIata(DEFAULT_ORIGIN)
 
   return (
-    <RequestWizard
-      initialLang="pt"
-      initialCurrency={org.currency}
-      initialCountry={country}
-      agentSlug={null}
-      ministry={{
-        token: org.token,
-        contact: {
-          name: org.secretaryName ?? "",
-          email: org.secretaryEmail ?? "",
-          country,
-          phone: phoneOk ? national : "",
-        },
-      }}
+    <MinistryRequestForm
+      orgSlug={org.slug}
+      linkToken={org.token}
+      currency={org.currency}
+      defaultOrigin={
+        praia
+          ? { iata: praia.iata, city: praia.city, name: praia.name, country: praia.country, countryName: praia.countryName }
+          : null
+      }
     />
   )
 }

@@ -88,6 +88,11 @@ export interface PcIntake {
    * link, como o do ministério.
    */
   vipToken?: string | null
+  /**
+   * B2G-09 · D-6 · a urgência de um pedido de ministério: 0 Normal, 1 Urgente,
+   * 2 Muito urgente. Ignorada fora de um ministério.
+   */
+  urgency?: 0 | 1 | 2
   consentIp: string | null
   consentAgent: string | null
 }
@@ -318,6 +323,27 @@ export async function countRecentSubmissions(ip: string | null): Promise<number>
 export const RATE_LIMIT = { max: RATE_MAX, minutes: RATE_MINUTES }
 
 /**
+ * B2G-10 · "Pedidos sem limite": um ministério pede três viagens iguais
+ * seguidas (três equipas, a mesma missão) e as três têm de ficar. Por isso um
+ * pedido de ministério não passa pela deduplicação nem pelo limite por IP (a
+ * rede de um ministério é um IP para todos). O que fica é um travão por
+ * secretária, largo o bastante para um dia de trabalho a sério e curto para
+ * um script com a sessão roubada.
+ */
+export const SECRETARY_FLOOD = { max: 30, minutes: 60 }
+
+export async function countSecretaryRequests(secretaryId: string): Promise<number> {
+  const admin = createAdminClient()
+  if (!admin) return 0
+  const { count } = await admin
+    .from("booking_cases")
+    .select("id", { count: "exact", head: true })
+    .eq("secretary_id", secretaryId)
+    .gte("created_at", minutesAgo(SECRETARY_FLOOD.minutes))
+  return count ?? 0
+}
+
+/**
  * Cria lead + pedido + caso, e devolve o endereço permanente do cliente.
  *
  * Devolve null quando a service role não está configurada — o mesmo modo de
@@ -438,6 +464,9 @@ export async function createPriceCheckerCase(
         lead_id: leadId,
         ...(partnerId ? { partner_id: partnerId } : {}),
         ...(ministry ? { organisation_id: ministry.organisationId, secretary_id: ministry.secretaryId } : {}),
+        /* B2G-09 · a urgência que a secretária escolheu (0035). Só vai quando
+           vem, para o resto do intake não depender da coluna. */
+        ...(ministry && input.urgency != null ? { urgency: input.urgency } : {}),
         /* B2G-21 · o canal decide-o o gatilho da 0033 a partir do VIP; vai
            escrito na mesma, para quem lê o código. */
         ...(vip ? { vip_client_id: vip.vipClientId, channel: "vip" } : {}),
@@ -466,7 +495,7 @@ export async function createPriceCheckerCase(
         ? input.legs.map((l) => `${l.origin}→${l.destination}`).join(" · ")
         : `${origin} → ${destination}`
 
-    await logCaseEvent({
+    const submitted = {
       caseId,
       kind: "request_submitted",
       title: ministry ? `Pedido submetido por ${ministry.secretaryName}` : "Pedido submetido pelo cliente",
@@ -477,10 +506,10 @@ export async function createPriceCheckerCase(
         `cur=${input.currency}`,
         route,
       ].join(" · "),
-      actorKind: "client",
+      actorKind: "client" as const,
       payload: {
         reference,
-        ...(ministry ? { secretaryId: ministry.secretaryId } : {}),
+        ...(ministry ? { secretaryId: ministry.secretaryId, urgency: input.urgency ?? 0 } : {}),
         trip: input.trip,
         cabin: input.cabin,
         pax: {
@@ -490,7 +519,14 @@ export async function createPriceCheckerCase(
           infantsOnLap: input.infantsOnLap,
         },
       },
-    })
+    }
+    /* B2G-08 · num ministério quem age é a secretária (`actor_kind`
+       `secretary`, 0035). Se a base ainda não o aceitar, fica como antes —
+       o acontecimento é o que acende a campainha, não se perde. */
+    const logged = ministry
+      ? await logCaseEvent({ ...submitted, actorKind: "secretary", actorSecretaryId: ministry.secretaryId })
+      : { written: false }
+    if (!logged.written) await logCaseEvent(submitted)
 
     return { caseId, token, reference }
   } catch (err) {

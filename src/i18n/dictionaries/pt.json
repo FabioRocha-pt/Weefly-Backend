@@ -1775,7 +1775,8 @@
       "badFileType": "Envie um JPG, um PNG ou um PDF.",
       "paymentClosed": "Este pagamento já está fechado. Fale connosco no WhatsApp.",
       "uploadFailed": "Não conseguimos guardar o ficheiro. Tente outra vez.",
-      "ministrySession": "A sua sessão terminou. Introduza o PIN outra vez para enviar o pedido."
+      "ministrySession": "A sua sessão terminou. Introduza o PIN outra vez para enviar o pedido.",
+      "ministryFlood": "Já enviou muitos pedidos na última hora. Espere um pouco, ou fale com a empresa de viagens pelo WhatsApp."
     }
   },
   "pro": {
@@ -1924,21 +1925,8 @@
     "tabs": {
       "label": "Navegação",
       "new": "Novo pedido",
-      "trips": "Minhas passagens"
-    },
-    "trips": {
-      "title": "Minhas passagens",
-      "current": "Viagem ativa",
-      "archive": "Arquivo",
-      "none": "Ainda não há viagens. Os pedidos novos aparecem aqui.",
-      "balance": "Saldo disponível"
-    },
-    "status": {
-      "active": "Em curso",
-      "issued": "Emitida",
-      "used": "Usada",
-      "expired": "Expirada",
-      "cancelled": "Cancelada"
+      "requests": "Os meus pedidos",
+      "travellers": "Passageiros"
     },
     "pay": {
       "title": "Não há nada a pagar deste lado",
@@ -1970,6 +1958,99 @@
     "landing": {
       "title": "Espaço de viagens do ministério",
       "body": "Para fazer pedidos, abra o link pessoal que recebeu por email e introduza o seu PIN. Se não tem acesso, fale com a empresa de viagens do seu ministério."
+    },
+    "form": {
+      "title": "Novo pedido",
+      "intro": "Quantas pessoas viajam, para onde e quando. Os dados dos passageiros vêm depois.",
+      "people": "Número de pessoas",
+      "peopleHint": "De 1 a 50",
+      "origin": "De onde",
+      "destination": "Para onde",
+      "airportPlaceholder": "Cidade ou aeroporto",
+      "departDate": "Data de ida",
+      "returnDate": "Data de volta",
+      "returnHint": "Vazia é só ida",
+      "urgency": "Urgência",
+      "notes": "Notas",
+      "notesPlaceholder": "Ex.: reunião em Lisboa no dia 14 às 9h; preferência por voo direto.",
+      "optional": "opcional",
+      "submit": "Enviar pedido",
+      "sending": "A enviar…",
+      "missingTitle": "Falta preencher:",
+      "invalidTitle": "Corrija:",
+      "errors": {
+        "missing": "Faltam campos obrigatórios.",
+        "invalid": "Há campos com valores que não servem.",
+        "people": "Entre 1 e 50 pessoas.",
+        "airport": "Escolha um aeroporto da lista.",
+        "sameAirport": "O destino tem de ser diferente da origem.",
+        "departPast": "A data de ida não pode ser no passado.",
+        "returnBefore": "A volta não pode ser antes da ida.",
+        "notes": "As notas têm no máximo 1000 caracteres."
+      },
+      "done": {
+        "title": "Pedido enviado",
+        "body": "A referência do pedido é {reference}. A {partner} já foi avisada.",
+        "another": "Fazer outro pedido",
+        "view": "Ver os meus pedidos"
+      }
+    },
+    "urgency": {
+      "0": "Normal",
+      "1": "Urgente",
+      "2": "Muito urgente"
+    },
+    "requests": {
+      "title": "Os meus pedidos",
+      "intro": "Todos os pedidos do {ministry}, de todas as secretárias.",
+      "none": "Ainda não há pedidos. Os pedidos novos aparecem aqui.",
+      "people": "{count} pessoa(s)",
+      "oneway": "só ida",
+      "by": "Pedido por {name}",
+      "notes": "Notas",
+      "activity": "Registo de atividade",
+      "noActivity": "Ainda sem atividade.",
+      "open": "Abrir o pedido",
+      "balance": "Saldo disponível",
+      "status": {
+        "received": "Recebido",
+        "handling": "Em tratamento",
+        "options": "Opções disponíveis",
+        "chosen": "Opção escolhida",
+        "issued": "Emitido",
+        "used": "Viagem feita",
+        "closed": "Fechado",
+        "cancelled": "Cancelado"
+      }
+    },
+    "timeline": {
+      "request_submitted": "Pedido enviado",
+      "request_submittedBy": "Pedido enviado por {name}",
+      "case_claimed": "Pedido em tratamento",
+      "urgency_changed": "Urgência alterada",
+      "proposal_published": "Opções de voo disponíveis",
+      "offer_selected": "Opção escolhida",
+      "passengers_submitted": "Dados dos passageiros enviados",
+      "ministry_ready_to_issue": "Pronto para emissão",
+      "tickets_issued": "Passagens emitidas",
+      "request_cancelled": "Pedido cancelado",
+      "case_closed": "Pedido fechado",
+      "case_reopened": "Pedido reaberto"
+    },
+    "travellers": {
+      "title": "Passageiros",
+      "intro": "Os passageiros já registados pelo {ministry}.",
+      "search": "Pesquisar por nome ou passaporte",
+      "searchButton": "Pesquisar",
+      "clear": "Limpar",
+      "none": "Ainda não há passageiros guardados. Ficam aqui quando preencher os passageiros de um pedido.",
+      "noMatch": "Nenhum passageiro encontrado para «{q}».",
+      "count": "{count} passageiro(s)",
+      "passport": "Passaporte {number}",
+      "validUntil": "válido até {date}",
+      "born": "Nascimento: {date}",
+      "expired": "Passaporte expirado",
+      "soon": "Passaporte expira em menos de 6 meses"
     }
   },
   "seo": {

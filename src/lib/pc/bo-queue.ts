@@ -167,6 +167,8 @@ export interface BoQueueRow {
   organisationName: string | null
   vipClientId: string | null
   vipName: string | null
+  /** B2G-09 · D-6 · 0 Normal, 1 Urgente, 2 Muito urgente. 0 numa base sem a 0035. */
+  urgency: 0 | 1 | 2
   /** C-05 · o estado de cada link, derivado do caso. Ver `deriveLinkState`. */
   links: {
     stage: number
@@ -366,7 +368,9 @@ export async function loadBoQueue(
      relação em falta: 42703, PGRST200) repete-se sem elas, e a fila continua
      a abrir. */
   const withClosed = QUEUE_COLUMNS.replace("closed_by_email,", "closed_by_email, closed_reason, closed_note,")
-  let { data, error } = await run(withClosed.replace("claimed_at,", `claimed_at, ${CHANNEL_COLUMNS}`))
+  /* B2G-09 · a urgência (0035) primeiro; sem ela, as colunas do canal. */
+  let { data, error } = await run(withClosed.replace("claimed_at,", `claimed_at, urgency, ${CHANNEL_COLUMNS}`))
+  if (error?.code === "42703") ({ data, error } = await run(withClosed.replace("claimed_at,", `claimed_at, ${CHANNEL_COLUMNS}`)))
   if (error && (error.code === "42703" || error.code === "PGRST200")) ({ data, error } = await run(withClosed))
   if (error?.code === "42703") ({ data, error } = await run(QUEUE_COLUMNS))
 
@@ -482,6 +486,7 @@ export async function loadBoQueue(
       organisationName: (unwrap(raw.organisation)?.name as string | undefined) ?? null,
       vipClientId: (raw.vip_client_id as string | null | undefined) ?? null,
       vipName: (unwrap(raw.vip)?.name as string | undefined) ?? null,
+      urgency: ([0, 1, 2].includes(Number(raw.urgency)) ? Number(raw.urgency) : 0) as 0 | 1 | 2,
       /*
        * C-05 · o estado do link, calculado a partir do caso.
        *

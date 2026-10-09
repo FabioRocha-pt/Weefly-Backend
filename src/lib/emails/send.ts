@@ -209,7 +209,9 @@ async function context(caseId: string): Promise<CaseContext | null> {
     reference: (trip?.reference as string) ?? null,
     clientName: fullName,
     clientFirstName: fullName.split(/\s+/)[0] ?? fullName,
-    clientEmail: (lead?.email as string) ?? null,
+    /* B2G-09 · uma secretária sem email fica no lead com um endereço
+       `.invalid` (o lead exige email): esse nunca recebe nada. */
+    clientEmail: lead?.email && !/\.invalid$/i.test(String(lead.email)) ? (lead.email as string) : null,
     clientPhone: lead
       ? `${lead.phone_prefix ?? ""} ${lead.phone ?? ""}`.trim() || null
       : null,

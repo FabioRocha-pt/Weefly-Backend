@@ -1,10 +1,8 @@
-import { readFile } from "fs/promises"
-import path from "path"
 import { NextResponse } from "next/server"
 
+import { loadBrandAsset } from "@/lib/brand-asset-load"
 import { clientBrandForSlug, weeflyBrand, type Brand } from "@/lib/brand"
 import { classifyHost, type SiteHost } from "@/lib/site-host"
-import { siteUrl } from "@/lib/site-url"
 import { WEEFLY_THEME } from "@/lib/site-meta"
 
 export const runtime = "nodejs"
@@ -37,29 +35,8 @@ const FILES: Record<string, string> = {
   "site.webmanifest": "application/manifest+json",
 }
 
-const PUBLIC_DIR = path.join(process.cwd(), "public")
-
 /** Lê um ficheiro nosso (`/brand/...`) do disco, e qualquer outro por HTTP. */
-async function load(url: string): Promise<Buffer | null> {
-  const own = siteUrl()
-  const local = url.startsWith("/") ? url : own && url.startsWith(`${own}/brand/`) ? url.slice(own.length) : null
-  if (local) {
-    const clean = path.normalize(local.split("?")[0]).replace(/^([/\\])+/, "")
-    if (!clean.startsWith(`brand${path.sep}`) && !clean.startsWith("brand/")) return null
-    try {
-      return await readFile(path.join(PUBLIC_DIR, clean))
-    } catch {
-      return null
-    }
-  }
-  try {
-    const res = await fetch(url, { cache: "no-store" })
-    if (!res.ok) return null
-    return Buffer.from(await res.arrayBuffer())
-  } catch {
-    return null
-  }
-}
+const load = loadBrandAsset
 
 function manifest(site: SiteHost, brand: Brand, own: boolean, v: string): string {
   const name = own ? brand.name : site.kind === "pro" ? "WeeFly PRO" : "WeeFly"

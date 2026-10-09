@@ -42,7 +42,7 @@ export interface BoAlert {
   title: string
   detail: string | null
   actorEmail: string | null
-  actorKind: "client" | "staff" | "system"
+  actorKind: "client" | "staff" | "system" | "secretary"
   createdAt: string
   unread: boolean
   /** A referência do caso, para a entrada dizer de quem é. */

@@ -10,7 +10,8 @@
 
 import { createAdminClient } from "@/utils/supabase/admin"
 
-export type EventActor = "client" | "staff" | "system"
+/** B2G-08 · `secretary` · uma secretária de ministério, com a sessão do PIN (0035). */
+export type EventActor = "client" | "staff" | "system" | "secretary"
 
 export interface CaseEvent {
   id: string
@@ -48,6 +49,8 @@ export async function logCaseEvent(input: {
   actorId?: string | null
   actorEmail?: string | null
   actorKind?: EventActor
+  /** B2G-08 · a secretária, quando `actorKind` é `secretary` (obrigatória nesse caso). */
+  actorSecretaryId?: string | null
   payload?: Record<string, unknown> | null
   /**
    * A chave que faz deste acontecimento um acontecimento único no caso.
@@ -70,6 +73,9 @@ export async function logCaseEvent(input: {
     actor_id: input.actorId ?? null,
     actor_email: input.actorEmail ?? null,
     actor_kind: input.actorKind ?? "system",
+    /* Só vai a coluna quando há secretária: uma base sem a 0035 continua a
+       aceitar os acontecimentos de sempre. */
+    ...(input.actorSecretaryId ? { actor_secretary_id: input.actorSecretaryId } : {}),
     payload: input.payload ?? null,
     dedupe_key: dedupeKey,
   })
