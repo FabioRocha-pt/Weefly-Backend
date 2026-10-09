@@ -49,6 +49,7 @@ function defaultTab(detail: BoCaseDetail): TabId {
     case "aguarda_pagamento":
       return "t-pag"
     case "pago_sem_bilhete":
+    case "pronto_a_emitir":
       return "t-emi"
     case "novo":
     case "em_cotacao":
@@ -620,6 +621,7 @@ export function BoCaseView({
             amount={row.amount}
             currency={row.currency}
             hasDocument={hasTicketDocument}
+            ministry={detail.ministry}
           />
           {/* PC-B · a outra metade do compositor. O construtor de bilhete
               completo continua alcançável — está aqui, no momento em que os

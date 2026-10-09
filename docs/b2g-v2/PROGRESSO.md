@@ -221,3 +221,60 @@ Verificação: `bash supabase/tests/run.sh` OK (incluindo `test_tenancy`, `test_
 2. **Bloquear o compositor a quem não é dono?** Não o fiz: o compositor continua a abrir para colegas (era assim, e o Admin do parceiro publica propostas alheias); quem não é dono vê "Este caso já tem dono · Reclamado por …" por cima. "Bloqueia" ficou como "mais ninguém reclama".
 3. **ADM-04 vs D-12:** com a decisão 2, o master abre e trata qualquer caso sem abrir uma intervenção; o registo é o `case_claimed` (e cada acção no registo do caso). Se quiserem "ler sem reclamar = só leitura", é preciso separar a leitura da escrita em `caseInScope`.
 4. O email de pedido novo à empresa sai com o remetente e a marca da WeeFly (como o da equipa); num white label talvez se queira o remetente da empresa.
+
+## Bloco 6 · Das ofertas à emissão (B2G-15, B2G-16, B2G-25, B2G-17, B2G-18)
+
+### Feito
+
+**Migração `0037_b2g_offers_issuance.sql`** (idempotente, corre duas vezes no `run.sh`):
+- `case_proposals.status` aceita `revisao_parceiro`; colunas `review_requested_by_email/at`, `reviewed_by_email/at`.
+- `request_proposal_review(p_case)` · SECURITY DEFINER, pela sessão: só o master (`cross_partner`) num caso de **outra** empresa (empresa do caso ≠ empresa da sessão), só no canal `ministerio`, só a partir do rascunho e com pelo menos uma oferta incluída. Carimba quem/quando e escreve `proposal_review_requested` no `case_events` (staff, com `actor_id`/email) e no `access_audit`. Responde `requested | already | forbidden | not_found | not_draft | no_offers`.
+- Gatilho `case_proposals_review_guard` (qualquer `update` de estado feito por uma sessão; a service role passa): o master não publica directamente um ministério de outra empresa (D-2), uma proposta em revisão só é publicada pela empresa do caso (carimba `reviewed_by_email/at`), e só se vai à revisão a partir do rascunho.
+- `booking_cases.ready_to_issue_at` (+ índice parcial).
+- D-7 · `trip_requests`: adultos 0–50, crianças 0–50, bebés 0–50, total 1–50 (um pedido só de crianças, ou com mais de 9, deixa de ser recusado).
+- `ministry_travellers.last_source` aceita `secretary`.
+- Teste novo `supabase/tests/test_proposal_review.sql` (P1–P8): agente da empresa não envia para revisão; master não publica directamente; master envia (estado, carimbo, registos, sem duplicar); outra empresa e um agente WeeFly não veem nem mexem; outro agente da empresa do caso (não dono) edita o preço e publica, fica quem reviu; a conta da secretária e `anon` não leem propostas nem ofertas (nem rascunho, nem revisão, nem publicada); no operador e no canal público não há revisão; `ready_to_issue_at`, mistura só de crianças, zero pessoas recusado; ficha com origem `secretary` no histórico. Sondas novas em `scripts/check-migrations.mjs`.
+
+**B2G-15 · D-2 · a revisão da empresa**
+- `requestProposalReview` (`actions/proposals.ts`): as mesmas validações de publicar, grava as ofertas incluídas e a mensagem, chama a RPC pela sessão, avisa a empresa (campainha pelo acontecimento + email aos destinatários de alertas da empresa, `sendPartnerCaseNotice`).
+- `publishProposal`: com a proposta em revisão, qualquer agente da empresa do caso revê/edita/publica (o `requireCaseOwner` deixa passar quem é da empresa do caso só nesse estado); o master num ministério de outra empresa recebe "use Enviar à empresa para revisão". Num caso de ministério fica `proposal_published` no `case_events` (staff; "revistas e enviadas" quando veio da revisão) e o aviso vai a **todas as secretárias activas** (`lib/emails/ministry-notices.ts`, marca e remetente da empresa, link pessoal de cada uma) em vez do email do `/pc` ao contacto do caso.
+- Compositor (`/ofertas`): `review` = `send` ("Enviar à empresa para revisão", com explicação), `reviewing` (empresa: "preparado por X (hora)" · "Enviar à secretária") ou `waiting` (master: botão desligado). Genérico: "empresa do caso ≠ empresa da sessão e a sessão é o master" (`isCrossPartner`), nunca "a empresa é a Alô".
+- Leitores do lado do cliente/secretária: `getPublishedProposal` só lê `publicada` (colunas públicas, sem `cost_total`); "Os meus pedidos" só mostra "opções disponíveis" com `publicada`; a revisão não está na lista fechada do registo público.
+
+**B2G-16 · o caso dentro do espaço do ministério**
+- `/ministerios/[org]/[token]/pedidos/[caseId]` (`lib/ministry-case.ts`): exige a sessão do PIN da secretária do link **e** `booking_cases.organisation_id` = ministério dela — senão 404. O estado vai para o browser limpo: sem token do caso, sem `agent_note`, sem pagamento/comprovativos, sem o link pessoal da autora. Passos: à espera · ofertas (imprimir, escolher) · passageiros · pronto a emitir · emitido (bilhetes) · fechado/cancelado. Folha de impressão (esconde barra, botões, WhatsApp) + botão "Imprimir".
+- As escritas: `actions/ministry-case.ts` (`secretaryChooseOffer`, `secretarySavePassengers`) → sessão + ministério (`secretaryCaseAuth`) → o mesmo corpo do canal público, extraído para `lib/pc/case-steps.ts` (`chooseOfferForState`, `savePassengersForState`) com a secretária como autora. O `/pc` público chama o mesmo corpo com `actor: client` — **o caminho público é o mesmo código, só mudou de ficheiro**.
+- O token do caso deixou de abrir um caso de ministério: `loadPcState(token)` recusa-o (só `{ ministry: true }` o lê), `getCaseByToken` e `/api/pc/[token]/ticket` também; `/pc/{token}` de um caso de ministério redirecciona para o link pessoal da autora (`/ministerios/<org>/<link>/pedidos/<caso>`; sem autora activa, `/ministerios/<org>`). `findMinistryTraveller` (pelo token) saiu.
+- "Abrir o pedido" em *Os meus pedidos* aponta para a rota nova (estado novo "Pronto a emitir").
+
+**B2G-25 · passageiros guardados**
+- No bloco de cada pessoa: "Escolher dos passageiros guardados" (pesquisa sem acentos por nome/passaporte, aviso de passaporte expirado / < 6 meses, a mesma ficha não se escolhe em dois blocos); escolhida, o bloco fica preenchido para confirmar/corrigir. Só as fichas do ministério da sessão.
+- Cada registo/alteração vai para `ministry_travellers` com `created_by_secretary_id` (ficha nova) / `updated_by_secretary_id` e o histórico (`ministry_traveller_changes`, gatilho) com a secretária e a hora.
+- Área Passageiros: "Corrigir" → `/passageiros/[travellerId]` (sessão + ministério, senão 404), `secretaryUpdateTraveller` com `last_source='secretary'`, registado.
+- D-7 · o tipo de cada passageiro sai da data de nascimento à data do primeiro voo (`paxKindFromDob`: < 2 bebé ao colo, 2–11 criança, ≥ 12 adulto), no ecrã e outra vez no servidor; o pedido passa a ter a mistura real e fica `pax_mix_updated` (secretária, antes/depois).
+- Admin › B2G › ministério: "Histórico dos passageiros" (`listTravellerChanges`, pela sessão/RLS): quando, ficha, registado/campos alterados, quem (nome da secretária ou email do back-office), onde.
+
+**B2G-17 · sem pagamento** · Num ministério, gravar os passageiros completos põe `ready_to_issue_at` e escreve `ministry_ready_to_issue` (secretária; acende a campainha). Nenhum ecrã de pagamento no espaço da secretária ("Total" em vez de "Total a pagar"; nota "Sem pagamento na plataforma"). Fila: estado novo `pronto_a_emitir` ("E4 · Pronto a emitir"), no balde "pagos sem bilhete", abre na aba Emissão.
+
+**B2G-18 · D-3 · a WeeFly emite**
+- `boIssueTickets`: num ministério aceita `ready_to_issue_at` sem pagamento confirmado (um pagamento externo confirmado continua a servir); **só contas do operador** (`tenant.isOperator`) emitem um caso de ministério — recusado no servidor e botão escondido no painel (nota "emitidos pela WeeFly"). Público/VIP iguais.
+- Depois de emitir: `ministry_tickets_issued` (campainha da empresa), aviso a todas as secretárias activas (link pessoal para o caso) e à empresa (email). Sem o email do `/pc` ao contacto do caso. "Reenviar bilhete" num ministério reenvia o aviso às secretárias.
+- Bilhetes: `/ministerios/[org]/[token]/pedidos/[caseId]/bilhete[?pax=]` — sessão do PIN + caso do ministério (o cookie só vai para o link pessoal).
+
+**Registo (para o bloco 7)** · `case_events` com autor e hora: `proposal_review_requested` (staff), `proposal_published` (staff; revisto ou não), `offer_selected`/`offer_changed` (secretary + `actor_secretary_id`), `passengers_submitted` (secretary), `pax_mix_updated` (secretary), `ministry_ready_to_issue` (secretary), `tickets_issued` (staff), `ministry_tickets_issued` (system).
+
+Verificação: `bash supabase/tests/run.sh` OK · `npm run build` OK · `npm run i18n:check` OK (textos novos: `ministry.case.*`, `ministry.travellers.*`, `pc.pax.savedList.*` em PT/EN/FR; back-office em `src/i18n/bo/parts/offers.{pt,en}.json`).
+
+### Falta
+- Nada foi aberto num browser (sem base local com dados; `.env.local` aponta para o Supabase real, não usado). Testar com o script de dados do bloco 8: Dominik prepara ofertas num pedido da Alô → a secretária não vê → a Alô envia → a secretária vê e imprime; 3 passageiros (um guardado); pronto a emitir; emitir com a WeeFly (e tentar com a Alô); bilhetes em *Os meus pedidos*.
+- "Ver como cliente" no back-office, num caso de ministério, leva ao ecrã do PIN (o `/pc` redirecciona). Não há pré-visualização do lado da secretária para a equipa.
+- A janela da proposta (FB-04) continua a contar no ecrã das ofertas da secretária; o servidor não recusa a escolha depois dela (como no público).
+- O ecrã antigo `ScreenMinistryPay` e o `MinistryTabBar` no `/pc` ficaram sem uso (o `/pc` já não abre casos de ministério).
+- `graphify update .` não correu (não está instalado).
+
+### Para decidir (humano)
+1. **A revisão vale só para o canal Ministérios.** Um pedido Público/VIP de outra empresa tratado pelo master continua a ser publicado directamente (como antes). Se o white label também o pedir no público, é tirar a condição `channel = 'ministerio'` (RPC, gatilho e `masterMustSendForReview`).
+2. **Emails às secretárias** saem directamente pelo Resend com o remetente da empresa (como o de boas-vindas) e **não ficam em `case_notifications`**; os da empresa (`sendPartnerCaseNotice`) ficam. O aviso à empresa só sai se ela tiver destinatários de alertas (Admin › destinatários); a campainha acende sempre.
+3. **D-7 · bebé ao colo por omissão** (< 2 anos). Um bebé com lugar próprio tem de ser corrigido pelo agente.
+4. **Emitir sem `ready_to_issue_at`**: um caso de ministério com passageiros gravados antes da 0037 fica à espera — a secretária volta a gravar os passageiros, ou o agente confirma o pagamento externo (o caminho antigo continua).
+5. A secretária vê o número de passaporte completo das fichas na escolha e na correcção (precisa dele para confirmar). Dados pessoais: ver L1–L3.

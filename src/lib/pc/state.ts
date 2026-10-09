@@ -193,7 +193,18 @@ export const paxTotal = (r: PcRequestView) => seatCount(r) + r.infantsOnLap
  * Uma leitura só e não uma por ecrã: o cliente pode aterrar em qualquer um
  * deles, e é o estado que decide qual — não o contrário.
  */
-export async function loadPcState(token: string): Promise<PcLookup> {
+export async function loadPcState(
+  token: string,
+  options: {
+    /**
+     * B2G-16 · um caso de ministério só se abre dentro do espaço do
+     * ministério, com a sessão do PIN (`lib/ministry-case.ts`). Pelo token do
+     * caso (o `/pc` e as acções dele), não existe: o token sozinho deixou de
+     * deixar alguém agir num caso de ministério.
+     */
+    ministry?: boolean
+  } = {}
+): Promise<PcLookup> {
   const admin = createAdminClient()
   if (!admin) return { ok: false, reason: "unavailable" }
 
@@ -242,6 +253,9 @@ export async function loadPcState(token: string): Promise<PcLookup> {
      parceiro suspenso não abre casos no /pc, nem para ver nem para escrever:
      as acções do cliente passam todas por aqui. */
   if (unwrap(row.partner)?.status === "suspended") return { ok: false, reason: "not_found" }
+
+  /* B2G-16 · ver `options.ministry`. */
+  if (row.organisation_id && !options.ministry) return { ok: false, reason: "not_found" }
 
   const trip = unwrap(row.trip_request)
   if (!trip) return { ok: false, reason: "not_found" }

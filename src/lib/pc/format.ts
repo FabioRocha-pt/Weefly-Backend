@@ -285,3 +285,19 @@ export function waLink(
       : "Hello, I would like help with a flight request"
   return `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`
 }
+
+/**
+ * B2G-16 · D-7 · o tipo de passageiro sai da data de nascimento, à data do
+ * primeiro voo: menos de 2 anos é bebé (ao colo), de 2 a 11 é criança, 12 ou
+ * mais é adulto. A mesma regra no ecrã e no servidor.
+ */
+export function paxKindFromDob(
+  dob: string | null,
+  travelDate: string | null
+): "adult" | "child" | "infant_lap" | null {
+  const age = ageAt(dob, travelDate)
+  if (age === null || age < 0) return null
+  if (age < 2) return "infant_lap"
+  if (age < 12) return "child"
+  return "adult"
+}

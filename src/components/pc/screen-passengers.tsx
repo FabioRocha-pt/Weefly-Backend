@@ -16,13 +16,14 @@
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
-import { findMinistryTraveller, savePcPassengers, type PcKnownTraveller } from "@/actions/pc"
+import { savePcPassengers, type PcPassengerInput } from "@/actions/pc"
 import type { PcState } from "@/lib/pc/state"
 import { NATIONALITIES } from "@/lib/pc/catalog"
 import {
   addMonths,
   ageAt,
   fmtDateY,
+  paxKindFromDob,
   paxShort,
   todayISO,
 } from "@/lib/pc/format"
@@ -75,11 +76,56 @@ function seatKinds(request: PcState["request"]): Kind[] {
 }
 
 const SEX_KEY: Record<string, string> = { f: "pc.pax.sex.f", m: "pc.pax.sex.m" }
+
+/**
+ * B2G-25 · um passageiro guardado do ministério, para escolher em vez de
+ * escrever tudo de novo. Só os do ministério do caso (o servidor lê-os pelo
+ * ministério da sessão da secretária).
+ */
+export interface SavedTraveller {
+  id: string
+  title: string | null
+  firstName: string
+  lastName: string
+  gender: string | null
+  birthDate: string | null
+  nationality: string | null
+  passportNumber: string | null
+  passportExpiry: string | null
+  issuingCountry: string | null
+  phone: string | null
+  email: string | null
+  /** Expirado ou a menos de seis meses de expirar. */
+  passportWarning: "expired" | "soon" | null
+}
+
+const foldText = (v: string) =>
+  v
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim()
 /* Os tratamentos ficam nas abreviaturas internacionais: e o que vai no
    bilhete e o que a companhia aceita. */
 const TITLE_LABEL: Record<string, string> = { mr: "Mr", mrs: "Mrs", ms: "Ms" }
 
-export function ScreenP7({ state }: { state: PcState }) {
+export function ScreenP7({
+  state,
+  save,
+  afterSave,
+  saved = [],
+}: {
+  state: PcState
+  /**
+   * B2G-16 · quem grava. Por omissão o cliente, pelo token do caso; no espaço
+   * do ministério, a secretária pela sessão do PIN.
+   */
+  save?: (rows: PcPassengerInput[]) => Promise<{ ok: true; notice?: string } | { ok: false; error: string }>
+  /** Para onde ir depois de gravar (por omissão, o `/pc` do caso). */
+  afterSave?: string
+  /** B2G-25 · os passageiros guardados do ministério, para escolher. */
+  saved?: SavedTraveller[]
+}) {
   const router = useRouter()
   const toast = useToast()
   const t = useT()
@@ -133,48 +179,48 @@ export function ScreenP7({ state }: { state: PcState }) {
     })
   )
 
-  /* MIN-03 · a ficha de um viajante anterior do ministério, por passageiro. */
-  const [known, setKnown] = useState<Record<number, PcKnownTraveller | null>>({})
-  const [asked, setAsked] = useState<Record<number, string>>({})
+  /* B2G-25 · escolher da lista de passageiros guardados: abre por bloco, com
+     pesquisa; ao escolher, o bloco fica preenchido e a secretária confirma ou
+     corrige antes de gravar. */
+  const [pickerFor, setPickerFor] = useState<number | null>(null)
+  const [pickerQuery, setPickerQuery] = useState("")
+  const [picked, setPicked] = useState<Record<number, string>>({})
 
-  const lookupKnown = (index: number) => {
-    if (!ministry) return
-    const row = rows[index]
-    const key = `${row.given.trim()}|${row.surname.trim()}`.toLowerCase()
-    if (row.given.trim().length < 2 || row.surname.trim().length < 2 || asked[index] === key) return
-    setAsked((a) => ({ ...a, [index]: key }))
-    void findMinistryTraveller(state.token, row.given, row.surname).then((result) => {
-      /* Só se oferece o que acrescenta: a mesma ficha já preenchida não. */
-      const hit = result.ok ? result.traveller : null
-      const same = hit?.passportNumber && hit.passportNumber === row.passportNumber.trim().toUpperCase()
-      setKnown((k) => ({ ...k, [index]: same ? null : hit }))
-    })
-  }
+  const pickerList = useMemo(() => {
+    const q = foldText(pickerQuery)
+    return saved
+      .filter((tr) => {
+        if (!q) return true
+        const hay = foldText(`${tr.firstName} ${tr.lastName} ${tr.passportNumber ?? ""}`)
+        return q.split(/\s+/).every((part) => hay.includes(part))
+      })
+      .slice(0, 50)
+  }, [saved, pickerQuery])
 
-  const applyKnown = (index: number) => {
-    const hit = known[index]
-    if (!hit) return
+  const applySaved = (index: number, tr: SavedTraveller) => {
     setRows((current) =>
       current.map((row, i) =>
         i === index
           ? {
               ...row,
-              title: row.kind === "adult" ? (hit.title ?? row.title) : row.title,
-              given: hit.given,
-              surname: hit.surname,
-              dob: hit.dob ?? row.dob,
-              sex: hit.sex ?? row.sex,
-              nationality: hit.nationality ?? row.nationality,
-              passportNumber: hit.passportNumber ?? row.passportNumber,
-              passportExpiry: hit.passportExpiry ?? row.passportExpiry,
-              issuingCountry: hit.issuingCountry ?? row.issuingCountry,
-              phone: hit.phone ?? row.phone,
-              email: hit.email ?? row.email,
+              title: tr.title ?? "",
+              given: tr.firstName,
+              surname: tr.lastName,
+              dob: tr.birthDate ?? "",
+              sex: tr.gender === "f" || tr.gender === "m" ? tr.gender : "",
+              nationality: tr.nationality ?? "",
+              passportNumber: tr.passportNumber ?? "",
+              passportExpiry: tr.passportExpiry ?? "",
+              issuingCountry: tr.issuingCountry ?? "",
+              phone: tr.phone ?? "",
+              email: tr.email ?? "",
             }
           : row
       )
     )
-    setKnown((k) => ({ ...k, [index]: null }))
+    setPicked((p) => ({ ...p, [index]: tr.id }))
+    setPickerFor(null)
+    setPickerQuery("")
   }
 
   const [ack, setAck] = useState(false)
@@ -193,8 +239,15 @@ export function ScreenP7({ state }: { state: PcState }) {
         ? (state.request.returnDate ?? travelDate)
         : travelDate
 
-  const errorsFor = (row: PaxRow): Record<string, string> => {
+  /* B2G-16 · D-7 · num ministério o tipo de cada pessoa sai da data de
+     nascimento (o pedido só tem o número total). Sem data, conta como adulto
+     até ser escrita. */
+  const kindOf = (row: PaxRow): Kind =>
+    ministry ? (paxKindFromDob(row.dob || null, travelDate) ?? "adult") : row.kind
+
+  const errorsFor = (raw: PaxRow): Record<string, string> => {
     const e: Record<string, string> = {}
+    const row = { ...raw, kind: kindOf(raw) }
 
     if (row.kind === "adult" && !row.title) e.title = t("pc.pax.error.required")
     if (row.given.trim().length < 2) e.given = t("pc.pax.error.asInPassport")
@@ -204,7 +257,9 @@ export function ScreenP7({ state }: { state: PcState }) {
     else {
       const age = ageAt(row.dob, travelDate)
       if (age === null || age < 0) e.dob = t("pc.pax.error.checkDate")
-      else if (row.kind === "adult" && age < 12)
+      else if (ministry) {
+        /* O tipo segue a idade: não há idade errada para o tipo. */
+      } else if (row.kind === "adult" && age < 12)
         e.dob = t("pc.pax.error.adultAge")
       else if (row.kind === "child" && (age < 2 || age > 11))
         e.dob = t("pc.pax.error.childAge")
@@ -249,7 +304,7 @@ export function ScreenP7({ state }: { state: PcState }) {
   const missing = allErrors.flatMap((errors, index) =>
     Object.entries(errors).map(([field, message]) => ({
       target: `pax${index}-${field}`,
-      label: `P${index + 1} ${rows[index].surname || t(KIND_KEY[rows[index].kind])} · ${message}`,
+      label: `P${index + 1} ${rows[index].surname || t(KIND_KEY[kindOf(rows[index])])} · ${message}`,
     }))
   )
 
@@ -277,12 +332,12 @@ export function ScreenP7({ state }: { state: PcState }) {
     }
 
     startTransition(async () => {
-      const result = await savePcPassengers(
-        state.token,
-        rows.map((row, index) => ({
+      const payload: PcPassengerInput[] = rows.map((row, index) => {
+        const kind = kindOf(row)
+        return {
           position: index + 1,
-          kind: row.kind,
-          title: row.kind === "adult" ? (row.title as "mr" | "mrs" | "ms") : null,
+          kind,
+          title: kind === "adult" ? (row.title as "mr" | "mrs" | "ms") : null,
           given: row.given.trim(),
           surname: row.surname.trim(),
           dob: row.dob,
@@ -292,8 +347,9 @@ export function ScreenP7({ state }: { state: PcState }) {
           passportExpiry: row.passportExpiry,
           issuingCountry: row.issuingCountry,
           ...(ministry ? { phone: row.phone.trim(), email: row.email.trim() } : {}),
-        }))
-      )
+        }
+      })
+      const result = save ? await save(payload) : await savePcPassengers(state.token, payload)
 
       if (!result.ok) {
         setServerError(result.error)
@@ -304,7 +360,7 @@ export function ScreenP7({ state }: { state: PcState }) {
       /* `replace` e não `refresh`: quem chegou aqui por `?view=p7` (a corrigir um
          nome) tem de sair do parâmetro, ou continuaria a ver o formulário depois
          de o gravar. Sem o parâmetro, o ecrã volta a ser o que o estado manda. */
-      router.replace(`/pc/${state.token}`)
+      router.replace(afterSave ?? `/pc/${state.token}`)
       router.refresh()
     })
   }
@@ -376,7 +432,8 @@ export function ScreenP7({ state }: { state: PcState }) {
             const errors = allErrors[index]
             const bad = showErrors && Object.keys(errors).length > 0
             const done = Object.keys(errors).length === 0
-            const isAdult = row.kind === "adult"
+            const kind = kindOf(row)
+            const isAdult = kind === "adult"
 
             return (
               <div className={`paxcard${bad ? " bad" : ""}`} key={index}>
@@ -384,36 +441,123 @@ export function ScreenP7({ state }: { state: PcState }) {
                   <span className={`paxtag${isAdult ? "" : " child"}`}>P{index + 1}</span>
                   <div>
                     <b>
-                      {t(KIND_KEY[row.kind])} {index + 1}
+                      {t(KIND_KEY[kind])} {index + 1}
                     </b>
-                    <span>{kindSub(row.kind, index === 0, t)}</span>
+                    <span>{ministry ? t("pc.pax.sub.fromDob") : kindSub(kind, index === 0, t)}</span>
                   </div>
                   <span className={`st2${done ? " ok" : ""}`}>
                     {done ? t("pc.pax.field.complete") : t("pc.pax.field.toFill")}
                   </span>
                 </div>
                 <div className="paxcard-b">
-                  {known[index] && (
-                    <div className="notice" role="status" style={{ marginBottom: 10 }}>
-                      <b>{t("pc.pax.reuse.found", { name: `${known[index]!.given} ${known[index]!.surname}` })}</b>
-                      <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                        <button
-                          type="button"
-                          className="btn btn-primary"
-                          style={{ width: "auto" }}
-                          onClick={() => applyKnown(index)}
-                        >
-                          {t("pc.pax.reuse.apply")}
-                        </button>
+                  {/* B2G-25 · escolher dos passageiros guardados do ministério. */}
+                  {ministry && saved.length > 0 && (
+                    <div className="no-print" style={{ marginBottom: 10 }}>
+                      {pickerFor === index ? (
+                        <div className="notice" role="group" aria-label={t("pc.pax.savedList.title")}>
+                          <b>{t("pc.pax.savedList.title")}</b>
+                          <input
+                            type="search"
+                            autoFocus
+                            value={pickerQuery}
+                            onChange={(event) => setPickerQuery(event.target.value)}
+                            placeholder={t("pc.pax.savedList.search")}
+                            aria-label={t("pc.pax.savedList.search")}
+                            style={{
+                              display: "block",
+                              width: "100%",
+                              marginTop: 8,
+                              padding: "8px 10px",
+                              border: "1px solid var(--line)",
+                              borderRadius: 8,
+                              font: "inherit",
+                            }}
+                          />
+                          <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0, maxHeight: 280, overflowY: "auto" }}>
+                            {pickerList.length === 0 && (
+                              <li style={{ padding: "6px 0", color: "var(--muted)" }}>{t("pc.pax.savedList.none")}</li>
+                            )}
+                            {pickerList.map((tr) => {
+                              const used = Object.entries(picked).some(([i, id]) => id === tr.id && Number(i) !== index)
+                              return (
+                                <li key={tr.id} style={{ borderTop: "1px solid var(--line)" }}>
+                                  <button
+                                    type="button"
+                                    disabled={used}
+                                    onClick={() => applySaved(index, tr)}
+                                    style={{
+                                      width: "100%",
+                                      textAlign: "left",
+                                      background: "none",
+                                      border: 0,
+                                      padding: "8px 0",
+                                      font: "inherit",
+                                      color: "inherit",
+                                      cursor: used ? "not-allowed" : "pointer",
+                                      opacity: used ? 0.5 : 1,
+                                    }}
+                                  >
+                                    <b>
+                                      {tr.lastName.toUpperCase()}, {tr.firstName}
+                                    </b>
+                                    <span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>
+                                      {tr.birthDate ? fmtDateY(tr.birthDate, t) : "—"}
+                                      {tr.passportNumber
+                                        ? ` · ${t("pc.pax.savedList.passport", { tail: tr.passportNumber.slice(-3) })}`
+                                        : ""}
+                                      {used ? ` · ${t("pc.pax.savedList.used")}` : ""}
+                                    </span>
+                                    {tr.passportWarning && (
+                                      <span
+                                        style={{
+                                          display: "inline-block",
+                                          marginTop: 4,
+                                          background: tr.passportWarning === "expired" ? "#FEE2E2" : "#FEF3C7",
+                                          color: tr.passportWarning === "expired" ? "#B91C1C" : "#92400E",
+                                          borderRadius: 999,
+                                          padding: "2px 8px",
+                                          fontSize: 11,
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        ⚠ {t(`pc.pax.savedList.${tr.passportWarning}`)}
+                                      </span>
+                                    )}
+                                  </button>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                          <button
+                            type="button"
+                            className="btn"
+                            style={{ width: "auto", marginTop: 8 }}
+                            onClick={() => {
+                              setPickerFor(null)
+                              setPickerQuery("")
+                            }}
+                          >
+                            {t("pc.pax.savedList.close")}
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           type="button"
                           className="btn"
                           style={{ width: "auto" }}
-                          onClick={() => setKnown((k) => ({ ...k, [index]: null }))}
+                          onClick={() => {
+                            setPickerFor(index)
+                            setPickerQuery("")
+                          }}
                         >
-                          {t("pc.pax.reuse.dismiss")}
+                          {picked[index] ? t("pc.pax.savedList.change") : t("pc.pax.savedList.pick")}
                         </button>
-                      </div>
+                      )}
+                      {picked[index] && pickerFor !== index && (
+                        <p className="hi" style={{ margin: "6px 0 0" }}>
+                          {t("pc.pax.savedList.confirm")}
+                        </p>
+                      )}
                     </div>
                   )}
                   <div className="pgrid">
@@ -451,7 +595,6 @@ export function ScreenP7({ state }: { state: PcState }) {
                         placeholder={t("pc.pax.field.asInPassport")}
                         value={row.given}
                         onChange={(event) => patch(index, "given", event.target.value)}
-                        onBlur={() => lookupKnown(index)}
                       />
                     </Field>
 
@@ -465,7 +608,6 @@ export function ScreenP7({ state }: { state: PcState }) {
                         placeholder={t("pc.pax.field.asInPassport")}
                         value={row.surname}
                         onChange={(event) => patch(index, "surname", event.target.value)}
-                        onBlur={() => lookupKnown(index)}
                       />
                     </Field>
 
@@ -473,11 +615,13 @@ export function ScreenP7({ state }: { state: PcState }) {
                       cls="c6"
                       label={t("pc.pax.field.dob")}
                       hint={
-                        row.kind === "child"
-                          ? t("pc.pax.field.dobChild")
-                          : row.kind === "adult"
-                            ? t("pc.pax.field.dobAdult")
-                            : t("pc.pax.field.dobInfant")
+                        ministry
+                          ? t("pc.pax.field.dobType")
+                          : row.kind === "child"
+                            ? t("pc.pax.field.dobChild")
+                            : row.kind === "adult"
+                              ? t("pc.pax.field.dobAdult")
+                              : t("pc.pax.field.dobInfant")
                       }
                       error={showErrors ? errors.dob : undefined}
                       id={`pax${index}-dob`}
@@ -661,7 +805,7 @@ export function ScreenP7({ state }: { state: PcState }) {
         <button className="btn btn-primary" type="button" disabled={pending} onClick={submit}>
           {pending ? t("pc.pax.saving") : t("pc.pax.continue")}
         </button>
-        <p className="subnote">{t("pc.pax.nothingCharged")}</p>
+        <p className="subnote">{ministry ? t("pc.pax.noPaymentMinistry") : t("pc.pax.nothingCharged")}</p>
       </div>
       <div className="spacer" />
     </main>

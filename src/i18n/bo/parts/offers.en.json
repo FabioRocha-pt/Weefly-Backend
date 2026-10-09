@@ -1,0 +1,71 @@
+{
+  "bo": {
+    "review": {
+      "sendTitle": "Another company's ministry request",
+      "sendBody": "The offers you prepare go to {partner} first: the company reviews, may change them, and sends them to the secretary. The secretary sees nothing until then.",
+      "reviewingTitle": "Under company review",
+      "reviewingBody": "Prepared by {who} ({when}). The secretary does not see these offers yet: review, change if needed, and send.",
+      "waitingTitle": "Sent to the company for review",
+      "waitingBody": "{partner} reviews and sends to the secretary. You can keep correcting the offers meanwhile.",
+      "sendCta": "Send to the company for review",
+      "publishCta": "Send to the secretary",
+      "waitingCta": "Waiting for the company's review",
+      "errors": {
+        "masterMustReview": "In another company's ministry request the offers go to the company for review: use “Send to the company for review”.",
+        "notMaster": "Only the master sends offers to the company for review, and only in another company's ministry request.",
+        "failed": "Could not send for review.",
+        "noOffers": "Choose at least one offer to send.",
+        "notDraft": "The proposal is no longer a draft."
+      }
+    },
+    "issue": {
+      "readyNoPayment": "Ready to issue (no payment)",
+      "notReady": "Passengers missing",
+      "waitPassengers": "Ministry request: it is issued once the secretary chooses the option and registers the passengers (no payment on the platform).",
+      "operatorOnlyNote": "Ministry requests are issued by WeeFly.",
+      "errors": {
+        "operatorOnly": "Only WeeFly issues ministry requests.",
+        "notReady": "The ministry request is not ready to issue yet: the option or the passengers are missing.",
+        "noSecretaryEmail": "No active secretary of the ministry has an email: the tickets are in the ministry space."
+      }
+    },
+    "travellerLog": {
+      "title": "Passenger history",
+      "intro": "Every registration and every change to this ministry's records, with who and when.",
+      "none": "No entries yet.",
+      "when": "When",
+      "traveller": "Passenger",
+      "what": "What",
+      "who": "Who",
+      "source": "Where",
+      "created": "Registered",
+      "changed": "Changed: {fields}",
+      "secretary": "secretary",
+      "sources": {
+        "case": "Request",
+        "backoffice": "Back office",
+        "import": "Import",
+        "secretary": "Ministry space"
+      }
+    },
+    "events": {
+      "proposal_review_requested": "Offers sent to the company for review",
+      "proposal_published": "Offers sent to the secretary",
+      "pax_mix_updated": "Passenger types from dates of birth",
+      "ministry_tickets_issued": "Tickets issued · ministry notified"
+    },
+    "queue": {
+      "state": {
+        "pronto_a_emitir": "E4 · Ready to issue"
+      }
+    },
+    "shell": {
+      "alerts": {
+        "kind": {
+          "proposal_review_requested": "Master's offers to review",
+          "ministry_tickets_issued": "Ministry tickets issued"
+        }
+      }
+    }
+  }
+}

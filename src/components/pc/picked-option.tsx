@@ -96,14 +96,17 @@ export function PickedOption({
           </div>
           {/* Trocar de opção é um direito, e por isso é um link e não uma
               conversa com a equipa — enquanto o pagamento não estiver fechado. */}
-          {payment?.status !== "COMPLETED" && (
+          {/* B2G-16 · no espaço do ministério o caso não tem token no browser: o
+              "trocar de opção" é um link da própria página do caso. */}
+          {payment?.status !== "COMPLETED" && state.token && (
             <Link className="chg" href={`/pc/${state.token}?view=p5`}>
               {t("pc.picked.change")}
             </Link>
           )}
         </div>
         <div className="pr">
-          <span className="k">{t("pc.picked.totalToPay")}</span>
+          {/* B2G-17 · num ministério não há pagamento na plataforma. */}
+          <span className="k">{state.ministry ? t("ministry.case.total") : t("pc.picked.totalToPay")}</span>
           <div className="amt">{money(total, state.quoteCurrency)}</div>
           {/* Regra 4 · a linha era três nós de JSX com dois valores pelo meio.
               É agora uma chave com `{fare}` e `{service}` lá dentro, que é o

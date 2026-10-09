@@ -3,7 +3,8 @@ import { notFound } from "next/navigation"
 
 import { getBoScope } from "@/lib/bo-scope"
 import { listAlertRecipients, loadOrganisation } from "@/lib/b2g"
-import { listTravellers } from "@/lib/travellers"
+import { listTravellerChanges, listTravellers } from "@/lib/travellers"
+import { TravellerChangeLog } from "@/components/b2g/traveller-change-log"
 import { getBoI18n } from "@/i18n/bo-server"
 import { OrganisationDetailView } from "@/components/b2g/org-detail"
 
@@ -29,6 +30,8 @@ export default async function B2gOrganisationPage({ params }: { params: { orgId:
   /* DAT-01 · as fichas dos viajantes do ministério. */
   const scopeForList = scope
   const travellers = scopeForList ? await listTravellers(scopeForList, detail.org.id) : []
+  /* B2G-25 · D-11 · cada registo e cada alteração das fichas, com quem e quando. */
+  const changes = await listTravellerChanges(scope, detail.org.id)
 
   return (
     <div className="space-y-4">
@@ -53,6 +56,7 @@ export default async function B2gOrganisationPage({ params }: { params: { orgId:
         t={t}
         locale={locale}
       />
+      <TravellerChangeLog changes={changes} t={t} locale={locale} />
     </div>
   )
 }

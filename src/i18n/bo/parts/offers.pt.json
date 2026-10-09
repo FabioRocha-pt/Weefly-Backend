@@ -1,0 +1,71 @@
+{
+  "bo": {
+    "review": {
+      "sendTitle": "Pedido de ministério de outra empresa",
+      "sendBody": "As ofertas que preparar vão primeiro à {partner}: a empresa revê, pode alterar, e envia à secretária. A secretária não vê nada até lá.",
+      "reviewingTitle": "Em revisão pela empresa",
+      "reviewingBody": "Preparado por {who} ({when}). A secretária ainda não vê estas ofertas: reveja, altere se for preciso, e envie.",
+      "waitingTitle": "Enviado à empresa para revisão",
+      "waitingBody": "A {partner} revê e envia à secretária. Pode continuar a corrigir as ofertas enquanto isso.",
+      "sendCta": "Enviar à empresa para revisão",
+      "publishCta": "Enviar à secretária",
+      "waitingCta": "À espera da revisão da empresa",
+      "errors": {
+        "masterMustReview": "Num pedido de ministério de outra empresa, as ofertas vão à empresa para revisão: use «Enviar à empresa para revisão».",
+        "notMaster": "Só o master envia ofertas à empresa para revisão, e só num pedido de ministério de outra empresa.",
+        "failed": "Não foi possível enviar para revisão.",
+        "noOffers": "Escolha pelo menos uma oferta para enviar.",
+        "notDraft": "A proposta já não está em rascunho."
+      }
+    },
+    "issue": {
+      "readyNoPayment": "Pronto a emitir (sem pagamento)",
+      "notReady": "Faltam os passageiros",
+      "waitPassengers": "Pedido de ministério: emite-se quando a secretária escolher a opção e registar os passageiros (sem pagamento na plataforma).",
+      "operatorOnlyNote": "Os pedidos de ministério são emitidos pela WeeFly.",
+      "errors": {
+        "operatorOnly": "Só a WeeFly emite pedidos de ministério.",
+        "notReady": "O pedido de ministério ainda não está pronto a emitir: faltam a opção ou os passageiros.",
+        "noSecretaryEmail": "Nenhuma secretária activa do ministério tem email: os bilhetes estão no espaço do ministério."
+      }
+    },
+    "travellerLog": {
+      "title": "Histórico dos passageiros",
+      "intro": "Cada registo e cada alteração das fichas deste ministério, com quem fez e quando.",
+      "none": "Ainda não há registos.",
+      "when": "Quando",
+      "traveller": "Passageiro",
+      "what": "O quê",
+      "who": "Quem",
+      "source": "Onde",
+      "created": "Registado",
+      "changed": "Alterado: {fields}",
+      "secretary": "secretária",
+      "sources": {
+        "case": "Pedido",
+        "backoffice": "Back-office",
+        "import": "Importação",
+        "secretary": "Espaço do ministério"
+      }
+    },
+    "events": {
+      "proposal_review_requested": "Ofertas enviadas à empresa para revisão",
+      "proposal_published": "Ofertas enviadas à secretária",
+      "pax_mix_updated": "Tipos de passageiro pela data de nascimento",
+      "ministry_tickets_issued": "Passagens emitidas · ministério avisado"
+    },
+    "queue": {
+      "state": {
+        "pronto_a_emitir": "E4 · Pronto a emitir"
+      }
+    },
+    "shell": {
+      "alerts": {
+        "kind": {
+          "proposal_review_requested": "Ofertas do master para rever",
+          "ministry_tickets_issued": "Passagens do ministério emitidas"
+        }
+      }
+    }
+  }
+}

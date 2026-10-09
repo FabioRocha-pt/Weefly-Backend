@@ -3,13 +3,14 @@ import { notFound } from "next/navigation"
 import { getBoAccess, listBoSellers } from "@/lib/bo-access"
 import { getCase, type BookingCaseRow } from "@/lib/booking-cases"
 import { loadBoCase } from "@/lib/pc/bo-queue"
-import { caseInScope, scopeForCase } from "@/lib/bo-scope"
+import { caseInScope, isCrossPartner, scopeForCase } from "@/lib/bo-scope"
+import { createAdminClient } from "@/utils/supabase/admin"
 import {
   ensureProposalForRender,
   paxOf,
   type ProposalFailure,
 } from "@/lib/proposals"
-import { BoProposalComposer } from "@/components/bo/proposal-composer"
+import { BoProposalComposer, type ProposalReview } from "@/components/bo/proposal-composer"
 import { BoCaseHeader } from "@/components/bo/case-header"
 import { BoClaimGate } from "@/components/bo/claim-gate"
 import { elapsedSince } from "@/lib/case-status"
@@ -98,6 +99,11 @@ export default async function BoCaseOffersPage({
         bookingCase.trip_request?.currency || "CVE"
       )
 
+  /* B2G-15 · D-2 · a revisão da empresa num pedido de ministério. */
+  const review = result?.ok
+    ? await reviewFor(bookingCase.id, result.view.proposal.status, access.identity)
+    : null
+
   return (
     <I18nProvider locale={locale} dictionary={dictionary} fallback={fallback}>
       {/*
@@ -175,12 +181,63 @@ export default async function BoCaseOffersPage({
                 destination: bookingCase.trip_request?.destination ?? null,
               }}
               brief={<ClientBrief bookingCase={bookingCase} t={t} />}
+              review={review}
             />
           )}
         </div>
       </div>
     </I18nProvider>
   )
+}
+
+/**
+ * B2G-15 · D-2 · em que ponto da revisão está a proposta, para quem a vê.
+ *
+ *   · o master (`cross_partner`) num pedido de ministério de outra empresa,
+ *     com a proposta em rascunho → `send` ("Enviar à empresa para revisão");
+ *   · com a proposta em revisão: a empresa do caso → `reviewing`; o master → `waiting`.
+ *
+ * Genérico: "empresa do caso ≠ empresa da sessão e a sessão é o master".
+ */
+async function reviewFor(
+  caseId: string,
+  status: string,
+  identity: Parameters<typeof isCrossPartner>[0]
+): Promise<ProposalReview | null> {
+  const admin = createAdminClient()
+  if (!admin || !identity) return null
+  const { data } = await admin
+    .from("booking_cases")
+    .select("partner_id, channel, partner:partners(commercial_name)")
+    .eq("id", caseId)
+    .maybeSingle()
+  const row = data as Record<string, any> | null
+  if (!row || row.channel !== "ministerio") return null
+  const partner = Array.isArray(row.partner) ? row.partner[0] : row.partner
+  const partnerName = String(partner?.commercial_name ?? "")
+  const foreignMaster = isCrossPartner(identity) && row.partner_id !== identity.tenant?.partnerId
+
+  let requestedBy: string | null = null
+  let requestedAt: string | null = null
+  if (status === "revisao_parceiro") {
+    const { data: p } = await admin
+      .from("case_proposals")
+      .select("review_requested_by_email, review_requested_at")
+      .eq("case_id", caseId)
+      .maybeSingle()
+    const r = p as { review_requested_by_email: string | null; review_requested_at: string | null } | null
+    requestedBy = r?.review_requested_by_email ?? null
+    requestedAt = r?.review_requested_at ?? null
+    if (requestedBy) {
+      const { data: who } = await admin.from("bo_allowlist").select("label").eq("email", requestedBy).maybeSingle()
+      requestedBy = (who as { label: string | null } | null)?.label || requestedBy
+    }
+    if (foreignMaster) return { mode: "waiting", requestedBy, requestedAt, partnerName }
+    if (row.partner_id === identity.tenant?.partnerId) return { mode: "reviewing", requestedBy, requestedAt, partnerName }
+    return null
+  }
+  if (status === "rascunho" && foreignMaster) return { mode: "send", requestedBy, requestedAt, partnerName }
+  return null
 }
 
 /**

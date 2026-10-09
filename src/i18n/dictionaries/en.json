@@ -1396,7 +1396,8 @@
         "infantLap": "Under 2 · on an adult's lap",
         "infantSeat": "Under 2 · with own seat",
         "lead": "Lead passenger · receives all messages",
-        "adult": "Adult passenger"
+        "adult": "Adult passenger",
+        "fromDob": "The type (adult, child, infant) comes from the date of birth"
       },
       "field": {
         "title": "Title",
@@ -1419,7 +1420,8 @@
         "complete": "Complete",
         "toFill": "To fill in",
         "phone": "Traveller's phone",
-        "email": "Traveller's email"
+        "email": "Traveller's email",
+        "dobType": "Sets the type: under 2 is an infant, 2 to 11 a child"
       },
       "sex": {
         "f": "Female",
@@ -1445,6 +1447,20 @@
         "found": "{name} has travelled with this ministry before. Reuse the details?",
         "apply": "Reuse the details",
         "dismiss": "No, someone else"
+      },
+      "noPaymentMinistry": "No payment on the platform: once saved, the request is ready to issue.",
+      "savedList": {
+        "title": "Ministry's saved passengers",
+        "search": "Search by name or passport",
+        "none": "No saved passenger with that name.",
+        "passport": "passport •••{tail}",
+        "used": "already chosen in another block",
+        "expired": "Passport expired",
+        "soon": "Passport expires in less than 6 months",
+        "close": "Close",
+        "pick": "Choose from saved passengers",
+        "change": "Choose another saved passenger",
+        "confirm": "Filled in from the saved record. Confirm or correct before saving."
       }
     },
     "status": {
@@ -1776,7 +1792,8 @@
       "paymentClosed": "This payment is already closed. Talk to us on WhatsApp.",
       "uploadFailed": "We could not store the file. Please try again.",
       "ministrySession": "Your session has ended. Enter your PIN again to send the request.",
-      "ministryFlood": "You have sent many requests in the last hour. Please wait a little, or contact the travel company on WhatsApp."
+      "ministryFlood": "You have sent many requests in the last hour. Please wait a little, or contact the travel company on WhatsApp.",
+      "passengerBirthDate": "check the date of birth"
     }
   },
   "pro": {
@@ -2020,8 +2037,10 @@
         "issued": "Issued",
         "used": "Travelled",
         "closed": "Closed",
-        "cancelled": "Cancelled"
-      }
+        "cancelled": "Cancelled",
+        "ready": "Ready to issue"
+      },
+      "openTickets": "Open the request and tickets"
     },
     "timeline": {
       "request_submitted": "Request sent",
@@ -2035,7 +2054,8 @@
       "tickets_issued": "Tickets issued",
       "request_cancelled": "Request cancelled",
       "case_closed": "Request closed",
-      "case_reopened": "Request reopened"
+      "case_reopened": "Request reopened",
+      "pax_mix_updated": "Passenger types updated from dates of birth"
     },
     "travellers": {
       "title": "Passengers",
@@ -2050,7 +2070,52 @@
       "validUntil": "valid until {date}",
       "born": "Born: {date}",
       "expired": "Passport expired",
-      "soon": "Passport expires in less than 6 months"
+      "soon": "Passport expires in less than 6 months",
+      "edit": "Correct",
+      "editTitle": "Correct passenger",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved. The change was logged.",
+      "back": "Back to passengers",
+      "logged": "Every change is logged, with your name and the time.",
+      "errors": {
+        "name": "Given names and surnames: at least 2 letters.",
+        "date": "Invalid date.",
+        "country": "Choose a country from the list.",
+        "passport": "Passport: 5 to 12 letters or digits.",
+        "phone": "Invalid phone.",
+        "email": "Invalid email.",
+        "invalid": "Check the details.",
+        "notFound": "This passenger does not exist in this ministry.",
+        "duplicatePassport": "Another passenger already has this passport."
+      }
+    },
+    "case": {
+      "back": "My requests",
+      "print": "Print",
+      "total": "Total",
+      "waiting": "{partner} is preparing the offers. You will be notified when they are ready.",
+      "keepOffer": "Keep the chosen option",
+      "changeOffer": "Change option",
+      "readyTitle": "Ready to issue",
+      "readyBody": "The option is chosen and the passengers are registered. {partner} issues the tickets; there is no payment on the platform. You will be notified when the tickets are ready.",
+      "editPassengers": "Correct passengers",
+      "issuedTitle": "Tickets issued",
+      "downloadAll": "Download the tickets",
+      "downloadOne": "Ticket for {name}",
+      "ticketsPending": "The PDF tickets are still being prepared.",
+      "passengers": "Passengers",
+      "closedBody": "This request is closed.",
+      "cancelledBody": "This request was cancelled.",
+      "status": {
+        "waiting": "Waiting for offers",
+        "options": "Offers available",
+        "passengers": "Option chosen · passengers missing",
+        "ready": "Ready to issue",
+        "issued": "Issued",
+        "closed": "Closed",
+        "cancelled": "Cancelled"
+      }
     }
   },
   "seo": {

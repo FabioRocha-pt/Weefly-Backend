@@ -117,7 +117,14 @@ function toRow(p: TravellerInput) {
  */
 export async function syncMinistryTravellers(
   admin: Admin,
-  input: { organisationId: string; caseId: string; byEmail: string | null; passengers: TravellerInput[] }
+  input: {
+    organisationId: string
+    caseId: string
+    byEmail: string | null
+    /** B2G-25 · a secretária da sessão do PIN que registou (autora na ficha nova). */
+    bySecretaryId?: string | null
+    passengers: TravellerInput[]
+  }
 ): Promise<void> {
   const { data, error } = await admin
     .from("ministry_travellers")
@@ -158,6 +165,9 @@ export async function syncMinistryTravellers(
       last_source: "case",
       last_case_id: input.caseId,
       updated_by_email: input.byEmail,
+      /* B2G-25 · quem registou e quem mudou (0035). Sem secretária, a coluna
+         nem vai: uma base sem a 0035 continua a aceitar a ficha. */
+      ...(input.bySecretaryId ? { updated_by_secretary_id: input.bySecretaryId } : {}),
     }
     const clean = Object.fromEntries(Object.entries(row).filter(([, v]) => v !== undefined))
 
@@ -167,7 +177,12 @@ export async function syncMinistryTravellers(
     } else {
       const { data: created, error: insErr } = await admin
         .from("ministry_travellers")
-        .insert({ ...clean, organisation_id: input.organisationId, partner_id: partnerId })
+        .insert({
+          ...clean,
+          organisation_id: input.organisationId,
+          partner_id: partnerId,
+          ...(input.bySecretaryId ? { created_by_secretary_id: input.bySecretaryId } : {}),
+        })
         .select("id, first_name, last_name, birth_date, passport_number")
         .single()
       if (insErr) console.error("[fichas] criar:", insErr.message)
@@ -237,4 +252,87 @@ export async function loadTraveller(
   })
 
   return { traveller: travellerFromRow(data as Record<string, any>), changes }
+}
+
+/** B2G-25 · D-11 · uma linha do histórico das fichas de um ministério. */
+export interface MinistryTravellerChange {
+  id: string
+  travellerId: string
+  travellerName: string
+  source: string
+  /** Quem: a secretária (nome), ou o email do back-office. */
+  by: string | null
+  bySecretary: boolean
+  caseId: string | null
+  created: boolean
+  fields: string[]
+  createdAt: string
+}
+
+/**
+ * B2G-25 · "Cada registo e cada alteração ficam no Admin, com quem fez e
+ * quando." O histórico das fichas de um ministério, pela sessão (o RLS da 0030
+ * decide: a empresa vê as suas, o master todas), do mais recente para o mais
+ * antigo.
+ */
+export async function listTravellerChanges(
+  scope: BoScope,
+  organisationId: string,
+  limit = 200
+): Promise<MinistryTravellerChange[]> {
+  const run = (cols: string) =>
+    scope.db
+      .from("ministry_traveller_changes")
+      .select(cols)
+      .eq("organisation_id", organisationId)
+      .order("created_at", { ascending: false })
+      .limit(limit)
+  let { data, error } = await run(
+    "id, traveller_id, source, case_id, changed_by_email, changed_by_secretary_id, before, after, created_at"
+  )
+  if (error?.code === "42703") {
+    ;({ data, error } = await run("id, traveller_id, source, case_id, changed_by_email, before, after, created_at"))
+  }
+  if (error || !data) return []
+  const rows = data as unknown as Record<string, any>[]
+  if (!rows.length) return []
+
+  const travellerIds = Array.from(new Set(rows.map((r) => r.traveller_id as string)))
+  const secretaryIds = Array.from(
+    new Set(rows.map((r) => r.changed_by_secretary_id as string | null).filter((v): v is string => Boolean(v)))
+  )
+  const [{ data: trs }, { data: secs }] = await Promise.all([
+    scope.db.from("ministry_travellers").select("id, first_name, last_name").in("id", travellerIds),
+    secretaryIds.length
+      ? scope.db.from("ministry_secretaries").select("id, name").in("id", secretaryIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+  ])
+  const names = new Map(
+    ((trs ?? []) as { id: string; first_name: string; last_name: string }[]).map((t) => [
+      t.id,
+      `${t.last_name.toUpperCase()}, ${t.first_name}`,
+    ])
+  )
+  const secNames = new Map(((secs ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]))
+
+  return rows.map((c) => {
+    const before = (c.before ?? null) as Record<string, unknown> | null
+    const after = (c.after ?? {}) as Record<string, unknown>
+    const keys = Array.from(new Set(Object.keys(before ?? {}).concat(Object.keys(after))))
+    const secretary = c.changed_by_secretary_id ? secNames.get(c.changed_by_secretary_id) ?? null : null
+    return {
+      id: c.id,
+      travellerId: c.traveller_id,
+      travellerName: names.get(c.traveller_id) ?? "—",
+      source: c.source,
+      by: secretary ?? c.changed_by_email ?? null,
+      bySecretary: Boolean(secretary),
+      caseId: c.case_id ?? null,
+      created: !before,
+      fields: before
+        ? keys.filter((k) => JSON.stringify(before[k] ?? null) !== JSON.stringify(after[k] ?? null))
+        : [],
+      createdAt: c.created_at,
+    }
+  })
 }

@@ -235,7 +235,7 @@ export function BoQueueTable({
                         >
                           {row.state === "comprovativo_por_validar"
                             ? t("bo.queue.table.validate")
-                            : row.state === "pago_sem_bilhete"
+                            : row.state === "pago_sem_bilhete" || row.state === "pronto_a_emitir"
                               ? t("bo.queue.table.issue")
                               : row.state === "novo"
                                 ? t("bo.queue.table.quote")

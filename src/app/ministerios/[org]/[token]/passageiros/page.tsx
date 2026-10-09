@@ -10,9 +10,9 @@ import { getTranslator } from "@/i18n/server"
  * com pesquisa por nome ou passaporte, e o aviso quando o passaporte está
  * expirado ou expira em menos de seis meses.
  *
- * Só leitura neste bloco: corrigir uma ficha e escolhê-la ao preencher os
- * passageiros de um pedido chegam com o bloco 6. O número do passaporte
- * aparece só pelos últimos caracteres.
+ * B2G-25 · "vê, pesquisa e corrige": cada ficha abre para corrigir
+ * (`/passageiros/<id>`), e cada correcção fica no histórico com a secretária e
+ * a hora. Na lista, o número do passaporte aparece só pelos últimos caracteres.
  */
 
 export const dynamic = "force-dynamic"
@@ -77,9 +77,14 @@ export default async function MinistryTravellersPage({
         ) : (
           travellers.map((tr) => (
             <article key={tr.id} className="card" style={{ padding: 14, marginTop: 10 }}>
-              <b style={{ fontSize: 16 }}>
-                {tr.lastName.toUpperCase()}, {tr.firstName}
-              </b>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                <b style={{ fontSize: 16 }}>
+                  {tr.lastName.toUpperCase()}, {tr.firstName}
+                </b>
+                <Link href={`${base}/${tr.id}`} style={{ fontSize: 13, fontWeight: 700 }}>
+                  {t("ministry.travellers.edit")}
+                </Link>
+              </div>
               <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 13 }}>
                 {tr.birthDate ? t("ministry.travellers.born", { date: date(tr.birthDate) }) : null}
                 {tr.birthDate && tr.nationality ? " · " : null}

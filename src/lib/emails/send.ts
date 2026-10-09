@@ -1509,3 +1509,58 @@ export async function sendDatesProposedEmail(
  * faz.
  */
 export const sendPcRequestReceivedEmail = sendNewRequestAlert
+
+// ═══ B2G-15 · B2G-18 · avisos à empresa de um caso de ministério ═════════════
+
+/**
+ * B2G-15 · "Enviar à empresa para revisão": a empresa do caso recebe aviso
+ * (além da campainha). B2G-18 · emitido: a empresa recebe aviso.
+ *
+ * Aos destinatários de alertas da empresa (`alert_recipients`, lado `partner`,
+ * gerais e desse ministério — ADM-06), se os houver. Nunca os de outra empresa:
+ * a empresa vem do caso. Best-effort, como todos os avisos.
+ */
+export async function sendPartnerCaseNotice(
+  caseId: string,
+  kind: "review_requested" | "tickets_issued",
+  detail?: string | null
+): Promise<NotifyOutcome | null> {
+  const to = await partnerRequestRecipients(caseId)
+  if (to.length === 0) return null
+  const ctx = await context(caseId)
+  if (!ctx) return null
+
+  const route = routeOf(ctx)
+  const link = caseAdminLink(ctx)
+  const subject =
+    kind === "review_requested"
+      ? `Ofertas para rever · ${route} · ${ctx.reference ?? ""}`.trim()
+      : `Bilhetes emitidos · ${route} · ${ctx.reference ?? ""}`.trim()
+  const body =
+    kind === "review_requested"
+      ? "O master preparou as ofertas deste pedido de ministério e enviou-as para revisão. A secretária ainda não as vê: reveja, altere se for preciso, e envie."
+      : "As passagens deste pedido de ministério foram emitidas. As secretárias do ministério já as têm no espaço delas."
+
+  const html = shell(
+    subject,
+    `<h1 style="margin:0 0 8px;font-size:20px;font-weight:800;color:${INK};">${escapeHtml(route)}</h1>
+     <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(body)}${
+       detail ? `<br/>${escapeHtml(detail)}` : ""
+     }</p>
+     ${cta(link, "Abrir o caso")}`,
+    DEFAULT_LOCALE,
+    ctx.reference
+  )
+
+  return notify({
+    caseId,
+    channel: "email",
+    kind: kind === "review_requested" ? "partner_review_requested" : "partner_tickets_issued",
+    audience: "agent",
+    to,
+    subject,
+    html,
+    text: [subject, body, detail ?? "", link].filter(Boolean).join("\n"),
+    dedupeKey: kind === "review_requested" ? `partner_review_requested:${Date.now()}` : `partner_tickets_issued:${ctx.pnr ?? ""}`,
+  })
+}

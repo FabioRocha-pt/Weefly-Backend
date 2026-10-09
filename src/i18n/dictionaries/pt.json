@@ -1396,7 +1396,8 @@
         "infantLap": "Menos de 2 anos · ao colo de um adulto",
         "infantSeat": "Menos de 2 anos · com lugar próprio",
         "lead": "Passageiro principal · recebe todas as mensagens",
-        "adult": "Passageiro adulto"
+        "adult": "Passageiro adulto",
+        "fromDob": "O tipo (adulto, criança, bebé) sai da data de nascimento"
       },
       "field": {
         "title": "Tratamento",
@@ -1419,7 +1420,8 @@
         "complete": "Completo",
         "toFill": "Por preencher",
         "phone": "Telefone do viajante",
-        "email": "Email do viajante"
+        "email": "Email do viajante",
+        "dobType": "Decide o tipo: menos de 2 anos é bebé, de 2 a 11 é criança"
       },
       "sex": {
         "f": "Feminino",
@@ -1445,6 +1447,20 @@
         "found": "{name} já viajou com este ministério. Reutilizar os dados?",
         "apply": "Reutilizar os dados",
         "dismiss": "Não, é outra pessoa"
+      },
+      "noPaymentMinistry": "Sem pagamento na plataforma: depois de gravar, o pedido fica pronto a emitir.",
+      "savedList": {
+        "title": "Passageiros guardados do ministério",
+        "search": "Pesquisar por nome ou passaporte",
+        "none": "Nenhum passageiro guardado com esse nome.",
+        "passport": "passaporte •••{tail}",
+        "used": "já escolhido noutro bloco",
+        "expired": "Passaporte expirado",
+        "soon": "Passaporte expira em menos de 6 meses",
+        "close": "Fechar",
+        "pick": "Escolher dos passageiros guardados",
+        "change": "Escolher outro passageiro guardado",
+        "confirm": "Dados preenchidos a partir da ficha guardada. Confirme ou corrija antes de gravar."
       }
     },
     "status": {
@@ -1776,7 +1792,8 @@
       "paymentClosed": "Este pagamento já está fechado. Fale connosco no WhatsApp.",
       "uploadFailed": "Não conseguimos guardar o ficheiro. Tente outra vez.",
       "ministrySession": "A sua sessão terminou. Introduza o PIN outra vez para enviar o pedido.",
-      "ministryFlood": "Já enviou muitos pedidos na última hora. Espere um pouco, ou fale com a empresa de viagens pelo WhatsApp."
+      "ministryFlood": "Já enviou muitos pedidos na última hora. Espere um pouco, ou fale com a empresa de viagens pelo WhatsApp.",
+      "passengerBirthDate": "verifique a data de nascimento"
     }
   },
   "pro": {
@@ -2020,8 +2037,10 @@
         "issued": "Emitido",
         "used": "Viagem feita",
         "closed": "Fechado",
-        "cancelled": "Cancelado"
-      }
+        "cancelled": "Cancelado",
+        "ready": "Pronto a emitir"
+      },
+      "openTickets": "Abrir o pedido e os bilhetes"
     },
     "timeline": {
       "request_submitted": "Pedido enviado",
@@ -2035,7 +2054,8 @@
       "tickets_issued": "Passagens emitidas",
       "request_cancelled": "Pedido cancelado",
       "case_closed": "Pedido fechado",
-      "case_reopened": "Pedido reaberto"
+      "case_reopened": "Pedido reaberto",
+      "pax_mix_updated": "Tipos de passageiro atualizados pela data de nascimento"
     },
     "travellers": {
       "title": "Passageiros",
@@ -2050,7 +2070,52 @@
       "validUntil": "válido até {date}",
       "born": "Nascimento: {date}",
       "expired": "Passaporte expirado",
-      "soon": "Passaporte expira em menos de 6 meses"
+      "soon": "Passaporte expira em menos de 6 meses",
+      "edit": "Corrigir",
+      "editTitle": "Corrigir passageiro",
+      "save": "Guardar",
+      "saving": "A guardar…",
+      "saved": "Guardado. A alteração ficou registada.",
+      "back": "Voltar aos passageiros",
+      "logged": "Cada alteração fica registada, com o seu nome e a hora.",
+      "errors": {
+        "name": "Nomes e apelidos: pelo menos 2 letras.",
+        "date": "Data inválida.",
+        "country": "Escolha um país da lista.",
+        "passport": "Passaporte: 5 a 12 letras ou algarismos.",
+        "phone": "Telefone inválido.",
+        "email": "Email inválido.",
+        "invalid": "Verifique os dados.",
+        "notFound": "Este passageiro não existe neste ministério.",
+        "duplicatePassport": "Já existe outro passageiro com este passaporte."
+      }
+    },
+    "case": {
+      "back": "Os meus pedidos",
+      "print": "Imprimir",
+      "total": "Total",
+      "waiting": "A {partner} está a preparar as ofertas. Recebe um aviso quando estiverem prontas.",
+      "keepOffer": "Manter a opção escolhida",
+      "changeOffer": "Trocar de opção",
+      "readyTitle": "Pronto a emitir",
+      "readyBody": "A opção está escolhida e os passageiros registados. A {partner} emite as passagens; não há pagamento na plataforma. Recebe um aviso quando os bilhetes estiverem prontos.",
+      "editPassengers": "Corrigir passageiros",
+      "issuedTitle": "Passagens emitidas",
+      "downloadAll": "Descarregar os bilhetes",
+      "downloadOne": "Bilhete de {name}",
+      "ticketsPending": "Os bilhetes em PDF ainda estão a ser preparados.",
+      "passengers": "Passageiros",
+      "closedBody": "Este pedido está fechado.",
+      "cancelledBody": "Este pedido foi cancelado.",
+      "status": {
+        "waiting": "À espera das ofertas",
+        "options": "Ofertas disponíveis",
+        "passengers": "Opção escolhida · faltam os passageiros",
+        "ready": "Pronto a emitir",
+        "issued": "Emitido",
+        "closed": "Fechado",
+        "cancelled": "Cancelado"
+      }
     }
   },
   "seo": {

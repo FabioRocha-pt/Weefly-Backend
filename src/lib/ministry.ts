@@ -226,6 +226,8 @@ export type MinistryRequestStatus =
   | "handling"
   | "options"
   | "chosen"
+  /** B2G-17 · passageiros completos, sem pagamento: a empresa emite. */
+  | "ready"
   | "issued"
   | "used"
   | "closed"
@@ -244,6 +246,7 @@ export const PUBLIC_TIMELINE_KINDS = [
   "proposal_published",
   "offer_selected",
   "passengers_submitted",
+  "pax_mix_updated",
   "ministry_ready_to_issue",
   "tickets_issued",
   "request_cancelled",
@@ -288,7 +291,7 @@ export async function listMinistryRequests(orgId: string): Promise<MinistryReque
   if (!admin) return []
 
   const columns = (withUrgency: boolean) =>
-    `id, token, stage, pnr, closed_at, claimed_at, created_at, secretary_id,${withUrgency ? " urgency," : ""}
+    `id, token, stage, pnr, closed_at, claimed_at, created_at, secretary_id,${withUrgency ? " urgency, ready_to_issue_at," : ""}
      trip_request:trip_requests (reference, origin, destination, depart_date, return_date, adults, special_requests),
      proposals:case_proposals (status, selected_offer_id)`
   const run = (withUrgency: boolean) =>
@@ -299,7 +302,7 @@ export async function listMinistryRequests(orgId: string): Promise<MinistryReque
       .order("created_at", { ascending: false })
       .limit(300)
 
-  /* Numa base sem a 0035 a lista abre na mesma, tudo Normal. */
+  /* Numa base sem a 0035 (ou sem a 0037) a lista abre na mesma, tudo Normal. */
   let { data, error } = await run(true)
   if (error?.code === "42703") ({ data, error } = await run(false))
   if (error) {
@@ -345,6 +348,7 @@ export async function listMinistryRequests(orgId: string): Promise<MinistryReque
     if (r.stage === "cancelado") status = "cancelled"
     else if (r.pnr) status = lastDay && lastDay < today ? "used" : "issued"
     else if (r.closed_at) status = "closed"
+    else if (r.ready_to_issue_at && proposals.some((p) => p.selected_offer_id)) status = "ready"
     else if (proposals.some((p) => p.selected_offer_id)) status = "chosen"
     else if (proposals.some((p) => p.status === "publicada")) status = "options"
     else if (r.claimed_at) status = "handling"
@@ -370,7 +374,7 @@ export async function listMinistryRequests(orgId: string): Promise<MinistryReque
   })
 }
 
-// ── B2G-25 · Passageiros (só leitura neste bloco) ───────────────────────────
+// ── B2G-25 · Passageiros ────────────────────────────────────────────────────
 
 export interface MinistryTraveller {
   id: string
@@ -444,4 +448,83 @@ export async function listMinistryTravellers(orgId: string, query?: string | nul
         updatedAt: r.updated_at,
       }
     })
+}
+
+/** O aviso do passaporte: expirado, ou a menos de seis meses de expirar. */
+export function passportWarning(expiry: string | null, today = new Date().toISOString().slice(0, 10)): "expired" | "soon" | null {
+  if (!expiry) return null
+  if (expiry < today) return "expired"
+  return expiry < plusMonths(today, 6) ? "soon" : null
+}
+
+export interface MinistryTravellerCard {
+  id: string
+  title: string | null
+  firstName: string
+  lastName: string
+  gender: string | null
+  birthDate: string | null
+  nationality: string | null
+  passportNumber: string | null
+  passportExpiry: string | null
+  issuingCountry: string | null
+  phone: string | null
+  email: string | null
+  passportWarning: "expired" | "soon" | null
+}
+
+const CARD_COLUMNS =
+  "id, title, first_name, last_name, gender, birth_date, nationality, passport_number, passport_expiry, issuing_country, phone, email"
+
+function cardFromRow(r: Record<string, any>): MinistryTravellerCard {
+  return {
+    id: r.id,
+    title: r.title ?? null,
+    firstName: r.first_name,
+    lastName: r.last_name,
+    gender: r.gender ?? null,
+    birthDate: r.birth_date ?? null,
+    nationality: r.nationality ?? null,
+    passportNumber: r.passport_number ?? null,
+    passportExpiry: r.passport_expiry ?? null,
+    issuingCountry: r.issuing_country ?? null,
+    phone: r.phone ?? null,
+    email: r.email ?? null,
+    passportWarning: passportWarning(r.passport_expiry ?? null),
+  }
+}
+
+/**
+ * B2G-25 · B2G-16 · as fichas completas do ministério — só desse —, para
+ * escolher ao preencher os passageiros de um pedido. Só para a página do caso,
+ * com a sessão do PIN de uma secretária desse ministério.
+ */
+export async function listMinistryTravellerCards(orgId: string): Promise<MinistryTravellerCard[]> {
+  const admin = createAdminClient()
+  if (!admin) return []
+  const { data, error } = await admin
+    .from("ministry_travellers")
+    .select(CARD_COLUMNS)
+    .eq("organisation_id", orgId)
+    .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true })
+    .limit(1000)
+  if (error) {
+    console.error("[ministério] fichas:", error.message)
+    return []
+  }
+  return ((data ?? []) as Record<string, any>[]).map(cardFromRow)
+}
+
+/** B2G-25 · uma ficha, para a corrigir — só se for deste ministério. */
+export async function loadMinistryTravellerCard(orgId: string, travellerId: string): Promise<MinistryTravellerCard | null> {
+  const admin = createAdminClient()
+  if (!admin || !/^[0-9a-f-]{36}$/i.test(travellerId)) return null
+  const { data } = await admin
+    .from("ministry_travellers")
+    .select(CARD_COLUMNS)
+    .eq("id", travellerId)
+    .eq("organisation_id", orgId)
+    .maybeSingle()
+  return data ? cardFromRow(data as Record<string, any>) : null
 }

@@ -8,7 +8,7 @@ import { createAdminClient } from "@/utils/supabase/admin"
 import { getCase, getCaseByToken, type BookingCaseRow } from "@/lib/booking-cases"
 import { caseClientLink } from "@/lib/case-partner"
 import { clientBrandForCase } from "@/lib/brand"
-import { caseInScope } from "@/lib/bo-scope"
+import { caseInScope, isCrossPartner } from "@/lib/bo-scope"
 import {
   ensureProposal,
   getProposal,
@@ -260,10 +260,54 @@ async function requireCaseOwner(
   if (!owner) return { error: t("errors.publishNeedsOwner") }
 
   if (owner !== access.identity.userId && access.identity.role !== "admin") {
-    return { error: t("errors.publishNotOwner") }
+    /* B2G-15 · D-2 · a proposta que o master enviou para revisão é da empresa
+       do caso: qualquer agente dela a revê, altera e envia. */
+    const review = await reviewInfo(caseId)
+    if (!(review?.status === "revisao_parceiro" && review.partnerId === access.identity.tenant?.partnerId)) {
+      return { error: t("errors.publishNotOwner") }
+    }
   }
 
   return null
+}
+
+/**
+ * B2G-15 · D-2 · a empresa do caso, o canal e o estado da proposta. Lido pela
+ * service role, só depois de `caseInScope`.
+ */
+async function reviewInfo(
+  caseId: string
+): Promise<{ partnerId: string | null; channel: string | null; status: string | null; revision: number } | null> {
+  const admin = createAdminClient()
+  if (!admin) return null
+  const { data } = await admin
+    .from("booking_cases")
+    .select("partner_id, channel, proposals:case_proposals(status, revision)")
+    .eq("id", caseId)
+    .maybeSingle()
+  if (!data) return null
+  const row = data as Record<string, any>
+  const proposal = Array.isArray(row.proposals) ? row.proposals[0] : row.proposals
+  return {
+    partnerId: row.partner_id ?? null,
+    channel: row.channel ?? null,
+    status: proposal?.status ?? null,
+    revision: Number(proposal?.revision ?? 1),
+  }
+}
+
+/**
+ * B2G-15 · D-2 · "empresa do caso ≠ empresa da sessão, e a sessão é o master":
+ * num pedido de ministério, as ofertas do master vão à empresa para revisão
+ * antes de chegarem à secretária. Genérico (B2G-26): nunca "a empresa é a Alô".
+ */
+async function masterMustSendForReview(caseId: string): Promise<boolean> {
+  const access = await getBoAccess()
+  if (!access.ok || !isCrossPartner(access.identity)) return false
+  const info = await reviewInfo(caseId)
+  return Boolean(
+    info && info.channel === "ministerio" && info.partnerId && info.partnerId !== access.identity.tenant?.partnerId
+  )
 }
 
 /**
@@ -999,8 +1043,17 @@ export async function publishProposal(
   if (!owner) {
     return { error: t("errors.publishNeedsOwner") }
   }
-  if (owner !== user.id && !isAdmin) {
+  const review = await reviewInfo(caseId)
+  const inReview = review?.status === "revisao_parceiro"
+  const reviewer = inReview && access.ok && review?.partnerId === access.identity.tenant?.partnerId
+  if (owner !== user.id && !isAdmin && !reviewer) {
     return { error: t("errors.publishNotOwner") }
+  }
+
+  /* B2G-15 · D-2 · o master não envia directamente à secretária de outra
+     empresa: vai à revisão (a base de dados recusa-o também). */
+  if (await masterMustSendForReview(caseId)) {
+    return { error: t("bo.review.errors.masterMustReview") }
   }
 
   const included = new Set(input.includedOfferIds)
@@ -1142,6 +1195,27 @@ export async function publishProposal(
     .filter(Boolean)
     .join("\n\n")
 
+  /*
+   * B2G-15 · num pedido de ministério o "cliente" é o ministério: o aviso vai
+   * a todas as secretárias activas (decisão 8), cada uma com o seu link
+   * pessoal, com a marca da empresa — e não o email do link /pc ao contacto do
+   * caso. Fica no registo do caso quem enviou (e se veio de uma revisão).
+   */
+  const ministryCase = review?.channel === "ministerio"
+  if (ministryCase) {
+    await logCaseEvent({
+      caseId,
+      kind: "proposal_published",
+      title: inReview ? "Ofertas revistas e enviadas à secretária" : "Ofertas enviadas à secretária",
+      detail: `R${view.proposal.revision} · ${going.length} oferta(s)${inReview ? " · revistas pela empresa" : ""}`,
+      actorId: user.id,
+      actorEmail: user.email ?? null,
+      actorKind: "staff",
+      payload: { revision: view.proposal.revision, offers: going.map((o) => o.id), reviewed: inReview },
+      once: `proposal_published:r${view.proposal.revision}`,
+    })
+  }
+
   const warning = await notifyPublication({
     bookingCase,
     offers: going,
@@ -1152,14 +1226,110 @@ export async function publishProposal(
         ? text(input.openingMessage, 2000)
         : view.proposal.opening_message,
     revision: view.proposal.revision,
-    notifyClient: input.notifyClient !== false,
+    notifyClient: ministryCase ? false : input.notifyClient !== false,
     notifyTeam: input.notifyTeam !== false,
     agentName: user.email ?? null,
     changeNote: noteWithDates || null,
   })
 
+  if (ministryCase && input.notifyClient !== false) {
+    try {
+      const { sendSecretariesNotice } = await import("@/lib/emails/ministry-notices")
+      await sendSecretariesNotice(caseId, "offers_ready")
+    } catch (err) {
+      console.error("[proposals] aviso às secretárias falhou:", err)
+    }
+  }
+
   touch(caseId)
   return { error: null, ...(warning ? { warning } : {}) }
+}
+
+/**
+ * B2G-15 · D-2 · "Enviar à empresa para revisão".
+ *
+ * O master preparou as ofertas num pedido de ministério de outra empresa: em
+ * vez de publicar, envia-as à empresa do caso. A secretária não vê nada até a
+ * empresa as rever e enviar (`publishProposal`). Quem decide é a base de
+ * dados, pela sessão (`request_proposal_review`, 0037): o estado, o carimbo e
+ * os registos (case_events + access_audit) na mesma transacção. A empresa
+ * recebe aviso: a campainha (o acontecimento) e o email, se tiver
+ * destinatários de alertas.
+ */
+export async function requestProposalReview(
+  caseId: string,
+  input: { includedOfferIds: string[]; openingMessage?: string }
+): Promise<ProposalActionState & { warning?: string }> {
+  const { t } = await getBoI18n()
+  const editable = await editableProposal(caseId)
+  if ("error" in editable) return editable
+
+  if (!(await masterMustSendForReview(caseId))) {
+    return { error: t("bo.review.errors.notMaster") }
+  }
+
+  const view = await getProposal(caseId)
+  const bookingCase = await getCase(caseId)
+  if (!view || !bookingCase) return { error: t("errors.caseNotFound") }
+
+  const included = new Set(input.includedOfferIds)
+  const going = view.offers.filter((o) => included.has(o.id))
+  if (going.length === 0) return { error: t("errors.pickAtLeastOneOffer") }
+
+  /* As mesmas regras de publicar: a empresa recebe ofertas completas. */
+  const pax = paxOf(bookingCase.trip_request)
+  const requested = {
+    departDate: bookingCase.trip_request?.depart_date ?? null,
+    returnDate: bookingCase.trip_request?.return_date ?? null,
+  }
+  const faults = going.flatMap((offer) => {
+    const problems = offerBlockers(offer, pax, requested)
+    return problems.length === 0
+      ? []
+      : [
+          t("blockers.line", {
+            offer: offer.name || t("email.proposalUnnamed"),
+            problems: problems.map((b) => blockerText(b, t)).join(", "),
+          }),
+        ]
+  })
+  if (faults.length > 0) return { error: t("blockers.missing", { faults: faults.join(" · ") }) }
+
+  const supabase = createClient()
+  await Promise.all(
+    view.offers.map((offer) =>
+      supabase.from("case_offers").update({ include_in_proposal: included.has(offer.id) }).eq("id", offer.id)
+    )
+  )
+  if (input.openingMessage !== undefined) {
+    await supabase
+      .from("case_proposals")
+      .update({ opening_message: text(input.openingMessage, 2000) })
+      .eq("id", view.proposal.id)
+  }
+
+  const { data, error } = await supabase.rpc("request_proposal_review", { p_case: caseId })
+  if (error) {
+    console.error("[proposals] revisão:", error.message)
+    return { error: t("bo.review.errors.failed") }
+  }
+  const outcome = (data as { outcome?: string } | null)?.outcome
+  if (outcome !== "requested" && outcome !== "already") {
+    const key = outcome === "no_offers" ? "noOffers" : outcome === "not_draft" ? "notDraft" : "failed"
+    return { error: t(`bo.review.errors.${key}`) }
+  }
+
+  if (outcome === "requested") {
+    try {
+      const { sendPartnerCaseNotice } = await import("@/lib/emails/send")
+      await sendPartnerCaseNotice(caseId, "review_requested", `R${view.proposal.revision} · ${going.length} oferta(s)`)
+    } catch (err) {
+      console.error("[proposals] aviso à empresa falhou:", err)
+    }
+  }
+
+  touch(caseId)
+  return OK
 }
 
 /** C-01 · de quem é o caso. `created_by` é o dono; ver `boClaimCase`. */

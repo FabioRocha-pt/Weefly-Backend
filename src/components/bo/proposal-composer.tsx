@@ -47,6 +47,7 @@ import {
   addOffer,
   duplicateOffer,
   publishProposal,
+  requestProposalReview,
   removeOffer,
   reorderOffers,
   saveOffer,
@@ -564,11 +565,21 @@ export function BoProposalComposer({
   requestedBaggage,
   requestedRoute,
   brief,
+  review = null,
 }: {
   caseId: string
   token: string
   proposal: Proposal
   offers: AdminOffer[]
+  /**
+   * B2G-15 · D-2 · a revisão da empresa num pedido de ministério:
+   *   · `send` — o master numa empresa que não é a dele: o botão é "Enviar à
+   *     empresa para revisão";
+   *   · `reviewing` — a empresa do caso, com a proposta em revisão: revê,
+   *     altera e envia à secretária;
+   *   · `waiting` — o master, com a proposta já na empresa.
+   */
+  review?: ProposalReview | null
   pax: PaxCounts
   /** BO-07 · as datas que o cliente pediu, para as validar contra a oferta. */
   requested: RequestedDates
@@ -879,6 +890,7 @@ export function BoProposalComposer({
           onError={setError}
           onDone={() => router.refresh()}
           onRevision={() => run(() => startRevision(caseId))}
+          review={review}
           t={t}
         />
       </aside>
@@ -2251,6 +2263,15 @@ function PreviewLeg({
 
 // --- Painel de publicação ----------------------------------------------------
 
+export interface ProposalReview {
+  mode: "send" | "reviewing" | "waiting"
+  /** Quem enviou para revisão, e quando. */
+  requestedBy: string | null
+  requestedAt: string | null
+  /** A empresa do caso, para as frases. */
+  partnerName: string
+}
+
 function PublishPanel({
   caseId,
   token,
@@ -2264,6 +2285,7 @@ function PublishPanel({
   onError,
   onDone,
   onRevision,
+  review = null,
   t,
 }: {
   caseId: string
@@ -2278,6 +2300,7 @@ function PublishPanel({
   onError: (message: string | null) => void
   onDone: () => void
   onRevision: () => void
+  review?: ProposalReview | null
   t: Translator
 }) {
   const { locale } = useI18n()
@@ -2326,13 +2349,21 @@ function PublishPanel({
       // Grava a mensagem de abertura antes de publicar; a gravação automática
       // só cobre a oferta aberta, e esta caixa não pertence a nenhuma.
       await saveProposalMeta(caseId, { openingMessage: message })
-      const result = await publishProposal(caseId, {
-        includedOfferIds: going.map((o) => o.id),
-        openingMessage: message,
-        notifyClient,
-        notifyTeam,
-        changeNote,
-      })
+      /* B2G-15 · D-2 · o master numa empresa que não é a dele envia à
+         empresa para revisão; a secretária só recebe quando a empresa enviar. */
+      const result =
+        review?.mode === "send"
+          ? await requestProposalReview(caseId, {
+              includedOfferIds: going.map((o) => o.id),
+              openingMessage: message,
+            })
+          : await publishProposal(caseId, {
+              includedOfferIds: going.map((o) => o.id),
+              openingMessage: message,
+              notifyClient,
+              notifyTeam,
+              changeNote,
+            })
       if (result.error) onError(result.error)
       else {
         if (result.warning) setWarning(result.warning)
@@ -2417,6 +2448,31 @@ function PublishPanel({
       </header>
 
       <div className="p-3.5">
+        {review && (
+          <div className="mb-3.5 rounded-[9px] border border-adm-line bg-adm-panel-2 p-2.5 text-xs leading-relaxed text-adm-txt-2">
+            <b className="mb-1 block text-adm-txt">
+              {review.mode === "send"
+                ? t("bo.review.sendTitle")
+                : review.mode === "reviewing"
+                  ? t("bo.review.reviewingTitle")
+                  : t("bo.review.waitingTitle")}
+            </b>
+            {review.mode === "send"
+              ? t("bo.review.sendBody", { partner: review.partnerName })
+              : review.mode === "reviewing"
+                ? t("bo.review.reviewingBody", {
+                    who: review.requestedBy ?? "—",
+                    when: review.requestedAt
+                      ? new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                          timeZone: "Atlantic/Cape_Verde",
+                        }).format(new Date(review.requestedAt))
+                      : "—",
+                  })
+                : t("bo.review.waitingBody", { partner: review.partnerName })}
+          </div>
+        )}
         {offers.length === 0 ? (
           <p className="text-[12.5px] text-adm-muted">
             {t("admin.publishNoOffers")}
@@ -2540,9 +2596,10 @@ function PublishPanel({
             disabled={
               publishing ||
               pending ||
+              review?.mode === "waiting" ||
               going.length === 0 ||
               blockers.length > 0 ||
-              (proposal.revision > 1 && changeNote.trim().length < 8)
+              (review?.mode !== "send" && proposal.revision > 1 && changeNote.trim().length < 8)
             }
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-adm-ember px-4 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-adm-ember-dark disabled:opacity-50"
           >
@@ -2551,7 +2608,13 @@ function PublishPanel({
             ) : (
               <Send className="h-4 w-4" />
             )}
-            {t("admin.publishCta")}
+            {review?.mode === "send"
+              ? t("bo.review.sendCta")
+              : review?.mode === "reviewing"
+                ? t("bo.review.publishCta")
+                : review?.mode === "waiting"
+                  ? t("bo.review.waitingCta")
+                  : t("admin.publishCta")}
           </button>
           <p className="text-center text-[11px] text-adm-muted">
             {t("admin.publishAutoSave")}

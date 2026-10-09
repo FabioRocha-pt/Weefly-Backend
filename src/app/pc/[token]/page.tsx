@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 
 import { loadPcState, touchLink } from "@/lib/pc/state"
+import { ministryCaseRedirect } from "@/lib/ministry-case"
 import { pcLocale } from "@/lib/pc/locale"
 import { PcBrandProvider, PcFab, PcFooter, ToastHost } from "@/components/pc/chrome"
 import { brandCssVars, clientBrandForCase, toClientBrand } from "@/lib/brand"
@@ -47,6 +48,12 @@ export default async function PriceCheckerCasePage({
   params: { token: string }
   searchParams: Record<string, string | string[] | undefined>
 }) {
+  /* B2G-16 · um caso de ministério vive no espaço do ministério, atrás do PIN:
+     o token do caso sozinho já não deixa ninguém agir nele. O link dos emails
+     antigos leva ao link pessoal da secretária que o pediu. */
+  const ministryPath = await ministryCaseRedirect(params.token)
+  if (ministryPath) redirect(ministryPath)
+
   const lookup = await loadPcState(params.token)
 
   if (!lookup.ok) {

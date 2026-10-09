@@ -20,7 +20,20 @@ import { IcWa, Sentence } from "@/components/pc/bits"
 import { WaButton, useToast } from "@/components/pc/chrome"
 import { useT } from "@/i18n/provider"
 
-export function ScreenP5({ state }: { state: PcState }) {
+export function ScreenP5({
+  state,
+  choose,
+  afterChoose,
+}: {
+  state: PcState
+  /**
+   * B2G-16 · quem grava a escolha. Por omissão o cliente, pelo token do caso;
+   * no espaço do ministério, a secretária pela sessão do PIN.
+   */
+  choose?: (offerId: string) => Promise<{ ok: true } | { ok: false; error: string }>
+  /** Para onde ir depois de escolher (por omissão, o `/pc` do caso). */
+  afterChoose?: string
+}) {
   const router = useRouter()
   const toast = useToast()
   const t = useT()
@@ -121,7 +134,9 @@ export function ScreenP5({ state }: { state: PcState }) {
             onChoose={() => {
               setChoosing(offer.id)
               startTransition(async () => {
-                const result = await choosePcOffer(state.token, offer.id)
+                const result = choose
+                  ? await choose(offer.id)
+                  : await choosePcOffer(state.token, offer.id)
                 setChoosing(null)
                 if (!result.ok) {
                   toast(result.error)
@@ -140,7 +155,7 @@ export function ScreenP5({ state }: { state: PcState }) {
                  * ecrã de onde a pessoa veio, e não outra vez à lista.
                  */
                 toast(t("pc.options.updated"))
-                router.replace(`/pc/${state.token}`)
+                router.replace(afterChoose ?? `/pc/${state.token}`)
                 router.refresh()
               })
             }}

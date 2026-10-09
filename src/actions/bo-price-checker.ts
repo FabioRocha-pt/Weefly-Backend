@@ -1136,6 +1136,14 @@ const issueSchema = z.object({
  * Exige um pagamento confirmado. Emitir sem pagamento confirmado é o erro que
  * custa dinheiro à WeeFly, e é o único sítio onde vale a pena recusar em vez de
  * avisar.
+ *
+ * B2G-17 · decisão 1 · um caso de ministério não tem pagamento na plataforma:
+ * emite-se quando está **pronto a emitir** (`ready_to_issue_at`: opção
+ * escolhida e passageiros completos). Se o ministério tiver um pagamento
+ * externo confirmado (bolsa), também serve — continua a funcionar.
+ *
+ * B2G-18 · D-3 · decisão 3 · um caso de ministério só é emitido pela WeeFly
+ * (uma conta do operador). O canal público e o VIP não mudam.
  */
 export async function boIssueTickets(
   input: z.input<typeof issueSchema>
@@ -1155,16 +1163,26 @@ export async function boIssueTickets(
     return { ok: false, error: t("bo.actions.pc.issue.duplicateNumbers") }
   }
 
-  const payment = await getPcPayment(v.caseId)
-  if (!payment || (!payment.admin_confirmed && payment.status !== "COMPLETED")) {
-    return {
-      ok: false,
-      error: t("bo.actions.pc.issue.needsPayment"),
-    }
-  }
-
   const admin = createAdminClient()
   if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
+
+  const ministry = await ministryIssuance(v.caseId)
+
+  /* D-3 · só o operador emite um caso de ministério. Numa base sem a 0020
+     (sem parceiros) só há o operador. */
+  if (ministry && identity.tenant && !identity.tenant.isOperator) {
+    return { ok: false, error: t("bo.issue.errors.operatorOnly") }
+  }
+
+  const payment = await getPcPayment(v.caseId)
+  const paid = Boolean(payment && (payment.admin_confirmed || payment.status === "COMPLETED"))
+  /* B2G-17 · pronto a emitir dispensa o pagamento num caso de ministério. */
+  if (!paid && !(ministry && ministry.readyToIssueAt)) {
+    return {
+      ok: false,
+      error: ministry ? t("bo.issue.errors.notReady") : t("bo.actions.pc.issue.needsPayment"),
+    }
+  }
 
   /*
    * T-04 · "o botão de emitir fica desactivado até cada voo estar completo".
@@ -1289,8 +1307,21 @@ export async function boIssueTickets(
     actorId: identity.userId,
     actorEmail: identity.email,
     actorKind: "staff",
-    payload: { pnr: v.pnr, tickets: numbers },
+    payload: { pnr: v.pnr, tickets: numbers, ...(ministry ? { ministry: true, paid } : {}) },
   })
+
+  /* B2G-18 · a campainha da empresa do caso (a do pedido de ministério). */
+  if (ministry) {
+    await logCaseEvent({
+      caseId: v.caseId,
+      kind: "ministry_tickets_issued",
+      title: "Passagens emitidas · ministério avisado",
+      detail: `PNR ${v.pnr}`,
+      actorKind: "system",
+      payload: { pnr: v.pnr },
+      once: `ministry_tickets_issued:${v.pnr}`,
+    })
+  }
 
   /*
    * EM-02 e EM-03 · o PDF nasce aqui, no mesmo gesto que emite.
@@ -1310,7 +1341,23 @@ export async function boIssueTickets(
   })
 
   let delivered = false
-  if (documents.ok) {
+  if (ministry) {
+    /*
+     * B2G-18 · os bilhetes aparecem no espaço da secretária (pela sessão do
+     * PIN, `/ministerios/…/pedidos/<caso>/bilhete`), e o aviso vai a todas as
+     * secretárias activas do ministério (decisão 8) e à empresa. Sem o email
+     * do link /pc ao contacto do caso: num ministério o token já não abre o caso.
+     */
+    try {
+      const { sendSecretariesNotice } = await import("@/lib/emails/ministry-notices")
+      const sent = await sendSecretariesNotice(v.caseId, "tickets_issued")
+      delivered = sent.sent > 0
+      const { sendPartnerCaseNotice } = await import("@/lib/emails/send")
+      await sendPartnerCaseNotice(v.caseId, "tickets_issued", `PNR ${v.pnr}`)
+    } catch (err) {
+      console.error("[bo/pc] avisos do ministério falharam:", err)
+    }
+  } else if (documents.ok) {
     const { sendTicketsIssuedEmail } = await import("@/lib/emails/send")
     /* EM-03 e EM-04 · o bilhete combinado e o guia de uma página, os dois em
        anexo. Os individuais ficam no link: quatro anexos num email é um email
@@ -1344,6 +1391,27 @@ export async function boIssueTickets(
       .filter(Boolean)
       .join(" "),
   }
+}
+
+/**
+ * B2G-17 · um caso de ministério e, se estiver, quando ficou pronto a emitir.
+ * Nulo fora do canal ministério. Numa base sem a 0037, `readyToIssueAt` nulo
+ * (a emissão continua a pedir o pagamento externo, como antes).
+ */
+async function ministryIssuance(caseId: string): Promise<{ readyToIssueAt: string | null } | null> {
+  const admin = createAdminClient()
+  if (!admin) return null
+  let { data, error } = await admin
+    .from("booking_cases")
+    .select("organisation_id, ready_to_issue_at")
+    .eq("id", caseId)
+    .maybeSingle()
+  if (error?.code === "42703") {
+    ;({ data, error } = await admin.from("booking_cases").select("organisation_id").eq("id", caseId).maybeSingle())
+  }
+  const row = data as { organisation_id: string | null; ready_to_issue_at?: string | null } | null
+  if (!row?.organisation_id) return null
+  return { readyToIssueAt: row.ready_to_issue_at ?? null }
 }
 
 /**
@@ -1415,6 +1483,27 @@ export async function boResendTickets(caseId: string): Promise<BoResult> {
       error:
         t("bo.actions.pc.tickets.noneYet"),
     }
+  }
+
+  /* B2G-18 · num ministério os bilhetes estão no espaço da secretária: o
+     reenvio é o aviso às secretárias activas, com o link pessoal de cada uma
+     (o link /pc do contacto do caso já não abre um caso de ministério). */
+  if (await ministryIssuance(caseId)) {
+    const { sendSecretariesNotice } = await import("@/lib/emails/ministry-notices")
+    const sent = await sendSecretariesNotice(caseId, "tickets_issued")
+    await logCaseEvent({
+      caseId,
+      kind: "tickets_resent",
+      title: "Aviso dos bilhetes reenviado às secretárias",
+      detail: `${combined.documentNumber} · ${sent.sent} secretária(s) · por ${identity.email}`,
+      actorId: identity.userId,
+      actorEmail: identity.email,
+      actorKind: "staff",
+    })
+    touch(caseId)
+    return sent.sent > 0
+      ? { ok: true, notice: t("bo.actions.pc.tickets.resent", { number: combined.documentNumber }) }
+      : { ok: false, error: t("bo.issue.errors.noSecretaryEmail") }
   }
 
   /* O guia é composto na hora: não tem dados de ninguém e é o mesmo para toda

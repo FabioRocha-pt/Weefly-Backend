@@ -274,8 +274,14 @@ export function BoIssuancePanel({
   amount,
   currency,
   hasDocument,
+  ministry = null,
 }: {
   caseId: string
+  /**
+   * B2G-17 · B2G-18 · um caso de ministério: pronto a emitir dispensa o
+   * pagamento (decisão 1), e só o operador emite (D-3). Nulo fora do canal.
+   */
+  ministry?: { readyToIssueAt: string | null; canIssue: boolean } | null
   payment: PcPayment | null
   passengers: CasePassenger[]
   /** Os trechos da opção escolhida — um lugar por passageiro em cada um. */
@@ -306,7 +312,11 @@ export function BoIssuancePanel({
   const { t, locale } = useI18n()
   const [pending, startTransition] = useTransition()
 
-  const paid = Boolean(payment?.admin_confirmed) || payment?.status === "COMPLETED"
+  const paidOut = Boolean(payment?.admin_confirmed) || payment?.status === "COMPLETED"
+  /* B2G-17 · num ministério, "pronto a emitir" faz as vezes do pagamento. */
+  const paid = paidOut || Boolean(ministry?.readyToIssueAt)
+  /* D-3 · num ministério só o operador emite: o botão nem aparece a outros. */
+  const mayIssue = !ministry || ministry.canIssue
   const issued = Boolean(issuance.issuedAt)
 
   const [pnr, setPnr] = useState(issuance.pnr ?? "")
@@ -570,7 +580,13 @@ export function BoIssuancePanel({
           <div className="kv">
             <span className="kv-k">{t("bo.issuance.summary.payment")}</span>
             <span className="kv-v" style={{ color: paid ? "var(--ok)" : "var(--warn)" }}>
-              {paid ? t("bo.issuance.summary.confirmed") : t("bo.issuance.summary.notConfirmed")}
+              {ministry && !paidOut
+                ? ministry.readyToIssueAt
+                  ? t("bo.issue.readyNoPayment")
+                  : t("bo.issue.notReady")
+                : paid
+                  ? t("bo.issuance.summary.confirmed")
+                  : t("bo.issuance.summary.notConfirmed")}
             </span>
           </div>
           <div className="kv">
@@ -605,7 +621,12 @@ export function BoIssuancePanel({
           )}
           {!paid && (
             <p className="note warn" style={{ marginTop: 12 }}>
-              {t("bo.issuance.summary.confirmFirst")}
+              {ministry ? t("bo.issue.waitPassengers") : t("bo.issuance.summary.confirmFirst")}
+            </p>
+          )}
+          {!issued && !mayIssue && (
+            <p className="note warn" style={{ marginTop: 12 }}>
+              {t("bo.issue.operatorOnlyNote")}
             </p>
           )}
 
@@ -1269,7 +1290,7 @@ export function BoIssuancePanel({
             {error && <div className="note bad">{error}</div>}
             {notice && <div className="note ok">{notice}</div>}
 
-            {!issued && (
+            {!issued && mayIssue && (
               <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                 <button
                   className="btn btn-primary"

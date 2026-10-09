@@ -75,8 +75,12 @@ const ALERT_KINDS = [
   "payment_expired",
   /* MIN-07 · a bolsa do ministério não cobre a opção que a secretária aceitou. */
   "ministry_insufficient_funds",
-  /* MIN-07 · passageiros completos num ministério: falta o pagamento externo. */
+  /* MIN-07 · B2G-17 · passageiros completos num ministério: pronto a emitir. */
   "ministry_ready_to_issue",
+  /* B2G-15 · D-2 · o master enviou ofertas à empresa do caso para revisão. */
+  "proposal_review_requested",
+  /* B2G-18 · as passagens de um pedido de ministério foram emitidas. */
+  "ministry_tickets_issued",
 ]
 
 export interface BoAlertFeed {

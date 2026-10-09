@@ -41,7 +41,7 @@ export async function GET(
 
   const { data } = await admin
     .from("booking_cases")
-    .select("id, stage, partner:partners(status)")
+    .select("id, stage, organisation_id, partner:partners(status)")
     .eq("token", params.token)
     .maybeSingle()
 
@@ -52,11 +52,15 @@ export async function GET(
   const bookingCase = data as unknown as {
     id: string
     stage: string
+    organisation_id: string | null
     partner: { status: string } | { status: string }[] | null
   }
   const partner = Array.isArray(bookingCase.partner) ? bookingCase.partner[0] : bookingCase.partner
   /* ADM-01 · o link de um parceiro suspenso fica congelado, bilhete incluído. */
-  if (bookingCase.stage === "cancelado" || partner?.status === "suspended") {
+  /* B2G-18 · o bilhete de um caso de ministério não sai pelo token do caso:
+     sai no espaço do ministério, com a sessão do PIN
+     (`/ministerios/<org>/<link>/pedidos/<caso>/bilhete`). */
+  if (bookingCase.stage === "cancelado" || partner?.status === "suspended" || bookingCase.organisation_id) {
     return NextResponse.json({ error: "link inválido" }, { status: 404 })
   }
 

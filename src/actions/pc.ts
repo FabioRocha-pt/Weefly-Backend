@@ -12,7 +12,6 @@
  * sítio que o resolve, em vez de aceitar um `caseId` do formulário.
  */
 
-import { createHash } from "crypto"
 import { revalidatePath } from "next/cache"
 import { cookies, headers } from "next/headers"
 import { z } from "zod"
@@ -32,24 +31,20 @@ import {
   createPriceCheckerCase,
   findRecentSubmission,
 } from "@/lib/pc/intake"
-import { loadPcState, paxTotal } from "@/lib/pc/state"
-import {
-  attachProof,
-  openPaymentWindow,
-  recordChosenMethod,
-} from "@/lib/pc/payment"
-import { recordOfferSelection, syncPaymentToOffer } from "@/lib/proposals"
-import { offerTotal } from "@/lib/proposal-math"
+import { loadPcState } from "@/lib/pc/state"
+import { attachProof, recordChosenMethod } from "@/lib/pc/payment"
 import { logCaseEvent } from "@/lib/case-events"
-import { foldName, syncMinistryTravellers } from "@/lib/travellers"
+import {
+  chooseOfferForState,
+  notifyAgent,
+  savePassengersForState,
+  type PcPassengerInput,
+} from "@/lib/pc/case-steps"
 import {
   CURRENCIES,
   MAX_LEGS,
-  NATIONALITIES,
   PAY_METHOD_IDS,
-  PAY_WINDOW_HOURS,
   PROOF_REVIEW_HOURS,
-  carrierName,
   methodLabelPt,
   type PayMethodId,
 } from "@/lib/pc/catalog"
@@ -57,6 +52,7 @@ import { isKnownIata } from "@/lib/airports"
 import { COUNTRY_BY_ISO, toE164 } from "@/lib/countries"
 
 export type PcResult = { ok: true; notice?: string } | { ok: false; error: string }
+export type { PcPassengerInput }
 
 /** Quando a ação devolve algo além do sucesso — o token, o prazo. */
 export type PcResultWith<T> = ({ ok: true } & T) | { ok: false; error: string }
@@ -395,360 +391,24 @@ export async function choosePcOffer(
   token: string,
   offerId: string
 ): Promise<PcResult> {
+  /* B2G-16 · um caso de ministério não abre aqui (`loadPcState`): a escolha
+     da secretária passa pela sessão do PIN (`actions/ministry-case.ts`). */
   const lookup = await loadPcState(token)
   if (!lookup.ok) return { ok: false, error: pcError("linkUnavailable", { token }) }
 
   const state = lookup.state
-  if (state.cancelled) return { ok: false, error: pcError("requestCancelled", { token, stored: state.contact.locale }) }
-  if (state.expiry.expired) {
-    return { ok: false, error: pcError("offersExpired", { token, stored: state.contact.locale }) }
-  }
-
-  const offer = state.offers.find((o) => o.id === offerId)
-  if (!offer) return { ok: false, error: pcError("offerUnavailable", { token, stored: state.contact.locale }) }
-
-  /* T-02 · depois de o pagamento estar confirmado a oferta está paga: trocar
-     já não é uma escolha, é uma alteração que passa pela equipa. O botão
-     some no ecrã; esta é a mesma regra do lado do servidor. */
-  if (state.payment && (state.payment.status === "COMPLETED" || state.payment.admin_confirmed)) {
-    return { ok: false, error: pcError("offerPaid", { token, stored: state.contact.locale }) }
-  }
-
-  /*
-   * T-02 · trocar de opção não pode deixar o cliente encalhado.
-   *
-   * "No ecrã de pagamento, carregar em Trocar de opção volta às ofertas mas o
-   * cliente já não consegue escolher nenhuma. O fluxo fica sem saída."
-   *
-   * Havia duas coisas partidas, e nenhuma delas era a permissão de escolher.
-   *
-   *   1. **Nada mudava depois do clique.** A escolha gravava, o ecrã fazia
-   *      `router.refresh()` — e o endereço continuava a ser `?view=p5`, que é o
-   *      que força a lista das opções. A página voltava exactamente igual, sem
-   *      confirmação nenhuma, e a leitura de quem estava a olhar era "o botão
-   *      não faz nada". A saída está no ecrã (ver `screen-options.tsx`), que
-   *      passa a sair do `?view=p5` quando a escolha passa.
-   *   2. **O valor a cobrar não acompanhava.** `openPaymentWindow` só corre na
-   *      submissão dos passaportes. Trocar de opção depois disso deixava o
-   *      pagamento com o preço da opção antiga — e este é o defeito que custa
-   *      dinheiro, não o que se vê.
-   */
-  const previousOfferId = state.selectedOfferId
-  const changed = Boolean(previousOfferId) && previousOfferId !== offerId
-
-  const recorded = await recordOfferSelection(state.caseId, offerId)
-  if (!recorded) return { ok: false, error: pcError("choiceNotRecorded", { token, stored: state.contact.locale }) }
-
-  const amount = offerTotal(offer, state.pax)
-
-  const admin = createAdminClient()
-  if (admin) {
-    /* A etapa avança para "opção escolhida"; os passaportes e o pagamento ainda
-       estão por fazer, e é o back-office que precisa de ver essa diferença. */
-    await admin
-      .from("booking_cases")
-      .update({ stage: "opcao_escolhida" })
-      .eq("id", state.caseId)
-      .in("stage", ["novo", "pedido_recebido", "proposta_enviada"])
-  }
-
-  /*
-   * O valor segue a escolha, e as instruções antigas morrem com ela.
-   *
-   * Um link de Stripe cobra o valor que o agente lá pôs. Se o cliente troca
-   * para uma opção mais cara e o link continua no email dele, ele paga a
-   * menos — e ninguém dá por isso até à emissão. Apagar o link é a resposta
-   * honesta: quem o criou tem de criar outro, e o back-office fica a saber
-   * porquê pelo registo.
-   */
-  if (changed && state.payment) {
-    const description = [
-      offer.name || carrierName(offer.segments[0]?.carrier_code),
-      `${state.request.origin} → ${state.request.destination}`,
-      state.request.reference,
-    ]
-      .filter(Boolean)
-      .join(" · ")
-
-    await syncPaymentToOffer(
-      state.caseId,
-      amount,
-      state.quoteCurrency,
-      description
-    )
-
-    const stale =
-      state.payment.amount !== amount &&
-      Boolean(state.payment.pay_link || state.payment.pay_reference)
-
-    if (stale && admin) {
-      await admin
-        .from("case_payments")
-        .update({
-          pay_link: null,
-          pay_reference: null,
-          pay_instructions_sent_at: null,
-          pay_instructions_sent_by_email: null,
-          pay_due_at: null,
-        })
-        .eq("id", state.payment.id)
-
-      await logCaseEvent({
-        caseId: state.caseId,
-        kind: "pay_instructions_voided",
-        title: "Instruções de pagamento anuladas",
-        detail: `O cliente trocou de oferta e o valor passou de ${
-          state.payment.amount / 100
-        } para ${amount / 100} ${state.quoteCurrency} — o link antigo cobrava o preço errado.`,
-        actorKind: "system",
-        payload: { from: state.payment.amount, to: amount },
-      })
-    }
-
-  }
-
-  /*
-   * T-02 · "a troca fica registada" — sempre, e não só quando já havia um
-   * pagamento. Sem chave: A → B → A são duas trocas, e as duas contam.
-   */
-  if (changed) {
-    await logCaseEvent({
-      caseId: state.caseId,
-      kind: "offer_changed",
-      title: "Cliente trocou de oferta",
-      detail: state.payment
-        ? `${state.payment.amount / 100} → ${amount / 100} ${state.quoteCurrency}`
-        : `${offer.name || carrierName(offer.segments[0]?.carrier_code)} · ${amount / 100} ${state.quoteCurrency}`,
-      actorKind: "client",
-      payload: { from: previousOfferId, to: offerId, amount },
-    })
-  }
-
-  /*
-   * T-22 · a mesma escolha não é uma notícia nova.
-   *
-   * `O cliente escolheu uma opção ×6` na lista de notificações é o cliente a
-   * carregar seis vezes no mesmo cartão — a página recarrega, ele volta atrás,
-   * confirma outra vez. Trocar **de** opção continua a ser notícia, e por isso a
-   * chave leva o `offerId`: escolher a A depois da B escreve as duas linhas.
-   */
-  const fresh = await logCaseEvent({
-    caseId: state.caseId,
-    kind: "offer_selected",
-    title: "Cliente escolheu a oferta",
-    detail: `${offer.name || carrierName(offer.segments[0]?.carrier_code)} · ${amount / 100} ${recorded.currency}`,
-    actorKind: "client",
-    payload: { offerId, amount },
-    once: `offer_selected:${offerId}`,
+  return chooseOfferForState(state, offerId, {
+    actor: { kind: "client" },
+    error: (key) => pcError(key, { token, stored: state.contact.locale }),
+    revalidate: [`/pc/${token}`],
   })
-
-  /* E o aviso segue o registo: repetir o gesto não repete o email. */
-  if (fresh.written) {
-    const offerName = offer.name || carrierName(offer.segments[0]?.carrier_code)
-    await notifyClientState(state.caseId, "offer_selected", offerName)
-    await notifyAgent(state.caseId, "offer_selected", offerName)
-  }
-
-  /*
-   * MIN-07 · "Se o saldo não cobrir, a secretária vê uma mensagem clara e a
-   * Alô é avisada." A mensagem é o ecrã do ministério (`fundsCover`); o aviso
-   * é este acontecimento, que acende a campainha e a fila do parceiro.
-   */
-  if (state.ministry) {
-    const admin = createAdminClient()
-    const { data: bc } = await admin!.from("booking_cases").select("organisation_id").eq("id", state.caseId).maybeSingle()
-    const orgId = (bc as { organisation_id: string | null } | null)?.organisation_id
-    if (orgId) {
-      const { data: balance } = await admin!.rpc("organisation_balance", { p_org: orgId })
-      if (balance != null && Number(balance) < amount) {
-        await logCaseEvent({
-          caseId: state.caseId,
-          kind: "ministry_insufficient_funds",
-          title: "Saldo da bolsa não cobre a opção escolhida",
-          detail: `${Number(balance) / 100} disponível · ${amount / 100} ${state.quoteCurrency} escolhido`,
-          actorKind: "system",
-          payload: { balance: Number(balance), amount },
-          once: `ministry_insufficient_funds:${offerId}`,
-        })
-      }
-    }
-  }
-
-  revalidatePath(`/pc/${token}`)
-  revalidatePath("/admin/price-checker")
-  revalidatePath(`/admin/price-checker/${state.caseId}`)
-
-  return { ok: true }
 }
 
 // ── P7 · passaportes ─────────────────────────────────────────────────────────
 
-const passengerSchema = z.object({
-  position: z.coerce.number().int().min(1),
-  kind: z.enum(["adult", "child", "infant_seat", "infant_lap"]),
-  title: z.enum(["mr", "mrs", "ms"]).nullable().optional(),
-  given: z.string().trim().min(2, "As in the passport"),
-  surname: z.string().trim().min(2, "As in the passport"),
-  dob: isoDate,
-  sex: z.enum(["f", "m"]),
-  nationality: z.string().refine((v) => NATIONALITIES.includes(v), "Nationality"),
-  passportNumber: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z0-9]{5,12}$/, "5 to 12 letters or digits"),
-  passportExpiry: isoDate,
-  issuingCountry: z.string().refine((v) => NATIONALITIES.includes(v), "Issuing country"),
-  /* MIN-03 · só para apoio operacional; pedidos só num caso de ministério. */
-  phone: z
-    .string()
-    .trim()
-    .max(24)
-    .refine((v) => v === "" || /^\+?[0-9][0-9 ()-]{5,22}$/.test(v), "Phone")
-    .optional(),
-  email: z
-    .string()
-    .trim()
-    .max(200)
-    .refine((v) => v === "" || /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(v), "Email")
-    .optional(),
-})
-
-export type PcPassengerInput = z.input<typeof passengerSchema>
-
-export interface PcKnownTraveller {
-  title: string | null
-  given: string
-  surname: string
-  dob: string | null
-  sex: string | null
-  nationality: string | null
-  passportNumber: string | null
-  passportExpiry: string | null
-  issuingCountry: string | null
-  phone: string | null
-  email: string | null
-}
-
 /**
- * MIN-03 · "escrever um nome que coincide com um viajante anterior oferece
- * reutilizar os dados".
- *
- * Só num caso de ministério, e só entre os casos desse ministério. A procura é
- * pelo nome inteiro (nomes próprios e apelidos, sem maiúsculas nem acentos): o
- * browser não recebe a lista dos viajantes, só a ficha que coincide com o que
- * a secretária já escreveu.
- */
-export async function findMinistryTraveller(
-  token: string,
-  given: string,
-  surname: string
-): Promise<{ ok: true; traveller: PcKnownTraveller | null } | { ok: false }> {
-  const g = foldName(given)
-  const sn = foldName(surname)
-  if (g.length < 2 || sn.length < 2) return { ok: true, traveller: null }
-
-  const lookup = await loadPcState(token)
-  if (!lookup.ok || !lookup.state.ministry) return { ok: false }
-  const admin = createAdminClient()
-  if (!admin) return { ok: false }
-
-  const { data: bc } = await admin
-    .from("booking_cases")
-    .select("organisation_id")
-    .eq("id", lookup.state.caseId)
-    .maybeSingle()
-  const orgId = (bc as { organisation_id: string | null } | null)?.organisation_id
-  if (!orgId) return { ok: false }
-
-  /* DAT-01 · a ficha do ministério primeiro: é o que o ministério sabe da
-     pessoa hoje, com as correcções feitas no backoffice. */
-  const { data: cards, error: cardsError } = await admin
-    .from("ministry_travellers")
-    .select("title, first_name, last_name, gender, birth_date, nationality, passport_number, passport_expiry, issuing_country, phone, email")
-    .eq("organisation_id", orgId)
-    .ilike("last_name", surname.trim())
-    .order("updated_at", { ascending: false })
-    .limit(20)
-  if (!cardsError) {
-    const card = ((cards ?? []) as Record<string, any>[]).find(
-      (r) => foldName(r.first_name) === g && foldName(r.last_name) === sn
-    )
-    if (card) {
-      return {
-        ok: true,
-        traveller: {
-          title: card.title ?? null,
-          given: card.first_name,
-          surname: card.last_name,
-          dob: card.birth_date ?? null,
-          sex: card.gender ?? null,
-          nationality: card.nationality ?? null,
-          passportNumber: card.passport_number ?? null,
-          passportExpiry: card.passport_expiry ?? null,
-          issuingCountry: card.issuing_country ?? null,
-          phone: card.phone ?? null,
-          email: card.email ?? null,
-        },
-      }
-    }
-  }
-
-  const { data } = await admin
-    .from("case_passengers")
-    .select(
-      "title, first_name, last_name, gender, birth_date, nationality, passport_number, passport_expiry, issuing_country, updated_at, case:booking_cases!inner(id, organisation_id)"
-    )
-    .eq("case.organisation_id", orgId)
-    .neq("case_id", lookup.state.caseId)
-    .ilike("last_name", surname.trim())
-    .order("updated_at", { ascending: false })
-    .limit(20)
-
-  const rows = (data ?? []) as Record<string, any>[]
-  const hit = rows.find((r) => foldName(r.first_name) === g && foldName(r.last_name) === sn)
-  if (!hit) return { ok: true, traveller: null }
-
-  /* O contacto numa leitura à parte: a 0029 pode ainda não estar aplicada. */
-  let phone: string | null = null
-  let email: string | null = null
-  const { data: contact } = await admin
-    .from("case_passengers")
-    .select("phone, email, case:booking_cases!inner(organisation_id)")
-    .eq("case.organisation_id", orgId)
-    .ilike("last_name", surname.trim())
-    .ilike("first_name", given.trim())
-    .not("phone", "is", null)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (contact) {
-    phone = (contact as { phone: string | null }).phone
-    email = (contact as { email: string | null }).email
-  }
-
-  return {
-    ok: true,
-    traveller: {
-      title: hit.title ?? null,
-      given: hit.first_name,
-      surname: hit.last_name,
-      dob: hit.birth_date ?? null,
-      sex: hit.gender ?? null,
-      nationality: hit.nationality ?? null,
-      passportNumber: hit.passport_number ?? null,
-      passportExpiry: hit.passport_expiry ?? null,
-      issuingCountry: hit.issuing_country ?? null,
-      phone,
-      email,
-    },
-  }
-}
-
-/**
- * Grava os passaportes. Substitui o conjunto inteiro em cada gravação.
- *
- * Substituir e não fundir: o número de passageiros vem do pedido, e um
- * `upsert` por posição deixaria linhas órfãs se o pedido mudasse de 3 para 2.
+ * Grava os passaportes (o corpo está em `lib/pc/case-steps.ts`, partilhado com
+ * o espaço do ministério). Substitui o conjunto inteiro em cada gravação.
  */
 export async function savePcPassengers(
   token: string,
@@ -758,221 +418,11 @@ export async function savePcPassengers(
   if (!lookup.ok) return { ok: false, error: pcError("linkUnavailable", { token }) }
 
   const state = lookup.state
-  if (!state.selectedOfferId) {
-    return { ok: false, error: pcError("chooseOfferFirst", { token, stored: state.contact.locale }) }
-  }
-  if (state.payment?.status === "COMPLETED") {
-    return { ok: false, error: pcError("paidNoNameChange", { token, stored: state.contact.locale }) }
-  }
-
-  const expected = paxTotal(state.request)
-  if (rows.length !== expected) {
-    return { ok: false, error: `We need ${expected} passenger(s).` }
-  }
-
-  const parsed = z.array(passengerSchema).safeParse(rows)
-  if (!parsed.success) {
-    const issue = parsed.error.issues[0]
-    const at = issue?.path?.[0]
-    return {
-      ok: false,
-      error:
-        typeof at === "number"
-          ? `Passenger ${at + 1}: ${issue.message}`
-          : (issue?.message ?? "Check the passenger details"),
-    }
-  }
-
-  const admin = createAdminClient()
-  if (!admin) return { ok: false, error: pcError("unavailable", { token, stored: state.contact.locale }) }
-
-  await admin.from("case_passengers").delete().eq("case_id", state.caseId)
-
-  const { error } = await admin.from("case_passengers").insert(
-    parsed.data.map((p) => ({
-      case_id: state.caseId,
-      position: p.position,
-      passenger_type: p.kind,
-      title: p.title ?? null,
-      first_name: p.given,
-      last_name: p.surname,
-      gender: p.sex,
-      birth_date: p.dob,
-      nationality: p.nationality,
-      passport_number: p.passportNumber.toUpperCase(),
-      passport_expiry: p.passportExpiry,
-      issuing_country: p.issuingCountry,
-      /* A 0029 pode ainda não estar aplicada: fora de um ministério as colunas
-         nem se mencionam. */
-      ...(state.ministry ? { phone: p.phone || null, email: p.email?.toLowerCase() || null } : {}),
-    }))
-  )
-
-  if (error) {
-    console.error("[pc] passageiros não guardados:", error.message)
-    return { ok: false, error: pcError("passengersNotSaved", { token, stored: state.contact.locale }) }
-  }
-
-  /* DAT-01 · num ministério, cada passageiro vira (ou actualiza) a ficha do
-     ministério, para o pedido seguinte. */
-  if (state.ministry) {
-    const { data: bc } = await admin.from("booking_cases").select("organisation_id").eq("id", state.caseId).maybeSingle()
-    const orgId = (bc as { organisation_id: string | null } | null)?.organisation_id
-    if (orgId) {
-      await syncMinistryTravellers(admin, {
-        organisationId: orgId,
-        caseId: state.caseId,
-        byEmail: state.contact.email || null,
-        passengers: parsed.data.map((p) => ({
-          title: p.title ?? null,
-          firstName: p.given,
-          lastName: p.surname,
-          gender: p.sex,
-          birthDate: p.dob,
-          nationality: p.nationality,
-          passportNumber: p.passportNumber,
-          passportExpiry: p.passportExpiry,
-          issuingCountry: p.issuingCountry,
-          phone: p.phone || null,
-          email: p.email || null,
-        })),
-      })
-    }
-  }
-
-  await admin
-    .from("booking_cases")
-    .update({ stage: "detalhes_recebidos" })
-    .eq("id", state.caseId)
-    .in("stage", ["novo", "pedido_recebido", "proposta_enviada", "opcao_escolhida", "detalhes_pendentes"])
-
-  await admin
-    .from("case_links")
-    .update({ status: "submetido", submitted_at: new Date().toISOString() })
-    .eq("case_id", state.caseId)
-    .eq("stage", 2)
-    .neq("status", "submetido")
-
-  /*
-   * T-22 · submeter os mesmos passaportes outra vez (o `?view=p7` deixa) não é
-   * uma notícia nova. A chave é a lista de passaportes: corrigir um número
-   * muda a lista, e essa correcção continua a aparecer.
-   */
-  const passportSet = createHash("sha256")
-    .update(
-      parsed.data
-        .map((p) => `${p.passportNumber.toUpperCase()}|${p.surname}|${p.given}`)
-        .sort()
-        .join(";")
-    )
-    .digest("hex")
-    .slice(0, 16)
-
-  await logCaseEvent({
-    caseId: state.caseId,
-    kind: "passengers_submitted",
-    title: "Passaportes submetidos",
-    detail: `${parsed.data.length} de ${expected}`,
-    actorKind: "client",
-    once: `passengers_submitted:${passportSet}`,
+  return savePassengersForState(state, rows, {
+    actor: { kind: "client" },
+    error: (key) => pcError(key, { token, stored: state.contact.locale }),
+    revalidate: [`/pc/${token}`],
   })
-
-  /*
-   * BO-02 · é aqui que o link de pagamento nasce, e em nenhum outro sítio.
-   *
-   * Duas condições, as duas verificadas do lado do servidor: a opção está
-   * escolhida (acima) e os passageiros estão todos completos (a gravação que
-   * acabou de acontecer é o conjunto inteiro, validado campo a campo pelo
-   * `passengerSchema`). Só depois disso existe um valor a cobrar e alguém a
-   * quem o cobrar.
-   *
-   * O montante é calculado da oferta escolhida e dos passageiros do pedido —
-   * nunca vem do formulário. E a descrição leva a referência do caso, porque é
-   * ela que aparece no extrato de quem paga.
-   */
-  /*
-   * MIN-07 · num ministério não há pagamento do lado de quem pede: a bolsa já
-   * cobre, e é o agente que confirma o pagamento externo e liberta a emissão
-   * (PAR-07). Abrir aqui uma janela de 48 h punha um prazo a correr e um
-   * "pague agora" à frente da secretária, sem nada para ela pagar.
-   */
-  const chosen = state.ministry ? undefined : state.offers.find((o) => o.id === state.selectedOfferId)
-  if (state.ministry) {
-    await logCaseEvent({
-      caseId: state.caseId,
-      kind: "ministry_ready_to_issue",
-      title: "Pronto a emitir · confirmar o pagamento externo",
-      detail: state.ministry.fundsCover === false ? "O saldo da bolsa não cobre a opção" : state.ministry.name,
-      actorKind: "system",
-      once: `ministry_ready_to_issue:${passportSet}`,
-    })
-  }
-  if (chosen) {
-    const amount = offerTotal(chosen, state.pax)
-    const description = [
-      chosen.name || carrierName(chosen.segments[0]?.carrier_code),
-      `${state.request.origin} → ${state.request.destination}`,
-      state.request.reference,
-    ]
-      .filter(Boolean)
-      .join(" · ")
-
-    const payment = await openPaymentWindow(
-      state.caseId,
-      amount,
-      state.quoteCurrency,
-      description
-    )
-
-    if (!payment) {
-      console.error(
-        "[pc] passageiros guardados mas o pagamento não abriu:",
-        state.caseId
-      )
-    } else if (!state.payment) {
-      await logCaseEvent({
-        caseId: state.caseId,
-        kind: "payment_window_opened",
-        title: "Link de pagamento gerado",
-        detail: `${amount / 100} ${state.quoteCurrency} · expira em ${PAY_WINDOW_HOURS}h`,
-        actorKind: "system",
-        payload: { amount, currency: state.quoteCurrency },
-        /* T-22 · uma janela por pagamento. */
-        once: `payment_window_opened:${payment.id}`,
-      })
-    }
-  }
-
-  /*
-   * T-17 · as instruções de pagamento deixaram de sair daqui.
-   *
-   * Saíam, e é isso que o teste apanhou: "o email de pagamento tem de levar o
-   * link de pagamento — senão o cliente não consegue pagar". Neste instante o
-   * link **não existe**. A premissa do C-33 é que a plataforma não gera nada: é
-   * um agente que cria o link no Stripe ou pede a referência à SISP, e só depois
-   * disso há alguma coisa para o cliente clicar.
-   *
-   * O que saía era um email a dizer "pague" com um botão que abria o link do
-   * caso — e o cliente chegava lá para ver um ecrã à espera de nós. O aviso
-   * verdadeiro sai de `boSavePayInstructions`, no gesto em que o agente carrega
-   * em "Gravar e enviar", e leva o link, o método, o valor e o prazo.
-   *
-   * O que o cliente vê entretanto continua a ser verdade: o ecrã do link dele
-   * diz que estamos a preparar os dados de pagamento, e o botão "Send me the
-   * … details" avisa a equipa de que ele está à espera.
-   */
-  await notifyAgent(
-    state.caseId,
-    "passengers_submitted",
-    `${parsed.data.length} passageiro(s) · ${parsed.data
-      .map((p) => `${p.surname}/${p.given}`.toUpperCase())
-      .join(", ")}`
-  )
-
-  revalidatePath(`/pc/${token}`)
-  revalidatePath(`/admin/price-checker/${state.caseId}`)
-
-  return { ok: true }
 }
 
 // ── P7pay · método e comprovativo ────────────────────────────────────────────
@@ -1406,53 +856,5 @@ async function notifyRequestReceived(caseId: string): Promise<void> {
     await sendRequestReceivedEmail(caseId)
   } catch (err) {
     console.error("[pc] confirmação ao cliente falhou:", err)
-  }
-}
-
-/**
- * NT-05 · o agente dono do caso, avisado do que o cliente acabou de fazer.
- *
- * Best-effort como todos os avisos, e por uma razão que aqui é mais forte que
- * nas outras: o que o cliente fez já está gravado, e uma falha no aviso não
- * pode devolver-lhe um erro sobre uma coisa que correu bem.
- */
-async function notifyAgent(
-  caseId: string,
-  action:
-    | "offer_selected"
-    | "passengers_submitted"
-    | "proof_uploaded"
-    | "request_cancelled"
-    /** T-18 · o cliente escreveu-nos a partir do ecrã de pagamento. */
-    | "message_sent",
-  detail?: string
-): Promise<void> {
-  try {
-    const { notifyAgentOfClientAction } = await import("@/lib/emails/send")
-    await notifyAgentOfClientAction({ caseId, action, detail })
-  } catch (err) {
-    console.error("[pc] aviso ao agente falhou:", err)
-  }
-}
-
-/**
- * NT-04 · o cliente, a cada mudança de estado que ele provocou.
- *
- * T-17 · sem o ramo das instruções de pagamento. Ver o comentário em
- * `savePcPassengers`: esse aviso passou a ser um gesto do agente, porque é ele
- * que traz o link sem o qual o email não serve para nada.
- */
-async function notifyClientState(
-  caseId: string,
-  event: "offer_selected",
-  offerName?: string
-): Promise<void> {
-  try {
-    const mails = await import("@/lib/emails/send")
-    if (event === "offer_selected") {
-      await mails.sendOfferChosenEmail(caseId, offerName ?? "")
-    }
-  } catch (err) {
-    console.error("[pc] aviso ao cliente falhou:", err)
   }
 }

@@ -1396,7 +1396,8 @@
         "infantLap": "Moins de 2 ans · sur les genoux d'un adulte",
         "infantSeat": "Moins de 2 ans · avec son propre siège",
         "lead": "Passager principal · reçoit tous les messages",
-        "adult": "Passager adulte"
+        "adult": "Passager adulte",
+        "fromDob": "Le type (adulte, enfant, bébé) découle de la date de naissance"
       },
       "field": {
         "title": "Civilité",
@@ -1419,7 +1420,8 @@
         "complete": "Complet",
         "toFill": "À remplir",
         "phone": "Téléphone du voyageur",
-        "email": "E-mail du voyageur"
+        "email": "E-mail du voyageur",
+        "dobType": "Détermine le type : moins de 2 ans, bébé ; de 2 à 11 ans, enfant"
       },
       "sex": {
         "f": "Féminin",
@@ -1445,6 +1447,20 @@
         "found": "{name} a déjà voyagé avec ce ministère. Réutiliser ses données ?",
         "apply": "Réutiliser les données",
         "dismiss": "Non, une autre personne"
+      },
+      "noPaymentMinistry": "Aucun paiement sur la plateforme : une fois enregistrée, la demande est prête à être émise.",
+      "savedList": {
+        "title": "Passagers enregistrés du ministère",
+        "search": "Rechercher par nom ou passeport",
+        "none": "Aucun passager enregistré à ce nom.",
+        "passport": "passeport •••{tail}",
+        "used": "déjà choisi dans un autre bloc",
+        "expired": "Passeport expiré",
+        "soon": "Le passeport expire dans moins de 6 mois",
+        "close": "Fermer",
+        "pick": "Choisir parmi les passagers enregistrés",
+        "change": "Choisir un autre passager enregistré",
+        "confirm": "Rempli à partir de la fiche enregistrée. Confirmez ou corrigez avant d’enregistrer."
       }
     },
     "status": {
@@ -1776,7 +1792,8 @@
       "paymentClosed": "Ce paiement est déjà clôturé. Parlez-nous sur WhatsApp.",
       "uploadFailed": "Nous n'avons pas pu enregistrer le fichier. Réessayez.",
       "ministrySession": "Votre session a expiré. Saisissez à nouveau votre PIN pour envoyer la demande.",
-      "ministryFlood": "Vous avez envoyé beaucoup de demandes au cours de la dernière heure. Patientez un peu, ou contactez l’agence de voyages sur WhatsApp."
+      "ministryFlood": "Vous avez envoyé beaucoup de demandes au cours de la dernière heure. Patientez un peu, ou contactez l’agence de voyages sur WhatsApp.",
+      "passengerBirthDate": "vérifiez la date de naissance"
     }
   },
   "pro": {
@@ -2020,8 +2037,10 @@
         "issued": "Émise",
         "used": "Voyage effectué",
         "closed": "Fermée",
-        "cancelled": "Annulée"
-      }
+        "cancelled": "Annulée",
+        "ready": "Prête à émettre"
+      },
+      "openTickets": "Ouvrir la demande et les billets"
     },
     "timeline": {
       "request_submitted": "Demande envoyée",
@@ -2035,7 +2054,8 @@
       "tickets_issued": "Billets émis",
       "request_cancelled": "Demande annulée",
       "case_closed": "Demande fermée",
-      "case_reopened": "Demande rouverte"
+      "case_reopened": "Demande rouverte",
+      "pax_mix_updated": "Types de passagers mis à jour selon la date de naissance"
     },
     "travellers": {
       "title": "Passagers",
@@ -2050,7 +2070,52 @@
       "validUntil": "valable jusqu’au {date}",
       "born": "Naissance : {date}",
       "expired": "Passeport expiré",
-      "soon": "Le passeport expire dans moins de 6 mois"
+      "soon": "Le passeport expire dans moins de 6 mois",
+      "edit": "Corriger",
+      "editTitle": "Corriger le passager",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré. La modification a été consignée.",
+      "back": "Retour aux passagers",
+      "logged": "Chaque modification est consignée, avec votre nom et l’heure.",
+      "errors": {
+        "name": "Prénoms et noms : au moins 2 lettres.",
+        "date": "Date invalide.",
+        "country": "Choisissez un pays dans la liste.",
+        "passport": "Passeport : 5 à 12 lettres ou chiffres.",
+        "phone": "Téléphone invalide.",
+        "email": "E-mail invalide.",
+        "invalid": "Vérifiez les données.",
+        "notFound": "Ce passager n’existe pas dans ce ministère.",
+        "duplicatePassport": "Un autre passager a déjà ce passeport."
+      }
+    },
+    "case": {
+      "back": "Mes demandes",
+      "print": "Imprimer",
+      "total": "Total",
+      "waiting": "{partner} prépare les offres. Vous serez averti(e) quand elles seront prêtes.",
+      "keepOffer": "Garder l’option choisie",
+      "changeOffer": "Changer d’option",
+      "readyTitle": "Prête à émettre",
+      "readyBody": "L’option est choisie et les passagers enregistrés. {partner} émet les billets ; aucun paiement sur la plateforme. Vous serez averti(e) quand les billets seront prêts.",
+      "editPassengers": "Corriger les passagers",
+      "issuedTitle": "Billets émis",
+      "downloadAll": "Télécharger les billets",
+      "downloadOne": "Billet de {name}",
+      "ticketsPending": "Les billets PDF sont en cours de préparation.",
+      "passengers": "Passagers",
+      "closedBody": "Cette demande est clôturée.",
+      "cancelledBody": "Cette demande a été annulée.",
+      "status": {
+        "waiting": "En attente des offres",
+        "options": "Offres disponibles",
+        "passengers": "Option choisie · passagers manquants",
+        "ready": "Prête à émettre",
+        "issued": "Émise",
+        "closed": "Clôturée",
+        "cancelled": "Annulée"
+      }
     }
   },
   "seo": {

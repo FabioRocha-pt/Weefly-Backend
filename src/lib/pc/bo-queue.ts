@@ -55,6 +55,8 @@ export type BoState =
   | "aguarda_pagamento"
   | "comprovativo_por_validar"
   | "pago_sem_bilhete"
+  /** B2G-17 · ministério com passageiros completos, sem pagamento: emitir. */
+  | "pronto_a_emitir"
   | "emitido"
   /** C-04 · trabalho concluído. Sai das filas. Ver `boCloseCase`. */
   | "fechado"
@@ -70,6 +72,7 @@ export const BO_STATE_LABEL: Record<BoState, string> = {
   aguarda_pagamento: "E4 · Aguarda pagamento",
   comprovativo_por_validar: "E4 · Comprovativo por validar",
   pago_sem_bilhete: "Pago, sem bilhete",
+  pronto_a_emitir: "E4 · Pronto a emitir",
   emitido: "E5 · Emitido",
   fechado: "Fechado",
   expirado: "X1 · Expirado",
@@ -86,6 +89,7 @@ export const BO_STATE_CLASS: Record<BoState, string> = {
   aguarda_pagamento: "st-e4",
   comprovativo_por_validar: "st-x",
   pago_sem_bilhete: "st-x",
+  pronto_a_emitir: "st-x",
   emitido: "st-e5",
   fechado: "st-e5",
   expirado: "st-x",
@@ -104,6 +108,7 @@ export const BO_STATE_WAITING: Record<BoState, Waiting> = {
   aguarda_pagamento: "them",
   comprovativo_por_validar: "bad",
   pago_sem_bilhete: "bad",
+  pronto_a_emitir: "us",
   emitido: "done",
   fechado: "done",
   expirado: "off",
@@ -261,7 +266,8 @@ function deriveState(
   proposal: Record<string, any> | null,
   passengerCount: number,
   pnr: string | null,
-  closedAt: string | null
+  closedAt: string | null,
+  readyToIssueAt: string | null = null
 ): BoState {
   if (stage === "cancelado") return "cancelado"
   /* C-04 · fechado ganha a emitido: são independentes, e o que a fila precisa de
@@ -271,6 +277,9 @@ function deriveState(
 
   const paid = payment?.admin_confirmed || payment?.status === "COMPLETED"
   if (paid) return "pago_sem_bilhete"
+
+  /* B2G-17 · um caso de ministério pronto a emitir não espera pagamento. */
+  if (readyToIssueAt && proposal?.selected_offer_id && passengerCount > 0) return "pronto_a_emitir"
 
   if (payment?.proof_status === "recebido") return "comprovativo_por_validar"
 
@@ -389,8 +398,12 @@ export async function loadBoQueue(
      relação em falta: 42703, PGRST200) repete-se sem elas, e a fila continua
      a abrir. */
   const withClosed = QUEUE_COLUMNS.replace("closed_by_email,", "closed_by_email, closed_reason, closed_note,")
-  /* B2G-09 · a urgência (0035) primeiro; sem ela, as colunas do canal. */
-  let { data, error } = await run(withClosed.replace("claimed_at,", `claimed_at, urgency, ${CHANNEL_COLUMNS}`))
+  /* B2G-17 · pronto a emitir (0037) e a urgência (0035) primeiro; sem elas,
+     as colunas do canal. */
+  let { data, error } = await run(
+    withClosed.replace("claimed_at,", `claimed_at, urgency, ready_to_issue_at, ${CHANNEL_COLUMNS}`)
+  )
+  if (error?.code === "42703") ({ data, error } = await run(withClosed.replace("claimed_at,", `claimed_at, urgency, ${CHANNEL_COLUMNS}`)))
   if (error?.code === "42703") ({ data, error } = await run(withClosed.replace("claimed_at,", `claimed_at, ${CHANNEL_COLUMNS}`)))
   if (error && (error.code === "42703" || error.code === "PGRST200")) ({ data, error } = await run(withClosed))
   if (error?.code === "42703") ({ data, error } = await run(QUEUE_COLUMNS))
@@ -454,7 +467,8 @@ export async function loadBoQueue(
       proposal,
       passengerCount,
       (raw.pnr as string | null) ?? null,
-      (raw.closed_at as string | null) ?? null
+      (raw.closed_at as string | null) ?? null,
+      (raw.ready_to_issue_at as string | null) ?? null
     )
 
     /* Qual dos dois relógios mostrar: o nosso quando há comprovativo à espera,
@@ -568,7 +582,7 @@ export async function loadBoQueue(
       case "por_validar":
         return row.state === "comprovativo_por_validar"
       case "pagos_sem_bilhete":
-        return row.state === "pago_sem_bilhete"
+        return row.state === "pago_sem_bilhete" || row.state === "pronto_a_emitir"
       case "novos_sem_dono":
         return row.state === "novo" && !row.ownerId
       case "a_cotar_meus":
@@ -770,6 +784,11 @@ export interface BoCaseDetail {
    * repete a pergunta (`release_case`).
    */
   viewer: { canRelease: boolean }
+  /**
+   * B2G-17 · B2G-18 · um caso de ministério: quando ficou pronto a emitir, e se
+   * quem está a ver pode emitir (D-3: só o operador). Nulo fora do canal.
+   */
+  ministry: { readyToIssueAt: string | null; canIssue: boolean } | null
   /** BO-14 · o vendedor atribuído, da lista de acessos do sistema. */
   seller: { email: string | null; label: string | null }
   /** NT-06 · a última falha de entrega ao cliente que ninguém deu por tratada. */
@@ -843,6 +862,22 @@ export async function loadBoCase(
   const trip = unwrap(record.trip_request) ?? {}
   const lead = unwrap(trip.lead)
 
+  /* B2G-17 · pronto a emitir (0037). Lido à parte: numa base sem a coluna, a
+     ficha abre na mesma. */
+  let ministry: BoCaseDetail["ministry"] = null
+  if (row.channel === "ministerio") {
+    const { data: ready, error: readyError } = await admin
+      .from("booking_cases")
+      .select("ready_to_issue_at")
+      .eq("id", caseId)
+      .maybeSingle()
+    ministry = {
+      readyToIssueAt: readyError ? null : ((ready as { ready_to_issue_at: string | null } | null)?.ready_to_issue_at ?? null),
+      /* D-3 · decisão 3 · só a WeeFly (o operador) emite um caso de ministério. */
+      canIssue: !scope.identity.tenant || scope.identity.tenant.isOperator,
+    }
+  }
+
   let ownerEmail: string | null = null
   if (record.created_by) {
     const { data: staff } = await admin
@@ -885,6 +920,7 @@ export async function loadBoCase(
       datesChangeReason: (trip.dates_change_reason as string | null) ?? null,
     },
     ownerEmail,
+    ministry,
     viewer: {
       canRelease:
         scope.identity.role === "admin" ||

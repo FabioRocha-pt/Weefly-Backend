@@ -241,6 +241,17 @@ export async function getCaseByToken(
   const bookingCase = normaliseCase(data as Record<string, unknown>)
   if (bookingCase.stage === "cancelado") return { ok: false, reason: "not_found" }
 
+  /* B2G-16 · um caso de ministério não se abre pelo token do caso: só no
+     espaço do ministério, com a sessão do PIN. */
+  const { data: org } = await admin
+    .from("booking_cases")
+    .select("organisation_id")
+    .eq("id", bookingCase.id)
+    .maybeSingle()
+  if ((org as { organisation_id: string | null } | null)?.organisation_id) {
+    return { ok: false, reason: "not_found" }
+  }
+
   const link = bookingCase.links.find((l) => l.stage === stage)
   if (!link) return { ok: false, reason: "not_found" }
   if (link.status === "bloqueado") return { ok: false, reason: "locked" }

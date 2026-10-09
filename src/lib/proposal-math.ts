@@ -285,7 +285,8 @@ export interface PaxCounts {
   infants: number
 }
 
-export type ProposalStatus = "rascunho" | "publicada"
+/** B2G-15 · `revisao_parceiro`: o master enviou à empresa do caso para revisão (0037). */
+export type ProposalStatus = "rascunho" | "revisao_parceiro" | "publicada"
 
 export interface Proposal {
   id: string

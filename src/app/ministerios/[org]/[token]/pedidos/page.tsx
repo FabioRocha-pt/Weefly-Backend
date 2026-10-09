@@ -29,6 +29,7 @@ const STATUS_TONE: Record<MinistryRequestStatus, { bg: string; fg: string }> = {
   handling: { bg: "var(--chalk)", fg: "var(--navy)" },
   options: { bg: "var(--ember-tint)", fg: "var(--ember-dk)" },
   chosen: { bg: "var(--ember-tint)", fg: "var(--ember-dk)" },
+  ready: { bg: "#E8F0FE", fg: "#1E40AF" },
   issued: { bg: "#E8F7EE", fg: "#166534" },
   used: { bg: "var(--chalk)", fg: "var(--muted)" },
   closed: { bg: "var(--chalk)", fg: "var(--muted)" },
@@ -44,6 +45,7 @@ export default async function MinistryRequestsPage({ params }: { params: { org: 
   if (!signedIn) return null
   const { org } = lookup.ministry
   const t = getTranslator("pt")
+  const base = `/ministerios/${org.slug}/${org.token}`
 
   const [requests, balance] = await Promise.all([
     listMinistryRequests(org.id),
@@ -132,15 +134,16 @@ export default async function MinistryRequestsPage({ params }: { params: { org: 
           )}
         </details>
 
-        {r.status !== "cancelled" && r.status !== "closed" && (
-          <Link
-            href={`/pc/${r.token}`}
-            className="btn btn-ghost btn-sm"
-            style={{ marginTop: 10, textDecoration: "none" }}
-          >
-            {t("ministry.requests.open")}
-          </Link>
-        )}
+        {/* B2G-16 · o pedido abre aqui dentro, com a sessão do PIN (o token do
+            caso já não abre um caso de ministério). B2G-18 · emitido, os
+            bilhetes estão lá. */}
+        <Link
+          href={`${base}/pedidos/${r.caseId}`}
+          className="btn btn-ghost btn-sm"
+          style={{ marginTop: 10, textDecoration: "none" }}
+        >
+          {r.status === "issued" || r.status === "used" ? t("ministry.requests.openTickets") : t("ministry.requests.open")}
+        </Link>
       </article>
     )
   }
