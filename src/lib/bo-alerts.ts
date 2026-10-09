@@ -20,7 +20,7 @@
  */
 
 import { createAdminClient } from "@/utils/supabase/admin"
-import { getBoScope } from "@/lib/bo-scope"
+import { getBoScope, isCrossPartner, type BoWorkspace } from "@/lib/bo-scope"
 
 /*
  * PRO-11 · a janela.
@@ -84,8 +84,11 @@ export interface BoAlertFeed {
   unread: number
 }
 
-export async function loadBoAlerts(userId: string): Promise<BoAlertFeed> {
-  const all = await buildFeed(userId)
+export async function loadBoAlerts(
+  userId: string,
+  options: { workspace?: BoWorkspace } = {}
+): Promise<BoAlertFeed> {
+  const all = await buildFeed(userId, options.workspace ?? "own")
   const unreadFirst = [
     ...all.filter((a) => a.unread),
     ...all.filter((a) => !a.unread),
@@ -105,9 +108,11 @@ function isMissingColumn(error: { code?: string; message?: string } | null) {
   )
 }
 
-async function buildFeed(userId: string): Promise<BoAlert[]> {
+async function buildFeed(userId: string, workspace: BoWorkspace = "own"): Promise<BoAlert[]> {
   const admin = createAdminClient()
-  const scope = await getBoScope()
+  /* B2G-14 · `all` (o master) lê todas as empresas; só uma conta
+     `cross_partner` o recebe — as outras ficam na sua (`getBoScope`). */
+  const scope = await getBoScope({ workspace })
   if (!admin || !scope) return []
 
   /*
@@ -137,7 +142,38 @@ async function buildFeed(userId: string): Promise<BoAlert[]> {
     return []
   }
 
-  const events = (rows ?? []) as Record<string, any>[]
+  let events = (rows ?? []) as Record<string, any>[]
+
+  /*
+   * B2G-12 · "Os dois recebem a notificação": o pedido de ministério que
+   * entra numa empresa acende a campainha da empresa (acima, pelo parceiro) e
+   * a do master, que no concierge da sua empresa não o via. Só para
+   * `cross_partner`, e só `request_submitted` do canal ministério.
+   */
+  if (scope.partnerId && isCrossPartner(scope.identity)) {
+    const { data: extra, error: extraError } = await scope.db
+      .from("case_events")
+      .select(
+        `id, case_id, kind, title, detail, actor_email, actor_kind, created_at,
+         booking_case:booking_cases!inner (
+           partner_id, channel,
+           trip_request:trip_requests ( reference, lead:leads ( full_name ) )
+         )`
+      )
+      .eq("kind", "request_submitted")
+      .eq("booking_case.channel", "ministerio")
+      .neq("booking_case.partner_id", scope.partnerId)
+      .order("created_at", { ascending: false })
+      .limit(EVENT_WINDOW)
+    if (extraError) {
+      if (extraError.code !== "42703") console.error("[bo/alerts] pedidos de ministério:", extraError.message)
+    } else if (extra?.length) {
+      events = [...events, ...(extra as Record<string, any>[])]
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+        .slice(0, EVENT_WINDOW)
+    }
+  }
+
   if (events.length === 0) return []
 
   /*

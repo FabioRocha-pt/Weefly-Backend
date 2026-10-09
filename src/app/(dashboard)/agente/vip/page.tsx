@@ -99,6 +99,7 @@ export default async function VipPage() {
         title={t("bo.vip.list.queue")}
         empty={t("bo.channelQueue.empty")}
         showWho
+        viewerId={access.identity.userId}
       />
     </div>
   )

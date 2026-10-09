@@ -151,6 +151,12 @@ export interface BoQueueRow {
   pnr: string | null
   /** C-01 · quando passou a ter dono. Nulo = nunca foi reclamado. */
   claimedAt: string | null
+  /**
+   * B2G-13 · "os outros veem *reclamado por …*": o email de quem reclamou e o
+   * nome dele (da allowlist; o email quando não há nome). Nulos sem dono.
+   */
+  claimedByEmail: string | null
+  claimedByLabel: string | null
   /** C-04 · quando o trabalho foi concluído. Nulo = ainda aberto. */
   closedAt: string | null
   closedByEmail: string | null
@@ -163,6 +169,8 @@ export interface BoQueueRow {
    * sem a 0032/0033.
    */
   channel: CaseChannel
+  /** B2G-14 · a empresa do caso, para a fila do master. Nulo sem a 0020. */
+  partnerId: string | null
   partnerName: string | null
   organisationName: string | null
   vipClientId: string | null
@@ -195,14 +203,14 @@ export interface BoQueueRow {
  */
 /* B2G-21 · o canal, a empresa, o ministério e o VIP do caso (0032, 0033). */
 const CHANNEL_COLUMNS = `
-  channel, vip_client_id,
+  channel, vip_client_id, partner_id,
   partner:partners (commercial_name),
   organisation:organisations (name),
   vip:vip_clients (name),`
 
 const QUEUE_COLUMNS = `
   id, token, stage, created_at, updated_at, created_by, pnr,
-  claimed_at, closed_at, closed_by_email,
+  claimed_at, claimed_by_email, closed_at, closed_by_email,
   trip_request:trip_requests (
     reference, trip_type, origin, destination, depart_date, return_date,
     adults, children, infants, infants_in_seat, infants_on_lap,
@@ -291,6 +299,18 @@ export interface BoQueueFilters {
   /** Os pedidos de um ministério. */
   organisationId?: string
   /**
+   * B2G-14 · os pedidos de uma empresa, na fila do master. Junta-se ao
+   * parceiro do âmbito (nunca o substitui): numa conta de parceiro, pedir
+   * outra empresa dá uma fila vazia — e o RLS diria o mesmo.
+   */
+  partnerId?: string
+  /**
+   * B2G-11 · `urgency`: primeiro a urgência (Muito urgente, Urgente, Normal),
+   * dentro dela o que espera há mais tempo. A fila de ministérios usa-a
+   * sempre; o resto continua por "quem espera por quem".
+   */
+  order?: "waiting" | "urgency"
+  /**
    * Um caso só, para a ficha.
    *
    * Sem isto, abrir uma ficha lia os 300 casos mais recentes para encontrar uma
@@ -361,6 +381,7 @@ export async function loadBoQueue(
     if (filters.channel) query = query.eq("channel", filters.channel)
     if (filters.vipClientId) query = query.eq("vip_client_id", filters.vipClientId)
     if (filters.organisationId) query = query.eq("organisation_id", filters.organisationId)
+    if (filters.partnerId) query = query.eq("partner_id", filters.partnerId)
     return query
   }
 
@@ -477,11 +498,14 @@ export async function loadBoQueue(
       offerValidUntil,
       pnr: (raw.pnr as string | null) ?? null,
       claimedAt: (raw.claimed_at as string | null) ?? null,
+      claimedByEmail: raw.created_by ? ((raw.claimed_by_email as string | null) ?? null) : null,
+      claimedByLabel: null,
       closedAt: (raw.closed_at as string | null) ?? null,
       closedByEmail: (raw.closed_by_email as string | null) ?? null,
       closedReason: (raw.closed_reason as string | null) ?? null,
       closedNote: (raw.closed_note as string | null) ?? null,
       channel: (raw.channel as CaseChannel | undefined) ?? "publico",
+      partnerId: (raw.partner_id as string | null | undefined) ?? null,
       partnerName: (unwrap(raw.partner)?.commercial_name as string | undefined) ?? null,
       organisationName: (unwrap(raw.organisation)?.name as string | undefined) ?? null,
       vipClientId: (raw.vip_client_id as string | null | undefined) ?? null,
@@ -518,6 +542,8 @@ export async function loadBoQueue(
         .sort((a, b) => a.stage - b.stage),
     })
   }
+
+  await labelClaimers(rows)
 
   // ── baldes ────────────────────────────────────────────────────────────────
   const soon = Date.now() + 60 * 60 * 1000
@@ -637,7 +663,18 @@ export async function loadBoQueue(
    * trabalho deve ser feito, não a ordem em que entrou.
    */
   const weight: Record<Waiting, number> = { bad: 0, us: 1, them: 2, off: 3, done: 4 }
+  /* B2G-11 · nas filas de ministérios (e na do master): a urgência primeiro,
+     e dentro dela quem espera há mais tempo. Os fechados no fim. A fila
+     pública não muda. */
+  const byUrgency = filters.order === "urgency" || (filters.order !== "waiting" && filters.channel === "ministerio")
   visible = [...visible].sort((a, b) => {
+    if (byUrgency) {
+      const closed = Number(Boolean(a.closedAt)) - Number(Boolean(b.closedAt))
+      if (closed !== 0) return closed
+      const urgent = b.urgency - a.urgency
+      if (urgent !== 0) return urgent
+      return Date.parse(a.submittedAt) - Date.parse(b.submittedAt)
+    }
     const diff = weight[a.waiting] - weight[b.waiting]
     if (diff !== 0) return diff
     return Date.parse(a.submittedAt) - Date.parse(b.submittedAt)
@@ -661,6 +698,34 @@ export async function loadBoQueue(
       revenue: issued.reduce((sum, row) => sum + (row.amount ?? 0), 0),
       currency: issued[0]?.currency ?? "EUR",
     },
+  }
+}
+
+/**
+ * B2G-13 · o nome de quem reclamou cada caso, para "reclamado por …".
+ *
+ * Pela service role, e só os nomes dos emails que já estão nas linhas que a
+ * sessão vê: a allowlist de outra empresa não se lê pela sessão (RLS), e o
+ * master que reclama um caso da Alô tem de aparecer à Alô pelo nome. Não sai
+ * daqui mais nada da conta.
+ */
+async function labelClaimers(rows: BoQueueRow[]): Promise<void> {
+  const emails = Array.from(
+    new Set(rows.map((r) => r.claimedByEmail?.toLowerCase()).filter((e): e is string => Boolean(e)))
+  )
+  if (emails.length === 0) return
+  const admin = createAdminClient()
+  const labels = new Map<string, string>()
+  if (admin) {
+    const { data, error } = await admin.from("bo_allowlist").select("email, label").in("email", emails.slice(0, 200))
+    if (error) console.error("[bo/pc] nomes de quem reclamou:", error.message)
+    for (const row of (data ?? []) as { email: string; label: string | null }[]) {
+      if (row.label?.trim()) labels.set(row.email.toLowerCase(), row.label.trim())
+    }
+  }
+  for (const row of rows) {
+    if (!row.claimedByEmail) continue
+    row.claimedByLabel = labels.get(row.claimedByEmail.toLowerCase()) ?? row.claimedByEmail
   }
 }
 
@@ -699,6 +764,12 @@ export interface BoCaseDetail {
     datesChangeReason: string | null
   }
   ownerEmail: string | null
+  /**
+   * B2G-13 · o que quem está a ver pode fazer com o dono: libertar é de quem
+   * supervisiona casos (Admin do parceiro, Admin WeeFly). A base de dados
+   * repete a pergunta (`release_case`).
+   */
+  viewer: { canRelease: boolean }
   /** BO-14 · o vendedor atribuído, da lista de acessos do sistema. */
   seller: { email: string | null; label: string | null }
   /** NT-06 · a última falha de entrega ao cliente que ninguém deu por tratada. */
@@ -814,6 +885,11 @@ export async function loadBoCase(
       datesChangeReason: (trip.dates_change_reason as string | null) ?? null,
     },
     ownerEmail,
+    viewer: {
+      canRelease:
+        scope.identity.role === "admin" ||
+        Boolean(scope.identity.tenant?.crossPartner && scope.identity.profile?.crossPartner),
+    },
     /* BO-14 · o vendedor do caso, atribuído da lista de acessos. Distinto do
        dono (`created_by`): reclamar um caso é um gesto, atribuí-lo é outro. */
     seller: {

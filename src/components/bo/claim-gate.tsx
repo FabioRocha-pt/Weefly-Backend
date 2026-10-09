@@ -28,16 +28,34 @@ export function BoClaimGate({
   caseId,
   clientName,
   waiting,
+  takenBy,
 }: {
   caseId: string
   clientName: string
   /** Há quanto tempo o pedido entrou, já formatado. */
   waiting: string
+  /**
+   * B2G-13 · o caso já é de outra pessoa: a porta diz de quem, sem botão de
+   * reclamar ("mais ninguém o pode reclamar"). Libertar é do administrador,
+   * no cabeçalho.
+   */
+  takenBy?: string | null
 }) {
   const router = useRouter()
   const t = useT()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+
+  if (takenBy) {
+    return (
+      <div className="mx-auto mb-4 max-w-[620px] rounded-xl border border-adm-line bg-adm-panel p-5">
+        <h2 className="mb-1 text-[14px] font-extrabold text-adm-txt">{t("bo.claim.gateTakenTitle")}</h2>
+        <p className="text-[12.5px] leading-relaxed text-adm-txt-2">
+          {t("bo.claim.gateTakenBody", { name: takenBy })}
+        </p>
+      </div>
+    )
+  }
 
   function claim() {
     setError(null)

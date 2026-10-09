@@ -175,3 +175,49 @@ Verificação: `bash supabase/tests/run.sh` OK · `npm run build` OK · `npm run
 3. **Travão de 30 pedidos/hora por secretária**: valor escolhido por mim; ajustável em `SECRETARY_FLOOD` (`lib/pc/intake.ts`).
 4. **"Powered by WeeFly" no espaço do ministério** segue o interruptor da empresa (`powered_by_weefly`). A especificação diz "em todos os terminais da Alô": confirmar que está ligado na Alô.
 5. O número de passaporte na lista *Passageiros* aparece só pelos 3 últimos caracteres; o bloco 6 (editar) mostra-o inteiro na ficha.
+
+## Bloco 5 · Filas (B2G-11, B2G-12, B2G-13, B2G-14)
+
+### Feito
+
+**Migração `0036_case_claim.sql`** (idempotente, corre duas vezes no `run.sh`). **Atenção: o plano punha a migração do bloco 6 em "0036"; passa a 0037.**
+- `claim_case(p_case)` · SECURITY DEFINER, pela sessão (`auth.uid()`): exige `is_bo_allowed()` e `can_see_case` (a empresa da sessão; o master vê todas — D-12, decisão 2); `update … where created_by is null` decide a corrida; grava `claimed_at`, `claimed_by_email`, passa o pedido a `em_tratamento`, escreve `case_claimed` no `case_events` (com "esteve X sem dono") e no `access_audit` (com `cross_partner`: para o master é o registo da intervenção). Devolve `claimed | already_yours | taken | not_found`; quem perde recebe o email e o nome de quem ganhou. Um caso de outra empresa responde `not_found` (sem dizer de quem é).
+- White label: o master que reclama um caso de uma empresa que **não** é o operador não escreve `seller_*` (o vendedor aparece ao cliente). Num caso da WeeFly passa a vendedor como antes.
+- `release_case(p_case, p_reason)` · só quem supervisiona casos (`access_roles.supervises_cases`: Admin do parceiro do caso, Admin WeeFly) e vê o caso; motivo ≥ 3 caracteres; `case_released` nos dois registos (antes: quem tinha e desde quando).
+- `set_case_urgency(p_case, p_urgency)` · qualquer conta do back-office que veja o caso, só no canal `ministerio`, 0–2; `urgency_changed` nos dois registos, `urgency_changed_at/_by_email` no caso.
+- Auxiliares `case_actor()`, `case_owner_label()` (sem `execute` para sessões) e `case_elapsed_label()` (o mesmo texto que `elapsedSince`). As três funções: `revoke` a `public`/`anon`, `grant` a `authenticated`.
+- Teste novo `supabase/tests/test_b2g_claim.sql` (C1–C8): o segundo perde e sabe quem ganhou; registos; Beta/Alô/agente WeeFly não reclamam fora da sua empresa; master reclama em todas; white label mantém o vendedor; só administradores libertam, com motivo; urgência registada, recusada fora do ministério/fora de 0–2/noutra empresa; sem sessão, secretária e `anon` não fazem nada.
+
+**B2G-13 · reclamar regista e bloqueia**
+- `boClaimCase` (`actions/bo-price-checker.ts`) chama `claim_case` pelo cliente da sessão, depois do `boCaseIdentity` de sempre. Numa base sem a 0036 (PGRST202/42883) cai no caminho antigo (que também deixou de escrever o vendedor num caso de outra empresa). Acções novas `boReleaseCase` e `boSetCaseUrgency`.
+- "Reclamado por <nome>": `loadBoQueue` traz `claimedByEmail`/`claimedByLabel` (nome da allowlist, lido pela service role só para os emails das linhas que a sessão já vê) e `partnerId`. Aparece na fila do Concierge (debaixo do cliente; "Seu" quando é seu; o erro de quem perde a corrida mostra quem ganhou), nas filas Público/VIP/Ministérios (coluna Dono, com botão Reclamar nos sem dono), no cabeçalho do caso (Dono), na ficha ao lado de "Editar proposta" e por cima do compositor (`BoClaimGate` com `takenBy`, sem botão).
+- **Libertar** no cabeçalho do caso, só para quem supervisiona casos, com motivo (a base repete a verificação).
+
+**B2G-11 · ordem** · `loadBoQueue({ order: "urgency" })` — e por omissão em `channel: "ministerio"` — ordena abertos primeiro, urgência desc, depois o mais antigo. Vale no menu Ministérios, no Concierge com `?canal=ministerio` e no concierge do master. A fila pública não mudou. Selector de urgência no cabeçalho dos casos de ministério; etiqueta Urgente/Muito urgente nas filas.
+
+**B2G-14 · D-12 · o master**
+- `getBoScope({ workspace: "all" })` → `partnerId: null` só para `isCrossPartner(identity)` (allowlist `cross_partner` **e** perfil Admin WeeFly); uma conta de parceiro que peça "all" recebe o seu parceiro. `getBoScope()` sem argumentos não mudou.
+- `caseInScope`: para o master, qualquer caso que o RLS lhe mostre (decisão 2); para os outros, igual. `scopeForCase` lê a ficha do master sem filtro de parceiro; a página `/ofertas` passou a usá-lo (antes usava `getBoScope()` e partia com intervenções). As intervenções ADM-04 continuam (banner e Admin › Casos).
+- `/gestao/concierge` (Admin, só `cross_partner`, senão 404): fila de todas as empresas e canais (`loadBoQueue` com o âmbito "all"), filtros por empresa (`?empresa=`, só ids de empresas que a sessão vê) e canal (`?canal=`), Em aberto / Sem dono / Os meus, coluna Empresa, Reclamar e abrir a ficha no Concierge. Entrada "Concierge" no menu do Admin. Usa `ChannelQueue` (o estilo do WeeFly Pro) e não `BoQueueTable`, porque o CSS do Concierge (`bo-pc.css`) é global e partia a moldura do Pro.
+
+**B2G-12 · chega à empresa e ao master**
+- `/api/bo/pulse?workspace=all` (só honrado para o master). Para o master no Concierge da WeeFly, a assinatura junta o último pedido de ministério de qualquer empresa; `BoLiveUpdates` ouve também `INSERT` em `booking_cases` com `channel=eq.ministerio` (prop `allMinistries`, só master).
+- `QueueLive` (novo): o batimento de 4 s nas filas do Pro — menu Ministérios da empresa e concierge do master — com `router.refresh()` quando muda.
+- Campainha: `loadBoAlerts(userId, { workspace })`; para o master, além da sua empresa, os `request_submitted` do canal ministério de todas. A empresa continua a recebê-los pelo seu parceiro.
+- Email: `sendNewRequestAlert` continua para a equipa WeeFly (o master) e, num pedido de ministério, envia à parte aos destinatários de alertas da empresa do caso (`alert_recipients`, lado `partner`, gerais e desse ministério; `dedupeKey` próprio).
+
+Verificação: `bash supabase/tests/run.sh` OK (incluindo `test_tenancy`, `test_rbac`) · `npm run build` OK · `npm run i18n:check` OK (textos novos em `src/i18n/bo/parts/queues.{pt,en}.json`; o dicionário público não mudou).
+
+### Falta
+- Nada foi aberto num browser (sem base local com dados; `.env.local` aponta para o Supabase real, não usado). Testar com o script de dados do bloco 8: o Dominik reclama, a Alô vê "Reclamado por Dominik"; três pedidos (Normal, Normal, Urgente); um pedido novo nos dois back-offices em < 5 s.
+- O master num caso de outra empresa pode agora fazer tudo o que um agente faz (decisão 2). Publicar a proposta ainda envia directamente à secretária: o "Enviar à empresa para revisão" (B2G-15) é do bloco 6.
+- A campainha do master vive no Concierge (barra escura); a página `/gestao/concierge` actualiza-se sozinha mas não tem campainha própria.
+- A lista de casos dentro da ficha do ministério (`/agente/ministerios/[id]`, histórico com pagamentos) continua por data; a fila do menu Ministérios é que segue a ordem B2G-11.
+- `scripts/check-migrations.mjs` só sonda colunas; a 0036 só cria funções (sem sonda nova).
+- `graphify update .` não correu (não está instalado).
+
+### Para decidir (humano)
+1. **Agentes também libertam?** Fiz como a especificação: só administradores (Admin do parceiro e Admin WeeFly). Um agente que reclamou por engano tem de pedir ao administrador.
+2. **Bloquear o compositor a quem não é dono?** Não o fiz: o compositor continua a abrir para colegas (era assim, e o Admin do parceiro publica propostas alheias); quem não é dono vê "Este caso já tem dono · Reclamado por …" por cima. "Bloqueia" ficou como "mais ninguém reclama".
+3. **ADM-04 vs D-12:** com a decisão 2, o master abre e trata qualquer caso sem abrir uma intervenção; o registo é o `case_claimed` (e cada acção no registo do caso). Se quiserem "ler sem reclamar = só leitura", é preciso separar a leitura da escrita em `caseInScope`.
+4. O email de pedido novo à empresa sai com o remetente e a marca da WeeFly (como o da equipa); num white label talvez se queira o remetente da empresa.

@@ -1,0 +1,56 @@
+{
+  "bo": {
+    "claim": {
+      "column": "Dono",
+      "unclaimed": "Sem dono",
+      "yours": "Seu",
+      "claimedBy": "Reclamado por {name}",
+      "takenBy": "Este caso já foi reclamado por {name}.",
+      "claim": "Reclamar",
+      "claiming": "A reclamar…",
+      "gateTakenTitle": "Este caso já tem dono",
+      "gateTakenBody": "Reclamado por {name}. Só um administrador o pode libertar.",
+      "release": "Libertar",
+      "releaseTitle": "Libertar o caso",
+      "releaseReason": "Motivo (fica registado)",
+      "releasePlaceholder": "Porque é que o caso volta à fila?",
+      "releaseConfirm": "Libertar o caso",
+      "releasing": "A libertar…",
+      "released": "Caso libertado. Voltou a «novos sem dono».",
+      "errors": {
+        "reasonRequired": "Escreva o motivo (pelo menos 3 caracteres).",
+        "forbidden": "Só um administrador pode libertar um caso.",
+        "notClaimed": "O caso já não tem dono.",
+        "changed": "O dono do caso mudou entretanto. Recarregue a página.",
+        "failed": "Não foi possível libertar o caso."
+      }
+    },
+    "urgency": {
+      "label": "Urgência",
+      "0": "Normal",
+      "1": "Urgente",
+      "2": "Muito urgente",
+      "changed": "Urgência alterada para {level}.",
+      "unchanged": "A urgência já era essa.",
+      "notMinistry": "A urgência só existe nos pedidos de ministério.",
+      "failed": "Não foi possível alterar a urgência."
+    },
+    "masterConcierge": {
+      "nav": "Concierge",
+      "title": "Concierge do master",
+      "subtitle": "Os pedidos de todas as empresas e de todos os canais, os mais urgentes e os que esperam há mais tempo primeiro. Reclame e trate como qualquer agente.",
+      "company": "Empresa",
+      "allCompanies": "Todas as empresas",
+      "channel": "Canal",
+      "allChannels": "Todos os canais",
+      "show": "Mostrar",
+      "open": "Em aberto",
+      "unclaimed": "Sem dono",
+      "mine": "Os meus",
+      "filter": "Filtrar",
+      "empty": "Não há pedidos com estes filtros.",
+      "openCase": "Abrir",
+      "live": "Actualiza sozinho, sem recarregar."
+    }
+  }
+}

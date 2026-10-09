@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
-import { getBoScope } from "@/lib/bo-scope"
+import { getBoScope, isCrossPartner } from "@/lib/bo-scope"
 
 /**
  * T-03 · o batimento que diz ao back-office que alguma coisa mudou.
@@ -31,8 +31,14 @@ import { getBoScope } from "@/lib/bo-scope"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
-  const scope = await getBoScope()
+export async function GET(request: NextRequest) {
+  /*
+   * B2G-12 · B2G-14 · `?workspace=all` é a fila do master: todas as empresas.
+   * `getBoScope` só o honra numa conta `cross_partner`; a de um parceiro
+   * recebe o parceiro dela, como se não tivesse pedido nada.
+   */
+  const workspace = request.nextUrl.searchParams.get("workspace") === "all" ? "all" : "own"
+  const scope = await getBoScope({ workspace })
   if (!scope) {
     return NextResponse.json({ ok: false }, { status: 403 })
   }
@@ -81,12 +87,32 @@ export async function GET() {
     return n ?? 0
   }
 
-  const [lastEvent, lastCase, lastPayment, events, cases] = await Promise.all([
+  /*
+   * B2G-12 · "o pedido chega à empresa e ao master". No concierge da sua
+   * empresa, o master também tem de dar pelo pedido de ministério que entra
+   * noutra empresa (a campainha dele mostra-o): a assinatura junta o último
+   * pedido de ministério de todas. Só para `cross_partner` — o RLS mostrava-o
+   * a mais ninguém, mas nem se pergunta.
+   */
+  const lastMinistry = async () => {
+    if (!partnerId || !isCrossPartner(scope.identity)) return ""
+    const { data } = await db
+      .from("booking_cases")
+      .select("created_at")
+      .eq("channel", "ministerio")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    return (data as { created_at?: string } | null)?.created_at ?? ""
+  }
+
+  const [lastEvent, lastCase, lastPayment, events, cases, ministry] = await Promise.all([
     latest("case_events", "created_at"),
     latest("booking_cases", "updated_at"),
     latest("case_payments", "updated_at"),
     count("case_events"),
     count("booking_cases"),
+    lastMinistry(),
   ])
 
   return NextResponse.json(
@@ -94,7 +120,7 @@ export async function GET() {
       ok: true,
       /* Uma string só: o cliente compara-a com a anterior e não precisa de
          saber o que está lá dentro. */
-      signature: [lastEvent, lastCase, lastPayment, events, cases].join("|"),
+      signature: [lastEvent, lastCase, lastPayment, events, cases, ministry].join("|"),
     },
     { headers: { "cache-control": "no-store" } }
   )

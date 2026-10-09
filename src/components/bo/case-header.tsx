@@ -39,7 +39,9 @@ import {
   boClearNotifyFlag,
   boCloseCase,
   boNotifyClient,
+  boReleaseCase,
   boReopenCase,
+  boSetCaseUrgency,
 } from "@/actions/bo-price-checker"
 import { ARCHIVE_REASONS } from "@/lib/pc/archive"
 import { BoWhatsappLink } from "@/components/bo/whatsapp-link"
@@ -125,6 +127,9 @@ export function BoCaseHeader({
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiveReason, setArchiveReason] = useState<string>("fechado_fora_plataforma")
   const [archiveNote, setArchiveNote] = useState("")
+  /* B2G-13 · libertar, com motivo. */
+  const [releaseOpen, setReleaseOpen] = useState(false)
+  const [releaseReason, setReleaseReason] = useState("")
 
   /* NT-07 · "disponível em qualquer caso a partir da fase de proposta". Antes
      disso não há nada sobre que avisar: o cliente ainda está à espera da
@@ -203,6 +208,48 @@ export function BoCaseHeader({
                 <span style={{ color: "var(--warn)" }}>{t("bo.caseView.header.noSeller")}</span>
               )}
             </div>
+            {/* B2G-13 · de quem é o caso: "reclamado por …" para todos. */}
+            <div className="cm">
+              <span className="cm-k">{t("bo.claim.column")}</span>
+              {row.claimedByLabel ? (
+                t("bo.claim.claimedBy", { name: row.claimedByLabel })
+              ) : (
+                <span style={{ color: "var(--warn)" }}>{t("bo.claim.unclaimed")}</span>
+              )}
+            </div>
+            {/* B2G-11 · D-6 · a urgência do pedido do ministério, alterável
+                pelo agente (fica registada). */}
+            {row.channel === "ministerio" && (
+              <div className="cm">
+                <span className="cm-k">{t("bo.urgency.label")}</span>
+                <select
+                  aria-label={t("bo.urgency.label")}
+                  value={row.urgency}
+                  disabled={pending}
+                  onChange={(event) => {
+                    const urgency = Number(event.target.value)
+                    setError(null)
+                    setNotice(null)
+                    startTransition(async () => {
+                      const result = await boSetCaseUrgency({ caseId: row.caseId, urgency })
+                      if (result.ok) {
+                        setNotice(result.notice ?? null)
+                        router.refresh()
+                      } else {
+                        setError(result.error)
+                      }
+                    })
+                  }}
+                  style={{ marginLeft: 4 }}
+                >
+                  {[0, 1, 2].map((level) => (
+                    <option key={level} value={level}>
+                      {t(`bo.urgency.${level}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="cm">
               <span className="cm-k">{t("bo.caseView.header.submitted")}</span>
               {dt(row.submittedAt)} ·{" "}
@@ -256,6 +303,18 @@ export function BoCaseHeader({
               }
             >
               {pending ? t("bo.caseView.header.closing") : t("bo.caseView.header.closeCase")}
+            </button>
+          )}
+
+          {/* B2G-13 · um administrador liberta o caso, com motivo. */}
+          {detail.viewer.canRelease && row.ownerId && (
+            <button
+              className="btn btn-sm"
+              type="button"
+              disabled={pending}
+              onClick={() => setReleaseOpen((open) => !open)}
+            >
+              {t("bo.claim.release")}
             </button>
           )}
 
@@ -387,6 +446,48 @@ export function BoCaseHeader({
                 {pending ? t("bo.caseView.header.archiving") : t("bo.caseView.header.archiveCase")}
               </button>
               <button className="btn btn-sm" type="button" onClick={() => setArchiveOpen(false)}>
+                {t("bo.caseView.common.cancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {releaseOpen && row.ownerId && (
+        <div className="panel" style={{ margin: "12px 0 0" }}>
+          <div className="panel-b">
+            <div className="f s12">
+              <label>{t("bo.claim.releaseReason")}</label>
+              <input
+                value={releaseReason}
+                maxLength={500}
+                onChange={(e) => setReleaseReason(e.target.value)}
+                placeholder={t("bo.claim.releasePlaceholder")}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <button
+                className="btn btn-sm btn-primary"
+                type="button"
+                disabled={pending || releaseReason.trim().length < 3}
+                onClick={() =>
+                  startTransition(async () => {
+                    setError(null)
+                    const result = await boReleaseCase({ caseId: row.caseId, reason: releaseReason })
+                    if (result.ok) {
+                      setNotice(result.notice ?? null)
+                      setReleaseOpen(false)
+                      setReleaseReason("")
+                      router.refresh()
+                    } else {
+                      setError(result.error)
+                    }
+                  })
+                }
+              >
+                {pending ? t("bo.claim.releasing") : t("bo.claim.releaseConfirm")}
+              </button>
+              <button className="btn btn-sm" type="button" onClick={() => setReleaseOpen(false)}>
                 {t("bo.caseView.common.cancel")}
               </button>
             </div>

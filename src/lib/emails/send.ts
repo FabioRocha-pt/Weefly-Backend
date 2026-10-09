@@ -431,6 +431,41 @@ export async function sendRequestReceivedEmail(
  * O WhatsApp falha sem consequência para o email: são dois envios registados
  * em separado, e o do email não espera pelo outro.
  */
+/**
+ * B2G-12 · "O pedido chega à empresa e ao master." Num pedido de ministério,
+ * além da equipa (a WeeFly, o master), os destinatários de alertas da empresa
+ * do caso (`alert_recipients`, lado `partner`, ADM-06) — os gerais e os desse
+ * ministério. Nunca os de outra empresa: a empresa vem do caso.
+ */
+async function partnerRequestRecipients(caseId: string): Promise<string[]> {
+  const admin = createAdminClient()
+  if (!admin) return []
+  const { data: c, error } = await admin
+    .from("booking_cases")
+    .select("partner_id, organisation_id, channel")
+    .eq("id", caseId)
+    .maybeSingle()
+  const bookingCase = c as { partner_id: string | null; organisation_id: string | null; channel?: string } | null
+  if (error || !bookingCase?.partner_id || bookingCase.channel !== "ministerio") return []
+
+  const { data: rows, error: rowsError } = await admin
+    .from("alert_recipients")
+    .select("email, organisation_id")
+    .eq("partner_id", bookingCase.partner_id)
+    .eq("side", "partner")
+    .eq("active", true)
+    .not("email", "is", null)
+  if (rowsError) {
+    console.error("[emails] destinatários da empresa:", rowsError.message)
+    return []
+  }
+  const emails = ((rows ?? []) as { email: string | null; organisation_id: string | null }[])
+    .filter((r) => !r.organisation_id || r.organisation_id === bookingCase.organisation_id)
+    .map((r) => (r.email ?? "").trim().toLowerCase())
+    .filter(Boolean)
+  return Array.from(new Set(emails))
+}
+
 export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome> {
   const ctx = await context(caseId)
   if (!ctx) {
@@ -507,6 +542,23 @@ export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome
     ...(ctx.clientEmail ? { replyTo: ctx.clientEmail } : {}),
     dedupeKey: "team_new_request",
   })
+
+  /* B2G-12 · e à empresa do pedido de ministério, num envio à parte (os
+     endereços da equipa da WeeFly não vão no mesmo "Para"). */
+  const partnerTo = await partnerRequestRecipients(caseId)
+  if (partnerTo.length > 0) {
+    await notify({
+      caseId,
+      channel: "email",
+      kind: "team_new_request",
+      audience: "team",
+      to: partnerTo,
+      subject,
+      html,
+      text,
+      dedupeKey: "team_new_request_partner",
+    })
+  }
 
   /*
    * O WhatsApp da equipa, depois e à parte.

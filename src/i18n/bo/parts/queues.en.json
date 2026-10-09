@@ -1,0 +1,56 @@
+{
+  "bo": {
+    "claim": {
+      "column": "Owner",
+      "unclaimed": "Unclaimed",
+      "yours": "Yours",
+      "claimedBy": "Claimed by {name}",
+      "takenBy": "This case was already claimed by {name}.",
+      "claim": "Claim",
+      "claiming": "Claiming…",
+      "gateTakenTitle": "This case already has an owner",
+      "gateTakenBody": "Claimed by {name}. Only an administrator can release it.",
+      "release": "Release",
+      "releaseTitle": "Release the case",
+      "releaseReason": "Reason (logged)",
+      "releasePlaceholder": "Why does the case go back to the queue?",
+      "releaseConfirm": "Release the case",
+      "releasing": "Releasing…",
+      "released": "Case released. It is back in “new, unclaimed”.",
+      "errors": {
+        "reasonRequired": "Write the reason (at least 3 characters).",
+        "forbidden": "Only an administrator can release a case.",
+        "notClaimed": "The case no longer has an owner.",
+        "changed": "The case owner changed in the meantime. Reload the page.",
+        "failed": "The case could not be released."
+      }
+    },
+    "urgency": {
+      "label": "Urgency",
+      "0": "Normal",
+      "1": "Urgent",
+      "2": "Very urgent",
+      "changed": "Urgency changed to {level}.",
+      "unchanged": "The urgency was already that.",
+      "notMinistry": "Urgency only exists on ministry requests.",
+      "failed": "The urgency could not be changed."
+    },
+    "masterConcierge": {
+      "nav": "Concierge",
+      "title": "Master concierge",
+      "subtitle": "Requests from every company and every channel, most urgent and longest waiting first. Claim and handle them like any agent.",
+      "company": "Company",
+      "allCompanies": "All companies",
+      "channel": "Channel",
+      "allChannels": "All channels",
+      "show": "Show",
+      "open": "Open",
+      "unclaimed": "Unclaimed",
+      "mine": "Mine",
+      "filter": "Filter",
+      "empty": "No requests match these filters.",
+      "openCase": "Open",
+      "live": "Updates by itself, no reload needed."
+    }
+  }
+}

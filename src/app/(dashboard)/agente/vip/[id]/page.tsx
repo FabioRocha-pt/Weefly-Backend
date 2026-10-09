@@ -91,6 +91,7 @@ export default async function VipDetailPage({ params }: { params: { id: string }
         t={t}
         title={t("bo.vip.detail.requests")}
         empty={t("bo.vip.detail.noRequests")}
+        viewerId={access.identity.userId}
       />
     </div>
   )

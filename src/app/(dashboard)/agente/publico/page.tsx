@@ -58,6 +58,7 @@ export default async function PublicoPage() {
         t={t}
         title={t("bo.publico.queue")}
         empty={t("bo.channelQueue.empty")}
+        viewerId={access.identity.userId}
       />
     </div>
   )

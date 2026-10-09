@@ -22,7 +22,8 @@ import { LOCALE_TAGS } from "@/i18n/config"
 import { translateMessage } from "@/i18n/translate"
 
 import { createAdminClient } from "@/utils/supabase/admin"
-import { boIdentity } from "@/lib/bo-access"
+import { createClient } from "@/utils/supabase/server"
+import { boIdentity, type BoIdentity } from "@/lib/bo-access"
 import { boCaseIdentity, boPaymentIdentity } from "@/lib/bo-scope"
 import { logCaseEvent } from "@/lib/case-events"
 import {
@@ -65,6 +66,8 @@ const NOT_ALLOWED = "bo.actions.pc.notAllowed"
 function touch(caseId: string) {
   revalidatePath("/admin/price-checker")
   revalidatePath(`/admin/price-checker/${caseId}`)
+  /* B2G-14 · a fila do master e as filas por canal também mostram o dono. */
+  revalidatePath("/gestao/concierge")
 }
 
 // ── pagamento ────────────────────────────────────────────────────────────────
@@ -295,12 +298,59 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
   const identity = await boCaseIdentity(caseId)
   if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
 
+  /*
+   * B2G-13 · a decisão passa para a base de dados (`claim_case`, 0036), pela
+   * sessão: quem pergunta vê o caso (a empresa dele, ou qualquer uma para o
+   * master), ganha quem chegar primeiro ao `update … where created_by is
+   * null`, e o registo (case_events + access_audit) fica na mesma transacção.
+   * Quem perde fica a saber quem ganhou.
+   */
+  const rpc = await createClient().rpc("claim_case", { p_case: caseId })
+  if (!rpc.error) {
+    const r = (rpc.data ?? {}) as {
+      outcome?: string
+      claimed_by_email?: string | null
+      claimed_by_label?: string | null
+      unclaimed_for?: string | null
+    }
+    switch (r.outcome) {
+      case "claimed":
+        touch(caseId)
+        return { ok: true, notice: t("bo.actions.pc.claim.done", { waited: r.unclaimed_for ?? "" }) }
+      case "already_yours":
+        return { ok: true, notice: t("bo.actions.pc.claim.alreadyYours") }
+      case "taken":
+        touch(caseId)
+        return {
+          ok: false,
+          error:
+            r.claimed_by_label || r.claimed_by_email
+              ? t("bo.claim.takenBy", { name: r.claimed_by_label ?? r.claimed_by_email ?? "" })
+              : t("bo.actions.pc.claim.lostRace"),
+        }
+      default:
+        return { ok: false, error: t(NOT_ALLOWED) }
+    }
+  }
+
+  /* Numa base sem a 0036 (função desconhecida: PGRST202 / 42883), o caminho
+     de sempre. Qualquer outro erro é um erro. */
+  if (rpc.error.code !== "PGRST202" && rpc.error.code !== "42883") {
+    console.error("[bo/pc] claim_case falhou:", rpc.error.message)
+    return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
+  }
+  return legacyClaimCase(caseId, identity)
+}
+
+/** O reclamar de antes da 0036 (C-01), pela service role. */
+async function legacyClaimCase(caseId: string, identity: BoIdentity): Promise<BoResult> {
+  const { t } = await getBoI18n()
   const admin = createAdminClient()
   if (!admin) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
 
   const { data: bookingCase } = await admin
     .from("booking_cases")
-    .select("id, created_by, trip_request_id, created_at")
+    .select("id, created_by, trip_request_id, created_at, partner_id")
     .eq("id", caseId)
     .maybeSingle()
 
@@ -310,7 +360,11 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
     created_by: string | null
     trip_request_id: string | null
     created_at: string
+    partner_id?: string | null
   }
+  /* White label: quem reclama um caso de outra empresa (o master) não passa
+     a vendedor. */
+  const foreign = Boolean(identity.tenant && record.partner_id && record.partner_id !== identity.tenant.partnerId)
 
   if (record.created_by && record.created_by !== identity.userId) {
     return {
@@ -334,19 +388,17 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
       claimed_by_email: identity.email,
       /*
        * T-06 · quem reclama é o vendedor, e a partir daqui é o que a proposta
-       * mostra.
-       *
-       * "A proposta regista o utilizador que a criou, a partir da sessão." O
-       * vendedor era um campo à parte, preenchido à mão num seletor — e um caso
-       * reclamado por uma pessoa podia continuar a mostrar outra, ou nenhuma.
-       * São a mesma pessoa até o `RBAC` existir para os separar, e escrevê-los
-       * no mesmo gesto é o que faz o cabeçalho dizer a verdade sem ninguém ter
-       * de a repetir.
+       * mostra. (Com a 0036, o master num caso de outra empresa não passa a
+       * vendedor: white label.)
        */
-      seller_email: identity.email,
-      seller_label: identity.label,
-      seller_set_at: now.toISOString(),
-      seller_set_by: identity.userId,
+      ...(foreign
+        ? {}
+        : {
+            seller_email: identity.email,
+            seller_label: identity.label,
+            seller_set_at: now.toISOString(),
+            seller_set_by: identity.userId,
+          }),
     })
     .eq("id", caseId)
     /* A corrida decide-se aqui, e não numa leitura anterior. */
@@ -385,6 +437,85 @@ export async function boClaimCase(caseId: string): Promise<BoResult> {
 
   touch(caseId)
   return { ok: true, notice: t("bo.actions.pc.claim.done", { waited }) }
+}
+
+/**
+ * B2G-13 · "Um administrador pode libertar o pedido; fica registado."
+ *
+ * Pela sessão (`release_case`, 0036): a base de dados pergunta se a conta
+ * supervisiona casos (Admin do parceiro, Admin WeeFly) e se vê o caso, exige
+ * o motivo e escreve os dois registos.
+ */
+export async function boReleaseCase(input: { caseId: string; reason: string }): Promise<BoResult> {
+  const { t } = await getBoI18n()
+  if (!z.string().uuid().safeParse(input?.caseId).success) return { ok: false, error: t(NOT_ALLOWED) }
+  const reason = z.string().trim().min(3).max(500).safeParse(input.reason)
+  if (!reason.success) return { ok: false, error: t("bo.claim.errors.reasonRequired") }
+  const caseId = input.caseId
+
+  const identity = await boCaseIdentity(caseId)
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
+
+  const rpc = await createClient().rpc("release_case", { p_case: caseId, p_reason: reason.data })
+  if (rpc.error) {
+    console.error("[bo/pc] release_case falhou:", rpc.error.message)
+    return { ok: false, error: t("bo.claim.errors.failed") }
+  }
+  switch (((rpc.data ?? {}) as { outcome?: string }).outcome) {
+    case "released":
+      touch(caseId)
+      return { ok: true, notice: t("bo.claim.released") }
+    case "forbidden":
+      return { ok: false, error: t("bo.claim.errors.forbidden") }
+    case "reason_required":
+      return { ok: false, error: t("bo.claim.errors.reasonRequired") }
+    case "not_claimed":
+      touch(caseId)
+      return { ok: false, error: t("bo.claim.errors.notClaimed") }
+    case "changed":
+      return { ok: false, error: t("bo.claim.errors.changed") }
+    default:
+      return { ok: false, error: t(NOT_ALLOWED) }
+  }
+}
+
+/**
+ * B2G-11 · D-6 · "O agente pode alterar a urgência; fica registado."
+ *
+ * Qualquer conta do back-office que veja o caso, só em pedidos de ministério
+ * (`set_case_urgency`, 0036, com o `case_events` e o `access_audit`).
+ */
+export async function boSetCaseUrgency(input: { caseId: string; urgency: number }): Promise<BoResult> {
+  const { t } = await getBoI18n()
+  const parsed = z
+    .object({ caseId: z.string().uuid(), urgency: z.number().int().min(0).max(2) })
+    .safeParse(input)
+  if (!parsed.success) return { ok: false, error: t("bo.urgency.failed") }
+  const { caseId, urgency } = parsed.data
+
+  const identity = await boCaseIdentity(caseId)
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
+
+  const rpc = await createClient().rpc("set_case_urgency", { p_case: caseId, p_urgency: urgency })
+  if (rpc.error) {
+    console.error("[bo/pc] set_case_urgency falhou:", rpc.error.message)
+    return { ok: false, error: t("bo.urgency.failed") }
+  }
+  switch (((rpc.data ?? {}) as { outcome?: string }).outcome) {
+    case "changed":
+      touch(caseId)
+      revalidatePath("/agente/ministerios", "layout")
+      revalidatePath("/gestao/concierge")
+      return { ok: true, notice: t("bo.urgency.changed", { level: t(`bo.urgency.${urgency}`) }) }
+    case "unchanged":
+      return { ok: true, notice: t("bo.urgency.unchanged") }
+    case "not_ministry":
+      return { ok: false, error: t("bo.urgency.notMinistry") }
+    case "invalid":
+      return { ok: false, error: t("bo.urgency.failed") }
+    default:
+      return { ok: false, error: t(NOT_ALLOWED) }
+  }
 }
 
 // ── C-14 · a campainha ───────────────────────────────────────────────────────

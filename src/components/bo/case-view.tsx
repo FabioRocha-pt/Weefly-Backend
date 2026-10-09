@@ -476,12 +476,20 @@ export function BoCaseView({
                   {!row.ownerId ? (
                     <ClaimAndQuote caseId={row.caseId} />
                   ) : (
-                    <Link
-                      className="btn btn-sm btn-primary"
-                      href={`/admin/price-checker/${row.caseId}/ofertas`}
-                    >
-                      {proposal ? t("bo.caseView.proposals.edit") : t("bo.caseView.proposals.create")}
-                    </Link>
+                    <>
+                      <Link
+                        className="btn btn-sm btn-primary"
+                        href={`/admin/price-checker/${row.caseId}/ofertas`}
+                      >
+                        {proposal ? t("bo.caseView.proposals.edit") : t("bo.caseView.proposals.create")}
+                      </Link>
+                      {/* B2G-13 · o caso é de outra pessoa: diz de quem. */}
+                      {row.claimedByLabel && row.claimedByEmail?.toLowerCase() !== viewer.email.toLowerCase() && (
+                        <span className="note" style={{ margin: 0 }}>
+                          {t("bo.claim.claimedBy", { name: row.claimedByLabel })}
+                        </span>
+                      )}
+                    </>
                   )}
                   <Link className="btn btn-sm" href={`/pc/${row.token}`} target="_blank">
                     {t("bo.caseView.proposals.viewAsClient")}

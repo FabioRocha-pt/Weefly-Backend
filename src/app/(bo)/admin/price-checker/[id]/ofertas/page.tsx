@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import { getBoAccess, listBoSellers } from "@/lib/bo-access"
 import { getCase, type BookingCaseRow } from "@/lib/booking-cases"
 import { loadBoCase } from "@/lib/pc/bo-queue"
-import { caseInScope, getBoScope } from "@/lib/bo-scope"
+import { caseInScope, scopeForCase } from "@/lib/bo-scope"
 import {
   ensureProposalForRender,
   paxOf,
@@ -70,7 +70,7 @@ export default async function BoCaseOffersPage({
 
   const [bookingCase, detail, sellers] = await Promise.all([
     getCase(params.id),
-    loadBoCase(await getBoScope(), params.id),
+    loadBoCase(await scopeForCase(params.id), params.id),
     listBoSellers(),
   ])
   if (!bookingCase) notFound()
@@ -128,6 +128,16 @@ export default async function BoCaseOffersPage({
             A verificação é aqui, no servidor, e não numa condição dentro do
             compositor: o que não se pode compor não deve chegar ao browser.
           */}
+          {/* B2G-13 · o caso é de outra pessoa: "reclamado por …" por cima. */}
+          {!unclaimed && detail?.row.claimedByLabel &&
+            detail.row.claimedByEmail?.toLowerCase() !== access.identity.email.toLowerCase() && (
+              <BoClaimGate
+                caseId={bookingCase.id}
+                clientName={detail.row.clientName}
+                waiting={elapsedSince(detail.row.submittedAt)}
+                takenBy={detail.row.claimedByLabel}
+              />
+            )}
           {unclaimed && detail ? (
             <BoClaimGate
               caseId={bookingCase.id}

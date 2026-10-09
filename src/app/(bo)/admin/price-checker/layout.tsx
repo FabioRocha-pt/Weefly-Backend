@@ -24,7 +24,7 @@ import { Sidebar, type SidebarModule } from "@/components/dashboard/sidebar"
 import { PRO_MODULES, getProAccount, moduleState, visibleAgentMenus } from "@/lib/pro-account"
 import { hasChannel, normaliseChannels, type PartnerChannel } from "@/lib/channels"
 import { partnerChannels } from "@/lib/channel-gate"
-import { getBoScope } from "@/lib/bo-scope"
+import { getBoScope, isCrossPartner } from "@/lib/bo-scope"
 import { listVipClients } from "@/lib/vip"
 import { listLinkMinistries } from "@/lib/b2g"
 
@@ -227,7 +227,10 @@ export default async function BoPriceCheckerLayout({
             </div>
           </header>
           {/* BO-03 · a fila deixa de esperar por um F5. Ver o componente. */}
-          <BoLiveUpdates partnerId={access.identity.tenant?.partnerId ?? null} />
+          <BoLiveUpdates
+            partnerId={access.identity.tenant?.partnerId ?? null}
+            allMinistries={isCrossPartner(access.identity)}
+          />
           {children}
           {/* TEN-05 · o back-office de um parceiro diz de onde vem. */}
           {access.identity.tenant?.poweredByWeefly && <PoweredByWeefly />}

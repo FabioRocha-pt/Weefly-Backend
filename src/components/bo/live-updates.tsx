@@ -78,7 +78,18 @@ interface Arrival {
  */
 const PARTNER_TABLES = ["booking_cases", "trip_requests"]
 
-export function BoLiveUpdates({ partnerId }: { partnerId?: string | null }) {
+export function BoLiveUpdates({
+  partnerId,
+  allMinistries = false,
+}: {
+  partnerId?: string | null
+  /**
+   * B2G-12 · o master (conta `cross_partner`) ouve também os pedidos de
+   * ministério que entram em qualquer empresa — a campainha dele mostra-os.
+   * O batimento (`/api/bo/pulse`) já os conta para ele; isto é o sino.
+   */
+  allMinistries?: boolean
+}) {
   const router = useRouter()
   const t = useT()
   const [arrival, setArrival] = useState<Arrival | null>(null)
@@ -169,6 +180,17 @@ export function BoLiveUpdates({ partnerId }: { partnerId?: string | null }) {
       )
     }
 
+    if (partnerId && allMinistries) {
+      channel.on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "booking_cases", filter: "channel=eq.ministerio" },
+        () => {
+          announce(true)
+          refreshWhenIdle()
+        }
+      )
+    }
+
     channel.subscribe((status) => {
       if (status === "SUBSCRIBED") {
         setLive(true)
@@ -181,7 +203,7 @@ export function BoLiveUpdates({ partnerId }: { partnerId?: string | null }) {
       if (timer.current) clearTimeout(timer.current)
       void supabase.removeChannel(channel)
     }
-  }, [announce, refreshWhenIdle, partnerId])
+  }, [announce, refreshWhenIdle, partnerId, allMinistries])
 
   /*
    * T-03 · o batimento, a correr sempre.

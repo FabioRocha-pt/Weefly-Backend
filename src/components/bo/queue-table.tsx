@@ -47,6 +47,8 @@ export function BoQueueTable({
   const [pending, startTransition] = useTransition()
   const [query, setQuery] = useState(search)
   const [claiming, setClaiming] = useState<string | null>(null)
+  /* B2G-13 · quem perde a corrida fica a saber quem ganhou. */
+  const [claimMsg, setClaimMsg] = useState<{ caseId: string; text: string } | null>(null)
   /* OCT-22 · arquivar a partir da fila, com motivo obrigatório. */
   const [archiving, setArchiving] = useState<{ caseId: string; reason: string; note: string } | null>(null)
   const [archiveMsg, setArchiveMsg] = useState<{ caseId: string; ok: boolean; text: string } | null>(null)
@@ -137,6 +139,12 @@ export function BoQueueTable({
                     <td>
                       <div className="cli">{row.clientName}</div>
                       <div className="cli-sub mono">{row.clientPhone}</div>
+                      {/* B2G-13 · "os outros veem *reclamado por …*". */}
+                      {row.claimedByLabel && (
+                        <div className="cli-sub">
+                          {mine ? t("bo.claim.yours") : t("bo.claim.claimedBy", { name: row.claimedByLabel })}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <span
@@ -145,6 +153,12 @@ export function BoQueueTable({
                       >
                         {/* B2G-21 · o canal do pedido: WEB (Público), VIP ou MIN. */}
                         <i>{row.channel === "vip" ? "VIP" : row.channel === "ministerio" ? "MIN" : "WEB"}</i>
+                        {/* B2G-11 · a urgência do pedido do ministério. */}
+                        {row.channel === "ministerio" && row.urgency > 0 && (
+                          <i style={{ color: row.urgency === 2 ? "var(--ember)" : "var(--warn)" }}>
+                            {t(`bo.urgency.${row.urgency}`)}
+                          </i>
+                        )}
                         {row.channel === "vip"
                           ? row.vipName ?? "VIP"
                           : row.channel === "ministerio"
@@ -187,9 +201,11 @@ export function BoQueueTable({
                             disabled={pending && claiming === row.caseId}
                             onClick={() => {
                               setClaiming(row.caseId)
+                              setClaimMsg(null)
                               startTransition(async () => {
-                                await boClaimCase(row.caseId)
+                                const result = await boClaimCase(row.caseId)
                                 setClaiming(null)
+                                if (!result.ok) setClaimMsg({ caseId: row.caseId, text: result.error })
                                 router.refresh()
                               })
                             }}
@@ -228,6 +244,15 @@ export function BoQueueTable({
                       </div>
                     </td>
                   </tr>
+                  {claimMsg?.caseId === row.caseId && (
+                    <tr>
+                      <td colSpan={9}>
+                        <p role="status" style={{ color: "#f87171" }}>
+                          {claimMsg.text}
+                        </p>
+                      </td>
+                    </tr>
+                  )}
                   {(archiveOpen || archiveMsg?.caseId === row.caseId) && (
                     <tr>
                       <td colSpan={9}>

@@ -19,8 +19,13 @@
  *
  * Por cima do RLS, a área de trabalho: o concierge de um parceiro mostra os
  * casos desse parceiro, e só esses — também a um Admin WeeFly, que o RLS
- * deixa ver tudo. Ver todos os parceiros é o espaço B2G do Admin (ADM-08), só
- * de leitura. É isto que faz o A7 passar nas contas da WeeFly.
+ * deixa ver tudo. É isto que faz o A7 passar nas contas da WeeFly.
+ *
+ * B2G-14 · D-12 · o master trabalha sem empresa: `getBoScope({ workspace:
+ * "all" })` dá-lhe todas (o concierge do master, `/gestao/concierge`), e a
+ * ficha de um caso de qualquer empresa abre-se-lhe (decisão 2: reclamar é a
+ * intervenção registada). Uma conta de parceiro que peça "all" recebe o seu
+ * parceiro, e o RLS repete a fronteira por baixo.
  *
  * SÓ SERVIDOR.
  */
@@ -40,19 +45,45 @@ export interface BoScope {
    * fronteira nenhuma a guardar.
    */
   db: SupabaseClient
-  /** O parceiro cujo trabalho se mostra. Nulo só na base sem a 0020. */
+  /**
+   * O parceiro cujo trabalho se mostra. Nulo na base sem a 0020 e, para o
+   * master, na área de trabalho "todas as empresas" (D-12): aí é o RLS que
+   * decide, e o RLS deixa-o ver todas.
+   */
   partnerId: string | null
 }
 
-export const getBoScope = cache(async (): Promise<BoScope | null> => {
+/**
+ * B2G-14 · D-12 · a área de trabalho.
+ *
+ *   · `own` (por omissão) — o parceiro da conta, como sempre;
+ *   · `all` — todas as empresas. **Só** para uma conta que vê todos os
+ *     parceiros (`cross_partner`, o master). Pedida por outra conta, é
+ *     ignorada: volta o parceiro dela. Nunca vem do browser sem passar aqui.
+ */
+export type BoWorkspace = "own" | "all"
+
+/**
+ * A conta vê todas as empresas? As duas respostas têm de concordar: a da
+ * allowlist (`cross_partner`, só no operador — é a que o RLS lê) e a do
+ * perfil (Admin WeeFly). Uma só não chega.
+ */
+export function isCrossPartner(identity: BoIdentity | null | undefined): boolean {
+  return Boolean(identity?.tenant?.crossPartner && identity.profile?.crossPartner)
+}
+
+/* `cache` por argumento primitivo: `getBoScope({ workspace })` com um objecto
+   novo a cada chamada nunca acertava na cache do React. */
+const scopeFor = cache(async (workspace: BoWorkspace): Promise<BoScope | null> => {
   const identity = await boIdentity()
   if (!identity) return null
 
   if (identity.tenant) {
+    const all = workspace === "all" && isCrossPartner(identity)
     return {
       identity,
       db: createClient() as unknown as SupabaseClient,
-      partnerId: identity.tenant.partnerId,
+      partnerId: all ? null : identity.tenant.partnerId,
     }
   }
 
@@ -60,6 +91,10 @@ export const getBoScope = cache(async (): Promise<BoScope | null> => {
   if (!admin) return null
   return { identity, db: admin as unknown as SupabaseClient, partnerId: null }
 })
+
+export async function getBoScope(options: { workspace?: BoWorkspace } = {}): Promise<BoScope | null> {
+  return scopeFor(options.workspace === "all" ? "all" : "own")
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -74,8 +109,12 @@ export const caseInScope = cache(async (caseId: string): Promise<boolean> => {
   const scope = await getBoScope()
   if (!scope) return false
 
+  /* D-12 · decisão 2 · o master trata casos de qualquer empresa: para ele
+     chega o RLS (que lhe mostra todas). Reclamar é a intervenção registada
+     (`claim_case`); cada acção continua no registo do caso. */
+  const master = isCrossPartner(scope.identity)
   let query = scope.db.from("booking_cases").select("id").eq("id", caseId)
-  if (scope.partnerId) query = query.eq("partner_id", scope.partnerId)
+  if (scope.partnerId && !master) query = query.eq("partner_id", scope.partnerId)
 
   const { data, error } = await query.maybeSingle()
   if (error) {
@@ -84,8 +123,8 @@ export const caseInScope = cache(async (caseId: string): Promise<boolean> => {
   }
   if (data) return true
 
-  /* ADM-04 · o caso de outro parceiro abre-se ao Admin WeeFly só durante uma
-     intervenção explícita e registada. */
+  /* ADM-04 · o caso de outro parceiro abre-se ao Admin WeeFly durante uma
+     intervenção explícita e registada (continua a valer, só de leitura). */
   return Boolean(scope.partnerId && (await liveIntervention(caseId)))
 })
 
@@ -127,6 +166,9 @@ export const liveIntervention = cache(async (caseId: string): Promise<LiveInterv
 export async function scopeForCase(caseId: string): Promise<BoScope | null> {
   const scope = await getBoScope()
   if (!scope) return null
+  /* D-12 · o master lê a ficha de qualquer empresa sem filtro de parceiro
+     (o RLS decide). Só depois de `caseInScope` — quem chama já perguntou. */
+  if (isCrossPartner(scope.identity)) return { ...scope, partnerId: null }
   const intervention = await liveIntervention(caseId)
   return intervention ? { ...scope, partnerId: intervention.partnerId } : scope
 }

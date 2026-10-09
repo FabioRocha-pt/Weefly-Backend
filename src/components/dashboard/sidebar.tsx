@@ -18,6 +18,7 @@ import {
   UserCog,
   Compass,
   Home,
+  Inbox,
   Lock,
   Plane,
   Receipt,
@@ -89,6 +90,8 @@ const AGENT_TOOLS: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   /* OCT-15 · o primeiro menu, aberto por defeito. */
   { labelKey: "bo.adminDashboard.nav", href: "/gestao/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+  /* B2G-14 · o concierge do master: os pedidos de todas as empresas. */
+  { labelKey: "bo.masterConcierge.nav", href: "/gestao/concierge", icon: <Inbox className="w-5 h-5" /> },
   { labelKey: "pro.adminAccounts", href: "/gestao/contas", icon: <Building className="w-5 h-5" /> },
   { labelKey: "pro.adminUsers", href: "/gestao/utilizadores", icon: <UserCog className="w-5 h-5" /> },
   { labelKey: "pro.adminPartners", href: "/gestao/parceiros", icon: <Handshake className="w-5 h-5" /> },

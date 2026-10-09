@@ -4,6 +4,7 @@ import { getBoAccess } from "@/lib/bo-access"
 import { getBoScope } from "@/lib/bo-scope"
 import { loadBoQueue } from "@/lib/pc/bo-queue"
 import { ChannelQueue } from "@/components/channels/channel-queue"
+import { QueueLive } from "@/components/channels/queue-live"
 import { listOrganisationRequests, listOrganisations } from "@/lib/b2g"
 import { getBoI18n } from "@/i18n/bo-server"
 import { OrganisationList } from "@/components/b2g/org-list"
@@ -46,12 +47,15 @@ export default async function MinisteriosPage() {
       </div>
       <OrganisationList orgs={orgs} hrefFor={(id) => `/agente/ministerios/${id}`} t={t} locale={locale} />
       <OwnRequestList requests={requests.filter((r) => r.status !== "approved" || Date.now() - new Date(r.decidedAt ?? r.createdAt).getTime() < 30 * 86400000)} />
+      {/* B2G-12 · um pedido novo aparece aqui sem recarregar. */}
+      <QueueLive label={t("bo.masterConcierge.live")} />
       <ChannelQueue
         rows={queue.rows}
         t={t}
         title={t("bo.channelQueue.ministerio")}
         empty={t("bo.channelQueue.empty")}
         showWho
+        viewerId={access.identity.userId}
       />
     </div>
   )
