@@ -1,0 +1,36 @@
+{
+  "bo": {
+    "activity": {
+      "title": "Registo",
+      "subtitleOne": "Cada pedido, reclamação, oferta, escolha, passageiro registado e emissão de {name}, com hora e autor.",
+      "subtitleAll": "Cada pedido, reclamação, oferta, escolha, passageiro registado e emissão, de todos os ministérios, com hora e autor.",
+      "subtitleAdmin": "O mesmo registo, de todas as empresas.",
+      "empty": "Ainda não há nada no registo.",
+      "export": "Exportar CSV",
+      "filters": {
+        "company": "Empresa",
+        "allCompanies": "Todas as empresas",
+        "ministry": "Ministério",
+        "allMinistries": "Todos os ministérios",
+        "secretary": "Secretária",
+        "allSecretaries": "Todas as secretárias",
+        "from": "De",
+        "to": "Até",
+        "submit": "Filtrar"
+      },
+      "table": {
+        "when": "Quando",
+        "ministry": "Ministério",
+        "author": "Autor",
+        "action": "Acção",
+        "reference": "Referência do pedido"
+      },
+      "csv": {
+        "when": "Quando",
+        "author": "Autor",
+        "action": "Acção",
+        "reference": "Referência do pedido"
+      }
+    }
+  }
+}

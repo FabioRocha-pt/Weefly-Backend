@@ -278,3 +278,37 @@ Verificação: `bash supabase/tests/run.sh` OK · `npm run build` OK · `npm run
 3. **D-7 · bebé ao colo por omissão** (< 2 anos). Um bebé com lugar próprio tem de ser corrigido pelo agente.
 4. **Emitir sem `ready_to_issue_at`**: um caso de ministério com passageiros gravados antes da 0037 fica à espera — a secretária volta a gravar os passageiros, ou o agente confirma o pagamento externo (o caminho antigo continua).
 5. A secretária vê o número de passaporte completo das fichas na escolha e na correcção (precisa dele para confirmar). Dados pessoais: ver L1–L3.
+
+## Bloco 7 · Registo (B2G-19)
+
+### Feito
+
+**Migração `0038_b2g_activity.sql`** (idempotente, corre duas vezes no `run.sh`):
+- Vista `b2g_activity`, `security_invoker = true`, união de três fontes já escritas pelos blocos anteriores (não cria tabelas novas):
+  - `case_events` de um caso de ministério (`organisation_id is not null`): hora, parceiro, ministério, caso, referência do pedido, `actor_secretary_id`/`actor_kind`, autor (nome da secretária, ou o email) e `title` como descrição — nunca `detail` nem `payload`, que podem levar notas internas, custos ou o email de um agente (o mesmo cuidado do `PUBLIC_TIMELINE_KINDS` em `lib/ministry.ts`).
+  - `ministry_traveller_changes`: cada ficha registada ou alterada, com a secretária ou o email do back-office.
+  - `access_audit`, só a vida do ministério e das secretárias que não é de um caso (`organisation_created/updated/link_rotated`, `budget_adjusted`, `secretary_*`, `ministry_requested/approved/rejected`). **Não** repete `case_claimed`, `case_released`, `urgency_changed` nem `proposal_review_requested`: essas acções já escrevem o `case_events` na mesma transacção (0036/0037), e repeti-las aqui duplicava a linha no registo. O `target` do `access_audit` não é sempre o mesmo tipo de coisa (o id do pedido de ministério, o id da secretária, ou o slug do ministério): cada acção junta-se à tabela certa para chegar ao `organisation_id` (um pedido de ministério ainda pendente fica sem ministério — é normal, nasce só na aprovação).
+- Nenhuma política nova em `case_events` nem em `access_audit`: quem vê o quê continua a ser o RLS de cada uma (a empresa só a sua, o master todas; `access_audit` só a quem gere utilizadores, como já era). Defesa a mais: `ministry_travellers`/`ministry_traveller_changes` passam a exigir `is_bo_allowed()` também (restritiva, como `case_events` desde a 0020) — fechando de vez uma conta `secretary` da allowlist antiga que viesse a ter sessão Supabase (o bloco 3 já as migrou para `ministry_secretaries` com PIN; nenhum fluxo actual depende do contrário).
+- Teste novo `supabase/tests/test_b2g_activity.sql` (G1–G6): a empresa (Admin do parceiro) vê as suas 5 linhas (pedido + 2 fichas + secretária criada + pedido de ministério) com autor e `organisation_id` certos; o master vê o mesmo; outra empresa não vê nada (nem filtrando só pelo parceiro); `anon` não vê nada; um agente sem perfil de gestão de utilizadores vê o pedido e as fichas mas não a parte de secretárias (a mesma regra que já valia para `access_audit`); `case_claimed` não se repete. Sonda nova em `scripts/check-migrations.mjs`.
+
+**`src/lib/b2g-activity.ts`**: `listActivity(scope, filtros)` (parceiro, ministério, secretária, período — dias de Cabo Verde, como `lib/finance.ts`), `listActivitySecretaries` (para o filtro) e `activityCsv` (mesma blindagem contra fórmulas do Excel e o mesmo separador/BOM que `ticketsCsv`). Tudo pelo cliente da sessão: o RLS da vista decide.
+
+**Páginas** (`src/components/b2g/activity-log.tsx`, a tabela e o filtro partilhados, um `<form>` por GET como o `/gestao/concierge`):
+- Por ministério: `/agente/ministerios/[id]/registo` (empresa) e `/gestao/b2g/m/[orgId]/registo` (Admin) — filtros secretária e período; ligação "Registo" na ficha do ministério (`org-detail.tsx`).
+- Geral: `/agente/ministerios/registo` (todos os ministérios da empresa) e `/gestao/b2g/registo` (Admin, todas as empresas) — filtros ministério, secretária, período, e empresa só no geral do Admin; ligação "Registo" nas duas listas (`agente/ministerios` e `gestao/b2g`).
+- Cada linha: quando, (ministério, só nas visões gerais), autor, acção (a descrição já vem segura da vista) e a referência do pedido.
+
+**Exportação** · `/api/b2g/activity/export` (`scope=partner` por omissão, `scope=admin` só para o master), mesmo padrão do `/api/finance/export`: lê pelo cliente da sessão com o mesmo filtro do endereço, nunca a service role sem verificar o âmbito primeiro.
+
+**I18N-01** · `src/i18n/bo/parts/activity.{pt,en}.json` — só PT/EN, como o resto do back-office (o `check-i18n.mjs` já só pede duas línguas aqui); nada no dicionário público (FR incluído) porque este bloco não toca em nenhum ecrã da secretária nem do cliente.
+
+Verificação: `bash supabase/tests/run.sh` OK · `npm run build` OK · `npm run i18n:check` OK.
+
+### Falta
+- Não abri nada num browser (sem base local com dados; `.env.local` aponta para o Supabase real, não usado). Testar com o script de dados do bloco 8: o fluxo completo (pedido → reclamação → revisão → oferta → passageiros → emissão) tem de aparecer nos dois registos (Alô e Admin), com hora e autor — é o teste do B2G-19.
+- `graphify update .` não correu (não está instalado nesta máquina).
+
+### Para decidir (humano)
+1. **Um agente sem perfil de gestão de utilizadores não vê a parte de secretárias/pedidos de ministério no registo** (só vê pedidos e fichas): é a mesma regra que já protegia `access_audit` directamente (só quem gere utilizadores o lê), e optei por não a alargar. Se quiserem que qualquer agente do back-office veja o registo inteiro do seu ministério, é mudar a política `access_audit_read` da 0026 (sai do âmbito deste bloco).
+2. **Se o slug de um ministério mudar**, uma linha antiga de `organisation_created`/`organisation_updated`/`budget_adjusted` pode deixar de se ligar a ele no registo (o `access_audit` guarda o slug de então, não o id) — aceitável: o slug quase nunca muda, e o nome fica no resto da linha. Se incomodar, é gravar o `organisation_id` directamente no `after` dessas três acções (muda `src/actions/b2g.ts`, fora do âmbito deste bloco).
+3. A exportação não tem limite de linhas diferente do ecrã (ambos leem `listActivity` com o mesmo tecto de 1000). Um ministério com um historial muito maior pode querer paginação — não vi sinal disso nos dados de teste.

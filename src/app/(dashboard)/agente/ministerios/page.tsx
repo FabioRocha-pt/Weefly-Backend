@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { getBoAccess } from "@/lib/bo-access"
@@ -43,7 +44,15 @@ export default async function MinisteriosPage() {
           <h1 className="text-2xl font-bold text-slate-900">{t("bo.b2g.list.title")}</h1>
           <p className="text-slate-500 mt-1">{t("bo.b2g.list.subtitle")}</p>
         </div>
-        {crossPartner ? <NewOrganisation /> : canRequest && <RequestMinistryForm />}
+        <div className="flex items-center gap-3">
+          <Link
+            href="/agente/ministerios/registo"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            {t("bo.activity.title")}
+          </Link>
+          {crossPartner ? <NewOrganisation /> : canRequest && <RequestMinistryForm />}
+        </div>
       </div>
       <OrganisationList orgs={orgs} hrefFor={(id) => `/agente/ministerios/${id}`} t={t} locale={locale} />
       <OwnRequestList requests={requests.filter((r) => r.status !== "approved" || Date.now() - new Date(r.decidedAt ?? r.createdAt).getTime() < 30 * 86400000)} />

@@ -1,0 +1,36 @@
+{
+  "bo": {
+    "activity": {
+      "title": "Activity log",
+      "subtitleOne": "Every request, claim, offer, choice, registered passenger and issuance of {name}, with time and author.",
+      "subtitleAll": "Every request, claim, offer, choice, registered passenger and issuance, across all ministries, with time and author.",
+      "subtitleAdmin": "The same log, for every company.",
+      "empty": "Nothing in the log yet.",
+      "export": "Export CSV",
+      "filters": {
+        "company": "Company",
+        "allCompanies": "All companies",
+        "ministry": "Ministry",
+        "allMinistries": "All ministries",
+        "secretary": "Secretary",
+        "allSecretaries": "All secretaries",
+        "from": "From",
+        "to": "To",
+        "submit": "Filter"
+      },
+      "table": {
+        "when": "When",
+        "ministry": "Ministry",
+        "author": "Author",
+        "action": "Action",
+        "reference": "Request reference"
+      },
+      "csv": {
+        "when": "When",
+        "author": "Author",
+        "action": "Action",
+        "reference": "Request reference"
+      }
+    }
+  }
+}

@@ -52,9 +52,17 @@ export default async function B2gPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t("bo.b2g.admin.title")}</h1>
-        <p className="text-slate-500 mt-1">{t("bo.b2g.admin.subtitle")}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{t("bo.b2g.admin.title")}</h1>
+          <p className="text-slate-500 mt-1">{t("bo.b2g.admin.subtitle")}</p>
+        </div>
+        <Link
+          href="/gestao/b2g/registo"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          {t("bo.activity.title")}
+        </Link>
       </div>
       <section className="space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">

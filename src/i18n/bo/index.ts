@@ -47,6 +47,8 @@ import queuesPt from "./parts/queues.pt.json"
 import queuesEn from "./parts/queues.en.json"
 import offersPt from "./parts/offers.pt.json"
 import offersEn from "./parts/offers.en.json"
+import activityPt from "./parts/activity.pt.json"
+import activityEn from "./parts/activity.en.json"
 
 export const BO_LOCALES = ["pt", "en"] as const
 export type BoLocale = (typeof BO_LOCALES)[number]
@@ -72,8 +74,8 @@ function merge(target: Record<string, unknown>, source: Record<string, unknown>)
 }
 
 const PARTS: Record<BoLocale, Dictionary[]> = {
-  pt: [shellPt, queuePt, caseViewPt, paymentsPt, issuancePt, composerPt, proPt, actionsPt, b2gPt, financePt, adminCasesPt, travellersPt, vipPt, ministriesPt, queuesPt, offersPt],
-  en: [shellEn, queueEn, caseViewEn, paymentsEn, issuanceEn, composerEn, proEn, actionsEn, b2gEn, financeEn, adminCasesEn, travellersEn, vipEn, ministriesEn, queuesEn, offersEn],
+  pt: [shellPt, queuePt, caseViewPt, paymentsPt, issuancePt, composerPt, proPt, actionsPt, b2gPt, financePt, adminCasesPt, travellersPt, vipPt, ministriesPt, queuesPt, offersPt, activityPt],
+  en: [shellEn, queueEn, caseViewEn, paymentsEn, issuanceEn, composerEn, proEn, actionsEn, b2gEn, financeEn, adminCasesEn, travellersEn, vipEn, ministriesEn, queuesEn, offersEn, activityEn],
 }
 
 const BO_DICTIONARIES: Record<BoLocale, Dictionary> = {

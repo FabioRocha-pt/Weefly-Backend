@@ -79,7 +79,14 @@ export function OrganisationDetailView({
             </p>
           </div>
         </div>
-        {editable && (
+        <div className="flex items-center gap-3">
+          <Link
+            href={mode === "partner" ? `/agente/ministerios/${org.id}/registo` : `/gestao/b2g/m/${org.id}/registo`}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            {t("bo.activity.title")}
+          </Link>
+          {editable && (
           <EditOrganisation
             identityEditable={viewer.crossPartner}
             initial={{
@@ -93,7 +100,8 @@ export function OrganisationDetailView({
               secretarySeesBalance: org.secretarySeesBalance,
             }}
           />
-        )}
+          )}
+        </div>
       </div>
 
       {mode === "admin" && (
