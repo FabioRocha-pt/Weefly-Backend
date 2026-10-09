@@ -28,6 +28,7 @@ import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { boIdentity, type BoIdentity } from "@/lib/bo-access"
 import { boCaseIdentity, getBoScope } from "@/lib/bo-scope"
+import { partnerHasChannel } from "@/lib/channel-gate"
 import { applyPaymentStatus } from "@/lib/payments"
 import { logCaseEvent } from "@/lib/case-events"
 import { parseMoney } from "@/lib/proposal-math"
@@ -56,7 +57,11 @@ function isManager(identity: BoIdentity | null): identity is BoIdentity {
   return Boolean(identity?.profile && identity.profile.manageUsers !== "none")
 }
 
-/** O ministério, visto pela sessão. `null` se o RLS não o mostrar. */
+/**
+ * O ministério, visto pela sessão. `null` se o RLS não o mostrar — ou se a
+ * empresa dele não tiver o canal Ministérios ligado (B2G-02): desligado, o
+ * ministério deixa de existir para todas as acções daqui.
+ */
 async function visibleOrg(orgId: string) {
   if (!z.string().uuid().safeParse(orgId).success) return null
   const scope = await getBoScope()
@@ -68,6 +73,7 @@ async function visibleOrg(orgId: string) {
   /* No Admin WeeFly a área é "todos"; num parceiro, só o seu. */
   if (scope.partnerId && !scope.identity.profile?.crossPartner) q = q.eq("partner_id", scope.partnerId)
   const { data } = await q.maybeSingle()
+  if (!data || !(await partnerHasChannel((data as { partner_id: string }).partner_id, "B2G"))) return null
   return data as {
     id: string
     partner_id: string
@@ -141,7 +147,12 @@ export async function saveOrganisation(input: z.input<typeof orgSchema>): Promis
   }
 
   /* Um ministério nasce no parceiro da sessão, e com link (PAR-02: "o link é
-     gerado na criação"). */
+     gerado na criação"). B2G-02 · sem o canal Ministérios, não nasce nenhum.
+     (Mudar um que já existe passa pelo `visibleOrg`, que olha para o canal da
+     empresa do ministério.) */
+  if (!(await partnerHasChannel(identity.tenant.partnerId, "B2G"))) {
+    return { ok: false, error: t("bo.b2g.errors.channelOff") }
+  }
   const { data, error } = await db
     .from("organisations")
     .insert({
@@ -465,11 +476,16 @@ export async function confirmExternalPayment(input: z.input<typeof externalSchem
 
   const { data: bc } = await admin
     .from("booking_cases")
-    .select("id, organisation_id, trip_request:trip_requests(currency)")
+    .select("id, organisation_id, partner_id, trip_request:trip_requests(currency)")
     .eq("id", v.caseId)
     .maybeSingle()
-  const bookingCase = bc as { id: string; organisation_id: string | null; trip_request: unknown } | null
+  const bookingCase = bc as { id: string; organisation_id: string | null; partner_id: string | null; trip_request: unknown } | null
   if (!bookingCase?.organisation_id) return { ok: false, error: t("bo.b2g.errors.caseHasNoMinistry") }
+  /* B2G-02 · com o canal Ministérios desligado, não se confirma nada. Reverter
+     continua possível: desligar o canal não pode prender dinheiro na bolsa. */
+  if (!(await partnerHasChannel(bookingCase.partner_id, "B2G"))) {
+    return { ok: false, error: t("bo.b2g.errors.channelOff") }
+  }
 
   const { data: live } = await admin
     .from("case_external_payments")
@@ -736,6 +752,8 @@ export async function saveAlertRecipient(input: z.input<typeof recipientSchema>)
   if (!weefly && (v.partnerId !== identity.tenant?.partnerId || v.side !== "partner")) {
     return { ok: false, error: t("bo.b2g.errors.onlyManagers") }
   }
+  /* B2G-02 · os alertas da bolsa são do canal Ministérios. */
+  if (!(await partnerHasChannel(v.partnerId, "B2G"))) return { ok: false, error: t("bo.b2g.errors.channelOff") }
 
   const admin = createAdminClient()
   if (!admin) return { ok: false, error: t("bo.b2g.errors.unavailable") }

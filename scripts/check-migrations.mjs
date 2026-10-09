@@ -93,6 +93,7 @@ const CHECKS = [
   { migration: "0030", table: "ministry_travellers", column: "expiry_alerted_for", need: "DAT-01 · DAT-02 · as fichas dos viajantes" },
   { migration: "0030", table: "ministry_traveller_changes", column: "after", need: "DAT-01 · o histórico das fichas" },
   { migration: "0030", table: "admin_interventions", column: "expires_at", need: "ADM-04 · intervir num parceiro" },
+  { migration: "0032", table: "booking_cases", column: "channel", need: "B2G-02 · B2G-21 · o canal do caso" },
 ]
 
 /* O PostgREST devolve PGRST205 quando não conhece a tabela e o código do

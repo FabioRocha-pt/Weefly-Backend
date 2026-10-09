@@ -173,7 +173,8 @@
         "insufficient": "Saldo insuficiente: a bolsa do ministério não cobre esta passagem. Nada foi registado.",
         "nothingToReverse": "Não há pagamento externo para reverter.",
         "secretaryDenied": "Não pode criar a conta da secretária neste parceiro.",
-        "recipientChannel": "Indique um email ou um WhatsApp."
+        "recipientChannel": "Indique um email ou um WhatsApp.",
+        "channelOff": "O canal Ministérios não está ligado para esta empresa."
       },
       "notice": {
         "saved": "Ministério guardado.",

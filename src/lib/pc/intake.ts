@@ -21,6 +21,7 @@ import {
   type TripKind,
 } from "@/lib/pc/catalog"
 import { isKnownIata } from "@/lib/airports"
+import { hasChannel } from "@/lib/channels"
 import { toE164 } from "@/lib/countries"
 
 export interface PcLeg {
@@ -305,6 +306,13 @@ export async function createPriceCheckerCase(
      * WeeFly ficava invisível na fila do Alô.
      */
     const ministry = await resolveMinistry(admin, input.ministryToken)
+    /* B2G-02 · um pedido do espaço de um ministério que já não abre (link
+       regenerado, ministério inactivo, canal desligado) não se transforma num
+       pedido público: não se guarda. */
+    if (input.ministryToken && !ministry) {
+      console.warn("[pc] pedido de ministério recusado: link sem ministério activo com o canal B2G.")
+      return null
+    }
     const partnerId =
       ministry?.partnerId ??
       (await resolveHostPartner(admin, input.hostPartnerSlug)) ??
@@ -492,17 +500,18 @@ async function resolveMinistry(
   if (!token) return null
   const { data } = await admin
     .from("organisations")
-    .select("id, partner_id, active, partner:partners(status)")
+    .select("id, partner_id, active, partner:partners(status, channels)")
     .eq("link_token", token)
     .maybeSingle()
   const row = data as {
     id: string
     partner_id: string
     active: boolean
-    partner: { status: string } | { status: string }[] | null
+    partner: { status: string; channels: string[] | null } | { status: string; channels: string[] | null }[] | null
   } | null
   const partner = Array.isArray(row?.partner) ? row?.partner[0] : row?.partner
-  if (!row || !row.active || partner?.status !== "active") return null
+  /* B2G-02 · um ministério de uma empresa sem o canal Ministérios não recebe pedidos. */
+  if (!row || !row.active || partner?.status !== "active" || !hasChannel(partner.channels, "B2G")) return null
   return { organisationId: row.id, partnerId: row.partner_id }
 }
 

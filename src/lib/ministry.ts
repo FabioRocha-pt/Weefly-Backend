@@ -19,6 +19,7 @@ import { cache } from "react"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { clientBrandForPartner, type Brand } from "@/lib/brand"
 import { hostPartnerSlug } from "@/lib/host-partner"
+import { hasChannel } from "@/lib/channels"
 
 export interface MinistryContext {
   org: {
@@ -49,7 +50,7 @@ export const resolveMinistry = cache(async (slug: string, token: string): Promis
   const { data } = await admin
     .from("organisations")
     .select(
-      "id, slug, name, logo_url, link_token, active, currency, secretary_name, secretary_email, secretary_phone, secretary_sees_balance, partner:partners(id, slug, commercial_name, status)"
+      "id, slug, name, logo_url, link_token, active, currency, secretary_name, secretary_email, secretary_phone, secretary_sees_balance, partner:partners(id, slug, commercial_name, status, channels)"
     )
     .eq("link_token", token)
     .maybeSingle()
@@ -72,6 +73,8 @@ export const resolveMinistry = cache(async (slug: string, token: string): Promis
     row.slug !== slug ||
     !row.active ||
     partner.status !== "active" ||
+    /* B2G-02 · sem o canal Ministérios, o espaço do ministério não abre. */
+    !hasChannel(partner.channels, "B2G") ||
     (host && host !== partner.slug)
   ) {
     return { ok: false, brand: hostBrand }

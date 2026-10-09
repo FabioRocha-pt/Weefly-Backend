@@ -173,7 +173,8 @@
         "insufficient": "Insufficient balance: the ministry's budget does not cover this ticket. Nothing was recorded.",
         "nothingToReverse": "There is no external payment to reverse.",
         "secretaryDenied": "You cannot create the secretary's account for this partner.",
-        "recipientChannel": "Enter an email or a WhatsApp number."
+        "recipientChannel": "Enter an email or a WhatsApp number.",
+        "channelOff": "The Ministries channel is not enabled for this company."
       },
       "notice": {
         "saved": "Ministry saved.",

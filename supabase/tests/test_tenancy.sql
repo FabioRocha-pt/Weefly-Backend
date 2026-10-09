@@ -26,7 +26,7 @@ insert into auth.users (id, email) values
 
 insert into public.partners (id, slug, commercial_name, sell_enabled, sell_mode, channels)
 values
-  ('10000000-0000-0000-0000-00000000000a', 'alo',  'Alô',  true, 'white_label', array['B2G']),
+  ('10000000-0000-0000-0000-00000000000a', 'alo-ten', 'Alô',  true, 'white_label', array['B2G']),
   ('10000000-0000-0000-0000-00000000000b', 'beta', 'Beta', true, 'reseller',    array['B2C']);
 
 insert into public.organisations (id, partner_id, slug, name) values

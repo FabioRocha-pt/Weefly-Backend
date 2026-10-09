@@ -4,6 +4,7 @@ import { OrganisationList } from "@/components/b2g/org-list"
 import { getBoI18n } from "@/i18n/bo-server"
 import { getBoScope } from "@/lib/bo-scope"
 import { listOrganisations } from "@/lib/b2g"
+import { partnerHasChannel } from "@/lib/channel-gate"
 
 /**
  * PRO-05 · a Carteira.
@@ -15,7 +16,9 @@ import { listOrganisations } from "@/lib/b2g"
 export default async function CarteiraPage() {
   const { t, locale } = await getBoI18n()
   const scope = await getBoScope()
-  const orgs = scope?.partnerId && !scope.identity.tenant?.isOperator ? await listOrganisations(scope) : []
+  /* B2G-02 · sem o canal Ministérios, a bolsa dos ministérios não aparece. */
+  const sellsB2g = scope?.partnerId ? await partnerHasChannel(scope.partnerId, "B2G") : false
+  const orgs = scope?.partnerId && sellsB2g && !scope.identity.tenant?.isOperator ? await listOrganisations(scope) : []
 
   if (orgs.length === 0) {
     return (

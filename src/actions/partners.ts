@@ -69,7 +69,8 @@ const partnerSchema = z.object({
   supplyEnabled: z.boolean(),
   sellEnabled: z.boolean(),
   sellMode: z.enum(["reseller", "white_label"]).nullable(),
-  channels: z.array(z.enum(["B2C", "B2G"])),
+  /* B2G-02 · Público (B2C), VIP e Ministérios (B2G). */
+  channels: z.array(z.enum(["B2C", "VIP", "B2G"])),
   customerFront: z.enum(["own", "weefly"]),
   agentMenus: z.array(z.enum(MENUS)),
   // TEN-02 · a marca, ao nível do parceiro.

@@ -22,6 +22,7 @@ import { pcSiteUrl } from "@/lib/site-url"
 import { hostPartnerSlug } from "@/lib/host-partner"
 import { Sidebar, type SidebarModule } from "@/components/dashboard/sidebar"
 import { PRO_MODULES, getProAccount, moduleState, visibleAgentMenus } from "@/lib/pro-account"
+import { hasChannel } from "@/lib/channels"
 
 /**
  * WeeFly — o back-office do Price Checker.
@@ -116,10 +117,12 @@ export default async function BoPriceCheckerLayout({
             return state === "hidden" ? [] : [{ id, state }]
           }),
           agentMenus: visibleAgentMenus(account),
-          companyName: account.partner?.name ?? null,
-          companyLogoUrl: account.partner && !account.partner.isOperator ? account.partner.logoUrl : null,
+          /* B2G-01 · o master trabalha sem empresa. */
+          companyName: account.profile?.crossPartner ? null : account.partner?.name ?? null,
+          companyLogoUrl:
+            !account.profile?.crossPartner && account.partner && !account.partner.isOperator ? account.partner.logoUrl : null,
           canManageTeam: account.profile?.manageUsers === "own_partner",
-          sellsB2g: Boolean(account.partner?.channels.includes("B2G")),
+          sellsB2g: hasChannel(account.partner?.channels, "B2G"),
         }
       : null
 

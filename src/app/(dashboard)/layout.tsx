@@ -6,6 +6,7 @@ import {
   visibleAgentMenus,
   PRO_MODULES,
 } from "@/lib/pro-account"
+import { hasChannel } from "@/lib/channels"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import type { SidebarModule } from "@/components/dashboard/sidebar"
 import { I18nProvider } from "@/i18n/provider"
@@ -31,6 +32,10 @@ export default async function DashboardLayout({
     ? { fullName: user.fullName, email: user.email, initials: user.initials }
     : null
 
+  /* B2G-01 · o master trabalha sem empresa (D-12): numa conta que vê todos os
+     parceiros, o menu não mostra o nome nem o logótipo de nenhuma. */
+  const master = Boolean(account.profile?.crossPartner)
+
   const modules = PRO_MODULES.flatMap((id): SidebarModule[] => {
     const state = moduleState(account, id)
     return state === "hidden" ? [] : [{ id, state }]
@@ -46,10 +51,10 @@ export default async function DashboardLayout({
         user={menuUser}
         modules={modules}
         agentMenus={visibleAgentMenus(account)}
-        companyName={account.partner?.name ?? null}
-        companyLogoUrl={account.partner && !account.partner.isOperator ? account.partner.logoUrl : null}
+        companyName={master ? null : account.partner?.name ?? null}
+        companyLogoUrl={!master && account.partner && !account.partner.isOperator ? account.partner.logoUrl : null}
         canManageTeam={account.profile?.manageUsers === "own_partner"}
-        sellsB2g={Boolean(account.partner?.channels.includes("B2G"))}
+        sellsB2g={hasChannel(account.partner?.channels, "B2G")}
         poweredByWeefly={Boolean(account.partner && !account.partner.isOperator && account.partner.poweredByWeefly)}
       >
         {children}

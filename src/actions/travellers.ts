@@ -14,6 +14,7 @@ import { z } from "zod"
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getBoScope } from "@/lib/bo-scope"
+import { partnerHasChannel } from "@/lib/channel-gate"
 import { NATIONALITIES } from "@/lib/pc/catalog"
 import { getBoI18n } from "@/i18n/bo-server"
 import { translateMessage } from "@/i18n/translate"
@@ -75,7 +76,10 @@ export async function updateMinistryTraveller(input: TravellerFormInput): Promis
     .eq("partner_id", scope.partnerId)
     .maybeSingle()
   const row = data as { id: string; organisation_id: string; partner_id: string } | null
-  if (!row) return { ok: false, error: t("bo.travellers.errors.notFound") }
+  /* B2G-02 · sem o canal Ministérios, as fichas do ministério não existem aqui. */
+  if (!row || !(await partnerHasChannel(row.partner_id, "B2G"))) {
+    return { ok: false, error: t("bo.travellers.errors.notFound") }
+  }
 
   const admin = createAdminClient()
   if (!admin) return { ok: false, error: t("bo.travellers.errors.unavailable") }

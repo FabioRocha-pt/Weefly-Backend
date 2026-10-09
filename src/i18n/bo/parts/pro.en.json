@@ -213,7 +213,13 @@
         "previewWhatsapp": "In a WhatsApp message",
         "colorAccent": "Accent colour",
         "seoTitle": "Price checker title (empty: the default)",
-        "seoDescription": "Price checker description (empty: the default)"
+        "seoDescription": "Price checker description (empty: the default)",
+        "channelsLabel": "Channels",
+        "channel": {
+          "B2C": "Public",
+          "VIP": "VIP",
+          "B2G": "Ministries"
+        }
       }
     }
   }

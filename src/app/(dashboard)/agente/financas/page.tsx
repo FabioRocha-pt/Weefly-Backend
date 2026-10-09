@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 
 import { getBoScope } from "@/lib/bo-scope"
+import { partnerHasChannel } from "@/lib/channel-gate"
 import { listIssuedTickets, ministryFinance, periodRange } from "@/lib/finance"
 import { FinanceFilters, FinanceReport, financeQuery } from "@/components/finance/finance-report"
 import { getBoI18n } from "@/i18n/bo-server"
@@ -33,7 +34,10 @@ export default async function PartnerFinancePage({
   }
   const range = periodRange({ period: param("period"), from: param("from"), to: param("to") })
   const rows = await listIssuedTickets(scope, { partnerId: scope.partnerId, range })
-  const ministries = await ministryFinance(scope, scope.partnerId, rows, range)
+  /* B2G-02 · o quadro por ministério só com o canal Ministérios ligado. */
+  const ministries = (await partnerHasChannel(scope.partnerId, "B2G"))
+    ? await ministryFinance(scope, scope.partnerId, rows, range)
+    : []
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

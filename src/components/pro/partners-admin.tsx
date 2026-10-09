@@ -9,6 +9,7 @@ import { type SubdomainCheck } from "@/actions/subdomain"
 import { SubdomainField } from "@/components/pro/subdomain-field"
 import { BrandUploads } from "@/components/pro/brand-uploads"
 import { toSubdomain } from "@/lib/subdomain"
+import { PARTNER_CHANNELS, normaliseChannels, type PartnerChannel } from "@/lib/channels"
 import { useT } from "@/i18n/provider"
 
 /**
@@ -75,7 +76,7 @@ type Form = {
   supplyEnabled: boolean
   sellEnabled: boolean
   sellMode: "reseller" | "white_label"
-  channels: ("B2C" | "B2G")[]
+  channels: PartnerChannel[]
   customerFront: "own" | "weefly"
   agentMenus: Menu[]
   logoUrl: string
@@ -147,7 +148,7 @@ function fromRow(p: PartnerRowView): Form {
     supplyEnabled: p.supplyEnabled,
     sellEnabled: p.sellEnabled,
     sellMode: p.sellMode ?? "white_label",
-    channels: p.channels.filter((c): c is "B2C" | "B2G" => c === "B2C" || c === "B2G"),
+    channels: normaliseChannels(p.channels),
     customerFront: p.customerFront,
     agentMenus: p.agentMenus.filter((m): m is Menu => MENUS.includes(m as Menu)),
     logoUrl: p.logoUrl ?? "",
@@ -380,15 +381,18 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                 </label>
               )}
             </div>
-            <div className="flex flex-wrap gap-4 pl-6">
-              {(["B2C", "B2G"] as const).map((c) => (
+            {/* B2G-02 · os canais da empresa: Público, VIP, Ministérios. Cada um
+                é um menu no terminal de vendas; ligar ou desligar vale já. */}
+            <div className="flex flex-wrap items-center gap-4 pl-6">
+              <span className="text-sm text-slate-600">{t("bo.pro.partners.channelsLabel")}</span>
+              {PARTNER_CHANNELS.map((c) => (
                 <label key={c} className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     checked={editing.form.channels.includes(c)}
                     onChange={() => set("channels", toggle(editing.form.channels, c))}
                   />
-                  {c}
+                  {t(`bo.pro.partners.channel.${c}`)}
                 </label>
               ))}
             </div>
@@ -497,7 +501,7 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
                 </td>
                 <td className="px-4 py-3">
                   {p.sellEnabled
-                    ? `${p.sellMode === "white_label" ? t("bo.pro.partners.whiteLabel") : t("bo.pro.partners.reseller")} · ${p.channels.join(", ") || "—"}`
+                    ? `${p.sellMode === "white_label" ? t("bo.pro.partners.whiteLabel") : t("bo.pro.partners.reseller")} · ${normaliseChannels(p.channels).map((c) => t(`bo.pro.partners.channel.${c}`)).join(", ") || "—"}`
                     : t("bo.pro.partners.notSelling")}
                 </td>
                 <td className="px-4 py-3">

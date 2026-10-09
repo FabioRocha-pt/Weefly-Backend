@@ -213,7 +213,13 @@
         "previewWhatsapp": "Numa mensagem de WhatsApp",
         "colorAccent": "Cor de destaque",
         "seoTitle": "Título do price checker (vazio: o por defeito)",
-        "seoDescription": "Descrição do price checker (vazio: a por defeito)"
+        "seoDescription": "Descrição do price checker (vazio: a por defeito)",
+        "channelsLabel": "Canais",
+        "channel": {
+          "B2C": "Público",
+          "VIP": "VIP",
+          "B2G": "Ministérios"
+        }
       }
     }
   }
