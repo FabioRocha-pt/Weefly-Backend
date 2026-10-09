@@ -143,8 +143,13 @@ export function BoQueueTable({
                         className="chan"
                         title={row.market ? countryName(row.market, tag) : ""}
                       >
-                        <i>WEB</i>
-                        Link · {MARKET_NAME(row.market)}
+                        {/* B2G-21 · o canal do pedido: WEB (Público), VIP ou MIN. */}
+                        <i>{row.channel === "vip" ? "VIP" : row.channel === "ministerio" ? "MIN" : "WEB"}</i>
+                        {row.channel === "vip"
+                          ? row.vipName ?? "VIP"
+                          : row.channel === "ministerio"
+                            ? row.organisationName ?? t("bo.channels.ministerio")
+                            : `Link · ${MARKET_NAME(row.market)}`}
                       </span>
                     </td>
                     <td>

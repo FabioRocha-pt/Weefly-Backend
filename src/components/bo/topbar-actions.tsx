@@ -6,6 +6,14 @@
  * O link é permanente e reutilizável: o caso só nasce quando o cliente submete o
  * formulário. É por isso que aqui não se cria nada — escolhem-se parâmetros e
  * copia-se um endereço.
+ *
+ * B2G-03 · três opções, uma por canal, e só as dos canais ligados na empresa:
+ *   Público    · o link do price checker da empresa (o de sempre);
+ *   VIP        · escolhe-se o cliente VIP e copia-se o link pessoal dele;
+ *   Ministério · escolhe-se o ministério e a secretária, e copia-se o link
+ *                pessoal dela. As secretárias chegam no bloco 3: até lá a
+ *                opção aparece desactivada. Quando chegarem, basta passar
+ *                `ministries` (ver `LinkMinistry`) — o componente não muda.
  */
 
 import { useEffect, useMemo, useState } from "react"
@@ -15,6 +23,30 @@ import { useLinkBase } from "@/components/bo/link-base"
 import { COUNTRIES, COUNTRY_BY_ISO, countryName, flagOf } from "@/lib/countries"
 import { useI18n, useT } from "@/i18n/provider"
 import { LOCALE_TAGS } from "@/i18n/config"
+import { hasChannel, type PartnerChannel } from "@/lib/channels"
+
+/** B2G-03 · um cliente VIP no construtor: o link é `${origem}${path}`. */
+export interface LinkVipClient {
+  id: string
+  name: string
+  level: string | null
+  /** `/vip/<token>` */
+  path: string
+}
+
+/**
+ * B2G-03 · um ministério no construtor, com as secretárias dele. É o bloco 3
+ * que o preenche (cada secretária tem o seu link pessoal); até lá, não vem.
+ */
+export interface LinkMinistry {
+  id: string
+  name: string
+  secretaries: { id: string; name: string; /** `/ministerios/<org>/<token>` */ path: string }[]
+}
+
+type LinkKind = "publico" | "vip" | "ministerio"
+
+const KIND_CHANNEL: Record<LinkKind, PartnerChannel> = { publico: "B2C", vip: "VIP", ministerio: "B2G" }
 
 interface Market {
   name: string
@@ -79,9 +111,18 @@ const LANGS = [
 
 export function BoTopbarActions({
   viewer,
+  channels,
+  vipClients = [],
+  ministries,
 }: {
   /** T-05 · quem está autenticado. O link sai em nome desta pessoa. */
   viewer: { label: string; email: string; company?: string | null }
+  /** B2G-03 · os canais ligados da empresa da sessão. */
+  channels: readonly PartnerChannel[]
+  /** B2G-03 · os VIP activos da empresa (só com o canal VIP). */
+  vipClients?: LinkVipClient[]
+  /** B2G-03 · os ministérios e as secretárias — bloco 3. */
+  ministries?: LinkMinistry[]
 }) {
   const t = useT()
   const [open, setOpen] = useState(false)
@@ -100,7 +141,14 @@ export function BoTopbarActions({
       <button className="btn btn-primary btn-sm" type="button" onClick={() => setOpen(true)}>
         {t("bo.shell.link.create")}
       </button>
-      <LinkDrawer open={open} onClose={() => setOpen(false)} viewer={viewer} />
+      <LinkDrawer
+        open={open}
+        onClose={() => setOpen(false)}
+        viewer={viewer}
+        channels={channels}
+        vipClients={vipClients}
+        ministries={ministries}
+      />
     </>
   )
 }
@@ -109,10 +157,16 @@ export function LinkDrawer({
   open,
   onClose,
   viewer,
+  channels,
+  vipClients = [],
+  ministries,
 }: {
   open: boolean
   onClose: () => void
   viewer: { label: string; email: string; company?: string | null }
+  channels: readonly PartnerChannel[]
+  vipClients?: LinkVipClient[]
+  ministries?: LinkMinistry[]
 }) {
   /* T-05 · não é estado: vem da sessão e não muda enquanto a gaveta está
      aberta. Um `useState` aqui era a porta por onde a escolha voltaria. */
@@ -130,6 +184,20 @@ export function LinkDrawer({
           ),
     [tag]
   )
+
+  /* B2G-03 · só as opções dos canais ligados, pela ordem dos menus. */
+  const kinds = (["publico", "vip", "ministerio"] as LinkKind[]).filter((k) => hasChannel(channels, KIND_CHANNEL[k]))
+  const [kind, setKind] = useState<LinkKind | null>(kinds[0] ?? null)
+  const active: LinkKind | null = kind && kinds.includes(kind) ? kind : (kinds[0] ?? null)
+  /* Bloco 3 · sem ministérios com secretárias, a opção fica desactivada. */
+  const ministriesReady = Boolean(ministries?.some((m) => m.secretaries.length > 0))
+
+  const [vipId, setVipId] = useState<string>("")
+  const vip = vipClients.find((v) => v.id === vipId) ?? null
+  const [ministryId, setMinistryId] = useState<string>("")
+  const ministry = ministries?.find((m) => m.id === ministryId) ?? null
+  const [secretaryId, setSecretaryId] = useState<string>("")
+  const secretary = ministry?.secretaries.find((s) => s.id === secretaryId) ?? null
 
   const [market, setMarket] = useState(MARKETS[2].name)
   const [lang, setLang] = useState("fr")
@@ -163,6 +231,22 @@ export function LinkDrawer({
   }, [origin, lang, currency, country, agent, viewer.company])
 
   const bare = `${origin}/pc`
+
+  /* B2G-03 · o link pessoal (VIP ou secretária): sem parâmetros — quem o abre
+     já é conhecido, e a empresa vem do token, não do endereço. */
+  const personalUrl =
+    active === "vip" && vip ? `${origin}${vip.path}` : active === "ministerio" && secretary ? `${origin}${secretary.path}` : ""
+  const personalName = active === "vip" ? vip?.name ?? "" : secretary?.name ?? ""
+  const personalMessage = useMemo(() => {
+    if (!personalUrl) return ""
+    const body =
+      lang === "pt"
+        ? `Olá ${personalName}! Este é o seu link pessoal para nos pedir viagens. Guarde-o: serve sempre, e é só seu.`
+        : lang === "fr"
+          ? `Bonjour ${personalName} ! Voici votre lien personnel pour nous demander vos voyages. Gardez-le : il sert toujours, et il n'est qu'à vous.`
+          : `Hello ${personalName}! This is your personal link to request trips from us. Keep it: it always works, and it is yours only.`
+    return `${body}\n\n${personalUrl}`
+  }, [lang, personalName, personalUrl])
 
   const message = useMemo(() => {
     const greeting =
@@ -203,6 +287,161 @@ export function LinkDrawer({
         </header>
 
         <div className="drawer-b">
+          {/* B2G-03 · o canal do link: só os ligados na empresa. */}
+          <section className="sec">
+            <div className="sec-h">
+              <h4>{t("bo.linkChannels.kind")}</h4>
+              <span className="rule" />
+            </div>
+            {kinds.length === 0 ? (
+              <p className="note">{t("bo.linkChannels.noChannels")}</p>
+            ) : (
+              <div className="qtabs" role="radiogroup" aria-label={t("bo.linkChannels.kind")} style={{ marginBottom: 0 }}>
+                {kinds.map((k) => {
+                  const disabled = k === "ministerio" && !ministriesReady
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      role="radio"
+                      className="qtab"
+                      aria-checked={active === k}
+                      aria-pressed={active === k}
+                      aria-disabled={disabled || undefined}
+                      disabled={disabled}
+                      title={disabled ? t("bo.linkChannels.ministerioSoon") : undefined}
+                      style={disabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+                      onClick={() => setKind(k)}
+                    >
+                      {t(`bo.linkChannels.${k}`)}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {kinds.includes("ministerio") && !ministriesReady && (
+              <p className="note" style={{ marginTop: 9 }}>
+                {t("bo.linkChannels.ministerioSoon")}
+              </p>
+            )}
+          </section>
+
+          {active === "vip" && (
+            <section className="sec">
+              <div className="sec-h">
+                <h4>{t("bo.linkChannels.vip")}</h4>
+                <span className="rule" />
+              </div>
+              {vipClients.length === 0 ? (
+                <p className="note">{t("bo.linkChannels.noVip")}</p>
+              ) : (
+                <div className="fgrid">
+                  <div className="f s8">
+                    <label>{t("bo.linkChannels.pickVip")}</label>
+                    <select value={vipId} onChange={(e) => setVipId(e.target.value)}>
+                      <option value="">—</option>
+                      {vipClients.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}
+                          {v.level ? ` · ${v.level}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="f s4">
+                    <label>{t("bo.shell.link.language")}</label>
+                    <select value={lang} onChange={(e) => setLang(e.target.value)}>
+                      {LANGS.map((l) => (
+                        <option key={l.value} value={l.value}>
+                          {l.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+              <p className="note" style={{ marginTop: 11 }}>
+                {t("bo.linkChannels.vipNote")}
+              </p>
+            </section>
+          )}
+
+          {active === "ministerio" && ministriesReady && (
+            <section className="sec">
+              <div className="sec-h">
+                <h4>{t("bo.linkChannels.ministerio")}</h4>
+                <span className="rule" />
+              </div>
+              <div className="fgrid">
+                <div className="f s6">
+                  <label>{t("bo.linkChannels.pickMinistry")}</label>
+                  <select
+                    value={ministryId}
+                    onChange={(e) => {
+                      setMinistryId(e.target.value)
+                      setSecretaryId("")
+                    }}
+                  >
+                    <option value="">—</option>
+                    {(ministries ?? []).map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="f s6">
+                  <label>{t("bo.linkChannels.pickSecretary")}</label>
+                  <select value={secretaryId} onChange={(e) => setSecretaryId(e.target.value)} disabled={!ministry}>
+                    <option value="">—</option>
+                    {(ministry?.secretaries ?? []).map((sec) => (
+                      <option key={sec.id} value={sec.id}>
+                        {sec.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {(active === "vip" || active === "ministerio") && personalUrl && (
+            <section className="sec">
+              <div className="sec-h">
+                <h4>{t("bo.shell.link.generated")}</h4>
+                <span className="rule" />
+              </div>
+              <div className="linkbox">
+                <span className="lb-k">{t("bo.shell.link.address")}</span>
+                <div className="lb-v">
+                  <code>{personalUrl}</code>
+                  <Copy value={personalUrl} />
+                </div>
+              </div>
+              <div className="linkbox">
+                <span className="lb-k">{t("bo.shell.link.message")}</span>
+                <div className="f" style={{ marginTop: 8 }}>
+                  <textarea style={{ minHeight: 110 }} readOnly value={personalMessage} />
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <Copy value={personalMessage} label={t("bo.shell.link.copyMessage")} style={{ flex: 1 }} />
+                  <button
+                    className="btn btn-sm"
+                    style={{ flex: 1 }}
+                    type="button"
+                    onClick={() =>
+                      window.open(`https://wa.me/?text=${encodeURIComponent(personalMessage)}`, "_blank", "noopener")
+                    }
+                  >
+                    {t("bo.shell.link.openWhatsapp")}
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {active === "publico" && (
+          <>
           <section className="sec">
             <div className="sec-h">
               <h4>{t("bo.shell.link.params")}</h4>
@@ -321,6 +560,8 @@ export function LinkDrawer({
               </p>
             </div>
           </section>
+          </>
+          )}
         </div>
 
         <footer className="drawer-f">

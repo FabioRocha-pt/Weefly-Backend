@@ -7,6 +7,8 @@ import { BoQueueTable } from "@/components/bo/queue-table"
 import { elapsedSince } from "@/lib/case-status"
 import { formatMoney } from "@/lib/proposal-math"
 import { getBoI18n } from "@/i18n/bo-server"
+import { partnerChannels } from "@/lib/channel-gate"
+import { CASE_CHANNEL_OF, type CaseChannel } from "@/lib/channels"
 
 /**
  * B1 · a fila de trabalho.
@@ -57,9 +59,18 @@ export default async function BoQueuePage({
   const search = one("q")
   const market = one("mercado")
 
+  /* B2G-21 · o filtro por canal (`?canal=publico|vip|ministerio`), só com os
+     canais ligados da empresa — e só aparece quando há mais de um. */
+  const tenant = access.identity.tenant
+  const caseChannels: CaseChannel[] = tenant
+    ? (await partnerChannels(tenant.partnerId)).map((c) => CASE_CHANNEL_OF[c])
+    : []
+  const askedChannel = one("canal") as CaseChannel
+  const channel = caseChannels.includes(askedChannel) ? askedChannel : ""
+
   const queue = await loadBoQueue(
     await getBoScope(),
-    { bucket, search, market },
+    { bucket, search, market, ...(channel ? { channel } : {}) },
     access.identity.userId
   )
 
@@ -124,6 +135,8 @@ export default async function BoQueuePage({
     params.set("tab", next.tab ?? bucket)
     if (next.q ?? search) params.set("q", next.q ?? search)
     if (next.mercado ?? market) params.set("mercado", next.mercado ?? market)
+    const nextChannel = next.canal ?? channel
+    if (nextChannel) params.set("canal", nextChannel)
     return `/admin/price-checker?${params.toString()}`
   }
 
@@ -171,6 +184,30 @@ export default async function BoQueuePage({
           </div>
         </div>
       </div>
+
+      {caseChannels.length > 1 && (
+        <div className="qtabs" aria-label={t("bo.channels.filter")}>
+          <Link
+            href={linkFor({ canal: "" })}
+            className="qtab"
+            aria-pressed={!channel}
+            style={{ textDecoration: "none" }}
+          >
+            {t("bo.channels.all")}
+          </Link>
+          {caseChannels.map((c) => (
+            <Link
+              key={c}
+              href={linkFor({ canal: c })}
+              className="qtab"
+              aria-pressed={channel === c}
+              style={{ textDecoration: "none" }}
+            >
+              {t(`bo.channels.${c}`)}
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="qtabs">
         {BUCKETS.map((tab) => (

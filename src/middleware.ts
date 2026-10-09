@@ -69,8 +69,15 @@ export async function middleware(request: NextRequest) {
 
   /* O /pc passa aqui só pela verificação do endereço: a autorização do cliente
      é o token, não uma sessão — ver o `matcher`. Os /ministerios (MIN-01, a
-     aplicação do ministério) são iguais: a secretária nunca tem sessão. */
-  if (path === "/pc" || path.startsWith("/pc/") || path.startsWith("/ministerios/")) {
+     aplicação do ministério) são iguais: a secretária nunca tem sessão. O
+     /vip (B2G-22, o link pessoal de um cliente VIP) também: o token é a
+     autorização. */
+  if (
+    path === "/pc" ||
+    path.startsWith("/pc/") ||
+    path.startsWith("/ministerios/") ||
+    path.startsWith("/vip/")
+  ) {
     return withRobots(NextResponse.next(), indexable)
   }
 

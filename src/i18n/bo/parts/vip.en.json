@@ -1,0 +1,108 @@
+{
+  "bo": {
+    "channels": {
+      "publico": "Public",
+      "vip": "VIP",
+      "ministerio": "Ministries",
+      "all": "All channels",
+      "filter": "Channel",
+      "nav": {
+        "section": "Sales terminal",
+        "publico": "Public",
+        "vip": "VIP"
+      }
+    },
+    "channelQueue": {
+      "count": "{count} requests",
+      "who": "VIP client / ministry",
+      "empty": "No open requests in this channel yet.",
+      "ministerio": "Ministry requests"
+    },
+    "publico": {
+      "title": "Public",
+      "subtitle": "The company's public price checker link, and the requests that came through it.",
+      "bareLink": "Public link",
+      "personalLink": "Public link with your name",
+      "linkNote": "Anyone can open these links. The request lands in this queue, with the company's brand. To set the client's language, currency and country, use \"Create link\" in Concierge.",
+      "queue": "Public requests"
+    },
+    "vip": {
+      "copy": "Copy",
+      "copied": "Copied",
+      "list": {
+        "title": "VIP",
+        "subtitle": "The company's VIP clients: each has a personal, permanent link with the company's brand.",
+        "new": "New VIP",
+        "empty": "No VIP clients yet.",
+        "client": "Client",
+        "contacts": "Contacts",
+        "link": "Personal link",
+        "since": "Created",
+        "inactive": "deactivated",
+        "linkOff": "Link switched off",
+        "queue": "VIP requests"
+      },
+      "form": {
+        "name": "Name",
+        "level": "Level",
+        "levelHint": "Gold, Embassy…",
+        "phone": "Phone",
+        "email": "Email",
+        "linkNote": "The personal link is created on save and never changes. Deactivating the VIP switches it off; their requests stay.",
+        "save": "Save",
+        "create": "Create VIP",
+        "cancel": "Cancel"
+      },
+      "detail": {
+        "edit": "Edit",
+        "deactivate": "Deactivate",
+        "reactivate": "Reactivate",
+        "deactivateConfirm": "Deactivate this VIP? The personal link stops opening; their requests stay.",
+        "noLevel": "No level",
+        "createdBy": "Created by {who} · {when}",
+        "deactivatedBy": "Deactivated by {who} · {when}",
+        "linkOff": "VIP deactivated: the personal link does not open. Reactivate to switch it back on (same link).",
+        "requests": "This VIP's requests",
+        "noRequests": "This VIP has not made any requests yet."
+      },
+      "errors": {
+        "nameMissing": "Enter the client's name.",
+        "emailInvalid": "The email is not valid.",
+        "phoneInvalid": "The phone is not valid (e.g. +238 991 23 45).",
+        "notAllowed": "Your account cannot manage VIP clients, or the VIP channel is off.",
+        "invalid": "Check the details.",
+        "unavailable": "Service unavailable. Try again later.",
+        "saveFailed": "Could not save. Try again.",
+        "notFound": "VIP client not found."
+      },
+      "notice": {
+        "created": "VIP created. The personal link is ready to copy.",
+        "updated": "VIP updated.",
+        "deactivated": "VIP deactivated: the link no longer opens.",
+        "reactivated": "VIP reactivated: the link opens again."
+      },
+      "admin": {
+        "nav": "VIP",
+        "title": "VIP clients of every company",
+        "subtitle": "{count} VIP clients. Each company creates and deactivates its own.",
+        "searchPlaceholder": "Name, email, phone or level",
+        "empty": "No VIP clients yet.",
+        "state": "Status",
+        "active": "active"
+      }
+    },
+    "linkChannels": {
+      "kind": "Link type",
+      "publico": "Public",
+      "vip": "VIP",
+      "ministerio": "Ministry",
+      "noChannels": "Your company has no channel switched on. Talk to WeeFly.",
+      "ministerioSoon": "A secretary's link arrives with the ministry secretaries.",
+      "noVip": "No active VIP clients yet. Create them in the VIP menu.",
+      "pickVip": "VIP client",
+      "vipNote": "The VIP's personal link opens the form with their contact filled in, with the company's brand. The request lands in the VIP queue.",
+      "pickMinistry": "Ministry",
+      "pickSecretary": "Secretary"
+    }
+  }
+}

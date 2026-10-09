@@ -128,6 +128,8 @@ const requestSchema = z
     agentSlug: z.string().trim().max(40).nullable().optional(),
     /* MIN-01 · o token do link do ministério. Resolvido no intake. */
     ministryToken: z.string().trim().regex(/^[A-Za-z0-9_-]{16,64}$/).optional(),
+    /* B2G-22 · o token do link pessoal de um VIP. Resolvido no intake. */
+    vipToken: z.string().trim().regex(/^[A-Za-z0-9_-]{32,64}$/).optional(),
     /* PRO-06 · a empresa do link. Validada no intake contra a allowlist. */
     companySlug: z
       .string()
@@ -271,6 +273,7 @@ export async function submitPcRequest(
     origin,
     destination,
     departDate,
+    vipToken: v.vipToken ?? null,
   })
   if (repeated) {
     return { ok: true, token: repeated.token, reference: repeated.reference }
@@ -314,6 +317,7 @@ export async function submitPcRequest(
     agentSlug: v.agentSlug ?? null,
     companySlug: v.companySlug ?? null,
     ministryToken: v.ministryToken ?? null,
+    vipToken: v.vipToken ?? null,
     /* TEN-04 · o parceiro do subdomínio, lido dos cabeçalhos — nunca do
        formulário. */
     hostPartnerSlug: hostPartnerSlug(),

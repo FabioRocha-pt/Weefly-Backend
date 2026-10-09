@@ -110,6 +110,7 @@ export function RequestWizard({
   agentSlug,
   companySlug = null,
   ministry = null,
+  vip = null,
 }: {
   initialLang: Locale
   initialCurrency: string
@@ -130,6 +131,16 @@ export function RequestWizard({
    * que o resolve — o ministério e o parceiro nunca vêm do browser.
    */
   ministry?: {
+    token: string
+    contact: { name: string; email: string; country: string; phone: string }
+  } | null
+  /**
+   * B2G-22 · o pedido feito pelo link pessoal de um cliente VIP. O contacto
+   * vem preenchido (e editável); o passo do contacto mantém-se, porque o
+   * consentimento é do cliente. O `token` é resolvido no servidor — o VIP e a
+   * empresa nunca vêm do browser.
+   */
+  vip?: {
     token: string
     contact: { name: string; email: string; country: string; phone: string }
   } | null
@@ -167,14 +178,20 @@ export function RequestWizard({
   const [places, setPlaces] = useState<Record<string, Place>>({})
 
   // ── P2 ────────────────────────────────────────────────────────────────────
-  const [name, setName] = useState(ministry?.contact.name ?? "")
-  const [country, setCountry] = useState(ministry?.contact.country || initialCountry || DEFAULT_COUNTRY)
-  const [phone, setPhone] = useState(ministry?.contact.phone ?? "")
-  const [email, setEmail] = useState(ministry?.contact.email ?? "")
+  /* Quem pede, quando o link o diz: a secretária do ministério ou o VIP. */
+  const known = ministry?.contact ?? vip?.contact ?? null
+  const [name, setName] = useState(known?.name ?? "")
+  const [country, setCountry] = useState(known?.country || initialCountry || DEFAULT_COUNTRY)
+  const [phone, setPhone] = useState(known?.phone ?? "")
+  const [email, setEmail] = useState(known?.email ?? "")
   const [consent, setConsent] = useState(false)
   /* MIN-01 · o rascunho do ministério não se mistura com o de um particular
      no mesmo browser. */
-  const draftKey = ministry ? `${DRAFT_KEY}:m:${ministry.token.slice(0, 10)}` : DRAFT_KEY
+  const draftKey = ministry
+    ? `${DRAFT_KEY}:m:${ministry.token.slice(0, 10)}`
+    : vip
+      ? `${DRAFT_KEY}:v:${vip.token.slice(0, 10)}`
+      : DRAFT_KEY
 
   /*
    * FE-05 · o campo dos pedidos especiais.
@@ -531,6 +548,7 @@ export function RequestWizard({
         agentSlug,
         companySlug,
         ministryToken: ministry?.token,
+        vipToken: vip?.token,
       })
 
       if (!result.ok) {

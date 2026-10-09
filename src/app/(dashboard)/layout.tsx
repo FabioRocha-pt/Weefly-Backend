@@ -6,7 +6,6 @@ import {
   visibleAgentMenus,
   PRO_MODULES,
 } from "@/lib/pro-account"
-import { hasChannel } from "@/lib/channels"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import type { SidebarModule } from "@/components/dashboard/sidebar"
 import { I18nProvider } from "@/i18n/provider"
@@ -54,7 +53,7 @@ export default async function DashboardLayout({
         companyName={master ? null : account.partner?.name ?? null}
         companyLogoUrl={!master && account.partner && !account.partner.isOperator ? account.partner.logoUrl : null}
         canManageTeam={account.profile?.manageUsers === "own_partner"}
-        sellsB2g={hasChannel(account.partner?.channels, "B2G")}
+        channels={account.partner?.channels ?? []}
         poweredByWeefly={Boolean(account.partner && !account.partner.isOperator && account.partner.poweredByWeefly)}
       >
         {children}

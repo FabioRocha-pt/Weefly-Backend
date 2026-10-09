@@ -45,7 +45,7 @@ export function DashboardShell({
   companyLogoUrl,
   canManageTeam,
   poweredByWeefly,
-  sellsB2g,
+  channels,
   children,
 }: {
   user: UserMenuData | null
@@ -57,10 +57,10 @@ export function DashboardShell({
   canManageTeam?: boolean
   /** TEN-05 · o parceiro da conta tem o interruptor ligado. */
   poweredByWeefly?: boolean
-  sellsB2g?: boolean
+  channels?: readonly string[] | null
   children: React.ReactNode
 }) {
-  const nav = { modules, agentMenus, companyName, companyLogoUrl, canManageTeam, sellsB2g }
+  const nav = { modules, agentMenus, companyName, companyLogoUrl, canManageTeam, channels }
   const t = useT()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)

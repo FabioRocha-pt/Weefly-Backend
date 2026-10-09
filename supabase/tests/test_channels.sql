@@ -84,7 +84,8 @@ begin
 
   update public.booking_cases set channel = 'vip' where id = '93000000-0000-0000-0000-00000000000b';
   select channel into c from public.booking_cases where id = '93000000-0000-0000-0000-00000000000b';
-  perform pg_temp.ok('K4 · vip fica como veio', c = 'vip');
+  -- 0033 · `vip` só com cliente VIP (ver test_vip.sql).
+  perform pg_temp.ok('K4 · sem cliente VIP não é vip', c = 'publico');
 
   begin
     update public.booking_cases set channel = 'b2b' where id = '93000000-0000-0000-0000-00000000000b';

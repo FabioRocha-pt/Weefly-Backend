@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation"
 
 import { getBoAccess } from "@/lib/bo-access"
+import { getBoScope } from "@/lib/bo-scope"
+import { loadBoQueue } from "@/lib/pc/bo-queue"
+import { ChannelQueue } from "@/components/channels/channel-queue"
 import { listOrganisations } from "@/lib/b2g"
 import { getBoI18n } from "@/i18n/bo-server"
 import { OrganisationList } from "@/components/b2g/org-list"
@@ -12,12 +15,18 @@ import { NewOrganisation } from "@/components/b2g/b2g-forms"
  *
  * Menu próprio (Ministérios), à espera da decisão O3: se ficar dentro de
  * Cliente, muda só a entrada do menu lateral.
+ *
+ * B2G-21 · o terceiro menu do terminal de vendas, com a fila dos pedidos que
+ * vieram dos ministérios (`booking_cases.channel = 'ministerio'`).
  */
 export default async function MinisteriosPage() {
   const access = await getBoAccess()
   if (!access.ok || !access.identity.tenant) notFound()
   const { t, locale } = await getBoI18n()
-  const orgs = await listOrganisations()
+  const [orgs, queue] = await Promise.all([
+    listOrganisations(),
+    loadBoQueue(await getBoScope(), { bucket: "tudo", channel: "ministerio" }, access.identity.userId),
+  ])
   const canManage = Boolean(access.identity.profile && access.identity.profile.manageUsers !== "none")
 
   return (
@@ -30,6 +39,13 @@ export default async function MinisteriosPage() {
         {canManage && <NewOrganisation />}
       </div>
       <OrganisationList orgs={orgs} hrefFor={(id) => `/agente/ministerios/${id}`} t={t} locale={locale} />
+      <ChannelQueue
+        rows={queue.rows}
+        t={t}
+        title={t("bo.channelQueue.ministerio")}
+        empty={t("bo.channelQueue.empty")}
+        showWho
+      />
     </div>
   )
 }

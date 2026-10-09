@@ -20,6 +20,7 @@ import { createAdminClient } from "@/utils/supabase/admin"
    etiquetas dos estados), e o `bo-scope` traz o `next/headers`. Quem chama
    as leituras passa o âmbito. */
 import type { BoScope } from "@/lib/bo-scope"
+import type { CaseChannel } from "@/lib/channels"
 import {
   customerDeadline,
   offerTotal,
@@ -156,6 +157,16 @@ export interface BoQueueRow {
   /** PRO-10 · porque foi fechado/arquivado. Nulo antes da 0023. */
   closedReason: string | null
   closedNote: string | null
+  /**
+   * B2G-21 · por que canal entrou (`publico`, `vip`, `ministerio`), de que
+   * empresa é, e — quando há — o ministério ou o cliente VIP. Nulos numa base
+   * sem a 0032/0033.
+   */
+  channel: CaseChannel
+  partnerName: string | null
+  organisationName: string | null
+  vipClientId: string | null
+  vipName: string | null
   /** C-05 · o estado de cada link, derivado do caso. Ver `deriveLinkState`. */
   links: {
     stage: number
@@ -180,6 +191,13 @@ export interface BoQueueRow {
  * O comentário vive aqui e não dentro da template string: o que estiver entre
  * as backticks vai literalmente no parâmetro `select`.
  */
+/* B2G-21 · o canal, a empresa, o ministério e o VIP do caso (0032, 0033). */
+const CHANNEL_COLUMNS = `
+  channel, vip_client_id,
+  partner:partners (commercial_name),
+  organisation:organisations (name),
+  vip:vip_clients (name),`
+
 const QUEUE_COLUMNS = `
   id, token, stage, created_at, updated_at, created_by, pnr,
   claimed_at, closed_at, closed_by_email,
@@ -264,6 +282,12 @@ export interface BoQueueFilters {
   market?: string
   owner?: string
   limit?: number
+  /** B2G-21 · a fila de um canal (o menu Público, VIP ou Ministérios). */
+  channel?: CaseChannel
+  /** B2G-22 · os pedidos de um cliente VIP. */
+  vipClientId?: string
+  /** Os pedidos de um ministério. */
+  organisationId?: string
   /**
    * Um caso só, para a ficha.
    *
@@ -332,12 +356,18 @@ export async function loadBoQueue(
       .limit(filters.caseId ? 1 : (filters.limit ?? 300))
     if (scope.partnerId) query = query.eq("partner_id", scope.partnerId)
     if (filters.caseId) query = query.eq("id", filters.caseId)
+    if (filters.channel) query = query.eq("channel", filters.channel)
+    if (filters.vipClientId) query = query.eq("vip_client_id", filters.vipClientId)
+    if (filters.organisationId) query = query.eq("organisation_id", filters.organisationId)
     return query
   }
 
-  let { data, error } = await run(
-    QUEUE_COLUMNS.replace("closed_by_email,", "closed_by_email, closed_reason, closed_note,")
-  )
+  /* B2G-21 · as colunas do canal primeiro; numa base sem a 0033 (coluna ou
+     relação em falta: 42703, PGRST200) repete-se sem elas, e a fila continua
+     a abrir. */
+  const withClosed = QUEUE_COLUMNS.replace("closed_by_email,", "closed_by_email, closed_reason, closed_note,")
+  let { data, error } = await run(withClosed.replace("claimed_at,", `claimed_at, ${CHANNEL_COLUMNS}`))
+  if (error && (error.code === "42703" || error.code === "PGRST200")) ({ data, error } = await run(withClosed))
   if (error?.code === "42703") ({ data, error } = await run(QUEUE_COLUMNS))
 
   if (error) {
@@ -447,6 +477,11 @@ export async function loadBoQueue(
       closedByEmail: (raw.closed_by_email as string | null) ?? null,
       closedReason: (raw.closed_reason as string | null) ?? null,
       closedNote: (raw.closed_note as string | null) ?? null,
+      channel: (raw.channel as CaseChannel | undefined) ?? "publico",
+      partnerName: (unwrap(raw.partner)?.commercial_name as string | undefined) ?? null,
+      organisationName: (unwrap(raw.organisation)?.name as string | undefined) ?? null,
+      vipClientId: (raw.vip_client_id as string | null | undefined) ?? null,
+      vipName: (unwrap(raw.vip)?.name as string | undefined) ?? null,
       /*
        * C-05 · o estado do link, calculado a partir do caso.
        *

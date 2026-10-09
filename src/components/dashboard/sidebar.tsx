@@ -8,6 +8,8 @@ import {
   Building,
   ChevronDown,
   Car,
+  Crown,
+  Globe,
   Coins,
   FolderSearch,
   Handshake,
@@ -34,6 +36,7 @@ import { WeeFlyLogo } from "@/components/weefly-logo"
 import { useT } from "@/i18n/provider"
 import { enterModule } from "@/actions/pro"
 import { AGENT_MENU_HREF, type AgentMenuId } from "@/lib/pro-menus"
+import { hasChannel } from "@/lib/channels"
 
 /**
  * WeeFly Pro · o menu lateral.
@@ -91,6 +94,8 @@ const ADMIN_NAV: NavItem[] = [
   { labelKey: "pro.adminPartners", href: "/gestao/parceiros", icon: <Handshake className="w-5 h-5" /> },
   /* OCT-17 · os clientes de todos os parceiros. */
   { labelKey: "bo.adminClients.nav", href: "/gestao/clientes", icon: <Users className="w-5 h-5" /> },
+  /* B2G-22 · os VIP de todas as empresas. */
+  { labelKey: "bo.vip.admin.nav", href: "/gestao/vip", icon: <Crown className="w-5 h-5" /> },
   { labelKey: "pro.adminB2g", href: "/gestao/b2g", icon: <Landmark className="w-5 h-5" /> },
   /* ADM-04 · os casos de todos os parceiros, em leitura. */
   { labelKey: "bo.adminCases.nav", href: "/gestao/casos", icon: <FolderSearch className="w-5 h-5" /> },
@@ -99,13 +104,17 @@ const ADMIN_NAV: NavItem[] = [
   { labelKey: "pro.adminRevenue", href: "/gestao/receita", icon: <Coins className="w-5 h-5" />, soon: true },
 ]
 
-/* PAR-02 · os ministérios, num menu próprio enquanto a decisão O3 não disser
-   se ficam dentro de Cliente. Só para quem vende ao Estado. */
-const MINISTRIES_ITEM: NavItem = {
-  labelKey: "bo.b2g.list.title",
-  href: "/agente/ministerios",
-  icon: <Landmark className="w-5 h-5" />,
-}
+/*
+ * B2G-21 · o terminal de vendas: um menu por canal, pela ordem Público, VIP,
+ * Ministérios — cada um só com o canal ligado na empresa (B2G-02). Esconder
+ * aqui não chega: as páginas dão 404 com o canal desligado (`channel-gate`).
+ */
+const CHANNEL_ITEMS: { channel: "B2C" | "VIP" | "B2G"; item: NavItem }[] = [
+  { channel: "B2C", item: { labelKey: "bo.channels.nav.publico", href: "/agente/publico", icon: <Globe className="w-5 h-5" /> } },
+  { channel: "VIP", item: { labelKey: "bo.channels.nav.vip", href: "/agente/vip", icon: <Crown className="w-5 h-5" /> } },
+  /* PAR-02 · os ministérios. Só para quem vende ao Estado. */
+  { channel: "B2G", item: { labelKey: "bo.b2g.list.title", href: "/agente/ministerios", icon: <Landmark className="w-5 h-5" /> } },
+]
 
 /* PAR-08 · o acompanhamento financeiro, para o Admin do parceiro. */
 const FINANCE_ITEM: NavItem = {
@@ -128,8 +137,8 @@ interface SidebarProps {
   companyLogoUrl?: string | null
   /** ADM-02 · mostra "Equipa" no Agente (perfil Admin do parceiro). */
   canManageTeam?: boolean
-  /** PAR-02 · o parceiro vende ao Estado (B2G). */
-  sellsB2g?: boolean
+  /** B2G-02 · B2G-21 · os canais ligados da empresa (`partners.channels`). */
+  channels?: readonly string[] | null
   /** When provided, renders as a mobile drawer that can be closed. */
   onClose?: () => void
   /**
@@ -149,7 +158,7 @@ export function Sidebar({
   companyName,
   companyLogoUrl,
   canManageTeam,
-  sellsB2g,
+  channels,
   onClose,
   collapsible = false,
 }: SidebarProps) {
@@ -206,12 +215,12 @@ export function Sidebar({
             })),
           },
           {
+            titleKey: "bo.channels.nav.section",
+            items: CHANNEL_ITEMS.filter(({ channel }) => hasChannel(channels, channel)).map(({ item }) => item),
+          },
+          {
             titleKey: "pro.agentTools",
-            items: [
-              ...AGENT_TOOLS,
-              ...(sellsB2g ? [MINISTRIES_ITEM] : []),
-              ...(canManageTeam ? [FINANCE_ITEM, TEAM_ITEM] : []),
-            ],
+            items: [...AGENT_TOOLS, ...(canManageTeam ? [FINANCE_ITEM, TEAM_ITEM] : [])],
           },
         ]
       : mode === "admin"
@@ -352,7 +361,7 @@ export function Sidebar({
 
       {/* Navigation */}
       <nav className={cn("flex-1 py-3 space-y-5", compact ? "px-2" : "px-4")}>
-        {sections.map((section, i) => (
+        {sections.filter((section) => section.items.length > 0).map((section, i) => (
           <div key={section.titleKey ?? i}>
             {section.titleKey && (
               <p

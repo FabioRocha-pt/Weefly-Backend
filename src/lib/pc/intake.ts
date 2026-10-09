@@ -76,6 +76,12 @@ export interface PcIntake {
    * ministério e do parceiro dele — e ganha a tudo o resto.
    */
   ministryToken?: string | null
+  /**
+   * B2G-22 · o token do link pessoal de um cliente VIP. Quando resolve, o caso
+   * é `vip`, desse cliente e da empresa dele — e ganha ao subdomínio e ao
+   * link, como o do ministério.
+   */
+  vipToken?: string | null
   consentIp: string | null
   consentAgent: string | null
 }
@@ -220,6 +226,12 @@ export async function findRecentSubmission(
   input: Pick<PcIntake, "email" | "departDate"> & {
     origin: string
     destination: string
+    /**
+     * B2G-22 · um pedido feito pelo link de um VIP só se junta a outro pedido
+     * VIP desse mesmo cliente — nunca a um pedido público com o mesmo email.
+     * Sem isto, a leitura é a de sempre.
+     */
+    vipToken?: string | null
   }
 ): Promise<RecentSubmission | null> {
   const admin = createAdminClient()
@@ -227,10 +239,17 @@ export async function findRecentSubmission(
 
   const email = input.email.trim().toLowerCase()
 
+  const vipId = input.vipToken ? await vipIdOf(admin, input.vipToken) : null
+  if (input.vipToken && !vipId) return null
+
   const { data } = await admin
     .from("trip_requests")
     .select(
-      `id, reference, created_at,
+      vipId
+        ? `id, reference, created_at,
+       lead:leads!inner (email),
+       cases:booking_cases!inner (token, stage, vip_client_id)`
+        : `id, reference, created_at,
        lead:leads!inner (email),
        cases:booking_cases!inner (token, stage)`
     )
@@ -247,13 +266,23 @@ export async function findRecentSubmission(
     if (String(lead?.email ?? "").toLowerCase() !== email) continue
 
     const cases = (Array.isArray(row.cases) ? row.cases : [row.cases]).filter(Boolean)
-    const alive = cases.find((c: any) => c?.stage !== "cancelado")
+    const alive = cases.find(
+      (c: any) => c?.stage !== "cancelado" && (!vipId || c?.vip_client_id === vipId)
+    )
     if (alive?.token) {
       return { token: String(alive.token), reference: String(row.reference) }
     }
   }
 
   return null
+}
+
+async function vipIdOf(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  token: string
+): Promise<string | null> {
+  const { data } = await admin.from("vip_clients").select("id").eq("link_token", token).maybeSingle()
+  return (data as { id: string } | null)?.id ?? null
 }
 
 /**
@@ -313,8 +342,20 @@ export async function createPriceCheckerCase(
       console.warn("[pc] pedido de ministério recusado: link sem ministério activo com o canal B2G.")
       return null
     }
+    /* B2G-22 · o mesmo para o link de um VIP: desactivado, de uma empresa sem
+       o canal VIP, ou com um ministério ao mesmo tempo — não se guarda. */
+    if (input.vipToken && input.ministryToken) {
+      console.warn("[pc] pedido recusado: link de ministério e de VIP ao mesmo tempo.")
+      return null
+    }
+    const vip = await resolveVip(admin, input.vipToken)
+    if (input.vipToken && !vip) {
+      console.warn("[pc] pedido VIP recusado: link sem VIP activo com o canal VIP.")
+      return null
+    }
     const partnerId =
       ministry?.partnerId ??
+      vip?.partnerId ??
       (await resolveHostPartner(admin, input.hostPartnerSlug)) ??
       (await resolveLinkPartner(admin, input.companySlug, input.agentSlug)) ??
       (await operatorPartnerId(admin))
@@ -391,6 +432,9 @@ export async function createPriceCheckerCase(
         lead_id: leadId,
         ...(partnerId ? { partner_id: partnerId } : {}),
         ...(ministry ? { organisation_id: ministry.organisationId } : {}),
+        /* B2G-21 · o canal decide-o o gatilho da 0033 a partir do VIP; vai
+           escrito na mesma, para quem lê o código. */
+        ...(vip ? { vip_client_id: vip.vipClientId, channel: "vip" } : {}),
       })
       .select("id")
       .single()
@@ -421,7 +465,7 @@ export async function createPriceCheckerCase(
       kind: "request_submitted",
       title: "Pedido submetido pelo cliente",
       detail: [
-        "Price Checker",
+        vip ? "VIP" : "Price Checker",
         input.agentSlug ? `agent=${input.agentSlug}` : "sem agente",
         `lang=${input.locale}`,
         `cur=${input.currency}`,
@@ -513,6 +557,31 @@ async function resolveMinistry(
   /* B2G-02 · um ministério de uma empresa sem o canal Ministérios não recebe pedidos. */
   if (!row || !row.active || partner?.status !== "active" || !hasChannel(partner.channels, "B2G")) return null
   return { organisationId: row.id, partnerId: row.partner_id }
+}
+
+/**
+ * B2G-22 · o VIP do link: activo, de uma empresa activa com o canal VIP. A
+ * empresa vem da linha do VIP, nunca do formulário.
+ */
+async function resolveVip(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  token: string | null | undefined
+): Promise<{ vipClientId: string; partnerId: string } | null> {
+  if (!token) return null
+  const { data } = await admin
+    .from("vip_clients")
+    .select("id, partner_id, active, partner:partners(status, channels)")
+    .eq("link_token", token)
+    .maybeSingle()
+  const row = data as {
+    id: string
+    partner_id: string
+    active: boolean
+    partner: { status: string; channels: string[] | null } | { status: string; channels: string[] | null }[] | null
+  } | null
+  const partner = Array.isArray(row?.partner) ? row?.partner[0] : row?.partner
+  if (!row || !row.active || partner?.status !== "active" || !hasChannel(partner.channels, "VIP")) return null
+  return { vipClientId: row.id, partnerId: row.partner_id }
 }
 
 /** TEN-04 · o parceiro do subdomínio, se existir e estiver activo. */

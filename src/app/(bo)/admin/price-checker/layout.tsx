@@ -22,7 +22,10 @@ import { pcSiteUrl } from "@/lib/site-url"
 import { hostPartnerSlug } from "@/lib/host-partner"
 import { Sidebar, type SidebarModule } from "@/components/dashboard/sidebar"
 import { PRO_MODULES, getProAccount, moduleState, visibleAgentMenus } from "@/lib/pro-account"
-import { hasChannel } from "@/lib/channels"
+import { hasChannel, normaliseChannels, type PartnerChannel } from "@/lib/channels"
+import { partnerChannels } from "@/lib/channel-gate"
+import { getBoScope } from "@/lib/bo-scope"
+import { listVipClients } from "@/lib/vip"
 
 /**
  * WeeFly — o back-office do Price Checker.
@@ -97,6 +100,20 @@ export default async function BoPriceCheckerLayout({
 
   /* C-14 · os alertas desta pessoa. Só depois de a allowlist a reconhecer: um
      feed lido antes disso seria trabalho para quem não vai ver o ecrã. */
+  /* B2G-03 · o construtor de links mostra só os canais ligados da empresa da
+     sessão, e os VIP activos dela. Numa base sem a 0020 (sem empresa), o
+     link público de sempre. */
+  const linkChannels: PartnerChannel[] = tenant ? await partnerChannels(tenant.partnerId) : normaliseChannels(["B2C"])
+  const linkVips =
+    tenant && hasChannel(linkChannels, "VIP")
+      ? (await listVipClients(await getBoScope(), { activeOnly: true })).map((v) => ({
+          id: v.id,
+          name: v.name,
+          level: v.level,
+          path: `/vip/${v.token}`,
+        }))
+      : []
+
   const feed = access.ok
     ? await loadBoAlerts(access.identity.userId)
     : { alerts: [], unread: 0 }
@@ -122,7 +139,7 @@ export default async function BoPriceCheckerLayout({
           companyLogoUrl:
             !account.profile?.crossPartner && account.partner && !account.partner.isOperator ? account.partner.logoUrl : null,
           canManageTeam: account.profile?.manageUsers === "own_partner",
-          sellsB2g: hasChannel(account.partner?.channels, "B2G"),
+          channels: account.partner?.channels ?? [],
         }
       : null
 
@@ -180,6 +197,9 @@ export default async function BoPriceCheckerLayout({
                 {/* T-05 · o construtor de links cria-os em nome de quem está
                     autenticado, e por isso precisa de saber quem é. */}
                 <BoTopbarActions
+                  channels={linkChannels}
+                  vipClients={linkVips}
+                  /* Bloco 3 · `ministries` (ministérios + secretárias) entra aqui. */
                   viewer={{
                     label: access.identity.label,
                     email: access.identity.email,
