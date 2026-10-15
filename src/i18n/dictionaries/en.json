@@ -145,7 +145,7 @@
     "discloseClose": "Close details",
     "totalFor_one": "Total for {count} passenger",
     "totalFor_other": "Total for {count} passengers",
-    "includesTaxes": "Includes taxes and the WeeFly service fee",
+    "includesTaxes": "Taxes included",
     "chooseCta": "Choose this offer",
     "continueCta": "Continue with this one",
     "alreadyChose": "You've already chosen an offer.",
@@ -186,7 +186,7 @@
     "doneBody": "We've received your choice and the passenger details. Our team will be in touch with the next steps.",
     "priceLine_one": "Price · 1 passenger",
     "priceLine_other": "Price · {count} passengers",
-    "serviceLine": "WeeFly service"
+    "serviceLine": "Taxes"
   },
   "passengers": {
     "title": "Passenger details",
@@ -1267,7 +1267,7 @@
       "cheapest": "Cheapest",
       "fastest": "Fastest",
       "option": "Offer",
-      "priceLine": "Price {fare} + WeeFly service {service}",
+      "priceLine": "Price {fare} + taxes {service}",
       "totalToPay": "total to pay",
       "nonStop": "Direct flight",
       "oneStopIn": "1 stop in {city}",
@@ -1301,7 +1301,7 @@
       "indicative": "This fare is indicative. The sooner you pay, the more likely we hold it: we reconfirm with the airline before issuing.",
       "deadline": "Deadline",
       "sameAsEmail": "· the same one in the email we sent you.",
-      "priceLine": "{fare} + {service} WeeFly service"
+      "priceLine": "{fare} + {service} taxes"
     },
     "pay": {
       "eyebrow": "Step 6 · last one",
