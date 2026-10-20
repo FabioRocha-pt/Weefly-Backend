@@ -82,6 +82,23 @@ export async function storeTicketDocument(input: {
     return null
   }
 
+  /*
+   * O `onConflict` é o caminho e não `(case_id, passenger_id)`: com o
+   * passageiro nulo (o combinado) o Postgres não vê conflito nenhum entre dois
+   * nulos, tentava inserir uma segunda linha e rebentava no caminho único — e
+   * voltar a gerar um bilhete existente nunca funcionava. Um PNR mudado dá outro
+   * caminho; a linha antiga do mesmo par sai antes, para haver sempre uma só.
+   */
+  let stale = admin
+    .from("case_ticket_documents")
+    .delete()
+    .eq("case_id", input.caseId)
+    .neq("storage_path", storagePath)
+  stale = input.passengerId
+    ? stale.eq("passenger_id", input.passengerId)
+    : stale.is("passenger_id", null)
+  await stale
+
   const { data, error } = await admin
     .from("case_ticket_documents")
     .upsert(
@@ -98,7 +115,7 @@ export async function storeTicketDocument(input: {
         generated_at: new Date().toISOString(),
         generated_by: input.generatedBy,
       },
-      { onConflict: "case_id,passenger_id" }
+      { onConflict: "storage_path" }
     )
     .select(COLUMNS)
     .single()
