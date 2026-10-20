@@ -466,6 +466,47 @@ async function partnerRequestRecipients(caseId: string): Promise<string[]> {
   return Array.from(new Set(emails))
 }
 
+/**
+ * Os destinatários de alertas da empresa do caso, em qualquer canal (os gerais
+ * e os do ministério do caso, quando há). Vazio para um caso da WeeFly.
+ */
+async function partnerAlertRecipients(caseId: string): Promise<string[]> {
+  const admin = createAdminClient()
+  if (!admin) return []
+  const { data: c } = await admin
+    .from("booking_cases")
+    .select("partner_id, organisation_id, partner:partners(is_operator)")
+    .eq("id", caseId)
+    .maybeSingle()
+  const row = c as {
+    partner_id: string | null
+    organisation_id: string | null
+    partner: { is_operator: boolean } | { is_operator: boolean }[] | null
+  } | null
+  const partner = Array.isArray(row?.partner) ? row?.partner[0] : row?.partner
+  if (!row?.partner_id || partner?.is_operator) return []
+
+  const { data: rows, error } = await admin
+    .from("alert_recipients")
+    .select("email, organisation_id")
+    .eq("partner_id", row.partner_id)
+    .eq("side", "partner")
+    .eq("active", true)
+    .not("email", "is", null)
+  if (error) {
+    console.error("[emails] destinatários da empresa:", error.message)
+    return []
+  }
+  return Array.from(
+    new Set(
+      ((rows ?? []) as { email: string | null; organisation_id: string | null }[])
+        .filter((r) => !r.organisation_id || r.organisation_id === row.organisation_id)
+        .map((r) => (r.email ?? "").trim().toLowerCase())
+        .filter(Boolean)
+    )
+  )
+}
+
 export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome> {
   const ctx = await context(caseId)
   if (!ctx) {
@@ -1169,12 +1210,16 @@ export async function sendTicketsIssuedTeamEmail(input: {
     ctx.reference
   )
 
+  /* Num caso de um parceiro (a Alô), também os destinatários de alertas da
+     empresa (`alert_recipients`, lado `partner`), em qualquer canal. */
+  const partnerTo = await partnerAlertRecipients(input.caseId)
+
   return notify({
     caseId: input.caseId,
     channel: "email",
     kind: "team_tickets_issued",
     audience: "team",
-    to: teamRecipients(),
+    to: Array.from(new Set([...teamRecipients(), ...partnerTo])),
     subject,
     html,
     text: [headline + ".", meta, "", link].filter(Boolean).join("\n"),
