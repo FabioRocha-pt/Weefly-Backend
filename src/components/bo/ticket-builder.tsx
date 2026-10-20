@@ -27,6 +27,7 @@ import { saveTicketDetails } from "@/actions/proposals"
 import type { Offer } from "@/lib/proposal-math"
 import { legsOf, timeOf } from "@/lib/proposal-math"
 import { Field, Input, Section, inputClass } from "@/components/bo/composer-bits"
+import { FALLBACK_AIRLINES } from "@/lib/airlines-catalog"
 import { useT } from "@/i18n/provider"
 import type { Translator } from "@/i18n/translate"
 
@@ -35,6 +36,8 @@ interface SegmentRow {
   label: string
   /** C-27 · o número de voo saiu da proposta e passou a viver aqui. */
   flight_number: string
+  /** Bilhete v2 · a companhia do trecho; um trecho sem ela saía com "—". */
+  carrier_code: string
   equipment: string
   booking_class: string
   terminal_from: string
@@ -99,6 +102,10 @@ export function BoTicketBuilder({
         documents,
         segments: segments.map((s) => ({
           id: s.id,
+          /* O número de voo tem de ir: a gravação escreve-o sempre, e sem ele
+             gravar o construtor apagava o número de voo de todos os trechos. */
+          flight_number: s.flight_number,
+          carrier_code: s.carrier_code,
           equipment: s.equipment,
           booking_class: s.booking_class,
           terminal_from: s.terminal_from,
@@ -135,14 +142,22 @@ export function BoTicketBuilder({
         <fieldset disabled={issued || pending} className="space-y-5">
           <Section title={t("bo.caseView.ticket.fare")}>
             <div className="grid grid-cols-12 gap-2.5">
-              <Field label={t("bo.caseView.ticket.fareName")} span={4}>
+              <Field
+                label={t("bo.caseView.ticket.fareName")}
+                span={4}
+                hint={t("bo.caseView.ticket.fareNameHint")}
+              >
                 <Input
                   value={fareName}
                   onChange={setFareName}
                   placeholder="Economy Smart"
                 />
               </Field>
-              <Field label={t("bo.caseView.ticket.changes")} span={4}>
+              <Field
+                label={t("bo.caseView.ticket.changes")}
+                span={4}
+                hint={t("bo.caseView.ticket.changesHint")}
+              >
                 <Input
                   value={changePolicy}
                   onChange={setChangePolicy}
@@ -160,14 +175,22 @@ export function BoTicketBuilder({
                   placeholder={t("bo.caseView.ticket.refundPlaceholder")}
                 />
               </Field>
-              <Field label={t("bo.caseView.ticket.seats")} span={4}>
+              <Field
+                label={t("bo.caseView.ticket.seats")}
+                span={4}
+                hint={t("bo.caseView.ticket.seatsHint")}
+              >
                 <Input
                   value={seatPolicy}
                   onChange={setSeatPolicy}
                   placeholder={t("bo.caseView.ticket.seatsPlaceholder")}
                 />
               </Field>
-              <Field label={t("bo.caseView.ticket.documents")} span={8}>
+              <Field
+                label={t("bo.caseView.ticket.documents")}
+                span={8}
+                hint={t("bo.caseView.ticket.documentsHint")}
+              >
                 <Input
                   value={documents}
                   onChange={setDocuments}
@@ -202,7 +225,33 @@ export function BoTicketBuilder({
                       Aqui e obrigatorio: um bilhete sem numero de voo nao serve
                       para embarcar, e este e o formulario que o escreve.
                     */}
-                    <Field label={t("bo.caseView.ticket.flightNumber")} span={2}>
+                    <Field
+                      label={t("bo.caseView.ticket.carrier")}
+                      span={4}
+                      hint={t("bo.caseView.ticket.carrierHint")}
+                    >
+                      <select
+                        className={inputClass}
+                        value={row.carrier_code}
+                        onChange={(event) => patch(row.id, { carrier_code: event.target.value })}
+                      >
+                        <option value="">—</option>
+                        {FALLBACK_AIRLINES.map((a) => (
+                          <option key={a.iata} value={a.iata}>
+                            {a.iata} · {a.name}
+                          </option>
+                        ))}
+                        {row.carrier_code &&
+                          !FALLBACK_AIRLINES.some((a) => a.iata === row.carrier_code) && (
+                            <option value={row.carrier_code}>{row.carrier_code}</option>
+                          )}
+                      </select>
+                    </Field>
+                    <Field
+                      label={`${t("bo.caseView.ticket.flightNumber")} *`}
+                      span={2}
+                      hint={t("bo.caseView.ticket.flightNumberHint")}
+                    >
                       <Input
                         mono
                         maxLength={6}
@@ -211,14 +260,22 @@ export function BoTicketBuilder({
                         placeholder="231"
                       />
                     </Field>
-                    <Field label={t("bo.caseView.ticket.equipment")} span={4}>
+                    <Field
+                      label={t("bo.caseView.ticket.equipment")}
+                      span={6}
+                      hint={t("bo.caseView.ticket.equipmentHint")}
+                    >
                       <Input
                         value={row.equipment}
                         onChange={(v) => patch(row.id, { equipment: v })}
                         placeholder="Airbus A320neo"
                       />
                     </Field>
-                    <Field label={t("bo.caseView.ticket.bookingClass")} span={2}>
+                    <Field
+                      label={t("bo.caseView.ticket.bookingClass")}
+                      span={4}
+                      hint={t("bo.caseView.ticket.bookingClassHint")}
+                    >
                       <Input
                         mono
                         maxLength={2}
@@ -229,14 +286,22 @@ export function BoTicketBuilder({
                         placeholder="T"
                       />
                     </Field>
-                    <Field label={t("bo.caseView.ticket.terminalFrom")} span={2}>
+                    <Field
+                      label={t("bo.caseView.ticket.terminalFrom")}
+                      span={4}
+                      hint={t("bo.caseView.ticket.terminalHint")}
+                    >
                       <Input
                         value={row.terminal_from}
                         onChange={(v) => patch(row.id, { terminal_from: v })}
                         placeholder="1"
                       />
                     </Field>
-                    <Field label={t("bo.caseView.ticket.terminalTo")} span={2}>
+                    <Field
+                      label={t("bo.caseView.ticket.terminalTo")}
+                      span={4}
+                      hint={t("bo.caseView.ticket.terminalHint")}
+                    >
                       <Input
                         value={row.terminal_to}
                         onChange={(v) => patch(row.id, { terminal_to: v })}
@@ -299,6 +364,11 @@ function rowsOf(offer: Offer | null, t: Translator): SegmentRow[] {
     id: s.id,
     label: label(s, leg),
     flight_number: s.flight_number ?? "",
+    /* Sem companhia gravada, a do trecho mais próximo que a tenha. */
+    carrier_code:
+      s.carrier_code ??
+      offer.segments.find((x) => x.carrier_code)?.carrier_code ??
+      "",
     equipment: s.equipment ?? "",
     booking_class: s.booking_class ?? "",
     terminal_from: s.terminal_from ?? "",

@@ -17,10 +17,14 @@
       },
       "document": {
         "open": "Open the ticket",
-        "resend": "Resend to customer",
-        "resendHint": "Resending sends the same file, with the same document number. Nothing new is generated.",
+        "resend": "Resend by email",
+        "resendHint": "WhatsApp opens with the client number, the message and the PDF link filled in, and is logged in Communications. The link opens the PDF without login. Resending by email sends the same file, with the same document number.",
         "generate": "Generate the ticket",
-        "missingPdf": "The case is issued but the PDF does not exist yet."
+        "missingPdf": "The case is issued but the PDF does not exist yet.",
+        "whatsapp": "Send by WhatsApp",
+        "whatsappNoPhone": "No client phone. Add a number to the request.",
+        "copyLink": "Copy ticket link",
+        "copied": "Link copied"
       },
       "form": {
         "title": "Issuance details",
@@ -31,7 +35,8 @@
         "fromProposal": "from the proposal · confirm before issuing",
         "consolidator": "Consolidator",
         "costReal": "Actual cost",
-        "margin": "margin {amount}"
+        "margin": "margin {amount}",
+        "requiredLegend": "* required to issue. Fields come prefilled from the chosen offer: confirm and complete what is missing."
       },
       "tickets": {
         "title": "Ticket per passenger",
@@ -99,13 +104,34 @@
         "nvb": "The NVB is missing.",
         "nva": "The NVA is missing.",
         "noPassengers": "With no passengers submitted there is no one to issue a ticket to.",
-        "failed": "Failed."
+        "failed": "Failed.",
+        "wrongPrefix": "{pax} {name}: {carrier} tickets start with {prefix}."
       },
       "submit": {
         "pending": "Issuing…",
         "issue": "Issue, generate the ticket and notify the customer",
         "doneBefore": "Issued with PNR",
         "doneAfter": ". The customer sees the tickets in their link."
+      },
+      "warnings": {
+        "badFormat": "{flight}: NVB and NVA are written as 22OCT26 (day, month, year).",
+        "outOfRange": "{flight}: the flight is on {date}, outside NVB {nvb} – NVA {nva}. Check the dates on the airline ticket."
+      },
+      "hints": {
+        "pnr": "The booking reference in the reservation system (6 letters and numbers).",
+        "carrier": "The airline issuing the ticket. Sets the ticket number prefix.",
+        "consolidator": "Where the ticket was bought (e.g. Atlântida). Optional.",
+        "costReal": "What WeeFly paid for the ticket. Optional, used for the margin.",
+        "ticketNumber": "13 digits: airline {prefix} + 10 document digits.",
+        "fromOffer": "From the chosen offer, local airport time.",
+        "aircraft": "This flight aircraft, as on the ticket (e.g. Airbus A321neo).",
+        "cabinClass": "Cabin (economy, business) and booking class letter (e.g. T).",
+        "terminal": "Only when the airport has terminals. May stay empty.",
+        "coupon": "This flight order on the ticket: 1 for the first, 2 for the second.",
+        "fareBasis": "This flight fare code, as on the ticket (e.g. TLXCV3).",
+        "nvb": "Not valid before: the ticket cannot be used before this date (e.g. 22OCT26).",
+        "nva": "Not valid after: the ticket cannot be used after this date (e.g. 22OCT26).",
+        "endorsements": "Restrictions printed on the ticket (e.g. NON-END / NON-REF)."
       }
     }
   }

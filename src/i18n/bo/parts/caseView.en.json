@@ -212,7 +212,9 @@
           "agent_offer_selected": "Client chose (agent)",
           "agent_passengers_submitted": "Passports submitted (agent)",
           "agent_proof_uploaded": "Proof sent (agent)",
-          "agent_request_cancelled": "Request cancelled (agent)"
+          "agent_request_cancelled": "Request cancelled (agent)",
+          "team_tickets_issued": "Ticket issued (team)",
+          "tickets_whatsapp": "Ticket sent by WhatsApp"
         }
       },
       "log": {
@@ -294,7 +296,17 @@
         "issuedNote": "The case is already issued. Changing these fields now does not change the ticket the airline issued, that is a reissue, and goes through the airline.",
         "save": "Save ticket details",
         "legOut": "Outbound",
-        "legBack": "Return"
+        "legBack": "Return",
+        "fareNameHint": "The commercial fare name (e.g. Economy Classic). Printed on the ticket.",
+        "changesHint": "What the fare allows to change and at what cost. Printed on the ticket.",
+        "seatsHint": "Whether seat selection is included or paid.",
+        "documentsHint": "Documents the passenger needs for this trip.",
+        "carrier": "Airline",
+        "carrierHint": "The airline operating this flight. Gives the logo on the ticket.",
+        "flightNumberHint": "Digits only (e.g. 1545). Required to board.",
+        "equipmentHint": "The aircraft (e.g. Airbus A321neo).",
+        "bookingClassHint": "The booking class letter (e.g. T).",
+        "terminalHint": "Only when the airport has terminals."
       }
     },
     "events": {
@@ -340,7 +352,8 @@
       "ministry_insufficient_funds": "Ministry budget does not cover the chosen option",
       "ministry_ready_to_issue": "Ready to issue · confirm the external payment",
       "admin_intervention": "WeeFly Admin intervention",
-      "admin_intervention_ended": "WeeFly Admin intervention ended"
+      "admin_intervention_ended": "WeeFly Admin intervention ended",
+      "tickets_whatsapp": "Ticket sent by WhatsApp"
     }
   }
 }

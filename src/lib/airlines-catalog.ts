@@ -70,3 +70,47 @@ export function airlineName(iata: string | null | undefined): string {
   const code = iata.toUpperCase()
   return byCode.get(code)?.name ?? code
 }
+
+/*
+ * Bilhete v2 · o prefixo de três dígitos do número de bilhete (o código de
+ * contabilidade IATA) de cada companhia.
+ *
+ * No caso WF-2610-0078 saiu um bilhete TAP a começar por 056; a TAP é 047. A
+ * emissão passa a recusar um prefixo que não seja o da companhia emissora. As
+ * companhias sem bilhete IATA (as low cost) não estão aqui, e para elas não há
+ * verificação — recusar seria recusar uma emissão legítima.
+ */
+const TICKET_PREFIX: Record<string, string> = {
+  AA: "001",
+  AD: "577",
+  AF: "057",
+  AH: "124",
+  AT: "147",
+  BA: "125",
+  BF: "632",
+  DL: "006",
+  DT: "118",
+  EK: "176",
+  ET: "071",
+  G3: "127",
+  IB: "075",
+  KL: "074",
+  KQ: "706",
+  LA: "045",
+  LH: "220",
+  LX: "724",
+  MS: "077",
+  QR: "157",
+  SK: "117",
+  SN: "082",
+  TK: "235",
+  TP: "047",
+  TU: "199",
+  UA: "016",
+  VR: "696",
+}
+
+/** O prefixo do bilhete da companhia, ou nulo quando não o conhecemos. */
+export function ticketPrefix(iata: string | null | undefined): string | null {
+  return iata ? (TICKET_PREFIX[iata.trim().toUpperCase()] ?? null) : null
+}

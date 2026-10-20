@@ -33,6 +33,7 @@ import {
 } from "@/lib/bo-alerts"
 import { elapsedSince } from "@/lib/case-status"
 import { parseMoney } from "@/lib/proposal-math"
+import { airlineName, ticketPrefix } from "@/lib/airlines-catalog"
 import {
   confirmPaymentByAdmin,
   expireNow,
@@ -1061,9 +1062,8 @@ const issueSchema = z.object({
          * São treze dígitos, e a divisão não é decorativa: os três primeiros
          * identificam a companhia emissora (047 é a TAP, 696 a Cabo Verde
          * Airlines) e os dez seguintes são o documento. O ecrã pré-preenche o
-         * prefixo a partir da companhia escolhida; aqui só se verifica a forma,
-         * porque um consolidador pode emitir com o prefixo de outra companhia e
-         * recusá-lo seria recusar uma emissão legítima.
+         * prefixo a partir da companhia escolhida; aqui verifica-se a forma, e
+         * o prefixo contra a companhia emissora mais abaixo (bilhete v2).
          */
         ticketNumber: z
           .string()
@@ -1161,6 +1161,21 @@ export async function boIssueTickets(
   const numbers = v.tickets.map((t) => t.ticketNumber)
   if (new Set(numbers).size !== numbers.length) {
     return { ok: false, error: t("bo.actions.pc.issue.duplicateNumbers") }
+  }
+
+  /*
+   * Bilhete v2 · "a emissão deve bloquear um prefixo que não seja da companhia
+   * emissora". No WF-2610-0078 saiu um bilhete TAP com 056; a TAP é 047.
+   */
+  const prefix = ticketPrefix(v.issuingCarrier)
+  if (prefix && numbers.some((n) => !n.startsWith(prefix))) {
+    return {
+      ok: false,
+      error: t("bo.actions.pc.issue.wrongPrefix", {
+        prefix,
+        carrier: airlineName(v.issuingCarrier),
+      }),
+    }
   }
 
   const admin = createAdminClient()
@@ -1373,6 +1388,20 @@ export async function boIssueTickets(
     delivered = sent.ok
   }
 
+  /* Bilhete v2 · o aviso interno de bilhete emitido, com o PDF em anexo. Uma
+     vez por emissão (a chave é o PNR); o reenvio ao cliente não passa aqui. */
+  const combinedFile = documents.ok
+    ? documents.files.find((file) => file.kind === "combined")
+    : undefined
+  const { sendTicketsIssuedTeamEmail } = await import("@/lib/emails/send")
+  const team = await sendTicketsIssuedTeamEmail({
+    caseId: v.caseId,
+    issuedBy: identity.email,
+    attachments: combinedFile
+      ? [{ filename: combinedFile.fileName, content: combinedFile.bytes }]
+      : undefined,
+  })
+
   touch(v.caseId)
 
   return {
@@ -1387,6 +1416,7 @@ export async function boIssueTickets(
           ? t("bo.actions.pc.issue.emailSent")
           : t("bo.actions.pc.issue.emailFailed")
         : "",
+      team.ok || team.status === "duplicate" ? "" : t("bo.actions.pc.issue.teamEmailFailed"),
     ]
       .filter(Boolean)
       .join(" "),
@@ -1541,6 +1571,51 @@ export async function boResendTickets(caseId: string): Promise<BoResult> {
         notice: t("bo.actions.pc.tickets.resent", { number: combined.documentNumber }),
       }
     : { ok: false, error: t("bo.actions.pc.tickets.resendFailed", { reason: sent.reason }) }
+}
+
+/**
+ * Bilhete v2 · o que o botão "Enviar por WhatsApp" precisa: o número do
+ * cliente, a mensagem e o link público do PDF (com o token, sem login).
+ */
+export async function boTicketWhatsAppShare(caseId: string): Promise<
+  | { ok: true; phone: string | null; ticketUrl: string; message: string }
+  | { ok: false; error: string }
+> {
+  const { t } = await getBoI18n()
+  const identity = await boCaseIdentity(caseId)
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
+  const { ticketWhatsAppShare } = await import("@/lib/emails/send")
+  const share = await ticketWhatsAppShare(caseId)
+  if (!share) return { ok: false, error: t("bo.actions.common.serviceUnavailable") }
+  return { ok: true, ...share }
+}
+
+/** Bilhete v2 · cada envio por WhatsApp fica registado em Comunicações. */
+export async function boLogTicketWhatsApp(caseId: string): Promise<BoResult> {
+  const { t } = await getBoI18n()
+  const identity = await boCaseIdentity(caseId)
+  if (!identity) return { ok: false, error: t(NOT_ALLOWED) }
+  const { ticketWhatsAppShare, logManualWhatsApp } = await import("@/lib/emails/send")
+  const share = await ticketWhatsAppShare(caseId)
+  if (!share?.phone) return { ok: false, error: t("bo.actions.pc.tickets.whatsappNoPhone") }
+  await logManualWhatsApp({
+    caseId,
+    kind: "tickets_whatsapp",
+    body: share.message,
+    actorId: identity.userId,
+    actorEmail: identity.email,
+  })
+  await logCaseEvent({
+    caseId,
+    kind: "tickets_whatsapp",
+    title: "Bilhete enviado por WhatsApp",
+    detail: `+${share.phone} · por ${identity.email}`,
+    actorId: identity.userId,
+    actorEmail: identity.email,
+    actorKind: "staff",
+  })
+  touch(caseId)
+  return { ok: true, notice: t("bo.actions.pc.tickets.whatsappLogged") }
 }
 
 /**

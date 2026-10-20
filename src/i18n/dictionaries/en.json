@@ -173,7 +173,7 @@
     "priceInfant": "Infant",
     "priceInfantNote": "Under 2, on an adult's lap",
     "priceTaxes": "Airport taxes and charges",
-    "priceService": "WeeFly service",
+    "priceService": "Taxes",
     "priceServiceNote": "Search, ticketing and follow-up",
     "priceLockFee": "Fare hold",
     "priceLockFeeNote": "Holds the price beyond its validity",
@@ -466,8 +466,8 @@
     "composerRowInfantNote": "The airline's final price, taxes already included",
     "composerRowTaxes": "Airport taxes and charges",
     "composerRowTaxesNote": "Total for {count} passengers",
-    "composerRowService": "WeeFly service",
-    "composerRowServiceNote": "Charged once per booking, not per passenger. Pre-filled at 20.",
+    "composerRowService": "Taxes",
+    "composerRowServiceNote": "The WeeFly service fee, charged once per booking. The client always sees it as taxes, never separately. Prefilled at 20.",
     "composerRowLock": "Fare hold fee",
     "composerRowLockNote": "Charged only if the client asks to hold the price beyond its validity",
     "composerTotal": "Total to pay",
@@ -1192,7 +1192,9 @@
     "whatsappIssued": "Tickets issued. Booking reference {pnr}.",
     "paidCta": "View my request",
     "whatsappPayInstructions": "WeeFly payment instructions · {method} · {amount}",
-    "whatsappPayDue": "Pay by {due}."
+    "whatsappPayDue": "Pay by {due}.",
+    "whatsappTicketHello": "Hello {name}!",
+    "whatsappTicketPdf": "Your ticket (PDF):"
   },
   "blockers": {
     "name": "the offer has no name",

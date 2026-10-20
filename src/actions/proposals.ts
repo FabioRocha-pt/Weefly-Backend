@@ -894,6 +894,8 @@ export interface TicketDetailsDraft {
     id: string
     /* C-27 · o número de voo saiu da proposta e é escrito na emissão. */
     flight_number?: string
+    /* Bilhete v2 · um trecho gravado sem companhia corrige-se aqui. */
+    carrier_code?: string
     equipment?: string
     booking_class?: string
     terminal_from?: string
@@ -965,6 +967,9 @@ export async function saveTicketDetails(
       .update({
         /* C-27 · escrito aqui, e já não no compositor. */
         flight_number: text(segment.flight_number, 6),
+        ...(segment.carrier_code !== undefined
+          ? { carrier_code: code(segment.carrier_code, 2) }
+          : {}),
         equipment: text(segment.equipment, 80),
         booking_class: code(segment.booking_class, 2),
         terminal_from: text(segment.terminal_from, 40),

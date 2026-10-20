@@ -212,7 +212,9 @@
           "agent_offer_selected": "Cliente escolheu (agente)",
           "agent_passengers_submitted": "Passaportes submetidos (agente)",
           "agent_proof_uploaded": "Comprovativo enviado (agente)",
-          "agent_request_cancelled": "Pedido cancelado (agente)"
+          "agent_request_cancelled": "Pedido cancelado (agente)",
+          "team_tickets_issued": "Bilhete emitido (equipa)",
+          "tickets_whatsapp": "Bilhete enviado por WhatsApp"
         }
       },
       "log": {
@@ -294,7 +296,17 @@
         "issuedNote": "O caso já está emitido. Mudar estes campos agora não muda o bilhete que a companhia emitiu, isso é uma reemissão, e passa por ela.",
         "save": "Guardar detalhes do bilhete",
         "legOut": "Ida",
-        "legBack": "Volta"
+        "legBack": "Volta",
+        "fareNameHint": "O nome comercial da tarifa (ex.: Economy Classic). Sai no bilhete.",
+        "changesHint": "O que a tarifa permite mudar e quanto custa. Sai no bilhete.",
+        "seatsHint": "Se a marcação de lugar está incluída ou é paga.",
+        "documentsHint": "Documentos que o passageiro precisa para esta viagem.",
+        "carrier": "Companhia",
+        "carrierHint": "A companhia que opera este voo. Dá o logótipo no bilhete.",
+        "flightNumberHint": "Só os algarismos (ex.: 1545). Obrigatório para embarcar.",
+        "equipmentHint": "O avião (ex.: Airbus A321neo).",
+        "bookingClassHint": "A letra da classe de reserva (ex.: T).",
+        "terminalHint": "Só quando o aeroporto tem terminais."
       }
     },
     "events": {
@@ -340,7 +352,8 @@
       "ministry_insufficient_funds": "Saldo da bolsa não cobre a opção escolhida",
       "ministry_ready_to_issue": "Pronto a emitir · confirmar o pagamento externo",
       "admin_intervention": "Intervenção do Admin WeeFly",
-      "admin_intervention_ended": "Intervenção do Admin WeeFly terminada"
+      "admin_intervention_ended": "Intervenção do Admin WeeFly terminada",
+      "tickets_whatsapp": "Bilhete enviado por WhatsApp"
     }
   }
 }

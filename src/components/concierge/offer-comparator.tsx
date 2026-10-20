@@ -568,17 +568,12 @@ function OfferDetail({
               value={formatAmountPlain(offer.price_infant * pax.infants)}
             />
           )}
-          {offer.taxes_total > 0 && (
+          {/* Preço + taxas: o serviço WeeFly vai dentro das taxas e nunca
+              aparece em separado ao cliente (pedido do Dominik, 19 out). */}
+          {offer.taxes_total + offer.service_fee > 0 && (
             <PriceLine
               label={t("proposal.priceTaxes")}
-              value={formatAmountPlain(offer.taxes_total)}
-            />
-          )}
-          {offer.service_fee > 0 && (
-            <PriceLine
-              label={t("proposal.priceService")}
-              note={t("proposal.priceServiceNote")}
-              value={formatAmountPlain(offer.service_fee)}
+              value={formatAmountPlain(offer.taxes_total + offer.service_fee)}
             />
           )}
           {offer.lock_fee_enabled && offer.lock_fee > 0 && (

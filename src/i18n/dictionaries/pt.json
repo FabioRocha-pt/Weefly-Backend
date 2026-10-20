@@ -173,7 +173,7 @@
     "priceInfant": "Bebé",
     "priceInfantNote": "Menos de 2 anos, ao colo",
     "priceTaxes": "Taxas de aeroporto e encargos",
-    "priceService": "Serviço WeeFly",
+    "priceService": "Taxas",
     "priceServiceNote": "Pesquisa, emissão e acompanhamento",
     "priceLockFee": "Fixação de tarifa",
     "priceLockFeeNote": "Garante o preço para além da validade",
@@ -466,8 +466,8 @@
     "composerRowInfantNote": "Preço final da companhia, taxas já incluídas",
     "composerRowTaxes": "Taxas de aeroporto e encargos",
     "composerRowTaxesNote": "Total para {count} passageiros",
-    "composerRowService": "Serviço WeeFly",
-    "composerRowServiceNote": "Cobrado uma vez por reserva, não por passageiro. Pré-preenchido a 20.",
+    "composerRowService": "Taxas",
+    "composerRowServiceNote": "A taxa de serviço da WeeFly, cobrada uma vez por reserva. O cliente vê-a sempre como taxas, nunca em separado. Pré-preenchida a 20.",
     "composerRowLock": "Taxa de fixação de tarifa",
     "composerRowLockNote": "Cobrada só se o cliente pedir para garantir o preço além da validade",
     "composerTotal": "Total a pagar",
@@ -1192,7 +1192,9 @@
     "whatsappIssued": "Bilhetes emitidos. Localizador {pnr}.",
     "paidCta": "Ver o meu pedido",
     "whatsappPayInstructions": "Instruções de pagamento WeeFly · {method} · {amount}",
-    "whatsappPayDue": "Pagar até {due}."
+    "whatsappPayDue": "Pagar até {due}.",
+    "whatsappTicketHello": "Olá {name}!",
+    "whatsappTicketPdf": "O seu bilhete (PDF):"
   },
   "blockers": {
     "name": "falta o nome da oferta",

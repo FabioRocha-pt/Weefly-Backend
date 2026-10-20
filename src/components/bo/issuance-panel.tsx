@@ -20,13 +20,15 @@
  * por isso é o único que ele impede em vez de avisar.
  */
 
-import { useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import {
   boGenerateTickets,
   boIssueTickets,
+  boLogTicketWhatsApp,
   boResendTickets,
+  boTicketWhatsAppShare,
 } from "@/actions/bo-price-checker"
 import type { PcPayment } from "@/lib/pc/payment"
 import type { CasePassenger } from "@/lib/case-status"
@@ -39,10 +41,9 @@ import {
   formatMoney,
   parseMoney,
 } from "@/lib/proposal-math"
-import { CARRIERS } from "@/lib/pc/catalog"
 import { CarrierMark } from "@/components/bo/carrier-mark"
 import { BoErrorList, focusField, type BoFieldError } from "@/components/bo/error-list"
-import { FALLBACK_AIRLINES, airlineName } from "@/lib/airlines-catalog"
+import { FALLBACK_AIRLINES, airlineName, ticketPrefix } from "@/lib/airlines-catalog"
 import { useI18n, useT } from "@/i18n/provider"
 import { LOCALE_TAGS } from "@/i18n/config"
 import type { Translator } from "@/i18n/translate"
@@ -258,6 +259,39 @@ function flightLabel(segment: OfferSegment): string {
   return flight ? `${flight} · ${route}` : route
 }
 
+const FARE_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+
+/**
+ * Bilhete v2 · "22OCT26", a forma do NVB e do NVA, a partir da data do voo.
+ *
+ * Numa tarifa sem flexibilidade (a maioria das que vendemos) o cupão só vale
+ * no dia do voo: NVB e NVA são essa data. É o valor de partida — quem emite
+ * confirma com o que a companhia imprimiu.
+ */
+function fareDate(value: string | null | undefined): string {
+  const m = value?.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return m ? `${m[3]}${FARE_MONTHS[Number(m[2]) - 1]}${m[1].slice(2)}` : ""
+}
+
+/** "22OCT26" (ou "22OCT", com o ano do voo) → "2026-10-22". Nulo se não ler. */
+function parseFareDate(value: string, fallbackYear: string): string | null {
+  const m = value.trim().toUpperCase().match(/^(\d{1,2})([A-Z]{3})(\d{2})?$/)
+  if (!m) return null
+  const month = FARE_MONTHS.indexOf(m[2]) + 1
+  if (month === 0) return null
+  const year = m[3] ? `20${m[3]}` : fallbackYear
+  return `${year}-${String(month).padStart(2, "0")}-${m[1].padStart(2, "0")}`
+}
+
+/** Um asterisco a dizer "obrigatório", igual em todos os campos. */
+function Req() {
+  return (
+    <span className="req" aria-hidden="true">
+      *
+    </span>
+  )
+}
+
 /* C-10 · as 31 do backlog, na ordem de prioridade dele. Eram as dez de
    `CARRIERS`, por código — o que punha a AF antes da VR. */
 const CARRIER_CODES = FALLBACK_AIRLINES.map((a) => a.iata)
@@ -400,8 +434,9 @@ export function BoIssuancePanel({
       const row = saved.get(segment.id)
       initial[segment.id] = {
         fareBasis: row?.fare_basis ?? (index === 0 ? (issuance.fareBasis ?? "") : ""),
-        nvb: row?.nvb ?? (index === 0 ? (issuance.nvb ?? "") : ""),
-        nva: row?.nva ?? (index === 0 ? (issuance.nva ?? "") : ""),
+        /* Bilhete v2 · sem valor gravado, a data do voo (ver `fareDate`). */
+        nvb: row?.nvb ?? ((index === 0 ? issuance.nvb : null) || fareDate(segment.depart_at)),
+        nva: row?.nva ?? ((index === 0 ? issuance.nva : null) || fareDate(segment.depart_at)),
         couponNumber: row?.coupon_number ?? String(index + 1),
         /* Aeronave, classe e terminais já foram escritos na proposta — o
            compositor tem-nos (ver `OfferSegment`). Repeti-los aqui em branco
@@ -455,6 +490,9 @@ export function BoIssuancePanel({
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
+  /** O prefixo da companhia escolhida, para pré-preencher os treze dígitos. */
+  const prefix = ticketPrefix(carrier) ?? ""
+
   const numbers = tickets.map((t) => t.ticketNumber.replace(/[\s-]/g, ""))
   const filled = numbers.filter(Boolean)
   const duplicated = new Set(filled).size !== filled.length
@@ -483,6 +521,17 @@ export function BoIssuancePanel({
         label: t("bo.issuance.errors.ticketNumber", {
           pax: `P${index + 1}`,
           name: passenger.last_name,
+        }),
+      })
+    } else if (prefix && !value.startsWith(prefix)) {
+      /* Bilhete v2 · um bilhete TAP a começar por 056 não é da TAP (047). */
+      errors.push({
+        target: `em-ticket-${passenger.id}`,
+        label: t("bo.issuance.errors.wrongPrefix", {
+          pax: `P${index + 1}`,
+          name: passenger.last_name,
+          prefix,
+          carrier: airlineName(carrier),
         }),
       })
     }
@@ -546,6 +595,64 @@ export function BoIssuancePanel({
 
   const ready = errors.length === 0
 
+  /*
+   * Bilhete v2 · a data do voo tem de caber entre o NVB e o NVA.
+   *
+   * No teste ficou NVA 12SEP26 num voo a 22 de outubro: o cupão estava
+   * caducado antes de o avião descolar. É um aviso e não um bloqueio — há
+   * tarifas com regras próprias — mas aparece por cima do botão de emitir.
+   */
+  const rangeWarnings: BoFieldError[] = []
+  for (const segment of ordered) {
+    const doc = flights[segment.id] ?? EMPTY_DOC
+    const date = segment.depart_at?.slice(0, 10)
+    if (!date) continue
+    const year = date.slice(0, 4)
+    const from = doc.nvb.trim() ? parseFareDate(doc.nvb, year) : null
+    const to = doc.nva.trim() ? parseFareDate(doc.nva, year) : null
+    const shown = `${date.slice(8, 10)}/${date.slice(5, 7)}/${year}`
+    if ((doc.nvb.trim() && !from) || (doc.nva.trim() && !to)) {
+      rangeWarnings.push({
+        target: `em-nvb-${segment.id}`,
+        label: t("bo.issuance.warnings.badFormat", { flight: flightLabel(segment) }),
+      })
+    } else if ((from && date < from) || (to && date > to)) {
+      rangeWarnings.push({
+        target: `em-nva-${segment.id}`,
+        label: t("bo.issuance.warnings.outOfRange", {
+          flight: flightLabel(segment),
+          date: shown,
+          nvb: doc.nvb || "—",
+          nva: doc.nva || "—",
+        }),
+      })
+    }
+  }
+
+  /* Bilhete v2 · o envio por WhatsApp: número, mensagem e link do PDF. */
+  const [share, setShare] = useState<{
+    phone: string | null
+    ticketUrl: string
+    message: string
+  } | null>(null)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!issued || !hasDocument) return
+    let alive = true
+    boTicketWhatsAppShare(caseId).then((result) => {
+      if (alive && result.ok) {
+        setShare({ phone: result.phone, ticketUrl: result.ticketUrl, message: result.message })
+      }
+    })
+    return () => {
+      alive = false
+    }
+  }, [caseId, issued, hasDocument])
+
+  const waHref = share?.phone
+    ? `https://wa.me/${share.phone}?text=${encodeURIComponent(share.message)}`
+    : null
+
   const patchTicket = (index: number, value: string) =>
     setTickets((current) =>
       current.map((row, i) => (i === index ? { ...row, ticketNumber: value } : row))
@@ -553,8 +660,6 @@ export function BoIssuancePanel({
 
   const margin = amount && costReal ? amount - parseMoney(costReal) : null
 
-  /** O prefixo da companhia escolhida, para pré-preencher os treze dígitos. */
-  const prefix = carrier ? (CARRIERS[carrier.toUpperCase()]?.prefix ?? "") : ""
 
   function run(action: () => Promise<{ ok: boolean; notice?: string; error?: string }>) {
     setError(null)
@@ -635,6 +740,35 @@ export function BoIssuancePanel({
             <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
               {hasDocument ? (
                 <>
+                  {/*
+                    Bilhete v2 · o bloco final, por esta ordem: WhatsApp (o único
+                    laranja, porque é por onde passa a operação), abrir, copiar o
+                    link público e reenviar por email.
+                  */}
+                  {waHref ? (
+                    <a
+                      className="btn btn-sm btn-primary btn-wa"
+                      href={waHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => {
+                        void boLogTicketWhatsApp(caseId).then(() => router.refresh())
+                      }}
+                    >
+                      {t("bo.issuance.document.whatsapp")}
+                    </a>
+                  ) : (
+                    <>
+                      <button className="btn btn-sm btn-primary btn-wa" type="button" disabled>
+                        {t("bo.issuance.document.whatsapp")}
+                      </button>
+                      {share && (
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                          {t("bo.issuance.document.whatsappNoPhone")}
+                        </span>
+                      )}
+                    </>
+                  )}
                   <a
                     className="btn btn-sm"
                     href={`/api/bo/ticket/${caseId}`}
@@ -643,6 +777,20 @@ export function BoIssuancePanel({
                   >
                     {t("bo.issuance.document.open")}
                   </a>
+                  <button
+                    className="btn btn-sm"
+                    type="button"
+                    disabled={!share}
+                    onClick={() => {
+                      if (!share) return
+                      void navigator.clipboard?.writeText(share.ticketUrl).then(() => {
+                        setCopied(true)
+                        setTimeout(() => setCopied(false), 2000)
+                      })
+                    }}
+                  >
+                    {copied ? t("bo.issuance.document.copied") : t("bo.issuance.document.copyLink")}
+                  </button>
                   <button
                     className="btn btn-sm"
                     type="button"
@@ -688,12 +836,30 @@ export function BoIssuancePanel({
                   title={t("bo.issuance.errors.title", { count: errors.length })}
                   errors={errors}
                 />
+                {rangeWarnings.length > 0 && (
+                  <div className="note warn" style={{ marginTop: 10 }}>
+                    {rangeWarnings.map((w) => (
+                      <div key={w.target}>
+                        <button
+                          type="button"
+                          onClick={() => focusField(w.target)}
+                          style={{ background: "none", border: 0, padding: 0, color: "inherit", textAlign: "left", cursor: "pointer" }}
+                        >
+                          {w.label}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="hint" style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>
+                  {t("bo.issuance.form.requiredLegend")}
+                </p>
               </div>
             )}
 
             <div className="fgrid">
               <div className="f s3">
-                <label>PNR</label>
+                <label>PNR<Req /></label>
                 <input
                   id="em-pnr"
                   className="mono"
@@ -705,9 +871,10 @@ export function BoIssuancePanel({
                   onChange={(event) => setPnr(event.target.value.toUpperCase())}
                   disabled={issued}
                 />
+                <span className="hint">{t("bo.issuance.hints.pnr")}</span>
               </div>
               <div className="f s3">
-                <label>{t("bo.issuance.form.carrier")}</label>
+                <label>{t("bo.issuance.form.carrier")}<Req /></label>
                 {/*
                   C-26 · vem da proposta, sem ser reescolhida.
 
@@ -736,7 +903,7 @@ export function BoIssuancePanel({
                           bilhete só existe para as dez antigas, e é omitido em
                           vez de escrever `undefined`. */}
                       {code} · {airlineName(code)}
-                      {CARRIERS[code] ? ` · ${CARRIERS[code].prefix}` : ""}
+                      {ticketPrefix(code) ? ` · ${ticketPrefix(code)}` : ""}
                     </option>
                   ))}
                   {carrier && !CARRIER_CODES.includes(carrier) && (
@@ -745,8 +912,10 @@ export function BoIssuancePanel({
                     </option>
                   )}
                 </select>
-                {!issuance.issuingCarrier && carrier && (
+                {!issuance.issuingCarrier && carrier ? (
                   <span className="hint">{t("bo.issuance.form.fromProposal")}</span>
+                ) : (
+                  <span className="hint">{t("bo.issuance.hints.carrier")}</span>
                 )}
               </div>
               <div className="f s3">
@@ -757,6 +926,7 @@ export function BoIssuancePanel({
                   onChange={(event) => setConsolidator(event.target.value)}
                   disabled={issued}
                 />
+                <span className="hint">{t("bo.issuance.hints.consolidator")}</span>
               </div>
               <div className="f s3">
                 <label>{t("bo.issuance.form.costReal")}</label>
@@ -767,11 +937,11 @@ export function BoIssuancePanel({
                   onChange={(event) => setCostReal(event.target.value)}
                   disabled={issued}
                 />
-                {margin !== null && (
-                  <span className="hint">
-                    {t("bo.issuance.form.margin", { amount: formatMoney(margin, currency) })}
-                  </span>
-                )}
+                <span className="hint">
+                  {margin !== null
+                    ? t("bo.issuance.form.margin", { amount: formatMoney(margin, currency) })
+                    : t("bo.issuance.hints.costReal")}
+                </span>
               </div>
             </div>
 
@@ -821,7 +991,7 @@ export function BoIssuancePanel({
                   >
                     <div className="fgrid" style={{ width: "100%" }}>
                       <div className="f s4">
-                        <label>{t("bo.issuance.tickets.number")}</label>
+                        <label>{t("bo.issuance.tickets.number")}<Req /></label>
                         <input
                           id={`em-ticket-${passenger.id}`}
                           className="mono"
@@ -837,6 +1007,9 @@ export function BoIssuancePanel({
                           onChange={(event) => patchTicket(index, event.target.value)}
                           disabled={issued}
                         />
+                        <span className="hint">
+                          {t("bo.issuance.hints.ticketNumber", { prefix: prefix || "047" })}
+                        </span>
                       </div>
 
                       {/*
@@ -1031,6 +1204,7 @@ export function BoIssuancePanel({
                               value={segment.depart_at?.replace("T", " ") ?? "—"}
                               disabled
                             />
+                            <span className="hint">{t("bo.issuance.hints.fromOffer")}</span>
                           </div>
                           <div className="f s3">
                             <label>{t("bo.issuance.flights.arrival")}</label>
@@ -1039,9 +1213,10 @@ export function BoIssuancePanel({
                               value={segment.arrive_at?.replace("T", " ") ?? "—"}
                               disabled
                             />
+                            <span className="hint">{t("bo.issuance.hints.fromOffer")}</span>
                           </div>
                           <div className="f s3">
-                            <label>{t("bo.issuance.flights.aircraft")}</label>
+                            <label>{t("bo.issuance.flights.aircraft")}<Req /></label>
                             <input
                               placeholder="Airbus A330-900"
                               value={doc.aircraft}
@@ -1052,9 +1227,10 @@ export function BoIssuancePanel({
                               }
                               disabled={issued}
                             />
+                            <span className="hint">{t("bo.issuance.hints.aircraft")}</span>
                           </div>
                           <div className="f s3">
-                            <label>{t("bo.issuance.flights.cabinClass")}</label>
+                            <label>{t("bo.issuance.flights.cabinClass")}<Req /></label>
                             <div style={{ display: "flex", gap: 6 }}>
                               <input
                                 value={doc.cabin}
@@ -1081,6 +1257,7 @@ export function BoIssuancePanel({
                                 disabled={issued}
                               />
                             </div>
+                            <span className="hint">{t("bo.issuance.hints.cabinClass")}</span>
                           </div>
                           <div className="f s3">
                             <label>{t("bo.issuance.flights.terminalFrom")}</label>
@@ -1094,6 +1271,7 @@ export function BoIssuancePanel({
                               }
                               disabled={issued}
                             />
+                            <span className="hint">{t("bo.issuance.hints.terminal")}</span>
                           </div>
                           <div className="f s3">
                             <label>{t("bo.issuance.flights.terminalTo")}</label>
@@ -1107,6 +1285,7 @@ export function BoIssuancePanel({
                               }
                               disabled={issued}
                             />
+                            <span className="hint">{t("bo.issuance.hints.terminal")}</span>
                           </div>
                           <div className="f s3">
                             <label>{t("bo.issuance.flights.airlinePnr")}</label>
@@ -1127,7 +1306,7 @@ export function BoIssuancePanel({
                             </span>
                           </div>
                           <div className="f s3">
-                            <label>{t("bo.issuance.flights.coupon")}</label>
+                            <label>{t("bo.issuance.flights.coupon")}<Req /></label>
                             <input
                               className="mono"
                               maxLength={4}
@@ -1139,9 +1318,10 @@ export function BoIssuancePanel({
                               }
                               disabled={issued}
                             />
+                            <span className="hint">{t("bo.issuance.hints.coupon")}</span>
                           </div>
                           <div className="f s4">
-                            <label>{t("bo.issuance.flights.fareBasis")}</label>
+                            <label>{t("bo.issuance.flights.fareBasis")}<Req /></label>
                             <input
                               id={`em-fare-${segment.id}`}
                               className="mono"
@@ -1155,12 +1335,14 @@ export function BoIssuancePanel({
                               }
                               disabled={issued}
                             />
+                            <span className="hint">{t("bo.issuance.hints.fareBasis")}</span>
                           </div>
                           <div className="f s4">
-                            <label>NVB</label>
+                            <label>NVB<Req /></label>
                             <input
+                              id={`em-nvb-${segment.id}`}
                               className="mono"
-                              placeholder="01SEP26"
+                              placeholder="22OCT26"
                               value={doc.nvb}
                               aria-invalid={!issued && !doc.nvb.trim()}
                               onChange={(event) =>
@@ -1170,12 +1352,14 @@ export function BoIssuancePanel({
                               }
                               disabled={issued}
                             />
+                            <span className="hint">{t("bo.issuance.hints.nvb")}</span>
                           </div>
                           <div className="f s4">
-                            <label>NVA</label>
+                            <label>NVA<Req /></label>
                             <input
+                              id={`em-nva-${segment.id}`}
                               className="mono"
-                              placeholder="12SEP26"
+                              placeholder="22OCT26"
                               value={doc.nva}
                               aria-invalid={!issued && !doc.nva.trim()}
                               onChange={(event) =>
@@ -1185,6 +1369,7 @@ export function BoIssuancePanel({
                               }
                               disabled={issued}
                             />
+                            <span className="hint">{t("bo.issuance.hints.nva")}</span>
                           </div>
 
                           {/* TK-04 · numa ligação, a bagagem segue ou não? É a
@@ -1238,7 +1423,7 @@ export function BoIssuancePanel({
                 {ordered.length === 0 && (
                   <>
                     <div className="f s3">
-                      <label>{t("bo.issuance.flights.fareBasis")}</label>
+                      <label>{t("bo.issuance.flights.fareBasis")}<Req /></label>
                       <input
                         id="em-fare-basis"
                         className="mono"
@@ -1250,7 +1435,7 @@ export function BoIssuancePanel({
                       />
                     </div>
                     <div className="f s3">
-                      <label>NVB</label>
+                      <label>NVB<Req /></label>
                       <input
                         id="em-nvb"
                         className="mono"
@@ -1262,7 +1447,7 @@ export function BoIssuancePanel({
                       />
                     </div>
                     <div className="f s3">
-                      <label>NVA</label>
+                      <label>NVA<Req /></label>
                       <input
                         id="em-nva"
                         className="mono"
@@ -1283,6 +1468,7 @@ export function BoIssuancePanel({
                     onChange={(event) => setEndorsements(event.target.value)}
                     disabled={issued}
                   />
+                  <span className="hint">{t("bo.issuance.hints.endorsements")}</span>
                 </div>
               </div>
             </div>
@@ -1357,22 +1543,23 @@ export function BoIssuancePanel({
                            linhas que alguém preencheu: um par sem resposta é
                            "por atribuir", e gravar zeros seria afirmar que a
                            tarifa não leva mala nenhuma. */
-                        baggage: Object.entries(bags)
-                          /* T-10 · um par que nasceu da promessa conta como
-                             respondido: a proposta disse o que o voo inclui, e
-                             é isso que fica no bilhete até alguém corrigir. */
-                          .filter(([, bag]) => !sameBag(bag, EMPTY_BAG))
-                          .map(([key, bag]) => {
-                            const [passengerId, segmentId] = key.split("::")
+                        /* Bilhete v2 · todos os pares (passageiro, voo), com o
+                           que o ecrã mostra. Gravar só os que alguém mexeu
+                           deixava o bilhete com "—" quando quem emitia aceitava
+                           os valores do ecrã (o caso WF-2610-0078). */
+                        baggage: tickets.flatMap((row) =>
+                          ordered.map((segment) => {
+                            const bag = bags[bagKey(row.passengerId, segment.id)] ?? EMPTY_BAG
                             return {
-                              passengerId,
-                              segmentId,
+                              passengerId: row.passengerId,
+                              segmentId: segment.id,
                               checkedPieces: bag.checkedPieces,
                               checkedKg: bag.checkedKg,
                               cabinPieces: bag.cabinPieces,
                               cabinKg: bag.cabinKg,
                             }
-                          }),
+                          })
+                        ),
                       })
                     )
                   }

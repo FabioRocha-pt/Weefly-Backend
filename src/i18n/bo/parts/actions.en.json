@@ -97,14 +97,18 @@
           "issued": "Issued. PNR {pnr}.",
           "pdfFailed": "The PDF was not generated ({reason}), use \"Generate again\" on the Issuance tab.",
           "emailSent": "The client received the email with the PDF attached.",
-          "emailFailed": "The email to the client was not sent, see the Communications tab."
+          "emailFailed": "The email to the client was not sent, see the Communications tab.",
+          "wrongPrefix": "{carrier} tickets start with {prefix}. Fix the number before issuing.",
+          "teamEmailFailed": "The internal ticket-issued notice was not sent, see the Communications tab."
         },
         "tickets": {
           "generated": "Ticket {number} generated.",
           "noneYet": "This case has no generated ticket yet. Use “Generate ticket” before resending.",
           "resent": "Ticket {number} resent: the same document, not regenerated.",
           "resendFailed": "Resending failed: {reason}",
-          "generateFailed": "Could not generate the ticket: {reason}"
+          "generateFailed": "Could not generate the ticket: {reason}",
+          "whatsappNoPhone": "No client phone. Add a number to the request.",
+          "whatsappLogged": "WhatsApp send logged in Communications."
         },
         "seller": {
           "invalid": "Invalid seller.",

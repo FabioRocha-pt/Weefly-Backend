@@ -97,14 +97,18 @@
           "issued": "Emitido. PNR {pnr}.",
           "pdfFailed": "O PDF não foi gerado ({reason}), use \"Gerar de novo\" na aba da Emissão.",
           "emailSent": "O cliente recebeu o email com o PDF em anexo.",
-          "emailFailed": "O email ao cliente não saiu: veja a aba Comunicações."
+          "emailFailed": "O email ao cliente não saiu: veja a aba Comunicações.",
+          "wrongPrefix": "Os bilhetes da {carrier} começam por {prefix}. Corrija o número antes de emitir.",
+          "teamEmailFailed": "O aviso interno de bilhete emitido não saiu: veja a aba Comunicações."
         },
         "tickets": {
           "generated": "Bilhete {number} gerado.",
           "noneYet": "Este caso ainda não tem bilhete gerado. Use “Gerar bilhete” antes de reenviar.",
           "resent": "Bilhete {number} reenviado: o mesmo documento, sem regenerar.",
           "resendFailed": "O reenvio falhou: {reason}",
-          "generateFailed": "Não foi possível gerar o bilhete: {reason}"
+          "generateFailed": "Não foi possível gerar o bilhete: {reason}",
+          "whatsappNoPhone": "Sem telefone do cliente. Adicione um número no pedido.",
+          "whatsappLogged": "Envio por WhatsApp registado em Comunicações."
         },
         "seller": {
           "invalid": "Vendedor inválido.",

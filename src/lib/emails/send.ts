@@ -1121,6 +1121,134 @@ export async function sendTicketsIssuedEmail(input: {
   return outcome
 }
 
+// ═══ Bilhete v2 · bilhete emitido, à equipa ═══════════════════════════════════
+
+/**
+ * O aviso interno que faltava: a equipa recebia o pedido novo, a proposta
+ * enviada e o "cliente diz que pagou", e não recebia o bilhete emitido.
+ *
+ * Sai uma vez, no momento da emissão, com o PDF em anexo. A chave usa o PNR:
+ * o reenvio ao cliente não passa por aqui, e uma segunda emissão do mesmo PNR
+ * não repete o aviso.
+ */
+export async function sendTicketsIssuedTeamEmail(input: {
+  caseId: string
+  issuedBy: string | null
+  attachments?: NotifyAttachment[]
+}): Promise<NotifyOutcome> {
+  const ctx = await context(input.caseId)
+  if (!ctx) {
+    return { ok: false, id: null, status: "failed", reason: "caso não encontrado" }
+  }
+
+  const route = routeOf(ctx)
+  const link = caseAdminLink(ctx)
+  const subject = ["Bilhete emitido", ctx.clientName, ctx.reference].filter(Boolean).join(" · ")
+  const headline = `Bilhete emitido para ${ctx.clientName}`
+
+  const meta = [
+    route,
+    ctx.reference,
+    ctx.paxLabel,
+    ctx.pnr ? `PNR ${ctx.pnr}` : "",
+    ctx.clientPhone,
+    ctx.clientEmail,
+    input.issuedBy ? `por ${input.issuedBy}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ")
+
+  const html = shell(
+    subject,
+    `<p style="margin:0 0 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.09em;color:${EMBER_RED};">Emitido</p>
+     <h1 style="margin:0 0 8px;font-size:20px;font-weight:800;color:${INK};">${escapeHtml(headline)}</h1>
+     <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">${escapeHtml(meta)}</p>
+     <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${MUTED};">O bilhete segue em anexo. O cliente recebeu-o por email e tem-no no link dele; o envio por WhatsApp faz-se no separador Emissão.</p>
+     ${cta(link, "Abrir o caso")}`,
+    DEFAULT_LOCALE,
+    ctx.reference
+  )
+
+  return notify({
+    caseId: input.caseId,
+    channel: "email",
+    kind: "team_tickets_issued",
+    audience: "team",
+    to: teamRecipients(),
+    subject,
+    html,
+    text: [headline + ".", meta, "", link].filter(Boolean).join("\n"),
+    attachments: input.attachments,
+    ...(ctx.clientEmail ? { replyTo: ctx.clientEmail } : {}),
+    dedupeKey: `team_tickets_issued:${ctx.pnr ?? "sem-pnr"}`,
+  })
+}
+
+/**
+ * Bilhete v2 · o envio do bilhete por WhatsApp, a partir do back-office.
+ *
+ * Enquanto o número WhatsApp Business não está ligado ao sistema, o envio é
+ * feito pelo agente: o botão abre o `wa.me` com o número do cliente, a
+ * mensagem e o link do PDF já preenchidos. Isto prepara essa mensagem e o
+ * link público (com o token do caso, sem login).
+ */
+export async function ticketWhatsAppShare(caseId: string): Promise<{
+  phone: string | null
+  ticketUrl: string
+  message: string
+} | null> {
+  const ctx = await context(caseId)
+  if (!ctx) return null
+  const t = getTranslator(ctx.locale)
+  const clientUrl = clientLink(ctx)
+  let ticketUrl = ""
+  try {
+    ticketUrl = `${new URL(clientUrl).origin}/api/pc/${ctx.token}/ticket`
+  } catch {
+    ticketUrl = clientUrl
+  }
+  const phone = (ctx.clientWhatsApp ?? "").replace(/\D/g, "") || null
+  const message = [
+    t("email.whatsappTicketHello", { name: ctx.clientFirstName }),
+    t("email.whatsappIssued", { pnr: ctx.pnr ?? "—" }),
+    "",
+    t("email.whatsappTicketPdf"),
+    ticketUrl,
+  ].join("\n")
+  return { phone, ticketUrl, message }
+}
+
+/** Regista em Comunicações um envio feito à mão pelo agente (wa.me). */
+export async function logManualWhatsApp(input: {
+  caseId: string
+  kind: string
+  body: string
+  actorId: string | null
+  actorEmail: string | null
+}): Promise<boolean> {
+  const ctx = await context(input.caseId)
+  const admin = createAdminClient()
+  if (!ctx || !admin) return false
+  const { error } = await admin.from("case_notifications").insert({
+    case_id: input.caseId,
+    channel: "whatsapp",
+    kind: input.kind,
+    audience: "client",
+    recipient: ctx.clientWhatsApp ? `+${ctx.clientWhatsApp.replace(/\D/g, "")}` : "—",
+    locale: ctx.locale,
+    subject: "Bilhete enviado por WhatsApp (wa.me)",
+    body: input.body,
+    status: "sent",
+    attempts: 1,
+    provider: "wa.me",
+    actor_id: input.actorId,
+    actor_email: input.actorEmail,
+    sent_at: new Date().toISOString(),
+  })
+  if (error) console.error("[notify] registo do WhatsApp manual falhou:", error.message)
+  return !error
+}
+
 // ═══ NT-05 · ação do cliente, ao agente do caso ══════════════════════════════
 
 export type ClientAction =
