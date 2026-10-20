@@ -24,6 +24,7 @@ import {
   notify,
   teamRecipients,
   type NotifyAttachment,
+  type NotifyInput,
   type NotifyOutcome,
 } from "@/lib/notifications"
 import { whatsappTeamNumber } from "@/lib/whatsapp"
@@ -507,6 +508,21 @@ async function partnerAlertRecipients(caseId: string): Promise<string[]> {
   )
 }
 
+/**
+ * O mesmo aviso interno, num envio à parte, aos destinatários de alertas da
+ * empresa do caso (a Alô: a agência e a Camila). À parte para os endereços da
+ * WeeFly não irem no mesmo "Para" de outra empresa.
+ */
+async function alsoToPartner(input: NotifyInput): Promise<void> {
+  const to = await partnerAlertRecipients(input.caseId)
+  if (to.length === 0) return
+  await notify({
+    ...input,
+    to,
+    ...(input.dedupeKey ? { dedupeKey: `${input.dedupeKey}:partner` } : {}),
+  })
+}
+
 export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome> {
   const ctx = await context(caseId)
   if (!ctx) {
@@ -586,7 +602,7 @@ export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome
 
   /* B2G-12 · e à empresa do pedido de ministério, num envio à parte (os
      endereços da equipa da WeeFly não vão no mesmo "Para"). */
-  const partnerTo = await partnerRequestRecipients(caseId)
+  const partnerTo = await partnerAlertRecipients(caseId)
   if (partnerTo.length > 0) {
     await notify({
       caseId,
@@ -699,7 +715,7 @@ export async function sendProposalTeamEmail(input: {
   revision: number
   replyTo?: string | null
 }): Promise<NotifyOutcome> {
-  return notify({
+  const message: NotifyInput = {
     caseId: input.caseId,
     channel: "email",
     kind: "team_proposal_published",
@@ -710,7 +726,10 @@ export async function sendProposalTeamEmail(input: {
     text: input.text,
     ...(input.replyTo ? { replyTo: input.replyTo } : {}),
     dedupeKey: `team_proposal_published:r${input.revision}`,
-  })
+  }
+  const outcome = await notify(message)
+  await alsoToPartner(message)
+  return outcome
 }
 
 // ═══ NT-04 · escolha registada, ao cliente ═══════════════════════════════════
@@ -1210,23 +1229,23 @@ export async function sendTicketsIssuedTeamEmail(input: {
     ctx.reference
   )
 
-  /* Num caso de um parceiro (a Alô), também os destinatários de alertas da
-     empresa (`alert_recipients`, lado `partner`), em qualquer canal. */
-  const partnerTo = await partnerAlertRecipients(input.caseId)
-
-  return notify({
+  const message: NotifyInput = {
     caseId: input.caseId,
     channel: "email",
     kind: "team_tickets_issued",
     audience: "team",
-    to: Array.from(new Set([...teamRecipients(), ...partnerTo])),
+    to: teamRecipients(),
     subject,
     html,
     text: [headline + ".", meta, "", link].filter(Boolean).join("\n"),
     attachments: input.attachments,
     ...(ctx.clientEmail ? { replyTo: ctx.clientEmail } : {}),
     dedupeKey: `team_tickets_issued:${ctx.pnr ?? "sem-pnr"}`,
-  })
+  }
+  const outcome = await notify(message)
+  /* Num caso de um parceiro (a Alô), também a empresa, à parte. */
+  await alsoToPartner(message)
+  return outcome
 }
 
 /**
@@ -1553,7 +1572,7 @@ export async function sendPaymentDeclaredEmail(
     .filter(Boolean)
     .join("\n")
 
-  return notify({
+  const message: NotifyInput = {
     caseId,
     channel: "email",
     kind: withProof ? "team_proof_uploaded" : "team_payment_declared",
@@ -1563,7 +1582,10 @@ export async function sendPaymentDeclaredEmail(
     html,
     text,
     ...(ctx.clientEmail ? { replyTo: ctx.clientEmail } : {}),
-  })
+  }
+  const outcome = await notify(message)
+  await alsoToPartner(message)
+  return outcome
 }
 
 // ═══ BO-04r · datas propostas, ao cliente ════════════════════════════════════
