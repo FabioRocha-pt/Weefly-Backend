@@ -89,7 +89,7 @@ export function SecretaryManager({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [reveal, setReveal] = useState<{ name: string; pin: string; link?: string } | null>(null)
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState({ name: "", email: "", phone: "", sendWelcome: true })
+  const [form, setForm] = useState({ name: "", email: "", phone: "", whatsapp: "", sendWelcome: true })
   const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale === "en" ? "en" : "pt"], { dateStyle: "short", timeStyle: "short" })
 
   const run = (action: () => Promise<SecretaryResult>, name: string, after?: () => void) =>
@@ -132,7 +132,22 @@ export function SecretaryManager({
                         </span>
                       )}
                     </p>
-                    <p className="text-xs text-slate-500">{[s.email, s.phone].filter(Boolean).join(" · ") || "—"}</p>
+                    <p className="text-xs text-slate-500">
+                      {[s.email, s.phone].filter(Boolean).join(" · ") || (s.whatsapp ? "" : "—")}
+                      {s.whatsapp && (
+                        <>
+                          {(s.email || s.phone) && " · "}
+                          <a
+                            className="text-emerald-700 underline"
+                            href={`https://wa.me/${s.whatsapp.replace(/\D/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {t("bo.secretaries.whatsapp")} {s.whatsapp}
+                          </a>
+                        </>
+                      )}
+                    </p>
                   </div>
                   <p className="text-xs text-slate-500 text-right">
                     {s.hasPin
@@ -198,10 +213,11 @@ export function SecretaryManager({
         (creating ? (
           <div className="space-y-3 rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-slate-600">{t("bo.secretaries.explain")}</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input className={field} placeholder={t("bo.secretaries.name")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               <input className={field} type="email" placeholder={t("bo.secretaries.email")} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               <input className={field} placeholder={t("bo.secretaries.phone")} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <input className={field} placeholder={t("bo.secretaries.whatsapp")} value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} />
             </div>
             <label className="flex items-center gap-2 text-sm text-slate-600">
               <input type="checkbox" checked={form.sendWelcome} onChange={(e) => setForm({ ...form, sendWelcome: e.target.checked })} />
@@ -213,7 +229,7 @@ export function SecretaryManager({
                 disabled={pending}
                 onClick={() =>
                   run(() => createSecretary(orgId, form), form.name, () => {
-                    setForm({ name: "", email: "", phone: "", sendWelcome: true })
+                    setForm({ name: "", email: "", phone: "", whatsapp: "", sendWelcome: true })
                     setCreating(false)
                   })
                 }

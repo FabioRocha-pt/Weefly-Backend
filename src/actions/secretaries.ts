@@ -80,11 +80,16 @@ async function manageableOrg(admin: Admin, identity: BoIdentity, orgId: string):
 
 async function secretaryRow(admin: Admin, id: string) {
   if (!z.string().uuid().safeParse(id).success) return null
-  const { data } = await admin
-    .from("ministry_secretaries")
-    .select("id, organisation_id, partner_id, name, email, phone, active, link_token, created_by_email")
-    .eq("id", id)
-    .maybeSingle()
+  const columns = "id, organisation_id, partner_id, name, email, phone, active, link_token, created_by_email"
+  const read = (withWhatsapp: boolean) =>
+    admin
+      .from("ministry_secretaries")
+      .select(withWhatsapp ? `${columns}, whatsapp` : columns)
+      .eq("id", id)
+      .maybeSingle()
+  // O WhatsApp vem da 0039; sem ela lê-se sem ele.
+  let { data, error } = await read(true)
+  if (error?.code === "42703") ({ data } = await read(false))
   return data as {
     id: string
     organisation_id: string
@@ -92,6 +97,7 @@ async function secretaryRow(admin: Admin, id: string) {
     name: string
     email: string | null
     phone: string | null
+    whatsapp?: string | null
     active: boolean
     link_token: string
     created_by_email: string
@@ -157,6 +163,7 @@ const secretarySchema = z.object({
     .transform((v) => v || null)
     .refine((v) => v === null || z.string().email().safeParse(v).success, "bo.secretaries.errors.emailInvalid"),
   phone: optional(40).refine((v) => v === null || /^\+?[0-9 ()-]{6,40}$/.test(v), "bo.secretaries.errors.phoneInvalid"),
+  whatsapp: optional(40).refine((v) => v === null || /^\+?[0-9 ()-]{6,40}$/.test(v), "bo.secretaries.errors.whatsappInvalid"),
 })
 
 /** B2G-06 · criar a secretária: link pessoal + PIN (mostrado uma vez). */
@@ -185,6 +192,7 @@ export async function createSecretary(
       name: v.name,
       email: v.email,
       phone: v.phone,
+      ...(v.whatsapp ? { whatsapp: v.whatsapp } : {}),
       link_token: linkToken,
       created_by_email: identity.email,
     })
@@ -200,6 +208,7 @@ export async function createSecretary(
     name: v.name,
     email: v.email,
     phone: v.phone,
+    whatsapp: v.whatsapp,
   })
 
   const pin = await issuePin(admin, id, identity.email)
@@ -261,7 +270,7 @@ export async function updateSecretary(secretaryId: string, input: z.input<typeof
 
   const { error } = await admin
     .from("ministry_secretaries")
-    .update({ name: v.name, email: v.email, phone: v.phone })
+    .update({ name: v.name, email: v.email, phone: v.phone, ...(v.whatsapp || sec.whatsapp ? { whatsapp: v.whatsapp } : {}) })
     .eq("id", sec.id)
   if (error) return { ok: false, error: t("bo.secretaries.errors.saveFailed") }
 
@@ -271,8 +280,8 @@ export async function updateSecretary(secretaryId: string, input: z.input<typeof
     sec.partner_id,
     "secretary_updated",
     sec.id,
-    { name: v.name, email: v.email, phone: v.phone },
-    { name: sec.name, email: sec.email, phone: sec.phone }
+    { name: v.name, email: v.email, phone: v.phone, whatsapp: v.whatsapp },
+    { name: sec.name, email: sec.email, phone: sec.phone, whatsapp: sec.whatsapp ?? null }
   )
   touch(sec.organisation_id)
   return { ok: true, id: sec.id, notice: t("bo.secretaries.notice.updated") }

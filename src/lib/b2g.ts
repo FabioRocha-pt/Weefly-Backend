@@ -207,6 +207,7 @@ export interface MinistrySecretary {
   name: string
   email: string | null
   phone: string | null
+  whatsapp: string | null
   active: boolean
   /** `/ministerios/<slug>/<token>` */
   path: string
@@ -227,11 +228,16 @@ export interface MinistrySecretary {
  * hash) pela service role, só para estas linhas.
  */
 export async function listSecretaries(db: SupabaseClient, org: { id: string; slug: string }): Promise<MinistrySecretary[]> {
-  const { data, error } = await db
-    .from("ministry_secretaries")
-    .select("id, name, email, phone, active, link_token, created_by_email, created_at, last_access_at, deactivated_at, deactivated_by_email")
-    .eq("organisation_id", org.id)
-    .order("created_at")
+  const columns = "id, name, email, phone, active, link_token, created_by_email, created_at, last_access_at, deactivated_at, deactivated_by_email"
+  const read = (withWhatsapp: boolean) =>
+    db
+      .from("ministry_secretaries")
+      .select(withWhatsapp ? `${columns}, whatsapp` : columns)
+      .eq("organisation_id", org.id)
+      .order("created_at")
+  // O WhatsApp vem da 0039; sem ela a coluna não existe (42703) e lê-se sem ele.
+  let { data, error } = await read(true)
+  if (error?.code === "42703") ({ data, error } = await read(false))
   if (error) {
     console.error("[b2g] secretárias:", error.message)
     return []
@@ -253,6 +259,7 @@ export async function listSecretaries(db: SupabaseClient, org: { id: string; slu
       name: r.name,
       email: r.email ?? null,
       phone: r.phone ?? null,
+      whatsapp: r.whatsapp ?? null,
       active: Boolean(r.active),
       path: `/ministerios/${org.slug}/${r.link_token}`,
       createdByEmail: r.created_by_email,

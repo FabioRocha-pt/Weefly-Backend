@@ -16,6 +16,7 @@
       "name": "Nome",
       "email": "Email",
       "phone": "Telefone",
+      "whatsapp": "WhatsApp",
       "sendWelcome": "Enviar o link por email (só o link; o PIN entrega-o você)",
       "create": "Criar secretária",
       "inactive": "desactivada",
@@ -60,6 +61,7 @@
         "nameMissing": "Indique o nome.",
         "emailInvalid": "Email inválido.",
         "phoneInvalid": "Telefone inválido.",
+        "whatsappInvalid": "WhatsApp inválido.",
         "invalid": "Dados inválidos.",
         "saveFailed": "Não foi possível guardar. Tente de novo."
       }

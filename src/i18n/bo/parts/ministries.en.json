@@ -16,6 +16,7 @@
       "name": "Name",
       "email": "Email",
       "phone": "Phone",
+      "whatsapp": "WhatsApp",
       "sendWelcome": "Email the link (link only; you hand over the PIN)",
       "create": "Create secretary",
       "inactive": "deactivated",
@@ -60,6 +61,7 @@
         "nameMissing": "Enter the name.",
         "emailInvalid": "Invalid email.",
         "phoneInvalid": "Invalid phone.",
+        "whatsappInvalid": "Invalid WhatsApp number.",
         "invalid": "Invalid data.",
         "saveFailed": "Could not save. Try again."
       }
