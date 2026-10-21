@@ -27,7 +27,7 @@ import { saveTicketDetails } from "@/actions/proposals"
 import type { Offer } from "@/lib/proposal-math"
 import { legsOf, timeOf } from "@/lib/proposal-math"
 import { Field, Input, Section, inputClass } from "@/components/bo/composer-bits"
-import { FALLBACK_AIRLINES } from "@/lib/airlines-catalog"
+import { AirlinePicker } from "@/components/bo/airline-picker"
 import { useT } from "@/i18n/provider"
 import type { Translator } from "@/i18n/translate"
 
@@ -230,22 +230,11 @@ export function BoTicketBuilder({
                       span={4}
                       hint={t("bo.caseView.ticket.carrierHint")}
                     >
-                      <select
+                      <AirlinePicker
                         className={inputClass}
                         value={row.carrier_code}
-                        onChange={(event) => patch(row.id, { carrier_code: event.target.value })}
-                      >
-                        <option value="">—</option>
-                        {FALLBACK_AIRLINES.map((a) => (
-                          <option key={a.iata} value={a.iata}>
-                            {a.iata} · {a.name}
-                          </option>
-                        ))}
-                        {row.carrier_code &&
-                          !FALLBACK_AIRLINES.some((a) => a.iata === row.carrier_code) && (
-                            <option value={row.carrier_code}>{row.carrier_code}</option>
-                          )}
-                      </select>
+                        onChange={(code) => patch(row.id, { carrier_code: code })}
+                      />
                     </Field>
                     <Field
                       label={`${t("bo.caseView.ticket.flightNumber")} *`}

@@ -1,0 +1,74 @@
+{
+  "bo": {
+    "airlines": {
+      "nav": "Companhias aéreas",
+      "title": "Companhias aéreas",
+      "subtitle": "As companhias que aparecem nos seletores da proposta, do bilhete e da emissão. Acrescentar ou trocar o logótipo vale logo, sem deploy.",
+      "search": "Procurar por código ou nome",
+      "count": "{n} companhias",
+      "new": "Nova companhia",
+      "editTitle": "Editar {code}",
+      "save": "Guardar",
+      "edit": "Editar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "empty": "Nenhuma companhia encontrada.",
+      "fields": {
+        "iata": "Código IATA",
+        "name": "Nome",
+        "priority": "Ordem no seletor",
+        "ticketPrefix": "Prefixo do bilhete",
+        "ticketPrefixHint": "Três dígitos (ex.: TAP 047). Opcional; com ele, a emissão recusa números de outra companhia.",
+        "logo": "Logótipo",
+        "logoHint": "PNG com fundo transparente, até 1 MB.",
+        "removeLogo": "Remover o logótipo",
+        "active": "Activa (aparece nos seletores)"
+      },
+      "priority": {
+        "1": "1 · Do dia a dia",
+        "2": "2 · Grandes",
+        "3": "3 · Regionais",
+        "9": "Outras"
+      },
+      "cols": {
+        "logo": "Logótipo",
+        "airline": "Companhia",
+        "priority": "Ordem",
+        "prefix": "Prefixo",
+        "state": "Estado",
+        "actions": "Acções"
+      },
+      "state": {
+        "active": "Activa",
+        "inactive": "Inactiva"
+      },
+      "notice": {
+        "created": "{code} acrescentada.",
+        "saved": "{code} guardada.",
+        "activated": "{code} activada.",
+        "deactivated": "{code} desactivada."
+      },
+      "errors": {
+        "notAllowed": "Só o Admin WeeFly gere as companhias.",
+        "iata": "O código IATA tem duas letras ou dígitos (ex.: TP, U2).",
+        "name": "Escreva o nome da companhia.",
+        "prefix": "O prefixo do bilhete tem três dígitos.",
+        "exists": "A {code} já existe. Edite-a na lista.",
+        "notFound": "Companhia não encontrada.",
+        "logoType": "O logótipo tem de ser PNG.",
+        "logoSize": "O logótipo passa de 1 MB.",
+        "uploadFailed": "O logótipo não subiu. Tente outra vez.",
+        "saveFailed": "Não foi possível guardar.",
+        "migration": "Falta aplicar a migração 0040 na base de dados.",
+        "invalid": "Dados inválidos."
+      },
+      "picker": {
+        "placeholder": "Código ou nome…",
+        "clear": "Limpar",
+        "none": "Nenhuma companhia com esse nome.",
+        "useCode": "Usar «{code}» (fora da lista)",
+        "prefix": "Prefixo do bilhete: {prefix}"
+      }
+    }
+  }
+}

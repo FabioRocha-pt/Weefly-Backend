@@ -34,6 +34,7 @@ import {
 import { elapsedSince } from "@/lib/case-status"
 import { parseMoney } from "@/lib/proposal-math"
 import { airlineName, ticketPrefix } from "@/lib/airlines-catalog"
+import { loadAirlines } from "@/lib/airlines-server"
 import {
   confirmPaymentByAdmin,
   expireNow,
@@ -1167,6 +1168,7 @@ export async function boIssueTickets(
    * Bilhete v2 · "a emissão deve bloquear um prefixo que não seja da companhia
    * emissora". No WF-2610-0078 saiu um bilhete TAP com 056; a TAP é 047.
    */
+  await loadAirlines()
   const prefix = ticketPrefix(v.issuingCarrier)
   if (prefix && numbers.some((n) => !n.startsWith(prefix))) {
     return {

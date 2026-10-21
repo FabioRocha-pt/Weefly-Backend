@@ -16,6 +16,7 @@
 // ── países, para os campos que pedem um país pelo nome ───────────────────────
 
 import { COUNTRIES } from "@/lib/countries"
+import { airlineName } from "@/lib/airlines-catalog"
 import type { Translator } from "@/i18n/translate"
 
 /**
@@ -163,7 +164,8 @@ export const CARRIERS: Record<string, Carrier> = {
 
 export function carrierName(code: string | null | undefined): string {
   if (!code) return ""
-  return CARRIERS[code.toUpperCase()]?.name ?? code.toUpperCase()
+  /* Uma companhia acrescentada no Admin também tem nome para o cliente. */
+  return CARRIERS[code.toUpperCase()]?.name ?? airlineName(code)
 }
 
 // ── moeda ────────────────────────────────────────────────────────────────────

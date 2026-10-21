@@ -27,7 +27,7 @@ import { useState } from "react"
 
 import { cn } from "@/lib/utils"
 import { CARRIERS } from "@/lib/pc/catalog"
-import { airlineLogoPath, airlineName, hasAirlineLogo } from "@/lib/airlines-catalog"
+import { airlineLogo, airlineName, ticketPrefix } from "@/lib/airlines-catalog"
 
 export function CarrierMark({
   code,
@@ -42,8 +42,10 @@ export function CarrierMark({
   if (!upper) return null
 
   const carrier = CARRIERS[upper]
-  /* Sem ficheiro conhecido, nem se tenta. Ver o comentário no topo. */
-  const showCode = broken || !hasAirlineLogo(upper)
+  /* Sem ficheiro conhecido, nem se tenta. Ver o comentário no topo. O
+     logótipo carregado no Admin ganha ao ficheiro de `public/airlines`. */
+  const logo = airlineLogo(upper)
+  const showCode = broken || !logo
 
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
@@ -57,7 +59,7 @@ export function CarrierMark({
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={airlineLogoPath(upper)}
+          src={logo ?? undefined}
           alt={airlineName(upper)}
           height={24}
           className="h-6 w-auto max-w-[74px] object-contain"
@@ -67,9 +69,9 @@ export function CarrierMark({
       <span className="text-[12.5px] text-adm-txt-2">
         {/* C-10 · o nome das 31, e não só das dez de `CARRIERS`. */}
         {airlineName(upper)}
-        {carrier?.prefix && (
+        {(ticketPrefix(upper) ?? carrier?.prefix) && (
           <span className="ml-1.5 font-mono text-[11px] text-adm-muted">
-            {carrier.prefix}
+            {ticketPrefix(upper) ?? carrier?.prefix}
           </span>
         )}
       </span>

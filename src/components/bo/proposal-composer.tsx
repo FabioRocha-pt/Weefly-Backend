@@ -102,8 +102,7 @@ import {
 } from "@/components/bo/composer-bits"
 import { BoAirportField } from "@/components/bo/airport-field"
 import { BoErrorList } from "@/components/bo/error-list"
-import { CARRIERS } from "@/lib/pc/catalog"
-import { FALLBACK_AIRLINES, airlineName } from "@/lib/airlines-catalog"
+import { AirlinePicker } from "@/components/bo/airline-picker"
 import { CarrierMark } from "@/components/bo/carrier-mark"
 import { useI18n, useT } from "@/i18n/provider"
 import { LOCALE_TAGS } from "@/i18n/config"
@@ -115,27 +114,9 @@ const CURRENCIES = ["CVE", "EUR", "USD"]
 /** A ordem em que as cabinas aparecem no seletor de cada trecho. */
 const CABINS: Cabin[] = ["economy", "premium_economy", "business", "first"]
 
-/**
- * C-10 · as 31 companhias do backlog, na ordem que ele lhes dá.
- *
- * Eram as dez de `CARRIERS`, ordenadas por código — o que punha a `AF` antes da
- * `VR` num back-office cabo-verdiano. A ordem passa a ser a prioridade escrita
- * no backlog: primeiro as que a WeeFly vende todos os dias (`VR`, `TP`, `AT`…),
- * depois as grandes, depois as regionais. Dentro de cada grupo, por nome.
- *
- * A lista vem de `airlines-catalog`, que lê do ficheiro e serve de recurso à
- * tabela `airlines` (migração 0017) — acrescentar a trigésima segunda é um
- * `insert`, que é o critério.
- */
-const CARRIER_CODES: string[] = FALLBACK_AIRLINES.map((a) => a.iata)
-
 /*
- * PC-12 · `CARRIERS` continua a existir, e só para o que a tabela não tem.
- *
- * Guarda o prefixo do bilhete e o hub de dez companhias — dados de emissão que
- * as outras vinte e uma não têm preenchidos, e inventá-los seria escrever
- * números de bilhete que ninguém confirmou. O nome e a ordem do seletor vêm
- * agora de `airlines-catalog`; isto fica para quem emite.
+ * C-10 · as companhias do seletor vêm do Admin (`/gestao/companhias`), pelo
+ * `AirlinePicker`: escreve-se o código ou o nome e a lista filtra.
  */
 
 // --- Estado local ------------------------------------------------------------
@@ -1374,34 +1355,15 @@ function OpenOffer({
                         <CarrierMark code={segment.carrier_code} />
                       </div>
                     )}
-                    <select
+                    <AirlinePicker
                       value={segment.carrier_code}
-                      onChange={(e) =>
+                      onChange={(code) =>
                         onPatchSegment(segment.key, {
-                          carrier_code: e.target.value,
+                          carrier_code: code,
                         })
                       }
                       className={inputClass}
-                    >
-                      <option value="">{t("admin.composerCarrierPick")}</option>
-                      {CARRIER_CODES.map((code) => (
-                        <option key={code} value={code}>
-                          {/* C-10 · o nome vem do catálogo das 31, não das dez
-                              de `CARRIERS` — que devolvia `undefined.name` e
-                              rebentava o render para as vinte e uma novas. */}
-                          {code} · {airlineName(code)}
-                        </option>
-                      ))}
-                      {/* Uma companhia fora do catálogo não bloqueia a proposta:
-                          fica listada como está até alguém a acrescentar. */}
-                      {segment.carrier_code &&
-                        !CARRIERS[segment.carrier_code] && (
-                          <option value={segment.carrier_code}>
-                            {segment.carrier_code} ·{" "}
-                            {t("admin.composerCarrierUnknown")}
-                          </option>
-                        )}
-                    </select>
+                    />
                   </Field>
                   {/*
                     C-27 · o número de voo saiu da proposta.

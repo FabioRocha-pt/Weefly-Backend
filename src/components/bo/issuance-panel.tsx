@@ -43,7 +43,8 @@ import {
 } from "@/lib/proposal-math"
 import { CarrierMark } from "@/components/bo/carrier-mark"
 import { BoErrorList, focusField, type BoFieldError } from "@/components/bo/error-list"
-import { FALLBACK_AIRLINES, airlineName, ticketPrefix } from "@/lib/airlines-catalog"
+import { airlineName, ticketPrefix } from "@/lib/airlines-catalog"
+import { AirlinePicker } from "@/components/bo/airline-picker"
 import { useI18n, useT } from "@/i18n/provider"
 import { LOCALE_TAGS } from "@/i18n/config"
 import type { Translator } from "@/i18n/translate"
@@ -294,7 +295,6 @@ function Req() {
 
 /* C-10 · as 31 do backlog, na ordem de prioridade dele. Eram as dez de
    `CARRIERS`, por código — o que punha a AF antes da VR. */
-const CARRIER_CODES = FALLBACK_AIRLINES.map((a) => a.iata)
 
 export function BoIssuancePanel({
   caseId,
@@ -890,28 +890,15 @@ export function BoIssuancePanel({
                     <CarrierMark code={carrier} />
                   </div>
                 )}
-                <select
+                <AirlinePicker
                   id="em-carrier"
                   value={carrier}
-                  onChange={(event) => setCarrier(event.target.value)}
+                  onChange={setCarrier}
                   disabled={issued}
-                >
-                  <option value="">{t("bo.issuance.form.choose")}</option>
-                  {CARRIER_CODES.map((code) => (
-                    <option key={code} value={code}>
-                      {/* C-10 · o nome das 31 vem do catálogo novo; o prefixo do
-                          bilhete só existe para as dez antigas, e é omitido em
-                          vez de escrever `undefined`. */}
-                      {code} · {airlineName(code)}
-                      {ticketPrefix(code) ? ` · ${ticketPrefix(code)}` : ""}
-                    </option>
-                  ))}
-                  {carrier && !CARRIER_CODES.includes(carrier) && (
-                    <option value={carrier}>
-                      {carrier} · {t("bo.issuance.form.outsideCatalog")}
-                    </option>
-                  )}
-                </select>
+                />
+                {carrier && ticketPrefix(carrier) && (
+                  <span className="hint">{t("bo.airlines.picker.prefix", { prefix: ticketPrefix(carrier) ?? "" })}</span>
+                )}
                 {!issuance.issuingCarrier && carrier ? (
                   <span className="hint">{t("bo.issuance.form.fromProposal")}</span>
                 ) : (

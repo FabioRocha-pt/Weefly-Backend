@@ -1,0 +1,74 @@
+{
+  "bo": {
+    "airlines": {
+      "nav": "Airlines",
+      "title": "Airlines",
+      "subtitle": "The airlines shown in the proposal, ticket and issuance pickers. Adding one or changing its logo takes effect at once, no deploy.",
+      "search": "Search by code or name",
+      "count": "{n} airlines",
+      "new": "New airline",
+      "editTitle": "Edit {code}",
+      "save": "Save",
+      "edit": "Edit",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "empty": "No airline found.",
+      "fields": {
+        "iata": "IATA code",
+        "name": "Name",
+        "priority": "Order in the picker",
+        "ticketPrefix": "Ticket prefix",
+        "ticketPrefixHint": "Three digits (e.g. TAP 047). Optional; with it, issuance rejects another airline's numbers.",
+        "logo": "Logo",
+        "logoHint": "PNG with a transparent background, up to 1 MB.",
+        "removeLogo": "Remove the logo",
+        "active": "Active (shown in the pickers)"
+      },
+      "priority": {
+        "1": "1 · Everyday",
+        "2": "2 · Major",
+        "3": "3 · Regional",
+        "9": "Other"
+      },
+      "cols": {
+        "logo": "Logo",
+        "airline": "Airline",
+        "priority": "Order",
+        "prefix": "Prefix",
+        "state": "State",
+        "actions": "Actions"
+      },
+      "state": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "notice": {
+        "created": "{code} added.",
+        "saved": "{code} saved.",
+        "activated": "{code} activated.",
+        "deactivated": "{code} deactivated."
+      },
+      "errors": {
+        "notAllowed": "Only the WeeFly admin manages airlines.",
+        "iata": "The IATA code is two letters or digits (e.g. TP, U2).",
+        "name": "Enter the airline's name.",
+        "prefix": "The ticket prefix is three digits.",
+        "exists": "{code} already exists. Edit it in the list.",
+        "notFound": "Airline not found.",
+        "logoType": "The logo must be a PNG.",
+        "logoSize": "The logo is over 1 MB.",
+        "uploadFailed": "The logo did not upload. Try again.",
+        "saveFailed": "Could not save.",
+        "migration": "Migration 0040 still has to be applied to the database.",
+        "invalid": "Invalid data."
+      },
+      "picker": {
+        "placeholder": "Code or name…",
+        "clear": "Clear",
+        "none": "No airline by that name.",
+        "useCode": "Use “{code}” (not in the list)",
+        "prefix": "Ticket prefix: {prefix}"
+      }
+    }
+  }
+}

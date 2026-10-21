@@ -59,6 +59,39 @@ export const FALLBACK_AIRLINES: Airline[] = (
 
 const byCode = new Map(FALLBACK_AIRLINES.map((a) => [a.iata, a]))
 
+/*
+ * As companhias da tabela, parametrizadas no Admin (`/gestao/companhias`).
+ *
+ * Registadas em tempo de execução: no servidor por `loadAirlines()`
+ * (`lib/airlines-server`), no browser pelo `AirlinesProvider` do layout raiz.
+ * Enquanto ninguém as registou, vale a lista do ficheiro — as funções abaixo
+ * continuam síncronas, e por isso nenhum dos sítios que as chamam mudou.
+ */
+export interface AirlineEntry extends Airline {
+  active: boolean
+  /** O logótipo carregado no Admin. Nulo: o ficheiro de `public/airlines`. */
+  logoUrl: string | null
+  ticketPrefix: string | null
+}
+
+let registered: Map<string, AirlineEntry> | null = null
+
+export function registerAirlines(list: AirlineEntry[]): void {
+  registered = new Map(list.map((a) => [a.iata.toUpperCase(), a]))
+}
+
+const sortAirlines = (a: Airline, b: Airline) =>
+  a.priority - b.priority || a.name.localeCompare(b.name, "pt")
+
+/** As companhias activas, pela ordem do seletor. */
+export function catalogAirlines(): Airline[] {
+  if (!registered) return FALLBACK_AIRLINES
+  return Array.from(registered.values())
+    .filter((a) => a.active)
+    .map(({ iata, name, priority }) => ({ iata, name, priority }))
+    .sort(sortAirlines)
+}
+
 /**
  * O nome de uma companhia, de onde ele estiver.
  *
@@ -68,7 +101,16 @@ const byCode = new Map(FALLBACK_AIRLINES.map((a) => [a.iata, a]))
 export function airlineName(iata: string | null | undefined): string {
   if (!iata) return "—"
   const code = iata.toUpperCase()
-  return byCode.get(code)?.name ?? code
+  return registered?.get(code)?.name ?? byCode.get(code)?.name ?? code
+}
+
+/** O endereço do logótipo, ou nulo quando só há a sigla. */
+export function airlineLogo(iata: string | null | undefined): string | null {
+  if (!iata) return null
+  const code = iata.trim().toUpperCase()
+  const own = registered?.get(code)?.logoUrl
+  if (own) return own
+  return hasAirlineLogo(code) ? airlineLogoPath(code) : null
 }
 
 /*
@@ -112,5 +154,7 @@ const TICKET_PREFIX: Record<string, string> = {
 
 /** O prefixo do bilhete da companhia, ou nulo quando não o conhecemos. */
 export function ticketPrefix(iata: string | null | undefined): string | null {
-  return iata ? (TICKET_PREFIX[iata.trim().toUpperCase()] ?? null) : null
+  if (!iata) return null
+  const code = iata.trim().toUpperCase()
+  return registered?.get(code)?.ticketPrefix ?? TICKET_PREFIX[code] ?? null
 }

@@ -23,7 +23,8 @@
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 
-import { hasAirlineLogo } from "@/lib/airlines-catalog"
+import { airlineLogo, hasAirlineLogo } from "@/lib/airlines-catalog"
+import { loadAirlines } from "@/lib/airlines-server"
 
 /**
  * Os bytes do logótipo, ou nulo.
@@ -35,12 +36,26 @@ export async function readAirlineLogo(
   iata: string | null | undefined
 ): Promise<Uint8Array | null> {
   const code = (iata ?? "").trim().toLowerCase()
-  if (!code || !hasAirlineLogo(code)) return null
 
   /* Só letras e dígitos: o código vem de uma coluna da base de dados, e um
      `../` num nome de ficheiro construído a partir dela seria uma leitura
      arbitrária do disco. */
   if (!/^[a-z0-9]{2}$/.test(code)) return null
+
+  /* O logótipo carregado no Admin vive no bucket público: vai-se buscar. Só
+     PNG — é o que o `embedPng` do bilhete aceita, e o Admin só deixa subir PNG. */
+  const own = airlineLogo(code)
+  if (own && /^https:\/\//.test(own)) {
+    try {
+      const res = await fetch(own, { cache: "no-store" })
+      if (!res.ok) return null
+      return new Uint8Array(await res.arrayBuffer())
+    } catch {
+      return null
+    }
+  }
+
+  if (!hasAirlineLogo(code)) return null
 
   try {
     const file = join(process.cwd(), "public", "airlines", `${code}.png`)
@@ -63,6 +78,8 @@ export async function readAirlineLogo(
 export async function readAirlineLogos(
   codes: (string | null | undefined)[]
 ): Promise<Map<string, Uint8Array>> {
+  /* As companhias do Admin, caso este processo ainda não as tenha lido. */
+  await loadAirlines()
   const unique = Array.from(
     new Set(
       codes

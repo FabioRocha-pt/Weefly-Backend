@@ -27,6 +27,7 @@ const TITLE_KEYS: Record<string, string> = {
   "/gestao/contas": "pro.adminAccounts",
   "/gestao/utilizadores": "pro.adminUsers",
   "/gestao/parceiros": "pro.adminPartners",
+  "/gestao/companhias": "bo.airlines.nav",
   "/gestao/b2g": "pro.adminB2g",
   "/gestao/numeros": "pro.adminNumbers",
   "/gestao/casos": "bo.adminCases.nav",

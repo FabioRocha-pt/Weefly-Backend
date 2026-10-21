@@ -19,6 +19,7 @@ import {
 import { caseClientLink } from "@/lib/case-partner"
 import { CARRIERS } from "@/lib/pc/catalog"
 import { airlineName } from "@/lib/airlines-catalog"
+import { loadAirlines } from "@/lib/airlines-server"
 import { clientBrandForCase } from "@/lib/brand"
 import { loadBrandAsset } from "@/lib/brand-asset-load"
 import { whatsappTeamNumber } from "@/lib/whatsapp"
@@ -178,6 +179,8 @@ export type TicketLoad =
   | { ok: false; reason: string }
 
 export async function loadTicketData(caseId: string): Promise<TicketLoad> {
+  /* O nome das companhias acrescentadas no Admin. */
+  await loadAirlines()
   const admin = createAdminClient()
   if (!admin) return { ok: false, reason: "serviço indisponível" }
 

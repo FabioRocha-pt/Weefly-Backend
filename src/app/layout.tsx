@@ -4,6 +4,8 @@ import { Preloader } from "@/components/Preloader"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { getI18n } from "@/i18n/server"
 import { pageMetadata, siteContext, themeColor } from "@/lib/site-meta"
+import { loadAirlines } from "@/lib/airlines-server"
+import { AirlinesProvider } from "@/components/airlines-provider"
 
 /**
  * SEO-01 · SEO-02 · o `<head>` por defeito: ícones, manifesto, cor, título,
@@ -34,12 +36,14 @@ export default async function RootLayout({
   const { locale, t } = getI18n()
   /* DOM-01 · no endereço de uma empresa com marca própria, sem o logótipo animado da WeeFly. */
   const { partnerBrand } = await siteContext()
+  /* As companhias do Admin (nome, logótipo), para todos os ecrãs. */
+  const airlines = await loadAirlines()
 
   return (
     <html lang={LOCALE_TAGS[locale]}>
       <body>
         <Preloader label={t("common.loadingApp")} disabled={partnerBrand} />
-        {children}
+        <AirlinesProvider airlines={airlines}>{children}</AirlinesProvider>
       </body>
     </html>
   )
