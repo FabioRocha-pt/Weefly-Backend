@@ -22,6 +22,7 @@ import { boIdentity } from "@/lib/bo-access"
 import { saveUser, type AccessResult } from "@/actions/access"
 import { getBoI18n } from "@/i18n/bo-server"
 import { translateMessage } from "@/i18n/translate"
+import { BO_LOCALES } from "@/i18n/bo"
 import { subdomainProblem } from "@/lib/subdomain"
 
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -88,6 +89,8 @@ const partnerSchema = z.object({
   footerText: optionalText(500),
   poweredByWeefly: z.boolean(),
   whatsappNumber: optionalText(40),
+  /* I18N-03 · a língua por defeito do back-office da empresa. */
+  defaultLocale: z.enum(BO_LOCALES).optional(),
 })
 
 const createSchema = partnerSchema.extend({
@@ -152,8 +155,18 @@ function columns(v: z.output<typeof partnerSchema>) {
     footer_text: v.footerText,
     powered_by_weefly: v.poweredByWeefly,
     whatsapp_number: v.whatsappNumber,
+    ...(v.defaultLocale ? { default_locale: v.defaultLocale } : {}),
   }
 }
+
+/** I18N-03 · sem a 0041 a coluna não existe: grava-se o resto e avisa-se. */
+function withoutLocale<T extends Record<string, unknown>>(row: T): Omit<T, "default_locale"> {
+  const { default_locale: _dropped, ...rest } = row
+  void _dropped
+  return rest
+}
+const localeColumnMissing = (error: { code?: string; message?: string } | null) =>
+  Boolean(error && ["42703", "PGRST204"].includes(error.code ?? "") && /default_locale/.test(error.message ?? ""))
 
 function touch() {
   revalidatePath("/gestao/parceiros")
@@ -170,11 +183,11 @@ export async function createPartner(input: z.input<typeof createSchema>): Promis
   const v = parsed.data
 
   const db = createClient()
-  const { data, error } = await db
-    .from("partners")
-    .insert({ ...columns(v), slug: v.slug, status: "active", changed_by_email: actor.email })
-    .select("id")
-    .single()
+  const row = { ...columns(v), slug: v.slug, status: "active", changed_by_email: actor.email }
+  let { data, error } = await db.from("partners").insert(row).select("id").single()
+  if (localeColumnMissing(error)) {
+    ;({ data, error } = await db.from("partners").insert(withoutLocale(row)).select("id").single())
+  }
   if (error) {
     return {
       ok: false,
@@ -220,11 +233,11 @@ export async function updatePartner(
   if (!parsed.success) return { ok: false, error: translateMessage(t, parsed.error.issues[0]?.message ?? "bo.actions.common.invalidData") }
 
   const db = createClient()
-  const { data, error } = await db
-    .from("partners")
-    .update({ ...columns(parsed.data), changed_by_email: actor.email })
-    .eq("id", id)
-    .select("id")
+  const row = { ...columns(parsed.data), changed_by_email: actor.email }
+  let { data, error } = await db.from("partners").update(row).eq("id", id).select("id")
+  if (localeColumnMissing(error)) {
+    ;({ data, error } = await db.from("partners").update(withoutLocale(row)).eq("id", id).select("id"))
+  }
   if (error) return { ok: false, error: error.message }
   if (!data || data.length === 0) return { ok: false, error: t("bo.actions.partners.notFound") }
 

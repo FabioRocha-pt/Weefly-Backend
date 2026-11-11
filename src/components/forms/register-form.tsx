@@ -145,7 +145,14 @@ export function RegisterForm() {
             <select
               id="country"
               className="flex h-11 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
-              {...form.register("country")}
+              {...form.register("country", {
+                /* O indicativo acompanha o país escolhido; continua a poder
+                   ser mudado à mão no seletor ao lado. */
+                onChange: (e) => {
+                  const dial = COUNTRIES.find((c) => c.iso === e.target.value)?.dial
+                  if (dial) setPhonePrefix(dial)
+                },
+              })}
             >
               {countryOptions.map((country) => (
                 <option key={country.iso} value={country.iso}>

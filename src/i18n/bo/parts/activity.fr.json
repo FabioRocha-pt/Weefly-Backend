@@ -1,0 +1,36 @@
+{
+  "bo": {
+    "activity": {
+      "title": "Journal d'activité",
+      "subtitleOne": "Chaque demande, prise en charge, offre, choix, passager enregistré et émission de {name}, avec l'heure et l'auteur.",
+      "subtitleAll": "Chaque demande, prise en charge, offre, choix, passager enregistré et émission, de tous les ministères, avec l'heure et l'auteur.",
+      "subtitleAdmin": "Le même journal, pour toutes les sociétés.",
+      "empty": "Le journal est encore vide.",
+      "export": "Exporter en CSV",
+      "filters": {
+        "company": "Société",
+        "allCompanies": "Toutes les sociétés",
+        "ministry": "Ministère",
+        "allMinistries": "Tous les ministères",
+        "secretary": "Secrétaire",
+        "allSecretaries": "Toutes les secrétaires",
+        "from": "Du",
+        "to": "Au",
+        "submit": "Filtrer"
+      },
+      "table": {
+        "when": "Quand",
+        "ministry": "Ministère",
+        "author": "Auteur",
+        "action": "Action",
+        "reference": "Référence de la demande"
+      },
+      "csv": {
+        "when": "Quand",
+        "author": "Auteur",
+        "action": "Action",
+        "reference": "Référence de la demande"
+      }
+    }
+  }
+}

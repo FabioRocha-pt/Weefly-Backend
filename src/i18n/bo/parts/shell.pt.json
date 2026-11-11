@@ -6,6 +6,7 @@
         "body": "Muda só o que vê no ecrã. Os clientes continuam a receber tudo na língua do caso.",
         "pt": "Português",
         "en": "English",
+        "fr": "Français",
         "invalid": "Língua desconhecida.",
         "noSession": "A sessão expirou. Entre outra vez."
       },

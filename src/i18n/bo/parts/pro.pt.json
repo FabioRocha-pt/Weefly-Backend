@@ -183,6 +183,8 @@
         "whatsappNumber": "WhatsApp de apoio",
         "footer": "Rodapé",
         "poweredBy": "Mostrar “Powered by WeeFly” (TEN-05)",
+        "defaultLocale": "Língua por defeito do backoffice",
+        "defaultLocaleHint": "É a língua em que o backoffice abre para as contas novas desta empresa. Cada pessoa pode mudá-la nas suas definições.",
         "firstAdmin": "Primeira conta de administrador (opcional, recebe o convite)",
         "createAndInvite": "Criar parceiro",
         "colSales": "Venda",

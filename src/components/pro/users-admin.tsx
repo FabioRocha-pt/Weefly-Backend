@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { reactivateUser, resendInvite, saveUser, suspendUser } from "@/actions/access"
-import { canGrant, type AccessProfile } from "@/lib/access-roles"
+import { accessProfileLabel, canGrant, type AccessProfile } from "@/lib/access-roles"
 import { useI18n } from "@/i18n/provider"
 import { translateOr } from "@/i18n/translate"
 
@@ -93,7 +93,7 @@ export function UsersAdmin({
   audit,
 }: Props) {
   const { t, locale } = useI18n()
-  const roleLabel = (r: AccessProfile) => (locale === "pt" ? r.labelPt : r.labelEn)
+  const roleLabel = (r: AccessProfile) => accessProfileLabel(r, locale, t)
   const router = useRouter()
   const [pending, start] = useTransition()
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)

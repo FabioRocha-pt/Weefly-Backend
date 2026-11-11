@@ -1,0 +1,71 @@
+{
+  "bo": {
+    "review": {
+      "sendTitle": "Demande de ministère d'une autre société",
+      "sendBody": "Les offres que vous préparez vont d'abord à {partner} : la société les revoit, peut les modifier, puis les envoie à la secrétaire. La secrétaire ne voit rien d'ici là.",
+      "reviewingTitle": "En cours de révision par la société",
+      "reviewingBody": "Préparé par {who} ({when}). La secrétaire ne voit pas encore ces offres : revoyez-les, modifiez-les si nécessaire, puis envoyez-les.",
+      "waitingTitle": "Envoyé à la société pour révision",
+      "waitingBody": "{partner} revoit les offres et les envoie à la secrétaire. Vous pouvez continuer à les corriger entre-temps.",
+      "sendCta": "Envoyer à la société pour révision",
+      "publishCta": "Envoyer à la secrétaire",
+      "waitingCta": "En attente de la révision de la société",
+      "errors": {
+        "masterMustReview": "Pour une demande de ministère d'une autre société, les offres vont à la société pour révision : utilisez « Envoyer à la société pour révision ».",
+        "notMaster": "Seul le master envoie des offres à la société pour révision, et uniquement pour une demande de ministère d'une autre société.",
+        "failed": "Impossible d'envoyer pour révision.",
+        "noOffers": "Choisissez au moins une offre à envoyer.",
+        "notDraft": "La proposition n'est plus à l'état de brouillon."
+      }
+    },
+    "issue": {
+      "readyNoPayment": "Prêt à émettre (sans paiement)",
+      "notReady": "Il manque les passagers",
+      "waitPassengers": "Demande de ministère : l'émission se fait lorsque la secrétaire a choisi l'option et enregistré les passagers (sans paiement sur la plateforme).",
+      "operatorOnlyNote": "Les demandes de ministère sont émises par WeeFly.",
+      "errors": {
+        "operatorOnly": "Seule WeeFly émet les demandes de ministère.",
+        "notReady": "La demande de ministère n'est pas encore prête à émettre : il manque l'option ou les passagers.",
+        "noSecretaryEmail": "Aucune secrétaire active du ministère n'a d'e-mail : les billets se trouvent dans l'espace du ministère."
+      }
+    },
+    "travellerLog": {
+      "title": "Historique des passagers",
+      "intro": "Chaque enregistrement et chaque modification des fiches de ce ministère, avec l'auteur et la date.",
+      "none": "Il n'y a pas encore d'enregistrements.",
+      "when": "Quand",
+      "traveller": "Passager",
+      "what": "Quoi",
+      "who": "Qui",
+      "source": "Où",
+      "created": "Enregistré",
+      "changed": "Modifié : {fields}",
+      "secretary": "secrétaire",
+      "sources": {
+        "case": "Demande",
+        "backoffice": "Back-office",
+        "import": "Importation",
+        "secretary": "Espace du ministère"
+      }
+    },
+    "events": {
+      "proposal_review_requested": "Offres envoyées à la société pour révision",
+      "proposal_published": "Offres envoyées à la secrétaire",
+      "pax_mix_updated": "Types de passager selon la date de naissance",
+      "ministry_tickets_issued": "Billets émis · ministère prévenu"
+    },
+    "queue": {
+      "state": {
+        "pronto_a_emitir": "E4 · Prêt à émettre"
+      }
+    },
+    "shell": {
+      "alerts": {
+        "kind": {
+          "proposal_review_requested": "Offres du master à revoir",
+          "ministry_tickets_issued": "Billets du ministère émis"
+        }
+      }
+    }
+  }
+}

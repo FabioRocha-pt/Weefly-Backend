@@ -183,6 +183,8 @@
         "whatsappNumber": "Support WhatsApp",
         "footer": "Footer",
         "poweredBy": "Show “Powered by WeeFly” (TEN-05)",
+        "defaultLocale": "Default back-office language",
+        "defaultLocaleHint": "The language the back office opens in for this company's new accounts. Each person can change it in their settings.",
         "firstAdmin": "First admin account (optional, receives the invitation)",
         "createAndInvite": "Create partner",
         "colSales": "Sales",

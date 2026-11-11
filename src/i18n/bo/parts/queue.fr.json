@@ -1,0 +1,110 @@
+{
+  "bo": {
+    "queue": {
+      "title": "Price Checker · file de travail",
+      "intro": "Les demandes arrivent d'elles-mêmes lorsque le client soumet le formulaire. Le chronomètre démarre à cette soumission, pas à l'attribution.",
+      "bucket": {
+        "por_validar": "Justificatifs à valider",
+        "pagos_sem_bilhete": "Payés, sans billet",
+        "novos_sem_dono": "Nouveaux, sans responsable",
+        "a_cotar_meus": "À coter, les miens",
+        "a_expirar": "Propositions sur le point d'expirer",
+        "espera_cliente": "En attente du client",
+        "tudo": "Tout",
+        "fechados": "Dossiers clôturés"
+      },
+      "kpi": {
+        "oldest": "le plus ancien : il y a {tempo}",
+        "nothingWaiting": "rien ne nous attend",
+        "none": "aucun",
+        "emptyQueue": "file vide",
+        "underAnHour": "moins d'1 heure",
+        "choosingOrPaying": "en cours de choix ou de paiement",
+        "issuedThisMonth": "Émis ce mois-ci"
+      },
+      "empty": {
+        "por_validar": "Aucun justificatif en attente de validation. C'est la catégorie qui ne doit jamais avoir de file d'attente.",
+        "pagos_sem_bilhete": "Aucun dossier payé sans billet émis.",
+        "novos_sem_dono": "Toutes les nouvelles demandes ont un responsable.",
+        "a_cotar_meus": "Vous n'avez aucun dossier en cours de cotation.",
+        "a_expirar": "Aucune proposition n'expire dans l'heure qui vient.",
+        "espera_cliente": "Aucun dossier en attente du client.",
+        "tudo": "Aucune demande n'est encore arrivée par le Price Checker.",
+        "fechados": "Aucun dossier clôturé. Un dossier se clôture après l'émission, avec le bouton de l'en-tête de la fiche."
+      },
+      "table": {
+        "searchPlaceholder": "Référence, nom, téléphone, PNR ou itinéraire",
+        "cases_one": "{count} dossier",
+        "cases_other": "{count} dossiers",
+        "reference": "Référence",
+        "client": "Client",
+        "origin": "Origine",
+        "state": "État",
+        "route": "Itinéraire",
+        "passengers": "Passagers",
+        "amount": "Montant",
+        "inQueueFor": "Dans la file depuis",
+        "noAgent": "sans agent",
+        "claim": "Prendre en charge",
+        "validate": "Valider",
+        "issue": "Émettre",
+        "quote": "Coter",
+        "open": "Ouvrir"
+      },
+      "deadline": {
+        "closed": "clôturé {when}",
+        "issued": "émis",
+        "cancelled": "annulé",
+        "linkExpired": "lien expiré",
+        "overdue": "délai dépassé",
+        "validateBy": "à valider avant {when}",
+        "payBy": "à payer avant {when}",
+        "offerValidUntil": "proposition valable jusqu'à {when}",
+        "waitingUs": "en attente de notre action",
+        "waitingClient": "en attente du client"
+      },
+      "closedReason": {
+        "emitido": "Émis",
+        "fechado_fora_plataforma": "Conclu hors plateforme",
+        "cliente_desistiu": "Le client a renoncé",
+        "sem_resposta": "Client sans réponse",
+        "duplicado": "Demande en double",
+        "outro": "Autre motif"
+      },
+      "state": {
+        "novo": "E1 · Nouveau",
+        "em_cotacao": "E2 · En cotation",
+        "propostas_enviadas": "E3 · Propositions envoyées",
+        "aguarda_escolha": "E3 · En attente du choix",
+        "aguarda_passaportes": "E3 · En attente des passeports",
+        "aguarda_pagamento": "E4 · En attente de paiement",
+        "comprovativo_por_validar": "E4 · Justificatif à valider",
+        "pago_sem_bilhete": "Payé, sans billet",
+        "emitido": "E5 · Émis",
+        "fechado": "Clôturé",
+        "expirado": "X1 · Expiré",
+        "cancelado": "X2 · Annulé"
+      },
+      "claimGate": {
+        "title": "Ce dossier n'a pas encore de responsable",
+        "waitingBefore": "La demande de",
+        "waitingMiddle": "est dans la file depuis",
+        "waitingAfter": "et personne ne l'a prise en charge.",
+        "explainBefore": "Une proposition rédigée sur un dossier sans responsable peut être écrasée par un autre agent travaillant sur la même demande, sans qu'aucun des deux le sache. Prenez le dossier en charge et le compositeur s'ouvre ; il est consigné qu'il est à vous, avec l'heure, et le dossier quitte",
+        "explainBucket": "nouveaux sans responsable",
+        "explainAfter": ".",
+        "claiming": "Prise en charge…",
+        "claim": "Prendre en charge et coter"
+      },
+      "notes": {
+        "title": "Notes internes",
+        "teamOnly": "visible par l'équipe uniquement",
+        "placeholder": "Ce qui a été convenu sur WhatsApp. Visible par l'équipe uniquement.",
+        "hint": "La conversation WhatsApp n'est pas conservée dans le système. Notez ici ce qui compte pour le dossier.",
+        "saving": "Enregistrement…",
+        "save": "Enregistrer dans le dossier",
+        "team": "équipe"
+      }
+    }
+  }
+}

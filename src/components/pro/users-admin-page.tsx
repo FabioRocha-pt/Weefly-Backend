@@ -4,6 +4,7 @@ import { loadAccessAdmin, type AuditEntry } from "@/lib/access-admin"
 import { UsersAdmin, type UsersAdminAudit } from "@/components/pro/users-admin"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { getBoI18n } from "@/i18n/bo-server"
+import { accessProfileLabel } from "@/lib/access-roles"
 import type { Translator } from "@/i18n/translate"
 
 /**
@@ -19,7 +20,7 @@ export async function UsersAdminPage({ title, subtitle }: { title: string; subti
 
   const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short" })
   const partnerName = new Map(data.partners.map((p) => [p.id, p.commercialName]))
-  const roleName = new Map(data.roles.map((r) => [r.id, locale === "pt" ? r.labelPt : r.labelEn]))
+  const roleName = new Map(data.roles.map((r) => [r.id, accessProfileLabel(r, locale, t)]))
   const orgName = new Map(data.organisations.map((o) => [o.id, o.name]))
 
   const audit: UsersAdminAudit[] = data.audit

@@ -1,0 +1,220 @@
+{
+  "bo": {
+    "shell": {
+      "language": {
+        "title": "Langue du back-office",
+        "body": "Ne change que ce que vous voyez à l'écran. Les clients continuent de tout recevoir dans la langue du dossier.",
+        "pt": "Português",
+        "en": "English",
+        "fr": "Français",
+        "invalid": "Langue inconnue.",
+        "noSession": "La session a expiré. Reconnectez-vous."
+      },
+      "loading": "Chargement du back-office",
+      "noAccess": {
+        "title": "Pas d'accès au Price Checker",
+        "bodyBefore": "Le compte",
+        "bodyAfter": "ne figure pas dans la liste des accès de ce back-office.",
+        "howTitle": "Comment résoudre",
+        "howBefore": "L'accès est accordé par email, un compte à la fois. Si vous devriez y avoir accès, demandez à la personne qui administre votre société de le créer dans",
+        "howAdminPath": "Admin › Utilisateurs et autorisations",
+        "howOr": "(ou dans",
+        "howAgentPath": "Agent › Équipe",
+        "howAfter": ", dans le cas d'un partenaire). Si le compte a été suspendu, c'est là qu'il se réactive.",
+        "back": "Retour à l'accueil"
+      },
+      "userMenu": {
+        "profile": "Profil du compte",
+        "settings": "Paramètres",
+        "signOut": "Se déconnecter"
+      },
+      "settings": {
+        "title": "Paramètres",
+        "intro": "Votre compte dans ce back-office et les préférences qui seront désormais regroupées ici.",
+        "backToQueue": "Retour à la file",
+        "account": "Le compte",
+        "name": "Nom",
+        "email": "Email",
+        "profile": "Profil",
+        "accessBefore": "L'accès à ce back-office est accordé",
+        "accessBold": "par email, un compte à la fois",
+        "accessAfter": ". Pour ajouter ou révoquer quelqu'un, adressez-vous à l'administrateur, il n'y a rien à modifier ici.",
+        "preferences": "Préférences"
+      },
+      "alerts": {
+        "title": "Alertes",
+        "unseenTitle": "{count} alertes non vues",
+        "nothing": "rien pour le moment",
+        "summary": "{total} · {unseen} non vues",
+        "confirmAll": "Marquer {count} comme lues ?",
+        "confirmClear": "Effacer {count} déjà lues ?",
+        "yes": "Oui",
+        "no": "Non",
+        "markAll": "Tout marquer comme lu",
+        "clearRead": "Effacer les lues",
+        "empty": "Lorsqu'un client choisit une offre, soumet des passeports ou envoie un justificatif, cela apparaît ici.",
+        "actorClient": "le client",
+        "actorSystem": "automatique",
+        "actorTeam": "équipe",
+        "kind": {
+          "request_submitted": "Nouvelle demande soumise",
+          "offer_selected": "Le client a choisi une offre",
+          "passengers_submitted": "Passeports soumis",
+          "pay_method_chosen": "Le client a choisi son mode de paiement",
+          "proof_uploaded": "Justificatif envoyé",
+          "client_declared_paid": "Le client déclare avoir payé",
+          "client_message": "Message du client",
+          "request_cancelled": "Le client a annulé la demande",
+          "payment_expired": "Le délai de paiement a expiré"
+        }
+      },
+      "live": {
+        "titleSound": "En temps réel, avec alerte sonore. Cliquez pour couper le son.",
+        "titleSilent": "En temps réel, silencieux. Cliquez pour activer l'alerte.",
+        "titlePolling": "Sans websocket : la file continue de s'actualiser toutes les 4 secondes.",
+        "live": "en direct",
+        "polling": "interrogation",
+        "silent": "silencieux",
+        "newRequest": "Une nouvelle demande est arrivée",
+        "newsWithRequest": "{count} nouveautés, dont une nouvelle demande",
+        "oneChanged": "Un dossier a changé d'état",
+        "manyChanged": "{count} dossiers ont changé d'état"
+      },
+      "link": {
+        "create": "Créer un lien",
+        "drawerLabel": "Générateur de lien",
+        "title": "Lien de prise en charge",
+        "intro": "Le lien est permanent et réutilisable. Le dossier n'est créé que lorsque le client soumet le formulaire.",
+        "params": "Paramètres",
+        "seller": "Vendeur",
+        "yourAccount": "votre compte",
+        "market": "Marché",
+        "language": "Langue",
+        "currency": "Devise",
+        "clientCountry": "Pays du client",
+        "paramsNote": "La langue, la devise et le pays sont définis ici et le client ouvre le lien avec tout déjà réglé, l'indicatif téléphonique vient du pays ({dial}). Il peut les changer, mais par défaut il voit ce qui est pertinent pour son marché.",
+        "noAmountNote": "Il n'y a ici aucun montant à encaisser : le lien de paiement est généré automatiquement une fois que le client a choisi une offre et renseigné les données de tous les passagers. Jusque-là, il n'y a ni montant ni passager à qui le facturer.",
+        "generated": "Lien généré",
+        "address": "Adresse",
+        "message": "Message prêt à coller",
+        "copyMessage": "Copier le message",
+        "openWhatsapp": "Ouvrir dans WhatsApp",
+        "bareOnly": "Le lien seul",
+        "bareNote": "Sans paramètres. Le client choisit la langue et la devise, et le dossier arrive sans vendeur attribué.",
+        "close": "Fermer",
+        "copy": "Copier",
+        "copied": "Copié"
+      }
+    },
+    "tutorial": {
+      "open": "Tutoriel de cet écran",
+      "close": "Fermer",
+      "back": "Précédent",
+      "next": "Suivant",
+      "done": "Terminer",
+      "stepOf": "étape {n} sur {total}",
+      "queue": {
+        "title": "File de travail",
+        "steps": {
+          "0": {
+            "title": "Les chiffres du haut",
+            "body": "Chaque carte compte les dossiers qui demandent une action : justificatifs à valider, payés sans billet, nouveaux sans responsable. Commencez toujours par les rouges."
+          },
+          "1": {
+            "title": "Les onglets",
+            "body": "Ils filtrent la liste selon le même critère que les cartes. Dossiers clôturés affiche les dossiers émis et archivés."
+          },
+          "2": {
+            "title": "Prendre en charge et coter",
+            "body": "Un dossier sans responsable a le bouton Prendre en charge. Une fois pris en charge, il est à vous, et le bouton de droite ouvre le dossier à la bonne étape."
+          },
+          "3": {
+            "title": "Archiver",
+            "body": "Un dossier réglé par téléphone ou au comptoir s'archive avec un motif. Il quitte les files et reste dans Dossiers clôturés ; seul un administrateur peut le rouvrir."
+          }
+        }
+      },
+      "case": {
+        "title": "Fiche du dossier",
+        "steps": {
+          "0": {
+            "title": "L'en-tête",
+            "body": "Il affiche la référence, le client, l'état et le responsable. C'est d'ici que l'on prend en charge, archive ou clôture le dossier."
+          },
+          "1": {
+            "title": "Offres",
+            "body": "Composez les options et publiez la proposition. Le client reçoit le lien par email et WhatsApp."
+          },
+          "2": {
+            "title": "Paiement",
+            "body": "Lorsque le client envoie le justificatif, validez-le ici. Le dossier passe à payé sans billet."
+          },
+          "3": {
+            "title": "Émission",
+            "body": "Enregistrez le PNR et les billets. Le client reçoit le billet et le dossier est clôturé comme émis."
+          }
+        }
+      },
+      "agent": {
+        "title": "Espace Agent",
+        "steps": {
+          "0": {
+            "title": "Les menus",
+            "body": "Billets ouvre le Concierge. Les menus marqués Bientôt sont activés pour votre société mais n'ont pas encore de contenu."
+          },
+          "1": {
+            "title": "Clients et portefeuille",
+            "body": "Clients regroupe toutes les demandes de chaque personne. Le portefeuille affiche les montants de la société."
+          },
+          "2": {
+            "title": "Changer de module",
+            "body": "Le bouton en haut du menu ouvre la liste des modules. Vous changez sans vous reconnecter."
+          }
+        }
+      },
+      "admin": {
+        "title": "Admin",
+        "steps": {
+          "0": {
+            "title": "Tableau de bord",
+            "body": "Les chiffres qui demandent votre attention. Chaque carte ouvre la liste dont elle provient."
+          },
+          "1": {
+            "title": "Validation des comptes",
+            "body": "Approuvez avec la société, le sous-domaine et les menus, ou refusez avec une note. La personne reçoit la décision par email."
+          },
+          "2": {
+            "title": "Partenaires",
+            "body": "Dans Modifier, vous téléversez le logo, l'icône et l'image de partage de chaque société, et vous choisissez les couleurs."
+          }
+        }
+      },
+      "modules": {
+        "title": "Choix du module",
+        "steps": {
+          "0": {
+            "title": "Où travailler",
+            "body": "Chaque carte est un module que l'Admin vous a attribué. Le dernier utilisé est mis en évidence."
+          },
+          "1": {
+            "title": "Fournisseur",
+            "body": "Le module Fournisseur est verrouillé : il arrive dans une prochaine version."
+          }
+        }
+      },
+      "general": {
+        "title": "WeeFly PRO",
+        "steps": {
+          "0": {
+            "title": "Le menu latéral",
+            "body": "Tout ce que vous pouvez ouvrir se trouve dans le menu de gauche. Le bouton en haut permet de changer de module."
+          },
+          "1": {
+            "title": "Votre compte",
+            "body": "Dans le coin supérieur droit : votre profil, la langue et la déconnexion."
+          }
+        }
+      }
+    }
+  }
+}

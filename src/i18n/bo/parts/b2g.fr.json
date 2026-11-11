@@ -1,0 +1,196 @@
+{
+  "bo": {
+    "b2g": {
+      "list": {
+        "title": "Ministères",
+        "subtitle": "Les ministères que votre société sert : la secrétaire, le lien, l'enveloppe et les demandes.",
+        "new": "Nouveau ministère",
+        "empty": "Il n'y a pas encore de ministères.",
+        "ministry": "Ministère",
+        "threshold": "Seuil",
+        "lastAlert": "Dernière alerte"
+      },
+      "form": {
+        "name": "Nom du ministère",
+        "slug": "Identifiant dans l'adresse",
+        "logo": "Armoiries (URL de l'image)",
+        "secretaryName": "Nom de la secrétaire",
+        "secretaryEmail": "E-mail de la secrétaire",
+        "secretaryPhone": "Téléphone de la secrétaire",
+        "thresholdAmount": "Seuil d'alerte (montant)",
+        "thresholdPercent": "Seuil d'alerte (% du dernier approvisionnement)",
+        "secretarySeesBalance": "La secrétaire voit le solde de l'enveloppe (décision O2)",
+        "save": "Enregistrer",
+        "create": "Créer le ministère",
+        "cancel": "Annuler"
+      },
+      "detail": {
+        "edit": "Modifier",
+        "inactive": "inactif",
+        "balance": "Solde de l'enveloppe",
+        "threshold": "Seuil d'alerte : {value}",
+        "noThreshold": "Sans seuil d'alerte",
+        "below": "Sous le seuil",
+        "secretary": "Secrétaire",
+        "secretarySees": "Voit le solde",
+        "secretaryNotSees": "Ne voit pas le solde",
+        "requests": "Demandes",
+        "lastAlert": "Dernière alerte : {when}",
+        "noAlerts": "Aucune alerte envoyée",
+        "link": "Lien du ministère",
+        "noLink": "Sans lien",
+        "copy": "Copier",
+        "copied": "Copié",
+        "rotate": "Régénérer le lien",
+        "rotateConfirm": "Régénérer le lien ? Le lien actuel cesse de fonctionner immédiatement, et la secrétaire reçoit le nouveau par e-mail.",
+        "linkSince": "Lien en vigueur depuis {when}",
+        "accountActive": "actif",
+        "accountSuspended": "suspendu"
+      },
+      "secretary": {
+        "change": "Changer de secrétaire",
+        "explain": "Le compte sortant est suspendu, pas supprimé. Le nouveau hérite du ministère et de l'historique, le lien est régénéré et l'ancien cesse de fonctionner.",
+        "confirm": "Changer de secrétaire ? Le lien actuel cesse de fonctionner.",
+        "submit": "Changer"
+      },
+      "secretaryReplaced": "Remplacée par une nouvelle secrétaire",
+      "budget": {
+        "title": "Enveloppe",
+        "amount": "Montant ({currency})",
+        "documentRef": "Référence du document",
+        "reason": "Note (facultatif)",
+        "credit": "Enregistrer un approvisionnement",
+        "creditConfirm": "Enregistrer un approvisionnement de {amount} ?",
+        "thresholdHint": "En montant ou en pourcentage du dernier approvisionnement. Vide : pas d'alertes."
+      },
+      "adjust": {
+        "title": "Corriger le solde",
+        "open": "Corriger le solde…",
+        "explain": "Une correction est enregistrée comme un mouvement, avec votre nom et le motif. Elle n'efface rien.",
+        "amount": "Montant ({currency}), avec signe",
+        "reason": "Motif",
+        "confirm": "Corriger le solde de {amount} ? L'opération est enregistrée à votre nom.",
+        "submit": "Corriger"
+      },
+      "history": {
+        "title": "Historique de l'enveloppe",
+        "empty": "Il n'y a pas encore de mouvements.",
+        "date": "Date",
+        "kind": "Type",
+        "value": "Montant",
+        "reference": "Référence",
+        "who": "Enregistré par",
+        "kinds": {
+          "credit": "Approvisionnement",
+          "debit": "Billet",
+          "reversal": "Annulation",
+          "adjustment": "Correction"
+        }
+      },
+      "alerts": {
+        "title": "Alertes de solde",
+        "empty": "Aucune alerte envoyée.",
+        "line": "solde {balance} · seuil {threshold} · {email} e-mail(s) · {whatsapp} WhatsApp"
+      },
+      "recipients": {
+        "title": "Qui reçoit les alertes",
+        "none": "Personne n'est configuré (décision O1) : les alertes sont enregistrées mais ne sont pas envoyées.",
+        "allMinistries": "Tous les ministères",
+        "name": "Nom",
+        "add": "Ajouter",
+        "remove": "Retirer",
+        "side": {
+          "partner": "Partenaire",
+          "weefly": "WeeFly"
+        }
+      },
+      "cases": {
+        "title": "Dossiers du ministère",
+        "empty": "Il n'y a pas encore de demandes.",
+        "reference": "Référence",
+        "route": "Itinéraire",
+        "stage": "Étape",
+        "external": "Payé hors plateforme",
+        "created": "Demandé le"
+      },
+      "external": {
+        "title": "Paiement externe",
+        "balance": "solde de l'enveloppe",
+        "explain": "Le ministère paie en dehors de la plateforme. Confirmer enregistre le paiement, le déduit de l'enveloppe et débloque l'émission.",
+        "paidOn": "Date du paiement",
+        "methodLabel": "Mode de paiement",
+        "reference": "Référence",
+        "confirm": "Confirmer le paiement externe",
+        "confirmConfirm": "Confirmer {amount} ? Le montant est déduit de l'enveloppe du ministère.",
+        "confirmedLine": "Confirmé : {amount}, payé le {date} par {method}, confirmé par {by}",
+        "reversalReason": "Motif de l'annulation",
+        "reverse": "Annuler le paiement",
+        "reverseConfirm": "Annuler le paiement ? Le solde est rétabli et l'émission est de nouveau bloquée.",
+        "reversedLine": "Annulé : {amount}, par {by}, {reason}",
+        "method": {
+          "transfer": "Virement",
+          "deposit": "Dépôt",
+          "cheque": "Chèque",
+          "comfort_letter": "Lettre de confort",
+          "other": "Autre"
+        }
+      },
+      "admin": {
+        "title": "B2G",
+        "subtitle": "Toutes les ventes à l'État, de tous les partenaires. Lecture seule par défaut.",
+        "noPartners": "Aucun partenaire ne vend encore à l'État.",
+        "partner": "Partenaire",
+        "status": "Statut",
+        "ministries": "Ministères",
+        "issued": "Total émis",
+        "balances": "Somme des soldes",
+        "statusValue": {
+          "active": "Actif",
+          "suspended": "Suspendu"
+        },
+        "readOnly": "Lecture seule. Intervenir (corriger un solde) exige une confirmation et un motif, et l'opération est enregistrée."
+      },
+      "wallet": {
+        "subtitle": "Le solde de l'enveloppe de chaque ministère, en consultation seule."
+      },
+      "errors": {
+        "onlyManagers": "Seul un administrateur gère les ministères et les enveloppes.",
+        "onlyWeefly": "Seul un Admin WeeFly corrige les soldes.",
+        "invalid": "Données invalides.",
+        "nameMissing": "Le nom est manquant.",
+        "slugShape": "L'identifiant n'accepte que des minuscules, des chiffres et le tiret.",
+        "slugTaken": "Un ministère avec cet identifiant existe déjà.",
+        "emailInvalid": "E-mail invalide.",
+        "percentRange": "Le pourcentage va de 0 à 100.",
+        "notFound": "Introuvable.",
+        "amountMissing": "Le montant est manquant.",
+        "documentMissing": "La référence du document est manquante.",
+        "reasonMissing": "Indiquez le motif.",
+        "dateInvalid": "Date invalide.",
+        "unavailable": "Service indisponible.",
+        "caseHasNoMinistry": "Ce dossier n'est pas celui d'un ministère.",
+        "alreadyConfirmed": "Le paiement externe de ce dossier a déjà été confirmé.",
+        "insufficient": "Solde insuffisant : l'enveloppe du ministère ne couvre pas ce billet. Rien n'a été enregistré.",
+        "nothingToReverse": "Il n'y a pas de paiement externe à annuler.",
+        "secretaryDenied": "Vous ne pouvez pas créer le compte de la secrétaire chez ce partenaire.",
+        "recipientChannel": "Indiquez un e-mail ou un WhatsApp.",
+        "channelOff": "Le canal Ministères n'est pas activé pour cette société."
+      },
+      "notice": {
+        "saved": "Ministère enregistré.",
+        "created": "Ministère créé, avec son lien.",
+        "welcomeSent": "L'e-mail de bienvenue a été envoyé.",
+        "welcomeFailed": "L'e-mail de bienvenue n'a pas été envoyé : {reason}",
+        "linkRotated": "Lien régénéré. Le précédent ne fonctionne plus.",
+        "secretaryChanged": "Secrétaire changée. L'ancien lien ne fonctionne plus.",
+        "credited": "Approvisionnement enregistré.",
+        "adjusted": "Solde corrigé et enregistré.",
+        "thresholdSaved": "Seuil enregistré.",
+        "externalConfirmed": "Paiement externe confirmé. Déduit de l'enveloppe ; l'émission est débloquée.",
+        "externalReversed": "Paiement externe annulé. Le solde a été rétabli.",
+        "recipientSaved": "Destinataire ajouté.",
+        "recipientRemoved": "Destinataire retiré."
+      }
+    }
+  }
+}

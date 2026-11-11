@@ -1,0 +1,11 @@
+{
+  "bo": {
+    "roles": {
+      "weefly_admin": "Admin WeeFly",
+      "weefly_agent": "Agent WeeFly",
+      "partner_admin": "Admin du partenaire",
+      "partner_agent": "Agent du partenaire",
+      "secretary": "Secrétaire"
+    }
+  }
+}

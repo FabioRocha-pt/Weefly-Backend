@@ -1,0 +1,74 @@
+{
+  "bo": {
+    "adminCases": {
+      "nav": "Dossiers",
+      "title": "Dossiers de tous les partenaires",
+      "subtitle": "Par partenaire, puis par ministère. Ce que chaque partenaire a en cours et ce qu'il a déjà émis.",
+      "readOnly": "Lecture seule. Pour modifier le dossier d'un autre partenaire, ouvrez-le et utilisez « Intervenir » ; l'intervention est enregistrée.",
+      "partner": "Partenaire",
+      "status": "Statut",
+      "ministries": "Ministères",
+      "cases": "Dossiers",
+      "issued": "Émis",
+      "operator": "opérateur",
+      "noMinistry": "Sans ministère (détail)",
+      "partnerSubtitle": "{count} dossier(s), les plus récents d'abord.",
+      "departure": "Départ",
+      "return": "Retour",
+      "openInConcierge": "Ouvrir dans le Concierge",
+      "intervening": "Intervention en cours : {reason}",
+      "readOnlyCase": "Lecture seule. Rien sur cet écran ne modifie le dossier.",
+      "client": "Client",
+      "contact": "Contact",
+      "pax": "Adultes · enfants · bébés",
+      "issuedAt": "Émis le",
+      "carrier": "Compagnie · consolidateur",
+      "created": "Créé",
+      "passengers": "Passagers",
+      "payments": "Paiements",
+      "history": "Historique",
+      "intervene": {
+        "button": "Intervenir sur ce dossier",
+        "explain": "Vous allez traiter le dossier d'un autre partenaire pendant 4 heures. Le motif est enregistré et apparaît dans l'historique du dossier que voit le partenaire.",
+        "reasonPlaceholder": "Pourquoi ? (ex. : demande du partenaire par e-mail)",
+        "confirm": "Intervenir et ouvrir",
+        "cancel": "Annuler"
+      },
+      "banner": {
+        "title": "Intervention de l'Admin WeeFly jusqu'à {until}",
+        "end": "Terminer l'intervention"
+      },
+      "errors": {
+        "reasonMissing": "Indiquez le motif de l'intervention.",
+        "notAllowed": "Seul l'Admin WeeFly peut intervenir.",
+        "invalid": "Données invalides.",
+        "notFound": "Dossier introuvable.",
+        "unavailable": "Impossible d'enregistrer pour le moment. Réessayez."
+      }
+    },
+    "adminClients": {
+      "nav": "Clients",
+      "title": "Clients de tous les partenaires",
+      "partner": "Partenaire",
+      "allPartners": "Tous les partenaires",
+      "searchPlaceholder": "Nom, téléphone ou e-mail",
+      "search": "Rechercher",
+      "noMatch": "Aucun client ne correspond à ces filtres."
+    },
+    "adminDashboard": {
+      "nav": "Tableau de bord",
+      "title": "Tableau de bord",
+      "subtitle": "Ce qui demande votre attention maintenant. Chaque chiffre ouvre la liste correspondante.",
+      "pending": "Comptes en attente",
+      "pendingHint": "en attente d'approbation",
+      "partners": "Partenaires actifs",
+      "partnersHint": "sociétés en activité",
+      "openCases": "Dossiers ouverts",
+      "openCasesHint": "chez tous les partenaires",
+      "issued": "Billets émis",
+      "issuedHint": "ce mois-ci",
+      "alerts": "Alertes de solde",
+      "alertsHint": "au cours des 7 derniers jours"
+    }
+  }
+}

@@ -25,7 +25,7 @@ export function ActivityLog({
 }: {
   rows: ActivityRow[]
   t: Translator
-  locale: "pt" | "en"
+  locale: "pt" | "en" | "fr"
   basePath: string
   filters: { organisationId?: string; secretaryId?: string; from?: string; to?: string; partnerId?: string }
   /** Omitir quando o registo já está preso a um ministério (a ficha dele). */

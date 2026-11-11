@@ -1,0 +1,66 @@
+{
+  "bo": {
+    "travellers": {
+      "title": "Fiches des voyageurs",
+      "expiringCount": "{count} passeport(s) arrivant à expiration",
+      "empty": "Il n'y a pas encore de fiches. Elles sont créées lorsque la secrétaire renseigne les passagers d'une demande.",
+      "name": "Nom",
+      "passport": "Passeport",
+      "expiry": "Validité",
+      "contact": "Contact (assistance)",
+      "updated": "Mise à jour",
+      "expiringSoon": "moins de 6 mois",
+      "expiringBanner": "Le passeport expire le {date} : moins de six mois.",
+      "alertSent": "secrétaire prévenue le {when}",
+      "history": "Historique des modifications",
+      "sources": {
+        "case": "Demande de la secrétaire",
+        "backoffice": "Back-office",
+        "import": "Importée des dossiers"
+      },
+      "fromCase": "voir le dossier",
+      "columns": {
+        "title": "Civilité",
+        "first_name": "Prénoms",
+        "last_name": "Noms de famille",
+        "gender": "Sexe",
+        "birth_date": "Naissance",
+        "nationality": "Nationalité",
+        "passport_number": "Passeport",
+        "passport_expiry": "Validité",
+        "issuing_country": "Pays de délivrance",
+        "phone": "Téléphone",
+        "email": "E-mail"
+      },
+      "fields": {
+        "title": "Civilité",
+        "firstName": "Prénoms",
+        "lastName": "Noms de famille",
+        "birthDate": "Date de naissance",
+        "gender": "Sexe",
+        "nationality": "Nationalité",
+        "passportNumber": "Numéro du passeport",
+        "passportExpiry": "Validité du passeport",
+        "issuingCountry": "Pays de délivrance",
+        "phone": "Téléphone",
+        "email": "E-mail"
+      },
+      "contactNote": "Le téléphone et l'e-mail servent uniquement à l'assistance opérationnelle : joindre le voyageur en cas de perturbation. Ils ne sont transmis ni à la compagnie ni au billet.",
+      "saving": "Enregistrement…",
+      "save": "Enregistrer la fiche",
+      "saved": "Enregistrée. La modification figure dans l'historique.",
+      "errors": {
+        "date": "Date invalide.",
+        "country": "Choisissez un pays dans la liste.",
+        "name": "Prénom et nom, comme sur le passeport.",
+        "passport": "Le passeport comporte 5 à 12 lettres ou chiffres.",
+        "phone": "Vérifiez le téléphone, avec l'indicatif.",
+        "email": "Vérifiez l'e-mail.",
+        "notFound": "Fiche introuvable.",
+        "invalid": "Données invalides.",
+        "unavailable": "Impossible d'enregistrer pour le moment. Réessayez.",
+        "duplicatePassport": "Une autre fiche de ce ministère porte déjà ce passeport."
+      }
+    }
+  }
+}

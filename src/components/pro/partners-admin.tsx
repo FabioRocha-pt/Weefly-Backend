@@ -11,6 +11,7 @@ import { BrandUploads } from "@/components/pro/brand-uploads"
 import { toSubdomain } from "@/lib/subdomain"
 import { PARTNER_CHANNELS, normaliseChannels, type PartnerChannel } from "@/lib/channels"
 import { useT } from "@/i18n/provider"
+import { BO_DEFAULT_LOCALE, BO_LOCALES, type BoLocale } from "@/i18n/bo"
 
 /**
  * WeeFly · ADM-01 · Parceiros: criar, configurar a marca (TEN-02), suspender.
@@ -58,6 +59,7 @@ export interface PartnerRowView {
   footerText: string | null
   poweredByWeefly: boolean
   whatsappNumber: string | null
+  defaultLocale: BoLocale
   users: number
   activeUsers: number
 }
@@ -93,6 +95,7 @@ type Form = {
   footerText: string
   poweredByWeefly: boolean
   whatsappNumber: string
+  defaultLocale: BoLocale
   firstAdminEmail: string
   firstAdminName: string
 }
@@ -128,6 +131,7 @@ const EMPTY: Form = {
   footerText: "",
   poweredByWeefly: true,
   whatsappNumber: "",
+  defaultLocale: BO_DEFAULT_LOCALE,
   firstAdminEmail: "",
   firstAdminName: "",
 }
@@ -165,6 +169,7 @@ function fromRow(p: PartnerRowView): Form {
     footerText: p.footerText ?? "",
     poweredByWeefly: p.poweredByWeefly,
     whatsappNumber: p.whatsappNumber ?? "",
+    defaultLocale: p.defaultLocale,
   }
 }
 
@@ -230,6 +235,7 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
       footerText: form.footerText,
       poweredByWeefly: form.poweredByWeefly,
       whatsappNumber: form.whatsappNumber,
+      defaultLocale: form.defaultLocale,
     }
     run(
       () =>
@@ -331,6 +337,22 @@ export function PartnersAdmin({ partners }: { partners: PartnerRowView[] }) {
             {input("nif", t("bo.pro.partners.nif"))}
             {input("country", t("bo.pro.partners.country"), { maxLength: 2 })}
             {input("address", t("bo.pro.partners.address"))}
+            {/* I18N-03 · a língua em que o back-office abre para a empresa. */}
+            <label className="text-sm space-y-1">
+              <span className="text-slate-600">{t("bo.pro.partners.defaultLocale")}</span>
+              <select
+                className={field}
+                value={editing.form.defaultLocale}
+                onChange={(e) => set("defaultLocale", e.target.value as BoLocale)}
+                title={t("bo.pro.partners.defaultLocaleHint")}
+              >
+                {BO_LOCALES.map((l) => (
+                  <option key={l} value={l}>
+                    {t(`bo.shell.language.${l}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
             {input("contactName", t("bo.pro.partners.contactName"))}
             {input("contactEmail", t("bo.pro.partners.contactEmail"), { type: "email" })}
             {input("contactPhone", t("bo.pro.partners.contactPhone"))}

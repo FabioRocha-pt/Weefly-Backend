@@ -4,8 +4,15 @@ import { WeeFlyLogo } from "@/components/weefly-logo"
 import { LocaleSwitcher } from "@/i18n/locale-switcher"
 import { getI18n } from "@/i18n/server"
 
-/** O destino é fixo; só a etiqueta muda de língua. */
-const NAV_MENU = [
+/**
+ * FIX-02 · os quatro links ficam escondidos até as páginas existirem: hoje
+ * davam "página não encontrada". Escondidos, não apagados — para repor um,
+ * passar a entrada de NAV_HIDDEN para NAV_MENU. O destino é fixo; só a
+ * etiqueta muda de língua.
+ */
+const NAV_MENU: { key: string; href: string }[] = []
+
+export const NAV_HIDDEN = [
   { key: "auth.navHow", href: "/como-funciona" },
   { key: "auth.navServices", href: "/servicos" },
   { key: "auth.navCommissions", href: "/comissoes" },

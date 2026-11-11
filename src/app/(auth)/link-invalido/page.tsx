@@ -29,13 +29,15 @@ export default function LinkInvalidoPage() {
               reenvia o link de ativação. */}
           <SignupEmailActions email={null} askEmail />
 
-          {/* Help text */}
+          {/* Help text · FIX-02: escondido até a página /ajuda existir (dava 404). */}
+          {false && (
           <p className="text-sm text-slate-500">
             {t("auth.invalidHelpPrefix")}{" "}
             <Link href="/ajuda" className="text-orange-600 hover:text-orange-700 font-medium">
               {t("auth.invalidHelpLink")}
             </Link>
           </p>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -90,7 +90,7 @@ export function SecretaryManager({
   const [reveal, setReveal] = useState<{ name: string; pin: string; link?: string } | null>(null)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ name: "", email: "", phone: "", whatsapp: "", sendWelcome: true })
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale === "en" ? "en" : "pt"], { dateStyle: "short", timeStyle: "short" })
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short" })
 
   const run = (action: () => Promise<SecretaryResult>, name: string, after?: () => void) =>
     start(async () => {

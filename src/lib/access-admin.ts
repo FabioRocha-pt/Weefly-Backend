@@ -12,6 +12,8 @@
 import { cache } from "react"
 
 import { getBoScope } from "@/lib/bo-scope"
+import { BO_DEFAULT_LOCALE, isBoLocale, type BoLocale } from "@/i18n/bo"
+import { isSchemaNotMigrated } from "@/lib/pro-account"
 import {
   ACCESS_ROLE_COLUMNS,
   profileFromRow,
@@ -59,6 +61,8 @@ export interface AdminPartner {
   footerText: string | null
   poweredByWeefly: boolean
   whatsappNumber: string | null
+  /** I18N-03 · a língua em que o back-office abre para as contas da empresa. */
+  defaultLocale: BoLocale
   createdAt: string
 }
 
@@ -145,6 +149,7 @@ export function partnerFromAdminRow(r: Record<string, any>): AdminPartner {
     footerText: r.footer_text ?? null,
     poweredByWeefly: r.powered_by_weefly !== false,
     whatsappNumber: r.whatsapp_number ?? null,
+    defaultLocale: isBoLocale(r.default_locale) ? r.default_locale : BO_DEFAULT_LOCALE,
     createdAt: r.created_at,
   }
 }
@@ -164,7 +169,13 @@ export const loadAccessAdmin = cache(async (): Promise<AccessAdminData | null> =
 
   const [rolesRes, partnersRes, usersRes, orgsRes, auditRes] = await Promise.all([
     db.from("access_roles").select(ACCESS_ROLE_COLUMNS).order("sort"),
-    db.from("partners").select(PARTNER_ADMIN_COLUMNS).order("is_operator", { ascending: false }).order("commercial_name"),
+    /* I18N-03 · com a 0041 lê também `default_locale`; sem ela, lê sem a coluna. */
+    (async () => {
+      const read = (columns: string) =>
+        db.from("partners").select(columns).order("is_operator", { ascending: false }).order("commercial_name")
+      const full = await read(`${PARTNER_ADMIN_COLUMNS}, default_locale`)
+      return full.error && isSchemaNotMigrated(full.error) ? read(PARTNER_ADMIN_COLUMNS) : full
+    })(),
     db
       .from("bo_allowlist")
       .select(

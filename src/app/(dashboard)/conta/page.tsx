@@ -4,6 +4,7 @@ import { getBoAccess } from "@/lib/bo-access"
 import { ProfileForm } from "@/components/pro/profile-form"
 import { BoLanguageSetting } from "@/components/bo/language-setting"
 import { getBoI18n } from "@/i18n/bo-server"
+import { accessProfileLabel } from "@/lib/access-roles"
 
 /**
  * PRO-13 · o perfil básico. Nome e telefone editam-se; a empresa e o perfil de
@@ -21,9 +22,7 @@ export default async function ContaPage() {
      ou o papel no Concierge, ou simplesmente membro da empresa. */
   const stored = account.profile ?? (bo.ok ? bo.identity.profile : null)
   const profile = stored
-    ? locale === "pt"
-      ? stored.labelPt
-      : stored.labelEn
+    ? accessProfileLabel(stored, locale, t)
     : accessProfile(account) === "master"
       ? t("profile.roleMaster")
       : bo.ok

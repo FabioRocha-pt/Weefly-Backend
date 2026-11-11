@@ -21,7 +21,7 @@ export function OrganisationList({
   orgs: OrganisationSummary[]
   hrefFor: (id: string) => string
   t: Translator
-  locale: "pt" | "en"
+  locale: "pt" | "en" | "fr"
 }) {
   const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short" })
   if (orgs.length === 0) {

@@ -44,6 +44,23 @@ export interface AccessProfile {
   sort: number
 }
 
+/**
+ * I18N-02 · o nome do perfil na língua de quem lê. A tabela só guarda PT e EN
+ * (e o master pode tê-los mudado); as outras línguas vêm do dicionário
+ * (`bo.roles.<id>`).
+ */
+export function accessProfileLabel(
+  profile: Pick<AccessProfile, "id" | "labelPt" | "labelEn">,
+  locale: string,
+  t: (key: string) => string
+): string {
+  if (locale === "pt") return profile.labelPt
+  if (locale === "en") return profile.labelEn
+  const key = `bo.roles.${profile.id}`
+  const label = t(key)
+  return label === key ? profile.labelEn : label
+}
+
 /** As colunas de `access_roles`, para um `select` embutido. */
 export const ACCESS_ROLE_COLUMNS =
   "id, label_pt, label_en, partner_kind, backoffice, admin_module, cross_partner, manage_users, grantable_by_partner, supervises_cases, needs_organisation, sort"

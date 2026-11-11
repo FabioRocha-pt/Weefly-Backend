@@ -44,7 +44,7 @@ export function OrganisationDetailView({
   /** B2G-06 · quem está a ver: decide quem gere secretárias e gera PIN. */
   viewer: { email: string; isManager: boolean; crossPartner: boolean; backoffice: boolean }
   t: Translator
-  locale: "pt" | "en"
+  locale: "pt" | "en" | "fr"
 }) {
   const { org } = detail
   const money = (v: number) => formatAmount(v, org.currency)

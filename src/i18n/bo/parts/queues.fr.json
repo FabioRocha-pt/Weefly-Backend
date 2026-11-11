@@ -1,0 +1,56 @@
+{
+  "bo": {
+    "claim": {
+      "column": "Responsable",
+      "unclaimed": "Sans responsable",
+      "yours": "À vous",
+      "claimedBy": "Pris en charge par {name}",
+      "takenBy": "Ce dossier a déjà été pris en charge par {name}.",
+      "claim": "Prendre en charge",
+      "claiming": "Prise en charge…",
+      "gateTakenTitle": "Ce dossier a déjà un responsable",
+      "gateTakenBody": "Pris en charge par {name}. Seul un administrateur peut le libérer.",
+      "release": "Libérer",
+      "releaseTitle": "Libérer le dossier",
+      "releaseReason": "Motif (il est enregistré)",
+      "releasePlaceholder": "Pourquoi le dossier retourne-t-il dans la file ?",
+      "releaseConfirm": "Libérer le dossier",
+      "releasing": "Libération…",
+      "released": "Dossier libéré. Il est revenu dans « nouveaux sans responsable ».",
+      "errors": {
+        "reasonRequired": "Indiquez le motif (au moins 3 caractères).",
+        "forbidden": "Seul un administrateur peut libérer un dossier.",
+        "notClaimed": "Le dossier n'a plus de responsable.",
+        "changed": "Le responsable du dossier a changé entre-temps. Rechargez la page.",
+        "failed": "Impossible de libérer le dossier."
+      }
+    },
+    "urgency": {
+      "label": "Urgence",
+      "0": "Normal",
+      "1": "Urgent",
+      "2": "Très urgent",
+      "changed": "Urgence modifiée : {level}.",
+      "unchanged": "L'urgence était déjà celle-ci.",
+      "notMinistry": "L'urgence n'existe que pour les demandes de ministère.",
+      "failed": "Impossible de modifier l'urgence."
+    },
+    "masterConcierge": {
+      "nav": "Concierge",
+      "title": "Concierge du master",
+      "subtitle": "Les demandes de toutes les sociétés et de tous les canaux, les plus urgentes et celles qui attendent depuis le plus longtemps d'abord. Prenez-les en charge et traitez-les comme n'importe quel agent.",
+      "company": "Société",
+      "allCompanies": "Toutes les sociétés",
+      "channel": "Canal",
+      "allChannels": "Tous les canaux",
+      "show": "Afficher",
+      "open": "En cours",
+      "unclaimed": "Sans responsable",
+      "mine": "Les miens",
+      "filter": "Filtrer",
+      "empty": "Aucune demande ne correspond à ces filtres.",
+      "openCase": "Ouvrir",
+      "live": "Mise à jour automatique, sans recharger."
+    }
+  }
+}

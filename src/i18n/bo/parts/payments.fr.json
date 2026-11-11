@@ -1,0 +1,123 @@
+{
+  "bo": {
+    "payments": {
+      "method": {
+        "stripe": "Stripe",
+        "vinti4": "Vinti4 / 24",
+        "revolut": "Revolut",
+        "instapay": "InstaPay",
+        "transfer": "Virement bancaire (ancien mode)",
+        "link": "Lien de paiement (ancien mode)",
+        "card": "Carte (ancien mode)",
+        "momo": "Mobile money (ancien mode)",
+        "local": "Moyens locaux (ancien mode)",
+        "cash": "En agence (ancien mode)",
+        "paypal": "PayPal (mode retiré)"
+      },
+      "field": {
+        "stripe": "Lien de paiement Stripe",
+        "vinti4": "Référence SISP ou lien",
+        "revolut": "Lien Revolut",
+        "instapay": "Référence InstaPay"
+      },
+      "sample": {
+        "stripe": "https://buy.stripe.com/…",
+        "vinti4": "Référence 1234 5678 9012 : ou https://…",
+        "revolut": "https://revolut.me/…",
+        "instapay": "INSTA-000-000"
+      },
+      "summary": {
+        "title": "À encaisser",
+        "noPayment": "Il n'y a pas encore de montant à encaisser. Le paiement naît lorsque le client choisit l'une des offres publiées.",
+        "total": "Total",
+        "status": "État",
+        "statusSettled": "Payé et confirmé",
+        "statusExpired": "Lien expiré",
+        "statusWaitingOnUs": "Justificatif à valider",
+        "statusAwaiting": "En attente de paiement",
+        "deadlineOurs": "Notre délai",
+        "deadlineClient": "Délai du client",
+        "deadlineOver": "dépassé",
+        "market": "Marché",
+        "reference": "Référence",
+        "extended": "Délai prolongé",
+        "waitingOnUsWarning": "Le client a déjà payé et nous attend. Si personne ne valide avant le {date}, le lien expire et le dossier retourne dans la file."
+      },
+      "countdown": {
+        "hoursMinutes": "encore {hours}h {minutes}m",
+        "minutes": "encore {minutes}m"
+      },
+      "proof": {
+        "title": "Justificatif du client",
+        "count_one": "{count} envoi",
+        "count_other": "{count} envois",
+        "none": "aucun",
+        "empty": "Le client n'a pas encore téléversé de justificatif.",
+        "declaredPaid": " Il a déclaré avoir payé le {date} par le moyen {method}, sans fichier à ouvrir.",
+        "validated": "validé",
+        "rejected": "rejeté",
+        "awaiting": "en attente de validation",
+        "open": "Ouvrir"
+      },
+      "confirm": {
+        "title": "Confirmer le paiement",
+        "alwaysManual": "toujours manuel",
+        "noPayment": "Sans paiement, il n'y a rien à confirmer.",
+        "confirmedAt": "Paiement confirmé le {date}",
+        "paidNoTicket": "Il reste à émettre. C'est l'état le plus critique du système : le client a payé et n'a pas encore de billet.",
+        "closedMoney": "Le dossier est clos côté encaissement.",
+        "received": "Montant reçu",
+        "toCharge": "à encaisser : {amount}",
+        "chosenMethod": "Moyen choisi",
+        "valueDate": "Date de valeur",
+        "bankReference": "Référence bancaire",
+        "validatedBy": "Validé par",
+        "diffEqual": "Montant reçu égal au montant à encaisser. Vous pouvez confirmer.",
+        "diffOver": "Vous avez reçu {amount} de plus que le montant demandé. Ne confirmez que si vous savez pourquoi.",
+        "diffUnder": "Il manque {amount}. Un paiement partiel ne débloque pas l'émission, parlez au client avant de confirmer.",
+        "checkboxTitle": "Je confirme que le montant est arrivé sur le compte de WeeFly.",
+        "checkboxBody": "J'ai vu le relevé ou le justificatif et je reconnais le paiement de ce dossier. C'est consigné à mon nom ({email}) et le dossier est débloqué pour l'émission.",
+        "submit": "Confirmer le paiement et débloquer l'émission",
+        "reject": "Rejeter le justificatif",
+        "expiredNote": "Ce lien a déjà expiré. Pour que le client puisse payer à nouveau, il faut rouvrir le paiement ; l'historique conserve la tentative qui a échoué.",
+        "rejectLabel": "Pourquoi il ne convient pas : le client le lira",
+        "rejectPlaceholder": "Le justificatif concerne un autre virement / ne porte pas la référence / le montant ne correspond pas",
+        "rejectSubmit": "Rejeter et en demander un autre",
+        "cancel": "Annuler",
+        "failed": "Échec."
+      },
+      "deadline": {
+        "title": "Délai du lien de paiement",
+        "body": "Le lien du client ne reste pas ouvert indéfiniment : le prix qu'il a vu a une durée de validité. Sans confirmation avant l'échéance, le paiement expire tout seul et le client voit l'écran des offres expirées, avec le bouton pour demander une nouvelle recherche.",
+        "extend": "Prolonger de +{hours}h",
+        "closeNow": "Fermer le lien maintenant",
+        "reopen": "Rouvrir le paiement pour {hours}h"
+      },
+      "instructions": {
+        "settledTitle": "Comment le client a payé",
+        "via": "Moyen",
+        "supplied": "Fourni",
+        "title": "Moyen choisi par le client",
+        "outsidePlatform": "le paiement a lieu en dehors de la plateforme",
+        "notChosen": "Le client n'a pas encore choisi",
+        "legacy": "(ancien enregistrement : {method})",
+        "chooseForClient": "Si vous avez convenu du moyen avec le client par téléphone ou WhatsApp, choisissez-le ici. Il sera consigné que le choix vient du back-office.",
+        "methodLabel": "Moyen de paiement",
+        "clientChoseOther": "Le client a choisi {method}. Le modifier ici change ce qu'il verra.",
+        "clientChoseHint": "Le moyen que le client a choisi dans le lien.",
+        "amount": "Montant à encaisser",
+        "amountHint": "provient de l'offre choisie",
+        "dueAt": "Délai de paiement",
+        "dueAtHint": "figure dans le message au client",
+        "linkAlternative": "Lien (alternative)",
+        "sispReference": "Référence SISP",
+        "createdByYou": "Le lien ou la référence sont créés par vous, dans {method} ; la plateforme ne les génère pas, elle se contente de les enregistrer et de les envoyer. Vérifiez que le montant demandé est {amount}.",
+        "sentAt": "Instructions envoyées le {date}.",
+        "sentAtBy": "Instructions envoyées le {date} par {email}.",
+        "sending": "Envoi…",
+        "saveAndSend": "Enregistrer et envoyer au client",
+        "saveOnly": "Enregistrer sans envoyer"
+      }
+    }
+  }
+}

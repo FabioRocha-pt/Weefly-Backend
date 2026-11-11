@@ -111,7 +111,7 @@ export function FinanceReport({
   ministries?: MinistryFinance[]
   exportHref: string
   t: Translator
-  locale: "pt" | "en"
+  locale: "pt" | "en" | "fr"
 }) {
   const totals = totalsOf(rows)
   const byPartner = mode === "admin" ? groupBy(rows, "partner", "—") : []

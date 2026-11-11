@@ -1,0 +1,108 @@
+{
+  "bo": {
+    "channels": {
+      "publico": "Public",
+      "vip": "VIP",
+      "ministerio": "Ministères",
+      "all": "Tous les canaux",
+      "filter": "Canal",
+      "nav": {
+        "section": "Terminal de vente",
+        "publico": "Public",
+        "vip": "VIP"
+      }
+    },
+    "channelQueue": {
+      "count": "{count} demandes",
+      "who": "Client VIP / ministère",
+      "empty": "Il n'y a pas encore de demandes en cours sur ce canal.",
+      "ministerio": "Demandes des ministères"
+    },
+    "publico": {
+      "title": "Public",
+      "subtitle": "Le lien public du price checker de la société, et les demandes arrivées par ce lien.",
+      "bareLink": "Lien public",
+      "personalLink": "Lien public à votre nom",
+      "linkNote": "N'importe qui peut ouvrir ces liens. La demande arrive dans cette file, aux couleurs de la société. Pour choisir la langue, la devise et le pays du client, utilisez \"Créer un lien\" dans le Concierge.",
+      "queue": "Demandes du public"
+    },
+    "vip": {
+      "copy": "Copier",
+      "copied": "Copié",
+      "list": {
+        "title": "VIP",
+        "subtitle": "Les clients VIP de la société : chacun a un lien personnel et permanent, aux couleurs de la société.",
+        "new": "Nouveau VIP",
+        "empty": "Il n'y a pas encore de clients VIP.",
+        "client": "Client",
+        "contacts": "Coordonnées",
+        "link": "Lien personnel",
+        "since": "Créé le",
+        "inactive": "désactivé",
+        "linkOff": "Lien désactivé",
+        "queue": "Demandes VIP"
+      },
+      "form": {
+        "name": "Nom",
+        "level": "Niveau",
+        "levelHint": "Or, Ambassade…",
+        "phone": "Téléphone",
+        "email": "E-mail",
+        "linkNote": "Le lien personnel est créé à l'enregistrement et ne change pas. Désactiver le VIP coupe le lien ; ses demandes sont conservées.",
+        "save": "Enregistrer",
+        "create": "Créer le VIP",
+        "cancel": "Annuler"
+      },
+      "detail": {
+        "edit": "Modifier",
+        "deactivate": "Désactiver",
+        "reactivate": "Réactiver",
+        "deactivateConfirm": "Désactiver ce VIP ? Le lien personnel ne s'ouvrira plus ; ses demandes sont conservées.",
+        "noLevel": "Sans niveau",
+        "createdBy": "Créé par {who} · {when}",
+        "deactivatedBy": "Désactivé par {who} · {when}",
+        "linkOff": "VIP désactivé : le lien personnel ne s'ouvre pas. Réactivez-le pour rétablir le lien (c'est le même).",
+        "requests": "Demandes de ce VIP",
+        "noRequests": "Ce VIP n'a pas encore fait de demandes."
+      },
+      "errors": {
+        "nameMissing": "Indiquez le nom du client.",
+        "emailInvalid": "L'e-mail n'est pas valide.",
+        "phoneInvalid": "Le téléphone n'est pas valide (ex. : +238 991 23 45).",
+        "notAllowed": "Votre compte ne peut pas gérer les clients VIP, ou le canal VIP n'est pas activé.",
+        "invalid": "Vérifiez les données.",
+        "unavailable": "Service indisponible. Réessayez plus tard.",
+        "saveFailed": "Impossible d'enregistrer. Réessayez.",
+        "notFound": "Client VIP introuvable."
+      },
+      "notice": {
+        "created": "VIP créé. Le lien personnel est prêt à être copié.",
+        "updated": "VIP mis à jour.",
+        "deactivated": "VIP désactivé : le lien ne s'ouvre plus.",
+        "reactivated": "VIP réactivé : le lien s'ouvre de nouveau."
+      },
+      "admin": {
+        "nav": "VIP",
+        "title": "VIP de toutes les sociétés",
+        "subtitle": "{count} clients VIP. Chaque société crée et désactive les siens.",
+        "searchPlaceholder": "Nom, e-mail, téléphone ou niveau",
+        "empty": "Il n'y a pas encore de clients VIP.",
+        "state": "Statut",
+        "active": "actif"
+      }
+    },
+    "linkChannels": {
+      "kind": "Type de lien",
+      "publico": "Public",
+      "vip": "VIP",
+      "ministerio": "Ministère",
+      "noChannels": "Votre société n'a aucun canal activé. Contactez WeeFly.",
+      "ministerioSoon": "Le lien d'une secrétaire arrivera avec les secrétaires des ministères.",
+      "noVip": "Il n'y a pas encore de clients VIP actifs. Créez-les dans le menu VIP.",
+      "pickVip": "Client VIP",
+      "vipNote": "Le lien personnel du VIP ouvre le formulaire avec ses coordonnées préremplies, aux couleurs de la société. La demande arrive dans la file VIP.",
+      "pickMinistry": "Ministère",
+      "pickSecretary": "Secrétaire"
+    }
+  }
+}

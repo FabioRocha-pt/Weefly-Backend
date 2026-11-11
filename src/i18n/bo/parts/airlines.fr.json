@@ -1,0 +1,74 @@
+{
+  "bo": {
+    "airlines": {
+      "nav": "Compagnies aériennes",
+      "title": "Compagnies aériennes",
+      "subtitle": "Les compagnies qui apparaissent dans les sélecteurs de la proposition, du billet et de l'émission. L'ajout ou le changement de logo prend effet immédiatement, sans déploiement.",
+      "search": "Rechercher par code ou nom",
+      "count": "{n} compagnies",
+      "new": "Nouvelle compagnie",
+      "editTitle": "Modifier {code}",
+      "save": "Enregistrer",
+      "edit": "Modifier",
+      "activate": "Activer",
+      "deactivate": "Désactiver",
+      "empty": "Aucune compagnie trouvée.",
+      "fields": {
+        "iata": "Code IATA",
+        "name": "Nom",
+        "priority": "Ordre dans le sélecteur",
+        "ticketPrefix": "Préfixe du billet",
+        "ticketPrefixHint": "Trois chiffres (ex. : TAP 047). Facultatif ; s'il est renseigné, l'émission refuse les numéros d'une autre compagnie.",
+        "logo": "Logo",
+        "logoHint": "PNG à fond transparent, 1 Mo maximum.",
+        "removeLogo": "Supprimer le logo",
+        "active": "Active (apparaît dans les sélecteurs)"
+      },
+      "priority": {
+        "1": "1 · Du quotidien",
+        "2": "2 · Grandes",
+        "3": "3 · Régionales",
+        "9": "Autres"
+      },
+      "cols": {
+        "logo": "Logo",
+        "airline": "Compagnie",
+        "priority": "Ordre",
+        "prefix": "Préfixe",
+        "state": "Statut",
+        "actions": "Actions"
+      },
+      "state": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "notice": {
+        "created": "{code} ajoutée.",
+        "saved": "{code} enregistrée.",
+        "activated": "{code} activée.",
+        "deactivated": "{code} désactivée."
+      },
+      "errors": {
+        "notAllowed": "Seul l'Admin WeeFly gère les compagnies.",
+        "iata": "Le code IATA comporte deux lettres ou chiffres (ex. : TP, U2).",
+        "name": "Indiquez le nom de la compagnie.",
+        "prefix": "Le préfixe du billet comporte trois chiffres.",
+        "exists": "{code} existe déjà. Modifiez-la dans la liste.",
+        "notFound": "Compagnie introuvable.",
+        "logoType": "Le logo doit être au format PNG.",
+        "logoSize": "Le logo dépasse 1 Mo.",
+        "uploadFailed": "Le logo n'a pas été téléversé. Réessayez.",
+        "saveFailed": "Impossible d'enregistrer.",
+        "migration": "La migration 0040 doit encore être appliquée à la base de données.",
+        "invalid": "Données invalides."
+      },
+      "picker": {
+        "placeholder": "Code ou nom…",
+        "clear": "Effacer",
+        "none": "Aucune compagnie ne porte ce nom.",
+        "useCode": "Utiliser « {code} » (hors liste)",
+        "prefix": "Préfixe du billet : {prefix}"
+      }
+    }
+  }
+}

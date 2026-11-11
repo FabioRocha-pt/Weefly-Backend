@@ -17,7 +17,7 @@ export function TravellerChangeLog({
   locale: string
 }) {
   const stamp = (iso: string) =>
-    new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "pt-PT", {
+    new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale === "fr" ? "fr-FR" : "pt-PT", {
       dateStyle: "short",
       timeStyle: "short",
       timeZone: "Atlantic/Cape_Verde",

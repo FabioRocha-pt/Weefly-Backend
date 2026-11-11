@@ -1,0 +1,262 @@
+{
+  "bo": {
+    "actions": {
+      "common": {
+        "invalidData": "Données invalides.",
+        "serviceUnavailable": "Service indisponible.",
+        "caseNotFound": "Dossier introuvable.",
+        "accountNotFound": "Compte introuvable.",
+        "invalidEmail": "Email invalide.",
+        "noServiceRole": "Serveur sans service role."
+      },
+      "pc": {
+        "notAllowed": "Votre compte n'a pas accès au Price Checker.",
+        "confirmTick": "Cochez la case qui confirme que le montant a été encaissé.",
+        "rejectReason": "Indiquez pourquoi il ne convient pas : le client le lira.",
+        "archiveNote": "Saisissez le motif.",
+        "noteEmpty": "Saisissez la note.",
+        "noteEmptyFallback": "Note vide.",
+        "pnrLength": "Le PNR comporte 6 caractères.",
+        "ticketNumberShape": "Chaque billet comporte 3 chiffres de compagnie + 10 du document.",
+        "noticeMessage": "Saisissez le message : c'est le client qui le lira.",
+        "unfreezeReason": "Indiquez pourquoi le vol choisi est annulé, le client le lira.",
+        "departInvalid": "Date de départ invalide.",
+        "datesReason": "Indiquez pourquoi les dates changent, le client lira cette phrase.",
+        "noPayment": "Ce dossier n'a pas de paiement.",
+        "confirm": {
+          "notConfirmed": "Cochez la case avant de confirmer.",
+          "illegal": "Le paiement est déjà dans un état qui ne permet pas de le marquer comme payé.",
+          "failed": "Impossible d'enregistrer le paiement.",
+          "unknown": "Échec.",
+          "mismatch": "Paiement confirmé : avec un montant différent de celui facturé, consigné dans l'historique.",
+          "done": "Paiement confirmé. Le dossier est prêt à être émis."
+        },
+        "proofRejected": "Justificatif rejeté. Le client peut en envoyer un autre.",
+        "proofRejectFailed": "Impossible de rejeter le justificatif.",
+        "deadlineInvalid": "Délai invalide.",
+        "deadlineExtended": "Délai prolongé de {hours}h.",
+        "deadlineExtendFailed": "Impossible de prolonger le délai.",
+        "paymentExpired": "Lien de paiement fermé. Le client voit l'écran d'expiration.",
+        "paymentExpireFailed": "Impossible de fermer le lien.",
+        "paymentReopened": "Paiement rouvert pour {hours}h.",
+        "paymentReopenFailed": "Impossible de rouvrir le paiement.",
+        "claim": {
+          "hasOwner": "Ce dossier a déjà un responsable. Pour le confier à quelqu'un d'autre, changez le vendeur dans l'en-tête.",
+          "alreadyYours": "Le dossier est déjà le vôtre.",
+          "lostRace": "Quelqu'un d'autre a pris ce dossier en charge avant vous. Rechargez la page.",
+          "done": "Dossier pris en charge. Il est resté {waited} sans responsable."
+        },
+        "alerts": {
+          "nothingUnread": "Rien à lire.",
+          "markedRead": "{n} marqués comme lus.",
+          "cleared": "Alertes lues effacées."
+        },
+        "pay": {
+          "unknownMethod": "Méthode inconnue.",
+          "field": {
+            "stripe": "Lien de paiement Stripe",
+            "vinti4": "Référence SISP ou lien",
+            "revolut": "Lien Revolut",
+            "instapay": "Référence InstaPay"
+          },
+          "missingLink": "Il manque : {field}.",
+          "missingReference": "Il manque : {field}.",
+          "missingEither": "Saisissez la référence ou le lien : {field}.",
+          "notFound": "Paiement introuvable.",
+          "alreadyConfirmed": "Ce paiement est déjà confirmé.",
+          "saveFailed": "Impossible d'enregistrer.",
+          "savedNotSent": "Instructions enregistrées. Elles n'ont pas encore été envoyées.",
+          "sentAutoDue": "Instructions envoyées au client. Le délai est fixé à {due} : heure de l'envoi plus {hours}h.",
+          "savedAndSent": "Instructions enregistrées et envoyées au client.",
+          "alreadySent": "Instructions enregistrées. Elles avaient déjà été envoyées au client.",
+          "emailFailed": "Les instructions sont enregistrées, mais l'email n'est PAS parti : {reason}. Le client ne sait toujours pas comment payer, envoyez-lui le lien par WhatsApp ou réessayez l'envoi."
+        },
+        "close": {
+          "alreadyClosed": "Le dossier est déjà clôturé.",
+          "notIssued": "Un dossier ne se clôture qu'une fois le billet émis. Un dossier non émis s'annule, et c'est une autre action.",
+          "done": "Dossier clôturé. Il a quitté les files de travail."
+        },
+        "archive": {
+          "pickReason": "Choisissez un motif.",
+          "migrationMissing": "Il faut appliquer la migration 0023 pour archiver des dossiers.",
+          "alreadyClosed": "Ce dossier est déjà clôturé.",
+          "done": "Dossier archivé. Il se trouve dans le filtre Clôturés."
+        },
+        "reopen": {
+          "adminOnly": "Seul un administrateur peut rouvrir un dossier clôturé.",
+          "notClosed": "Ce dossier n'est pas clôturé.",
+          "done": "Dossier rouvert. Il revient dans les files de travail."
+        },
+        "noteSaved": "Note enregistrée.",
+        "issue": {
+          "duplicateNumbers": "Certains numéros de billet sont en double.",
+          "needsPayment": "Confirmez le paiement avant d'émettre.",
+          "fareBasis": "base tarifaire",
+          "missingFields": "Des champs du document manquent sur {count} vol(s) : {flights}.",
+          "saveFailed": "Impossible d'enregistrer l'émission.",
+          "issued": "Émis. PNR {pnr}.",
+          "pdfFailed": "Le PDF n'a pas été généré ({reason}), utilisez \"Générer à nouveau\" dans l'onglet Émission.",
+          "emailSent": "Le client a reçu l'email avec le PDF en pièce jointe.",
+          "emailFailed": "L'email au client n'est pas parti : consultez l'onglet Communications.",
+          "wrongPrefix": "Les billets de {carrier} commencent par {prefix}. Corrigez le numéro avant d'émettre.",
+          "teamEmailFailed": "L'alerte interne de billet émis n'est pas partie : consultez l'onglet Communications."
+        },
+        "tickets": {
+          "generated": "Billet {number} généré.",
+          "noneYet": "Ce dossier n'a pas encore de billet généré. Utilisez “Générer le billet” avant de renvoyer.",
+          "resent": "Billet {number} renvoyé : le même document, sans régénération.",
+          "resendFailed": "Le renvoi a échoué : {reason}",
+          "generateFailed": "Impossible de générer le billet : {reason}",
+          "whatsappNoPhone": "Pas de téléphone pour le client. Ajoutez un numéro dans la demande.",
+          "whatsappLogged": "Envoi par WhatsApp consigné dans Communications."
+        },
+        "seller": {
+          "invalid": "Vendeur invalide.",
+          "notListed": "Ce vendeur ne figure pas dans la liste des accès.",
+          "saveFailed": "Impossible d'enregistrer le vendeur.",
+          "assigned": "Dossier attribué à {name}.",
+          "cleared": "Dossier sans vendeur."
+        },
+        "notify": {
+          "pickChannel": "Choisissez au moins un canal.",
+          "emailSent": "email envoyé",
+          "emailFailed": "email non parti ({reason})",
+          "whatsappSent": "WhatsApp envoyé",
+          "whatsappFailed": "WhatsApp non parti ({reason})",
+          "error": "erreur",
+          "done": "Alerte consignée dans le dossier · {channels}.",
+          "nothingDelivered": "Rien n'a été remis · {channels}.",
+          "flagCleared": "Signalement de remise levé."
+        },
+        "link": {
+          "adminOnly": "Seul un administrateur peut révoquer le lien.",
+          "failed": "Impossible de générer un nouveau lien.",
+          "done": "Nouveau lien généré. L'ancien ne s'ouvre plus : envoyez le nouveau au client."
+        },
+        "unfreeze": {
+          "issued": "Ce dossier est déjà émis. Changer de vol est une réémission.",
+          "paid": "Le client a déjà payé ce vol. Le changer passe par un remboursement, pas par un retour en arrière.",
+          "done": "Le vol n'est plus gelé et le choix du client a été annulé.",
+          "draft": "La proposition est en brouillon en tant que R{revision}.",
+          "clientNotified": "Le client a été prévenu."
+        },
+        "dates": {
+          "returnBeforeDepart": "Le retour ne peut pas précéder le départ.",
+          "issued": "Ce dossier est déjà émis. Un changement de dates est une réémission.",
+          "paid": "Le client a déjà payé. Parlez-lui avant de toucher aux dates.",
+          "unchanged": "Les dates sont les mêmes que celles déjà présentes dans la demande.",
+          "saveFailed": "Impossible d'enregistrer les dates.",
+          "done": "Dates mises à jour et consignées.",
+          "draft": "La proposition est repassée en brouillon en tant que R{revision}.",
+          "clientNotified": "Le client a été prévenu par email.",
+          "clientNotNotified": "Impossible de prévenir le client par email, contactez-le par WhatsApp."
+        }
+      },
+      "access": {
+        "nameMissing": "Le nom est manquant.",
+        "pickPartner": "Choisissez le partenaire.",
+        "reasonMissing": "Saisissez le motif.",
+        "write": {
+          "noPermission": "Vous n'avez pas l'autorisation d'attribuer ce profil chez ce partenaire.",
+          "emailTaken": "Un compte existe déjà avec cet email.",
+          "needsOrganisation": "Ce profil relève d'un ministère : choisissez-le.",
+          "profileNotInPartner": "Ce profil n'existe pas chez ce partenaire.",
+          "mismatch": "Les données ne correspondent pas au profil choisi."
+        },
+        "notManager": "Votre compte ne gère pas les utilisateurs.",
+        "unknownPartnerOrProfile": "Partenaire ou profil inconnu.",
+        "onlyAdminGrantsAdmin": "Seul un Admin WeeFly attribue le profil Admin WeeFly.",
+        "cannotGrant": "Vous ne pouvez pas attribuer ce profil chez ce partenaire.",
+        "secretaryNeedsOrganisation": "La secrétaire relève d'un ministère : choisissez-le.",
+        "ownProfile": "Votre propre profil doit être modifié par une autre personne disposant d'un accès de gestion.",
+        "created": "Utilisateur créé.",
+        "updated": "Utilisateur mis à jour.",
+        "inviteSent": "L'invitation a été envoyée.",
+        "inviteFailed": "L'invitation n'est pas partie : {reason}",
+        "cannotSuspendSelf": "Vous ne pouvez pas suspendre votre propre compte.",
+        "suspended": "Compte suspendu. Les sessions ouvertes ont été fermées.",
+        "suspendedNoSession": "Compte suspendu. Il n'y avait aucune session à fermer (la personne ne s'est pas encore inscrite).",
+        "reactivated": "Compte réactivé.",
+        "accountSuspended": "Le compte est suspendu.",
+        "inviteResent": "Invitation envoyée.",
+        "invite": {
+          "noServiceRole": "serveur sans service role",
+          "noSiteUrl": "NEXT_PUBLIC_SITE_URL non configuré",
+          "alreadyRegistered": "cette personne a déjà un compte : elle se connecte avec son mot de passe."
+        }
+      },
+      "partners": {
+        "colorHex": "Couleur en hexadécimal, ex. : #02A9FF.",
+        "nameMissing": "Le nom commercial est manquant.",
+        "dateInvalid": "Date invalide.",
+        "slugShape": "L'adresse n'accepte que des minuscules, des chiffres et le tiret.",
+        "firstAdminEmail": "L'email du premier administrateur est manquant.",
+        "firstAdminName": "Le nom du premier administrateur est manquant.",
+        "onlyAdminCreates": "Seul un Admin WeeFly crée des partenaires.",
+        "slugTaken": "Un partenaire existe déjà avec cette adresse.",
+        "created": "Partenaire créé. {notice}",
+        "createdAccountFailed": "Partenaire créé, mais la création du premier compte a échoué : {error}",
+        "onlyAdminEdits": "Seul un Admin WeeFly modifie les partenaires.",
+        "invalid": "Partenaire invalide.",
+        "notFound": "Partenaire introuvable.",
+        "updated": "Partenaire mis à jour.",
+        "onlyAdminSuspends": "Seul un Admin WeeFly suspend des partenaires.",
+        "suspendNeedsReason": "La suspension exige un motif.",
+        "operatorNotSuspendable": "L'opérateur de la plateforme ne peut pas être suspendu.",
+        "suspended": "Partenaire suspendu. Ses comptes ne peuvent plus se connecter et ses liens ne s'ouvrent plus.",
+        "reactivated": "Partenaire réactivé.",
+        "slugReserved": "Cette adresse est réservée à la plateforme. Choisissez-en une autre.",
+        "createdNoAdmin": "Partenaire créé. Il n'a pas encore de compte administrateur : créez-le dans Utilisateurs dès que vous aurez l'email.",
+        "upload": {
+          "missing": "Choisissez un fichier.",
+          "type": {
+            "logo": "Le logo doit être au format PNG ou SVG.",
+            "icon": "L'icône doit être au format PNG ou SVG.",
+            "share": "L'image de partage doit être au format JPG ou PNG."
+          },
+          "tooBig": {
+            "logo": "Le logo dépasse 2 Mo.",
+            "icon": "L'icône dépasse 2 Mo.",
+            "share": "L'image de partage dépasse 1 Mo."
+          },
+          "icon": {
+            "small": "L'icône doit mesurer au moins 512 × 512.",
+            "unreadable": "Impossible de lire cette icône."
+          },
+          "share": {
+            "size": "L'image de partage doit mesurer 1200 × 630.",
+            "unreadable": "Impossible de lire cette image."
+          },
+          "failed": "Le fichier n'a pas été téléversé. Réessayez.",
+          "done": {
+            "logo": "Logo enregistré.",
+            "icon": "Icône enregistrée. Le favicon et les icônes ont été générés.",
+            "share": "Image de partage enregistrée."
+          }
+        }
+      },
+      "pro": {
+        "masterOnly": "Seul le compte master valide les comptes.",
+        "slugShape": "L'adresse de la société n'accepte que des minuscules, des chiffres et le tiret, de 2 à 30 caractères.",
+        "companyNameMissing": "Le nom de la société est manquant.",
+        "pickCompany": "Choisissez la société.",
+        "approveInvalid": "Données d'approbation invalides.",
+        "alreadyApproved": "Ce compte a déjà été approuvé.",
+        "slugTaken": "Une société existe déjà avec cette adresse.",
+        "companyNotFound": "Société introuvable.",
+        "approved": "Compte approuvé. L'email d'approbation a été envoyé.",
+        "approvedEmailFailed": "Compte approuvé, mais l'email n'est pas parti : {reason}",
+        "invalidAccount": "Compte invalide.",
+        "rejectNeedsReason": "Le refus exige un motif.",
+        "reasonTooLong": "Le motif est trop long.",
+        "onlyPendingRejected": "Seul un compte en attente peut être refusé.",
+        "rejected": "Compte refusé. L'email indiquant le motif a été envoyé.",
+        "rejectedEmailFailed": "Compte refusé, mais l'email n'est pas parti : {reason}",
+        "slugReserved": "Cette adresse est réservée à la plateforme. Choisissez-en une autre.",
+        "alreadyConfirmed": "L'email de ce compte est déjà confirmé.",
+        "resendFailed": "L'email de confirmation n'est pas parti : {reason}",
+        "resendDone": "Email de confirmation renvoyé à {email}."
+      }
+    }
+  }
+}

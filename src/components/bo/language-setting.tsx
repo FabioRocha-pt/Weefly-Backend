@@ -4,13 +4,14 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { setBoLocale } from "@/actions/settings"
+import { BO_LOCALES, type BoLocale } from "@/i18n/bo"
 import { useI18n } from "@/i18n/provider"
 import { translateMessage } from "@/i18n/translate"
 
 /**
  * I18N-01 · o seletor de língua do back-office, nas Definições.
  *
- * Só as duas línguas do back-office. A língua em que o cliente recebe emails,
+ * As três línguas do back-office (I18N-02). A língua em que o cliente recebe emails,
  * WhatsApp, o link e o bilhete é a do caso, e não se escolhe aqui.
  */
 export function BoLanguageSetting({ className }: { className?: string }) {
@@ -19,7 +20,7 @@ export function BoLanguageSetting({ className }: { className?: string }) {
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  const choose = (next: "pt" | "en") => {
+  const choose = (next: BoLocale) => {
     if (next === locale) return
     start(async () => {
       setError(null)
@@ -34,7 +35,7 @@ export function BoLanguageSetting({ className }: { className?: string }) {
       <p style={{ fontWeight: 700 }}>{t("bo.shell.language.title")}</p>
       <p style={{ opacity: 0.75, fontSize: 13, margin: "4px 0 10px" }}>{t("bo.shell.language.body")}</p>
       <div style={{ display: "flex", gap: 8 }} role="radiogroup" aria-label={t("bo.shell.language.title")}>
-        {(["pt", "en"] as const).map((l) => (
+        {BO_LOCALES.map((l) => (
           <button
             key={l}
             type="button"

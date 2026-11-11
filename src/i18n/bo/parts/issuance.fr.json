@@ -1,0 +1,138 @@
+{
+  "bo": {
+    "issuance": {
+      "summary": {
+        "issued": "Émis",
+        "ready": "Prêt à émettre",
+        "payment": "Paiement",
+        "confirmed": "Confirmé",
+        "notConfirmed": "Non confirmé",
+        "passengers": "Passagers",
+        "flights": "Vols",
+        "charged": "Encaissé",
+        "issuedAt": "Émis le",
+        "critical": "C'est l'état le plus critique du système. Le client a déjà payé et n'a pas encore de billet.",
+        "criticalMinistry": "Prêt à émettre : la secrétaire a déjà choisi et enregistré les passagers, et n'a pas encore de billet.",
+        "confirmFirst": "Confirmez le paiement dans l'onglet précédent avant d'émettre."
+      },
+      "document": {
+        "open": "Ouvrir le billet",
+        "resend": "Renvoyer par e-mail",
+        "resendHint": "WhatsApp s'ouvre avec le numéro du client, le message et le lien du PDF déjà renseignés, et l'envoi est consigné dans Communications. Le lien ouvre le PDF sans connexion. Le renvoi par e-mail transmet le même fichier, avec le même numéro de document.",
+        "generate": "Générer le billet",
+        "missingPdf": "Le dossier est émis mais le PDF n'existe pas encore.",
+        "whatsapp": "Envoyer par WhatsApp",
+        "whatsappNoPhone": "Pas de téléphone du client. Ajoutez un numéro dans la demande.",
+        "copyLink": "Copier le lien du billet",
+        "copied": "Lien copié"
+      },
+      "form": {
+        "title": "Données de l'émission",
+        "pnrPlaceholder": "6 caractères",
+        "carrier": "Compagnie émettrice",
+        "choose": "Choisir…",
+        "outsideCatalog": "hors catalogue",
+        "fromProposal": "de la proposition · confirmez avant d'émettre",
+        "consolidator": "Consolidateur",
+        "costReal": "Coût réel",
+        "margin": "marge {amount}",
+        "requiredLegend": "* obligatoire pour émettre. Les champs sont préremplis avec l'offre choisie : confirmez et complétez ce qui manque."
+      },
+      "tickets": {
+        "title": "Billet par passager",
+        "rule": "{prefix} + 10 chiffres · sans doublons",
+        "noPassengers": "Sans passagers soumis, il n'y a personne à qui émettre un billet.",
+        "startWith": "Commencer par {prefix}",
+        "number": "N° du billet",
+        "noSegments": "L'offre choisie n'a aucun tronçon enregistré, il n'y a donc pas où attribuer des sièges. Les billets peuvent être émis malgré tout."
+      },
+      "baggage": {
+        "seat": "Siège",
+        "cabin": "main",
+        "checked": "soute",
+        "cabinPieces": "Bagages à main sur ce vol",
+        "cabinKg": "Poids par bagage à main, en kilos",
+        "checkedPieces": "Bagages en soute sur ce vol",
+        "checkedKg": "Poids par bagage en soute, en kilos",
+        "stepDown": "{title} : un de moins",
+        "stepUp": "{title} : un de plus",
+        "personalItem": "article personnel",
+        "noPersonalItem": "sans article personnel",
+        "cabinValue": "main {value}",
+        "checkedValue": "soute {value}",
+        "drifted": "Différent de la proposition : {promise}",
+        "promised": "Proposition : {promise}",
+        "legend": "siège · main (pièces × kg) · soute (pièces × kg)"
+      },
+      "flights": {
+        "title": "Document par vol",
+        "count_one": "{count} vol · un coupon chacun",
+        "count_other": "{count} vols · un coupon chacun",
+        "flight": "Vol {n}",
+        "outbound": "Aller",
+        "inbound": "Retour",
+        "departure": "Départ",
+        "arrival": "Arrivée",
+        "aircraft": "Appareil",
+        "cabinClass": "Cabine · classe",
+        "terminalFrom": "Terminal de départ",
+        "terminalTo": "Terminal d'arrivée",
+        "airlinePnr": "Référence de la compagnie",
+        "airlinePnrHint": "le PNR de la compagnie, s'il diffère du nôtre",
+        "coupon": "N° du coupon",
+        "fareBasis": "Fare basis",
+        "baggageThrough": "Les bagages sont enregistrés jusqu'à la destination finale, le passager ne les récupère pas à l'escale de {airport}"
+      },
+      "common": {
+        "titleShared": "Champs communs au billet",
+        "titleDocument": "Champs du document",
+        "endorsements": "Endossements"
+      },
+      "errors": {
+        "title_one": "Il manque {count} champ pour pouvoir émettre",
+        "title_other": "Il manque {count} champs pour pouvoir émettre",
+        "notPaid": "Le paiement n'est pas encore confirmé, confirmez-le dans l'onglet Paiement.",
+        "pnr": "Le PNR doit comporter 6 caractères.",
+        "ticketNumber": "{pax} {name} : le numéro de billet comprend 3 chiffres de compagnie + 10 du document.",
+        "duplicated": "Des numéros de billet sont en double, chaque passager a le sien.",
+        "flightGaps": "{flight} : il manque {fields}.",
+        "gapFareBasis": "base tarifaire",
+        "gapCoupon": "coupon",
+        "gapAircraft": "appareil",
+        "gapClass": "classe",
+        "fareBasis": "Il manque la base tarifaire.",
+        "nvb": "Il manque le NVB.",
+        "nva": "Il manque le NVA.",
+        "noPassengers": "Sans passagers soumis, il n'y a personne à qui émettre un billet.",
+        "failed": "Échec.",
+        "wrongPrefix": "{pax} {name} : les billets de {carrier} commencent par {prefix}."
+      },
+      "submit": {
+        "pending": "Émission…",
+        "issue": "Émettre, générer le billet et prévenir le client",
+        "doneBefore": "Émis avec le PNR",
+        "doneAfter": ". Le client voit les billets dans son lien."
+      },
+      "warnings": {
+        "badFormat": "{flight} : le NVB et le NVA s'écrivent sous la forme 22OCT26 (jour, mois en anglais, année).",
+        "outOfRange": "{flight} : le vol est le {date} et se trouve hors de l'intervalle NVB {nvb} – NVA {nva}. Vérifiez les dates sur le billet de la compagnie."
+      },
+      "hints": {
+        "pnr": "La référence de la réservation dans le système de réservation (6 lettres et chiffres).",
+        "carrier": "La compagnie qui émet le billet. Détermine le préfixe des numéros de billet.",
+        "consolidator": "Où le billet a été acheté (ex. : Atlântida). Facultatif.",
+        "costReal": "Ce que WeeFly a payé pour le billet. Facultatif, sert au calcul de la marge.",
+        "ticketNumber": "13 chiffres : {prefix} de la compagnie + 10 du document.",
+        "fromOffer": "De l'offre choisie, heure locale de l'aéroport.",
+        "aircraft": "L'avion de ce vol, tel qu'il figure sur le billet (ex. : Airbus A321neo).",
+        "cabinClass": "Cabine (economy, business) et lettre de la classe de réservation (ex. : T).",
+        "terminal": "Uniquement lorsque l'aéroport a des terminaux. Peut rester vide.",
+        "coupon": "L'ordre de ce vol sur le billet : 1 pour le premier, 2 pour le deuxième.",
+        "fareBasis": "Le code tarifaire de ce vol, tel qu'il figure sur le billet (ex. : TLXCV3).",
+        "nvb": "Non valable avant : le billet ne peut pas être utilisé avant cette date (ex. : 22OCT26).",
+        "nva": "Non valable après : le billet ne peut pas être utilisé après cette date (ex. : 22OCT26).",
+        "endorsements": "Restrictions imprimées sur le billet (ex. : NON-END / NON-REF)."
+      }
+    }
+  }
+}

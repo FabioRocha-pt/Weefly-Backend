@@ -196,14 +196,25 @@ export async function POST(request: Request) {
     const link = actionLink(origin, send.tokenHash, action, data.redirect_to)
     const email = render(kind, { name, link, code: send.code, locale })
 
-    const { data: logRow } = admin
-      ? await admin
+    /* No registo, o hook corre antes de o utilizador ficar gravado em
+       `auth.users`: a linha com `user_id` falha na chave estrangeira e o email
+       saía sem registo nenhum. Nesse caso grava-se sem o `user_id` — o email
+       e a acção chegam para o encontrar. */
+    let logId: string | null = null
+    if (admin) {
+      for (const userId of [user.id, null]) {
+        const { data: logRow, error: logError } = await admin
           .from("auth_email_log")
-          .insert({ user_id: user.id, email: send.to, action_type: action })
+          .insert({ user_id: userId, email: send.to, action_type: action })
           .select("id")
           .single()
-      : { data: null }
-    const logId = (logRow as { id: string } | null)?.id ?? null
+        if (!logError) {
+          logId = (logRow as { id: string } | null)?.id ?? null
+          break
+        }
+        if (userId === null) console.error("[auth/send-email] registo falhou:", action, send.to, logError.message)
+      }
+    }
 
     const { data: sent, error } = await resend.emails.send({
       from: senderAddress(),
