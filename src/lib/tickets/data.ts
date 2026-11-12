@@ -24,7 +24,7 @@ import { clientBrandForCase } from "@/lib/brand"
 import { loadBrandAsset } from "@/lib/brand-asset-load"
 import { whatsappTeamNumber } from "@/lib/whatsapp"
 import { normalizeBaggage, type OfferDirection } from "@/lib/proposal-math"
-import { airportTimeZone, cityPt, flightMinutes, localToUtc } from "./places"
+import { airportTimeZone, cityFor, flightMinutes, localToUtc } from "./places"
 
 export interface TicketPassenger {
   id: string
@@ -172,6 +172,24 @@ function documentName(last: string, first: string): string {
 export function ticketDocumentNumber(pnr: string, reference: string): string {
   const clean = (value: string) => value.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
   return `WF-TKT-${clean(pnr)}-${clean(reference)}`
+}
+
+/**
+ * A língua do pedido de um caso (o `locale` do lead), para o que acompanha o
+ * bilhete sem passar pelo `loadTicketData`: o guia servido no link do cliente e
+ * o reenvio. Nulo quando não se consegue ler: quem chama cai no português.
+ */
+export async function caseClientLocale(caseId: string): Promise<string | null> {
+  const admin = createAdminClient()
+  if (!admin) return null
+  const { data } = await admin
+    .from("booking_cases")
+    .select("trip_request:trip_requests ( lead:leads (locale) )")
+    .eq("id", caseId)
+    .maybeSingle()
+  const trip = unwrap((data as Record<string, unknown> | null)?.trip_request)
+  const lead = unwrap(trip?.lead)
+  return (lead?.locale as string | null) ?? null
 }
 
 export type TicketLoad =
@@ -361,8 +379,9 @@ export async function loadTicketData(caseId: string): Promise<TicketLoad> {
       aircraft: doc?.aircraft ?? (s.equipment as string | null) ?? null,
       origin: (s.origin as string | null) ?? null,
       destination: (s.destination as string | null) ?? null,
-      originCity: cityPt(s.origin),
-      destinationCity: cityPt(s.destination),
+      /* As cidades na língua do pedido, como o resto do bilhete. */
+      originCity: cityFor(s.origin as string | null, lead?.locale as string | null),
+      destinationCity: cityFor(s.destination as string | null, lead?.locale as string | null),
       departAt: (s.depart_at as string | null) ?? null,
       arriveAt: (s.arrive_at as string | null) ?? null,
       durationMinutes: flightMinutes(s.origin, s.depart_at, s.destination, s.arrive_at),

@@ -18,7 +18,11 @@
  *   · **setas e avião desenhados em vector**, não com caracteres da fonte;
  *   · **a marca é a de quem vendeu**: WeeFly, ou o parceiro com "Powered by
  *     WeeFly" no rodapé da última página;
- *   · **nenhum valor monetário.** Um bilhete não é uma factura.
+ *   · **nenhum valor monetário.** Um bilhete não é uma factura;
+ *   · **a língua é a do pedido** (`data.locale`, o `locale` do lead), nunca a
+ *     de quem emite: todo o texto vem de `ticketPdf.*` no dicionário do
+ *     cliente. O que o agente escreveu (condições da tarifa, endossos) fica
+ *     como ele o escreveu.
  *
  * Quando o conteúdo não cabe (muitos passageiros, muitos trechos), a página
  * continua noutra em vez de cortar: um voo partido a meio é um voo que se perde.
@@ -39,6 +43,8 @@ import {
   type RGB,
 } from "pdf-lib"
 
+import { getTranslator, localeForClient } from "@/i18n/server"
+import { translateOr, type Translator } from "@/i18n/translate"
 import { readAirlineLogos } from "@/lib/tickets/airline-logo"
 import { MONO_TTF, SANSBOLD_TTF, SANS_TTF } from "./fonts"
 import { WEEFLY_LOGO_PATHS, WEEFLY_LOGO_VIEWBOX } from "./weefly-logo"
@@ -87,6 +93,8 @@ interface Ctx {
   logos: Map<string, PDFImage>
   /** O logótipo do parceiro, quando a venda é de um parceiro com marca. */
   brandLogo: PDFImage | null
+  /** O tradutor da língua do pedido. */
+  t: Translator
 }
 
 // ── primitivas (coordenadas a partir do topo da página) ──────────────────────
@@ -452,8 +460,10 @@ function carrierBox(
 
 // ── formatação ───────────────────────────────────────────────────────────────
 
-const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
-const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
+/* Meses e dias vêm do dicionário, separados por vírgulas: o servidor não tem
+   de ter o ICU de cada língua para o bilhete sair igual em todo o lado. */
+const months = (ctx: Ctx): string[] => ctx.t("ticketPdf.months").split(",")
+const weekdays = (ctx: Ctx): string[] => ctx.t("ticketPdf.weekdays").split(",")
 
 function ymd(value: string | null): [number, number, number] | null {
   const m = value?.match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -461,34 +471,35 @@ function ymd(value: string | null): [number, number, number] | null {
 }
 
 /** "22 out 2026" — sem depender do ICU do servidor. */
-function longDate(value: string | null): string {
+function longDate(ctx: Ctx, value: string | null): string {
   const d = ymd(value)
-  return d ? `${d[2]} ${MONTHS[d[1] - 1]} ${d[0]}` : "—"
+  return d ? `${d[2]} ${months(ctx)[d[1] - 1]} ${d[0]}` : "—"
 }
 
 /** "22 out". */
-function shortDate(value: string | null): string {
+function shortDate(ctx: Ctx, value: string | null): string {
   const d = ymd(value)
-  return d ? `${d[2]} ${MONTHS[d[1] - 1]}` : "—"
+  return d ? `${d[2]} ${months(ctx)[d[1] - 1]}` : "—"
 }
 
 /** "Quinta, 22 out 2026". */
-function weekdayDate(value: string | null): string {
+function weekdayDate(ctx: Ctx, value: string | null): string {
   const d = ymd(value)
   if (!d) return "—"
   const day = new Date(Date.UTC(d[0], d[1] - 1, d[2])).getUTCDay()
-  return `${WEEKDAYS[day]}, ${longDate(value)}`
+  return `${weekdays(ctx)[day]}, ${longDate(ctx, value)}`
 }
 
 /** "22 a 29 out 2026", "28 out a 3 nov 2026". */
-function dateRange(from: string | null, to: string | null): string {
+function dateRange(ctx: Ctx, from: string | null, to: string | null): string {
   const a = ymd(from)
   const b = ymd(to)
   if (!a) return "—"
-  if (!b || (a[0] === b[0] && a[1] === b[1] && a[2] === b[2])) return longDate(from)
-  if (a[0] !== b[0]) return `${longDate(from)} a ${longDate(to)}`
-  if (a[1] !== b[1]) return `${shortDate(from)} a ${longDate(to)}`
-  return `${a[2]} a ${longDate(to)}`
+  if (!b || (a[0] === b[0] && a[1] === b[1] && a[2] === b[2])) return longDate(ctx, from)
+  const range = (start: string) => ctx.t("ticketPdf.rangeTo", { from: start, to: longDate(ctx, to) })
+  if (a[0] !== b[0]) return range(longDate(ctx, from))
+  if (a[1] !== b[1]) return range(shortDate(ctx, from))
+  return range(String(a[2]))
 }
 
 /** "08:40" da hora local do aeroporto, sem passar por `Date`. Ver a 0005. */
@@ -503,7 +514,7 @@ function duration(minutes: number | null): string {
 }
 
 /** "15 out 2026, 13:40" na hora de Cabo Verde. */
-function issuedLabel(iso: string): string {
+function issuedLabel(ctx: Ctx, iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return "—"
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -516,23 +527,16 @@ function issuedLabel(iso: string): string {
     minute: "2-digit",
   }).formatToParts(date)
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00"
-  return `${longDate(`${get("year")}-${get("month")}-${get("day")}`)}, ${get("hour")}:${get("minute")}`
+  return `${longDate(ctx, `${get("year")}-${get("month")}-${get("day")}`)}, ${get("hour")}:${get("minute")}`
 }
 
-const CABIN_PT: Record<string, string> = {
-  economy: "Económica",
-  premium_economy: "Económica premium",
-  business: "Executiva",
-  first: "Primeira",
-}
+/** A cabina e o tipo de passageiro na língua do pedido; um código que o
+    dicionário não conheça sai como está. */
+const cabinName = (ctx: Ctx, cabin: string): string =>
+  translateOr(ctx.t, `ticketPdf.cabin.${cabin}`, cabin)
 
-const TYPE_PT: Record<string, string> = {
-  adult: "Adulto",
-  child: "Criança",
-  infant: "Bebé",
-  infant_seat: "Bebé c/ assento",
-  infant_lap: "Bebé de colo",
-}
+const paxTypeName = (ctx: Ctx, type: string): string =>
+  translateOr(ctx.t, `ticketPdf.paxType.${type}`, type)
 
 /** "047 2134567890" — o prefixo da companhia separado do documento. */
 function ticketNo(value: string | null): string {
@@ -547,12 +551,15 @@ function pieces(count: number | null, kg: number | null): string {
   return count > 0 && kg !== null ? `${count} × ${kg} kg` : String(count)
 }
 
-function bagLine(bag: TicketBaggage): string {
-  return `Mão ${pieces(bag.cabinPieces, bag.cabinKg)} · Porão ${pieces(bag.checkedPieces, bag.checkedKg)}`
+function bagLine(ctx: Ctx, bag: TicketBaggage): string {
+  return ctx.t("ticketPdf.flight.bagLine", {
+    cabin: pieces(bag.cabinPieces, bag.cabinKg),
+    hold: pieces(bag.checkedPieces, bag.checkedKg),
+  })
 }
 
-function personalItem(bag: TicketBaggage): string {
-  return bag.personal === false ? "Sem artigo pessoal" : "1 · debaixo do banco"
+function personalItem(ctx: Ctx, bag: TicketBaggage): string {
+  return ctx.t(bag.personal === false ? "ticketPdf.baggage.personalNone" : "ticketPdf.baggage.personalOne")
 }
 
 /** "22OCT26" → "22OCT": o ano não ajuda ninguém a ler a validade. */
@@ -560,8 +567,8 @@ function shortValidity(value: string): string {
   return value.replace(/^(\d{1,2}[A-Z]{3})\d{2}$/i, "$1").toUpperCase()
 }
 
-function legName(direction: string): string {
-  return direction === "volta" ? "Volta" : "Ida"
+function legName(ctx: Ctx, direction: string): string {
+  return ctx.t(direction === "volta" ? "ticketPdf.leg.volta" : "ticketPdf.leg.ida")
 }
 
 // ── o código 2D ──────────────────────────────────────────────────────────────
@@ -628,7 +635,7 @@ function header(
     color: MUTED,
   })
 
-  label(ctx, "Localizador", PAGE.w - M, top + 6, { align: "right" })
+  label(ctx, ctx.t("ticketPdf.header.locator"), PAGE.w - M, top + 6, { align: "right" })
   text(ctx, data.pnr, {
     x: PAGE.w - M,
     y: top + (large ? 31 : 24),
@@ -639,7 +646,7 @@ function header(
     spacing: large ? 1.5 : 1,
   })
   if (large) {
-    text(ctx, `Emitido a ${issuedLabel(data.issuedAt)}`, {
+    text(ctx, ctx.t("ticketPdf.header.issuedAt", { when: issuedLabel(ctx, data.issuedAt) }), {
       x: PAGE.w - M,
       y: top + 44,
       size: 7.4,
@@ -676,7 +683,7 @@ function footers(ctx: Ctx, data: TicketData): void {
 function ensure(ctx: Ctx, data: TicketData, y: number, needed: number, title: string): number {
   if (y + needed <= BOTTOM) return y
   newPage(ctx)
-  return header(ctx, data, title, "Continuação")
+  return header(ctx, data, title, ctx.t("ticketPdf.header.continued"))
 }
 
 // ── página 1 · o balcão ──────────────────────────────────────────────────────
@@ -713,14 +720,20 @@ function summary(ctx: Ctx, data: TicketData, y: number): number {
   else arrow(ctx, ax, base - size * 0.33, arrowW(), { color: EMBER, width: 1.6, head: size * 0.22 })
   text(ctx, to, { x: ax + arrowW() + 10, y: base, size, font: ctx.fonts.bold })
 
-  const kind = roundTrip ? "Ida e volta" : data.segments.length > 1 && outbound.length === 0 ? "Multidestino" : "Só ida"
+  const kind = ctx.t(
+    roundTrip
+      ? "ticketPdf.summary.roundTrip"
+      : data.segments.length > 1 && outbound.length === 0
+        ? "ticketPdf.summary.multi"
+        : "ticketPdf.summary.oneWay"
+  )
   const lastSegment = data.segments[data.segments.length - 1]
-  const range = dateRange(first?.departAt ?? null, roundTrip ? (lastSegment?.departAt ?? null) : null)
-  const paxLabel = `${data.passengers.length} passageiro${data.passengers.length === 1 ? "" : "s"}`
+  const range = dateRange(ctx, first?.departAt ?? null, roundTrip ? (lastSegment?.departAt ?? null) : null)
+  const paxLabel = ctx.t("ticketPdf.summary.pax", { count: data.passengers.length })
   const kx = text(ctx, `${kind} · `, { x: x0, y: base + 18, size: 8.6, color: INK })
   const rx = text(ctx, range, { x: x0 + kx, y: base + 18, size: 8.6, font: ctx.fonts.bold })
   text(ctx, ` · ${paxLabel}`, { x: x0 + kx + rx, y: base + 18, size: 8.6 })
-  const px = text(ctx, "Pedido ", { x: x0, y: base + 35, size: 8.6 })
+  const px = text(ctx, `${ctx.t("ticketPdf.summary.request")} `, { x: x0, y: base + 35, size: 8.6 })
   text(ctx, data.reference || "—", { x: x0 + px, y: base + 35, size: 8.6, font: ctx.fonts.mono })
 
   /* Viaja com: a companhia emissora, ou a do primeiro voo. */
@@ -728,7 +741,7 @@ function summary(ctx: Ctx, data: TicketData, y: number): number {
   const name = data.issuingCarrierLabel || first?.carrierLabel || ""
   const boxW = 118
   const boxX = PAGE.w - M - 18 - 64 - 22 - boxW
-  label(ctx, "Viaja com", boxX + boxW / 2, y + 27, { align: "center" })
+  label(ctx, ctx.t("ticketPdf.summary.travelsWith"), boxX + boxW / 2, y + 27, { align: "center" })
   carrierBox(ctx, code, name, boxX, y + 37, boxW, 42)
 
   /* O código 2D: a página do cliente, com o bilhete e as alterações. */
@@ -736,7 +749,7 @@ function summary(ctx: Ctx, data: TicketData, y: number): number {
   const qrX = PAGE.w - M - 18 - qrSize
   roundRect(ctx, qrX - 4, y + 14, qrSize + 8, qrSize + 8, { r: 5, fill: WHITE })
   drawQr(ctx, data.link, qrX, y + 18, qrSize)
-  text(ctx, "A sua página", { x: qrX + qrSize / 2, y: y + 91, size: 6.4, color: MUTED, align: "center" })
+  text(ctx, ctx.t("ticketPdf.summary.yourPage"), { x: qrX + qrSize / 2, y: y + 91, size: 6.4, color: MUTED, align: "center" })
 
   return y + h + 22
 }
@@ -754,7 +767,7 @@ function flightCard(ctx: Ctx, data: TicketData, segment: TicketSegment, y: numbe
   const rowsH = rows.reduce((sum, r) => sum + r.h, 0) + 10
   const h = bandH + bodyH + rowsH
 
-  y = ensure(ctx, data, y, h + 12, "Bilhete eletrónico")
+  y = ensure(ctx, data, y, h + 12, ctx.t("ticketPdf.header.title"))
 
   roundRect(ctx, M, y, W, h, { r: 10, fill: WHITE, border: LINE })
   roundRect(ctx, M + 0.35, y + 0.35, W - 0.7, bandH, { r: [10, 10, 0, 0], fill: EMBER_SOFT })
@@ -762,8 +775,8 @@ function flightCard(ctx: Ctx, data: TicketData, segment: TicketSegment, y: numbe
   /* A faixa: IDA/VOLTA, o dia, e o voo com a cabina. */
   const legText =
     segment.legCount > 1
-      ? `${legName(segment.direction)} ${segment.legIndex}/${segment.legCount}`.toUpperCase()
-      : legName(segment.direction).toUpperCase()
+      ? `${legName(ctx, segment.direction)} ${segment.legIndex}/${segment.legCount}`.toUpperCase()
+      : legName(ctx, segment.direction).toUpperCase()
   const pillW = widthOf(ctx.fonts.bold, legText, 7, 0.8) + 18
   roundRect(ctx, M + 14, y + 6.5, pillW, 13, { r: 6.5, fill: EMBER })
   text(ctx, legText, {
@@ -775,7 +788,7 @@ function flightCard(ctx: Ctx, data: TicketData, segment: TicketSegment, y: numbe
     align: "center",
     spacing: 0.8,
   })
-  text(ctx, weekdayDate(segment.departAt), {
+  text(ctx, weekdayDate(ctx, segment.departAt), {
     x: M + 14 + pillW + 9,
     y: y + 16,
     size: 8.8,
@@ -783,7 +796,7 @@ function flightCard(ctx: Ctx, data: TicketData, segment: TicketSegment, y: numbe
   })
 
   const cabin = [
-    CABIN_PT[segment.cabin] ?? segment.cabin,
+    cabinName(ctx, segment.cabin),
     segment.bookingClass ? `(${segment.bookingClass})` : "",
   ]
     .filter(Boolean)
@@ -792,7 +805,7 @@ function flightCard(ctx: Ctx, data: TicketData, segment: TicketSegment, y: numbe
   let rx = PAGE.w - M - 14
   rx -= text(ctx, ` · ${cabin}`, { x: rx, y: y + 16, size: 8, color: INK, align: "right" })
   rx -= text(ctx, flight, { x: rx, y: y + 16, size: 8, font: ctx.fonts.bold, align: "right" })
-  text(ctx, "Voo ", { x: rx, y: y + 16, size: 8, color: INK, align: "right" })
+  text(ctx, `${ctx.t("ticketPdf.flight.flight")} `, { x: rx, y: y + 16, size: 8, color: INK, align: "right" })
 
   /* O corpo: companhia à esquerda, partida, duração, chegada. */
   const body = y + bandH
@@ -817,7 +830,10 @@ function flightCard(ctx: Ctx, data: TicketData, segment: TicketSegment, y: numbe
   text(ctx, ` ${segment.originCity}`, { x: depX + ow, y: body + 50, size: 8.8 })
   text(
     ctx,
-    [shortDate(segment.departAt), segment.terminalFrom ? `Terminal ${segment.terminalFrom}` : ""]
+    [
+      shortDate(ctx, segment.departAt),
+      segment.terminalFrom ? ctx.t("ticketPdf.flight.terminal", { terminal: segment.terminalFrom }) : "",
+    ]
       .filter(Boolean)
       .join(" · "),
     { x: depX, y: body + 62, size: 7.2, color: MUTED }
@@ -834,7 +850,10 @@ function flightCard(ctx: Ctx, data: TicketData, segment: TicketSegment, y: numbe
   text(ctx, `${segment.destinationCity} `, { x: arrX - dw, y: body + 50, size: 8.8, align: "right" })
   text(
     ctx,
-    [shortDate(segment.arriveAt), segment.terminalTo ? `Terminal ${segment.terminalTo}` : ""]
+    [
+      shortDate(ctx, segment.arriveAt),
+      segment.terminalTo ? ctx.t("ticketPdf.flight.terminal", { terminal: segment.terminalTo }) : "",
+    ]
       .filter(Boolean)
       .join(" · "),
     { x: arrX, y: body + 62, size: 7.2, color: MUTED, align: "right" }
@@ -851,8 +870,8 @@ function flightCard(ctx: Ctx, data: TicketData, segment: TicketSegment, y: numbe
   plane(ctx, mid, body + 30, 12)
   const stop =
     segment.legIndex < segment.legCount
-      ? `Ligação em ${segment.destinationCity || segment.destination}${segment.layoverMinutes !== null ? ` · ${duration(segment.layoverMinutes)}` : ""}`
-      : "Direto"
+      ? `${ctx.t("ticketPdf.flight.connection", { city: segment.destinationCity || segment.destination || "—" })}${segment.layoverMinutes !== null ? ` · ${duration(segment.layoverMinutes)}` : ""}`
+      : ctx.t("ticketPdf.flight.direct")
   text(ctx, stop, { x: mid, y: body + 43, size: 7.4, color: MUTED, align: "center" })
 
   /* Uma linha por passageiro: bilhete, lugar e bagagem neste voo. */
@@ -867,12 +886,12 @@ function flightCard(ctx: Ctx, data: TicketData, segment: TicketSegment, y: numbe
       text(ctx, line, { x: M + 40, y: lineY + i * 9.6, size: nameSize, font: ctx.fonts.bold })
     )
     const bx = M + 196
-    const bw = text(ctx, "Bilhete ", { x: bx, y: mid + 2.6, size: 7.4, color: MUTED })
+    const bw = text(ctx, `${ctx.t("ticketPdf.flight.ticket")} `, { x: bx, y: mid + 2.6, size: 7.4, color: MUTED })
     text(ctx, ticketNo(row.seat.ticketNumber), { x: bx + bw, y: mid + 2.6, size: 7.6, font: ctx.fonts.mono })
     const sx = M + 316
-    const sw = text(ctx, "Lugar ", { x: sx, y: mid + 2.6, size: 7.4, color: MUTED })
-    text(ctx, row.seat.seat ?? "A atribuir", { x: sx + sw, y: mid + 2.6, size: 7.6 })
-    text(ctx, bagLine(row.seat.baggage), {
+    const sw = text(ctx, `${ctx.t("ticketPdf.flight.seat")} `, { x: sx, y: mid + 2.6, size: 7.4, color: MUTED })
+    text(ctx, row.seat.seat ?? ctx.t("ticketPdf.flight.seatPending"), { x: sx + sw, y: mid + 2.6, size: 7.6 })
+    text(ctx, bagLine(ctx, row.seat.baggage), {
       x: PAGE.w - M - 14,
       y: mid + 2.6,
       size: 7.4,
@@ -893,25 +912,25 @@ function passengerTable(ctx: Ctx, data: TicketData, y: number): number {
   }))
   const height = 30 + rows.reduce((sum, r) => sum + 14 + r.lines.length * 10.4, 0)
 
-  y = ensure(ctx, data, y, Math.min(height, 120) + 14, "Bilhete eletrónico")
-  y = section(ctx, "Passageiros", y)
+  y = ensure(ctx, data, y, Math.min(height, 120) + 14, ctx.t("ticketPdf.header.title"))
+  y = section(ctx, ctx.t("ticketPdf.passengers.section"), y)
 
-  label(ctx, "Nome no documento", cols.name, y + 6)
-  label(ctx, "Tipo", cols.type, y + 6)
-  label(ctx, "Passaporte", cols.passport, y + 6)
-  label(ctx, "Nº de bilhete", cols.ticket, y + 6)
+  label(ctx, ctx.t("ticketPdf.passengers.name"), cols.name, y + 6)
+  label(ctx, ctx.t("ticketPdf.passengers.type"), cols.type, y + 6)
+  label(ctx, ctx.t("ticketPdf.passengers.passport"), cols.passport, y + 6)
+  label(ctx, ctx.t("ticketPdf.passengers.ticketNumber"), cols.ticket, y + 6)
   y += 13
   hline(ctx, y)
 
   for (const row of rows) {
     const h = 14 + row.lines.length * 10.4
-    y = ensure(ctx, data, y, h, "Bilhete eletrónico")
+    y = ensure(ctx, data, y, h, ctx.t("ticketPdf.header.title"))
     const base = y + 7 + 8.4
     tag(ctx, row.passenger.tag, M + 4, base)
     row.lines.forEach((line, i) =>
       text(ctx, line, { x: cols.name, y: base + i * 10.4, size: 8.2, font: ctx.fonts.bold })
     )
-    text(ctx, TYPE_PT[row.passenger.type] ?? row.passenger.type, { x: cols.type, y: base, size: 8.2 })
+    text(ctx, paxTypeName(ctx, row.passenger.type), { x: cols.type, y: base, size: 8.2 })
     text(ctx, row.passenger.passportNumber ?? "—", { x: cols.passport, y: base, size: 7.8, font: ctx.fonts.mono })
     text(ctx, ticketNo(row.passenger.ticketNumber), { x: cols.ticket, y: base, size: 7.8, font: ctx.fonts.mono })
     y += h
@@ -934,14 +953,16 @@ function fareBlock(ctx: Ctx, data: TicketData, y: number): number {
 
   const firstCabin = data.segments[0]?.cabin ?? "economy"
   const boxes: { title: string; value: string; mono?: boolean; soft?: boolean }[] = [
-    { title: "Tarifa", value: data.fare.name || CABIN_PT[firstCabin] || "—" },
+    { title: ctx.t("ticketPdf.fare.section"), value: data.fare.name || cabinName(ctx, firstCabin) || "—" },
     {
-      title: "Reembolso",
-      value: data.fare.nonRefundable ? "Não reembolsável" : data.fare.refund || "Conforme a tarifa",
+      title: ctx.t("ticketPdf.fare.refund"),
+      value: data.fare.nonRefundable
+        ? ctx.t("ticketPdf.fare.nonRefundable")
+        : data.fare.refund || ctx.t("ticketPdf.fare.perFare"),
       soft: data.fare.nonRefundable,
     },
-    { title: "Alterações", value: data.fare.change || "Conforme a tarifa" },
-    { title: "Base tarifária", value: bases || data.fareBasis || "—", mono: true },
+    { title: ctx.t("ticketPdf.fare.changes"), value: data.fare.change || ctx.t("ticketPdf.fare.perFare") },
+    { title: ctx.t("ticketPdf.fare.basis"), value: bases || data.fareBasis || "—", mono: true },
   ]
 
   const gap = 7
@@ -951,8 +972,8 @@ function fareBlock(ctx: Ctx, data: TicketData, y: number): number {
   )
   const bh = Math.max(52, 30 + Math.max(...lines.map((l) => l.length)) * 10.6)
 
-  y = ensure(ctx, data, y, bh + 40, "Bilhete eletrónico")
-  y = section(ctx, "Tarifa", y)
+  y = ensure(ctx, data, y, bh + 40, ctx.t("ticketPdf.header.title"))
+  y = section(ctx, ctx.t("ticketPdf.fare.section"), y)
   boxes.forEach((b, i) => {
     const x = M + i * (bw + gap)
     roundRect(ctx, x, y, bw, bh, { r: 8, fill: b.soft ? EMBER_SOFT : CHALK })
@@ -971,15 +992,22 @@ function fareBlock(ctx: Ctx, data: TicketData, y: number): number {
   /* Endossos e validades, numa linha: "Ida válida só a 22OCT". */
   const validity = byDirection.map((list) => {
     const s = list[0]
-    const name = legName(s.direction)
+    const leg = legName(ctx, s.direction)
     const nvb = s.nvb ? shortValidity(s.nvb) : null
     const nva = s.nva ? shortValidity(s.nva) : null
-    if (nvb && nva) return nvb === nva ? `${name} válida só a ${nva}` : `${name} válida de ${nvb} a ${nva}`
-    if (nva) return `${name} válida até ${nva}`
-    if (nvb) return `${name} válida a partir de ${nvb}`
+    if (nvb && nva) {
+      return nvb === nva
+        ? ctx.t("ticketPdf.fare.validOnly", { leg, date: nva })
+        : ctx.t("ticketPdf.fare.validRange", { leg, from: nvb, to: nva })
+    }
+    if (nva) return ctx.t("ticketPdf.fare.validUntil", { leg, date: nva })
+    if (nvb) return ctx.t("ticketPdf.fare.validFrom", { leg, date: nvb })
     return ""
   })
-  const endorsements = [data.endorsements ? `Endossos: ${data.endorsements}` : "", ...validity]
+  const endorsements = [
+    data.endorsements ? ctx.t("ticketPdf.fare.endorsements", { text: data.endorsements }) : "",
+    ...validity,
+  ]
     .filter(Boolean)
     .join(" · ")
   if (endorsements) {
@@ -990,9 +1018,9 @@ function fareBlock(ctx: Ctx, data: TicketData, y: number): number {
 
 function pageOne(ctx: Ctx, data: TicketData): void {
   newPage(ctx)
-  let y = header(ctx, data, "Bilhete eletrónico", "Itinerário e passageiros", { large: true })
+  let y = header(ctx, data, ctx.t("ticketPdf.header.title"), ctx.t("ticketPdf.header.subtitle"), { large: true })
   y = summary(ctx, data, y)
-  y = section(ctx, "Itinerário", y)
+  y = section(ctx, ctx.t("ticketPdf.flight.section"), y)
   for (const segment of data.segments) {
     y = flightCard(ctx, data, segment, y)
   }
@@ -1003,13 +1031,13 @@ function pageOne(ctx: Ctx, data: TicketData): void {
 // ── página 2 · antes de viajar ───────────────────────────────────────────────
 
 function baggageTable(ctx: Ctx, data: TicketData, y: number): number {
-  y = section(ctx, "Bagagem incluída", y)
+  y = section(ctx, ctx.t("ticketPdf.baggage.section"), y)
   const cols = { name: M + 30, leg: M + 262, personal: M + 332, cabin: M + 424, hold: M + 472 }
-  label(ctx, "Passageiro", cols.name, y + 6)
-  label(ctx, "Trecho", cols.leg, y + 6)
-  label(ctx, "Artigo pessoal", cols.personal, y + 6)
-  label(ctx, "Mão", cols.cabin, y + 6)
-  label(ctx, "Porão", cols.hold, y + 6)
+  label(ctx, ctx.t("ticketPdf.baggage.passenger"), cols.name, y + 6)
+  label(ctx, ctx.t("ticketPdf.baggage.leg"), cols.leg, y + 6)
+  label(ctx, ctx.t("ticketPdf.baggage.personal"), cols.personal, y + 6)
+  label(ctx, ctx.t("ticketPdf.baggage.cabin"), cols.cabin, y + 6)
+  label(ctx, ctx.t("ticketPdf.baggage.hold"), cols.hold, y + 6)
   y += 13
   hline(ctx, y)
 
@@ -1025,7 +1053,7 @@ function baggageTable(ctx: Ctx, data: TicketData, y: number): number {
         checkedKg: null,
       }
       const h = index === 0 ? Math.max(22, 12 + lines.length * 10.4) : 22
-      y = ensure(ctx, data, y, h, "Antes de viajar")
+      y = ensure(ctx, data, y, h, ctx.t("ticketPdf.before.title"))
       const base = y + 14
       if (index === 0) {
         tag(ctx, passenger.tag, M + 4, base)
@@ -1036,7 +1064,7 @@ function baggageTable(ctx: Ctx, data: TicketData, y: number): number {
       const ow = text(ctx, segment.origin ?? "—", { x: cols.leg, y: base, size: 7.6, font: ctx.fonts.mono })
       arrow(ctx, cols.leg + ow + 4, base - 2.6, 9, { color: MUTED, width: 0.8, head: 2.2 })
       text(ctx, segment.destination ?? "—", { x: cols.leg + ow + 17, y: base, size: 7.6, font: ctx.fonts.mono })
-      text(ctx, personalItem(bag), { x: cols.personal, y: base, size: 7.8 })
+      text(ctx, personalItem(ctx, bag), { x: cols.personal, y: base, size: 7.8 })
       text(ctx, pieces(bag.cabinPieces, bag.cabinKg), { x: cols.cabin, y: base, size: 7.8 })
       text(ctx, pieces(bag.checkedPieces, bag.checkedKg), { x: cols.hold, y: base, size: 7.8 })
       y += h
@@ -1044,11 +1072,11 @@ function baggageTable(ctx: Ctx, data: TicketData, y: number): number {
     })
   }
 
-  const carrier = data.issuingCarrierLabel || data.segments[0]?.carrierLabel || "da companhia"
+  const carrier = data.issuingCarrierLabel || data.segments[0]?.carrierLabel || ""
   y += 6
   y += paragraph(
     ctx,
-    `Pesos e medidas máximas são os da ${carrier}. Bagagem extra compra-se connosco ou no site da companhia, antes do voo e mais barato do que no aeroporto.`,
+    carrier ? ctx.t("ticketPdf.baggage.note", { carrier }) : ctx.t("ticketPdf.baggage.noteGeneric"),
     { x: M, y: y + 6, width: W, size: 7.4, color: MUTED }
   )
   return y + 16
@@ -1087,71 +1115,62 @@ function bulletsHeight(ctx: Ctx, items: string[], w: number): number {
 
 function pageTwo(ctx: Ctx, data: TicketData): void {
   newPage(ctx)
-  let y = header(ctx, data, "Antes de viajar", "Bagagem, check-in, documentos e contactos")
+  let y = header(ctx, data, ctx.t("ticketPdf.before.title"), ctx.t("ticketPdf.before.subtitle"))
   y = baggageTable(ctx, data, y)
 
-  const carrier = data.issuingCarrierLabel || data.segments[0]?.carrierLabel || "companhia"
+  const carrier = data.issuingCarrierLabel || data.segments[0]?.carrierLabel || ""
   const half = (W - 12) / 2
   const inner = half - 26
 
   const checkin = [
-    { text: `O check-in online abre 24 a 48 horas antes da partida, no site ou na app da ${carrier}. Use o localizador` },
+    {
+      text: carrier
+        ? ctx.t("ticketPdf.before.checkinOpen", { carrier })
+        : ctx.t("ticketPdf.before.checkinOpenGeneric"),
+    },
     { text: data.pnr, font: ctx.fonts.bold },
-    { text: "e o apelido." },
+    { text: ctx.t("ticketPdf.before.checkinSurname") },
   ]
-  const checkin2 =
-    "No aeroporto, chegue ao balcão com 2 horas de antecedência em voos regionais e europeus, e com 3 horas em voos intercontinentais."
-  const eve1 =
-    "Confirme o horário. As companhias mudam horas com frequência e, quando isso acontece, avisamos por email e WhatsApp."
-  const eve2 =
-    "Precisa de alterar alguma coisa? Fale primeiro connosco. Uma alteração feita diretamente na companhia pode anular as condições da sua tarifa."
-  const bring = [
-    "Passaporte válido. A maioria dos destinos pede seis meses de validade a contar do regresso.",
-    "Visto ou autorização de entrada, quando o destino o exige. É responsabilidade de quem viaja.",
-    "Este bilhete, no telemóvel ou impresso.",
-    "Reserva de alojamento e bilhete de regresso, que algumas fronteiras pedem.",
-  ]
-  const handle = [
-    "Alterações de data e de nome, dentro do que a tarifa permite.",
-    "Nova emissão quando a companhia muda ou cancela o voo.",
-    "Pedidos especiais: refeições, assistência, cadeira de rodas, bebé ao colo.",
-    "Acompanhamento até ao embarque e depois dele, se algo correr mal.",
-  ]
+  const checkin2 = ctx.t("ticketPdf.before.checkinAirport")
+  const eve1 = ctx.t("ticketPdf.before.eveConfirm")
+  const eve2 = ctx.t("ticketPdf.before.eveChange")
+  const bring = [1, 2, 3, 4].map((n) => ctx.t(`ticketPdf.before.bring${n}`))
+  const handle = [1, 2, 3, 4].map((n) => ctx.t(`ticketPdf.before.handle${n}`))
 
   const leading = 8.6 * 1.42
   const para = (value: string) => wrap(ctx.fonts.sans, value, 8.6, inner).length * leading
   const row1 = 38 + Math.max(para(checkin.map((r) => r.text).join(" ")) + 6 + para(checkin2), para(eve1) + 6 + para(eve2))
   const row2 = 36 + Math.max(bulletsHeight(ctx, bring, inner), bulletsHeight(ctx, handle, inner))
 
-  y = ensure(ctx, data, y, row1 + row2 + 40, "Antes de viajar")
-  y = section(ctx, "Check-in e documentos", y)
+  y = ensure(ctx, data, y, row1 + row2 + 40, ctx.t("ticketPdf.before.title"))
+  y = section(ctx, ctx.t("ticketPdf.before.section"), y)
 
-  infoCard(ctx, M, y, half, row1, "Check-in", (x, cy, w) => {
+  infoCard(ctx, M, y, half, row1, ctx.t("ticketPdf.before.checkinCard"), (x, cy, w) => {
     const used = rich(ctx, checkin, { x, y: cy, width: w })
     paragraph(ctx, checkin2, { x, y: cy + used + 6, width: w })
   })
-  infoCard(ctx, M + half + 12, y, half, row1, "Na véspera", (x, cy, w) => {
+  infoCard(ctx, M + half + 12, y, half, row1, ctx.t("ticketPdf.before.eveCard"), (x, cy, w) => {
     const used = paragraph(ctx, eve1, { x, y: cy, width: w })
     paragraph(ctx, eve2, { x, y: cy + used + 6, width: w })
   })
   y += row1 + 10
-  infoCard(ctx, M, y, half, row2, "Leve consigo", (x, cy, w) => {
+  infoCard(ctx, M, y, half, row2, ctx.t("ticketPdf.before.bringCard"), (x, cy, w) => {
     bullets(ctx, bring, x, cy, w)
   })
-  infoCard(ctx, M + half + 12, y, half, row2, "O que tratamos por si", (x, cy, w) => {
+  infoCard(ctx, M + half + 12, y, half, row2, ctx.t("ticketPdf.before.handleCard"), (x, cy, w) => {
     bullets(ctx, handle, x, cy, w)
   })
   y += row2 + 18
 
   /* Falar connosco: o contacto de quem vendeu e o QR da página do cliente. */
-  y = ensure(ctx, data, y, 110, "Antes de viajar")
-  y = section(ctx, "Falar connosco", y)
+  y = ensure(ctx, data, y, 110, ctx.t("ticketPdf.before.title"))
+  y = section(ctx, ctx.t("ticketPdf.contact.section"), y)
   const boxH = 84
   roundRect(ctx, M, y, W, boxH, { r: 10, fill: INK })
   text(ctx, data.brand.contactName, { x: M + 18, y: y + 26, size: 11.5, font: ctx.fonts.bold, color: WHITE })
 
   const contactRuns: { text: string; font?: PDFFont }[] = [
-    { text: "Email" },
+    { text: ctx.t("ticketPdf.contact.email") },
     { text: data.brand.email, font: ctx.fonts.bold },
   ]
   if (data.brand.site) contactRuns.push({ text: `· ${data.brand.site}` })
@@ -1168,7 +1187,7 @@ function pageTwo(ctx: Ctx, data: TicketData): void {
   const qrX = PAGE.w - M - 18 - qrSize
   roundRect(ctx, qrX - 5, y + 10, qrSize + 10, qrSize + 10, { r: 6, fill: WHITE })
   drawQr(ctx, data.link, qrX, y + 15, qrSize)
-  text(ctx, "Bilhete e alterações", {
+  text(ctx, ctx.t("ticketPdf.contact.qr"), {
     x: qrX + qrSize / 2,
     y: y + boxH - 6,
     size: 6.4,
@@ -1178,15 +1197,14 @@ function pageTwo(ctx: Ctx, data: TicketData): void {
   y += boxH + 18
 
   /* Avisos legais, em duas colunas. */
-  const seller = data.brand.kind === "partner" ? data.brand.name : "A WeeFly Africa"
+  const seller = data.brand.kind === "partner" ? data.brand.name : ctx.t("ticketPdf.legal.sellerWeefly")
   const legal = [
-    "Este documento comprova a emissão do bilhete eletrónico em nome dos passageiros indicados. O contrato de transporte é celebrado entre o passageiro e a companhia aérea emissora. " +
-      `${seller} atua como intermediária na reserva e na emissão.`,
-    "O transporte está sujeito às condições gerais da companhia aérea, às condições da tarifa aplicada e às convenções internacionais aplicáveis, incluindo a Convenção de Montreal de 1999 quanto à responsabilidade por danos a pessoas e bagagem.",
-    "As condições de alteração e de reembolso são as da tarifa emitida e constam da página 1. Uma tarifa não reembolsável continua a sê-lo mesmo que o voo não seja utilizado.",
-    "Os horários são horas locais de cada aeroporto e podem ser alterados pela companhia.",
-    "Passaporte, vistos e demais documentos de entrada são da responsabilidade do passageiro. A recusa de embarque por falta de documentação não dá direito a reembolso.",
-    `Os dados pessoais são tratados nos termos do Regulamento (UE) 2016/679 e da legislação cabo-verdiana aplicável, para executar a reserva e cumprir obrigações legais. Os direitos de acesso, retificação e eliminação exercem-se através de ${data.brand.email}.`,
+    ctx.t("ticketPdf.legal.clause1", { seller }),
+    ctx.t("ticketPdf.legal.clause2"),
+    ctx.t("ticketPdf.legal.clause3"),
+    ctx.t("ticketPdf.legal.clause4"),
+    ctx.t("ticketPdf.legal.clause5"),
+    ctx.t("ticketPdf.legal.clause6", { email: data.brand.email }),
   ]
   const colW = (W - 20) / 2
   const size = 6.5
@@ -1195,8 +1213,8 @@ function pageTwo(ctx: Ctx, data: TicketData): void {
   const leftH = heights.slice(0, 3).reduce((a, b) => a + b, 0)
   const rightH = heights.slice(3).reduce((a, b) => a + b, 0)
 
-  y = ensure(ctx, data, y, Math.max(leftH, rightH) + 20, "Antes de viajar")
-  y = section(ctx, "Avisos legais", y)
+  y = ensure(ctx, data, y, Math.max(leftH, rightH) + 20, ctx.t("ticketPdf.before.title"))
+  y = section(ctx, ctx.t("ticketPdf.legal.section"), y)
   let ly = y + 2
   let ryy = y + 2
   legal.forEach((clause, i) => {
@@ -1229,12 +1247,20 @@ export async function renderTicketPdf(
       }
     : input
 
+  /* A língua do pedido, guardada no lead. Nunca a de quem emite. */
+  const t = getTranslator(localeForClient(data.locale))
+
   const doc = await PDFDocument.create()
   doc.registerFontkit(fontkit)
 
-  doc.setTitle(`${data.brand.kind === "partner" ? data.brand.name : "WeeFly"} · bilhete ${data.pnr}`)
+  doc.setTitle(
+    t("ticketPdf.meta.title", {
+      brand: data.brand.kind === "partner" ? data.brand.name : "WeeFly",
+      pnr: data.pnr,
+    })
+  )
   doc.setAuthor(data.brand.name)
-  doc.setSubject(`Bilhete eletrónico ${data.documentNumber}`)
+  doc.setSubject(t("ticketPdf.meta.subject", { number: data.documentNumber }))
   doc.setProducer("WeeFly Concierge")
   doc.setCreator("WeeFly Concierge")
 
@@ -1280,6 +1306,7 @@ export async function renderTicketPdf(
     fonts,
     logos,
     brandLogo,
+    t,
   }
 
   pageOne(ctx, data)
@@ -1295,10 +1322,14 @@ export async function renderTicketPdf(
  * Usa as fontes standard do PDF e não as embebidas: o guia é o mesmo para toda
  * a gente e não tem dados de ninguém, e 500 KB de fontes por cópia de um
  * documento genérico seriam 500 KB a mais em cada email.
+ *
+ * `locale` é a língua do pedido: o guia vai ao lado do bilhete e sai na mesma
+ * língua que ele.
  */
-export async function renderTicketGuidePdf(): Promise<Uint8Array> {
+export async function renderTicketGuidePdf(locale?: string | null): Promise<Uint8Array> {
+  const t = getTranslator(localeForClient(locale))
   const doc = await PDFDocument.create()
-  doc.setTitle("WeeFly · como ler o seu bilhete")
+  doc.setTitle(t("ticketPdf.guide.metaTitle"))
   doc.setAuthor("WeeFly Africa")
 
   const sans = await doc.embedFont(StandardFonts.Helvetica)
@@ -1310,47 +1341,17 @@ export async function renderTicketGuidePdf(): Promise<Uint8Array> {
     fonts: { sans, bold, mono: sans },
     logos: new Map(),
     brandLogo: null,
+    t,
   }
   newPage(ctx)
 
   weeflyLogo(ctx, M, 32, 40)
-  text(ctx, "Como ler o seu bilhete", { x: M + 72, y: 58, size: 13, font: bold })
+  text(ctx, t("ticketPdf.guide.title"), { x: M + 72, y: 58, size: 13, font: bold })
 
   let y = 112
-  const entries: [string, string][] = [
-    [
-      "Localizador",
-      "Seis letras e números no canto superior direito. É o que a companhia pede ao balcão e o que abre o check-in online no site dela. Se só levar uma coisa de cor, leve esta.",
-    ],
-    [
-      "Número de bilhete",
-      "Treze dígitos por pessoa: os três primeiros identificam a companhia, os dez seguintes o documento. Cada passageiro tem o seu, ao lado da etiqueta de cada um.",
-    ],
-    [
-      "P1, P2, P3",
-      "As etiquetas dos passageiros. Aparecem na tabela e repetidas dentro de cada voo, com o lugar, o bilhete e a bagagem de cada pessoa nesse voo.",
-    ],
-    [
-      "Horas",
-      "São sempre horas locais do aeroporto de cada ponta: a de partida na cidade de onde parte, a de chegada na cidade onde aterra. A duração já conta com a diferença de fuso.",
-    ],
-    [
-      "Código quadrado",
-      "Abre a sua página, com o bilhete, o itinerário e as alterações, sempre no mesmo endereço.",
-    ],
-    [
-      "Bagagem",
-      "A página 2 diz o que a sua tarifa inclui por passageiro e por trecho. Uma mala a mais sai quase sempre mais barata antes do aeroporto do que no balcão.",
-    ],
-    [
-      "Se o voo mudar",
-      "As companhias mudam horários. Quando isso acontecer, avisamos por email e por WhatsApp, e o aviso aparece também na sua página.",
-    ],
-    [
-      "Se precisar de alterar",
-      "Fale connosco antes de falar com a companhia. Uma alteração feita por fora pode anular condições da tarifa.",
-    ],
-  ]
+  const entries: [string, string][] = (
+    ["locator", "ticket", "tags", "times", "qr", "baggage", "flightChange", "change"] as const
+  ).map((name) => [t(`ticketPdf.guide.${name}Title`), t(`ticketPdf.guide.${name}Body`)])
 
   for (const [title, body] of entries) {
     text(ctx, title, { x: M, y, size: 11, font: bold })
@@ -1368,4 +1369,9 @@ export async function renderTicketGuidePdf(): Promise<Uint8Array> {
   })
 
   return doc.save()
+}
+
+/** O nome do ficheiro do guia, na língua do pedido. */
+export function ticketGuideFileName(locale?: string | null): string {
+  return getTranslator(localeForClient(locale))("ticketPdf.guide.fileName")
 }

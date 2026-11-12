@@ -15,7 +15,7 @@ import { useT } from "@/i18n/provider"
 import { translateMessage } from "@/i18n/translate"
 import { requestPasswordReset } from "@/actions/auth"
 
-export function PasswordResetRequestForm() {
+export function PasswordResetRequestForm({ expired = false }: { expired?: boolean }) {
   const t = useT()
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -86,6 +86,14 @@ export function PasswordResetRequestForm() {
         <p className="text-slate-600 text-center mb-8 max-w-sm mx-auto">
           {t("auth.resetBody")}
         </p>
+
+        {/* FIX-01 · o link de recuperação vale 1 hora. */}
+        {expired && (
+          <div className="mb-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{t("auth.resetExpired")}</span>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

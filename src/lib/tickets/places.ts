@@ -213,6 +213,113 @@ export function cityPt(iata: string | null | undefined): string {
   return CITY_PT[en] ?? en
 }
 
+/** Aeroportos cujo nome que o passageiro reconhece é o mesmo em qualquer
+    língua (as ilhas de Cabo Verde, sobretudo): o catálogo diz "Espargos". */
+const CITY_ANY_LOCALE = new Set(["SID", "VXE", "BVC", "MMO", "SFL", "BVR", "SNE", "RAI", "GIG", "PDL", "FNC"])
+
+/** Os nomes ingleses do catálogo que mudam em francês. */
+const CITY_FR: Record<string, string> = {
+  Lisbon: "Lisbonne",
+  London: "Londres",
+  Brussels: "Bruxelles",
+  Venice: "Venise",
+  Geneva: "Genève",
+  Basel: "Bâle",
+  Hamburg: "Hambourg",
+  "Frankfurt am Main": "Francfort",
+  Vienna: "Vienne",
+  Warsaw: "Varsovie",
+  Copenhagen: "Copenhague",
+  Athens: "Athènes",
+  Seville: "Séville",
+  Saragossa: "Saragosse",
+  Barcelona: "Barcelone",
+  "Cape Town": "Le Cap",
+  "Addis Ababa": "Addis-Abeba",
+  Cairo: "Le Caire",
+  Algiers: "Alger",
+  Moscow: "Moscou",
+  Beijing: "Pékin",
+  Montreal: "Montréal",
+  Philadelphia: "Philadelphie",
+}
+
+/** Os nomes ingleses do catálogo que mudam em neerlandês. */
+const CITY_NL: Record<string, string> = {
+  Lisbon: "Lissabon",
+  London: "Londen",
+  Brussels: "Brussel",
+  Paris: "Parijs",
+  Milan: "Milaan",
+  Venice: "Venetië",
+  Naples: "Napels",
+  Turin: "Turijn",
+  Geneva: "Genève",
+  Zurich: "Zürich",
+  Basel: "Bazel",
+  Munich: "München",
+  Cologne: "Keulen",
+  "Frankfurt am Main": "Frankfurt",
+  Berlin: "Berlijn",
+  Vienna: "Wenen",
+  Prague: "Praag",
+  Warsaw: "Warschau",
+  Copenhagen: "Kopenhagen",
+  Athens: "Athene",
+  Seville: "Sevilla",
+  Saragossa: "Zaragoza",
+  Luxembourg: "Luxemburg",
+  "Cape Town": "Kaapstad",
+  Cairo: "Caïro",
+  Moscow: "Moskou",
+  Beijing: "Peking",
+}
+
+const CITY_EN: Record<string, string> = {
+  "Frankfurt am Main": "Frankfurt",
+}
+
+/** Aeroportos em que o catálogo dá o município e não a cidade que o passageiro
+    conhece ("Zaventem" por Bruxelas): a cidade em inglês e, quando há mais de
+    um aeroporto, o nome que os distingue. O par português é o `CITY_BY_IATA`. */
+const CITY_EN_BY_IATA: Record<string, [city: string, airport?: string]> = {
+  BRU: ["Brussels"],
+  CRL: ["Brussels", "Charleroi"],
+  MXP: ["Milan"],
+  LIN: ["Milan"],
+  BGY: ["Bergamo"],
+  EWR: ["New York", "Newark"],
+  JFK: ["New York"],
+  LGA: ["New York"],
+  ORY: ["Paris"],
+  CDG: ["Paris"],
+  BVA: ["Paris", "Beauvais"],
+  LGW: ["London", "Gatwick"],
+  STN: ["London", "Stansted"],
+  LTN: ["London", "Luton"],
+}
+
+/**
+ * O nome da cidade na língua do pedido.
+ *
+ * O bilhete segue a língua do cliente: um cliente francês lê "Lisbonne" e não
+ * "Lisboa". Em português é o `cityPt` de sempre; nas outras línguas parte-se do
+ * nome inglês do catálogo e troca-se o que tem forma própria. Uma língua que
+ * não conhecemos cai no português.
+ */
+export function cityFor(iata: string | null | undefined, locale: string | null | undefined): string {
+  const byLocale: Record<string, Record<string, string>> = { en: CITY_EN, fr: CITY_FR, nl: CITY_NL }
+  const names = byLocale[locale ?? ""]
+  if (!names) return cityPt(iata)
+  const code = (iata ?? "").trim().toUpperCase()
+  if (!code) return ""
+  if (CITY_ANY_LOCALE.has(code)) return CITY_BY_IATA[code]
+  const known = CITY_EN_BY_IATA[code]
+  if (known) return [names[known[0]] ?? known[0], known[1]].filter(Boolean).join(" ")
+  const en = cityNames([code])[code] ?? ""
+  return names[en] ?? en
+}
+
 /** O fuso IANA do aeroporto, ou nulo quando não o sabemos dizer. */
 export function airportTimeZone(iata: string | null | undefined): string | null {
   const code = (iata ?? "").trim().toUpperCase()

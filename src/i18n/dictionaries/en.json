@@ -690,6 +690,7 @@
     "backToLogin": "Back to sign in",
     "resetSentTitle": "Email sent",
     "resetSentBody": "We've sent a recovery link to your email. Click the link to set a new password.",
+    "resetExpired": "The recovery link is valid for 1 hour and this one has expired. Request a new one.",
     "newPasswordTitle": "New password",
     "newPasswordBody": "Set the new password for the account name@company.cv",
     "newPasswordLabel": "New password",
@@ -1235,7 +1236,8 @@
     "langToast": {
       "pt": "A equipa responde em português",
       "en": "Replies in English",
-      "fr": "L'équipe répond en français"
+      "fr": "L'équipe répond en français",
+      "nl": "Het team antwoordt in het Nederlands"
     },
     "stepper": {
       "trip": "Trip",
@@ -1915,12 +1917,14 @@
     "signup": {
       "subject": "Confirm your email for WeeFly Pro",
       "body": "Thank you for registering with WeeFly Pro. Confirm your email to continue, the WeeFly team will then validate your account.",
-      "cta": "Confirm email"
+      "cta": "Confirm email",
+      "validity": "This link is valid for 24 hours."
     },
     "recovery": {
       "subject": "Reset your WeeFly Pro password",
       "body": "We received a request to set a new password on your WeeFly Pro account.",
-      "cta": "Set a new password"
+      "cta": "Set a new password",
+      "validity": "This link is valid for 1 hour."
     },
     "magiclink": {
       "subject": "Your WeeFly Pro sign-in link",
@@ -2131,5 +2135,150 @@
     "partnerTitle": "{name} · Flights",
     "partnerDescription": "Ask {name} for your trip. Flights with the support of our team.",
     "imageAlt": "{name} logo"
+  },
+  "ticketPdf": {
+    "months": "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+    "weekdays": "Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday",
+    "rangeTo": "{from} to {to}",
+    "cabin": {
+      "economy": "Economy",
+      "premium_economy": "Premium economy",
+      "business": "Business",
+      "first": "First"
+    },
+    "paxType": {
+      "adult": "Adult",
+      "child": "Child",
+      "infant": "Infant",
+      "infant_seat": "Infant + seat",
+      "infant_lap": "Lap infant"
+    },
+    "leg": {
+      "ida": "Outbound",
+      "volta": "Return"
+    },
+    "header": {
+      "title": "Electronic ticket",
+      "subtitle": "Itinerary and passengers",
+      "locator": "Booking reference",
+      "issuedAt": "Issued on {when}",
+      "continued": "Continued"
+    },
+    "summary": {
+      "roundTrip": "Round trip",
+      "multi": "Multi-city",
+      "oneWay": "One way",
+      "pax_one": "{count} passenger",
+      "pax_other": "{count} passengers",
+      "request": "Request",
+      "travelsWith": "Flying with",
+      "yourPage": "Your page"
+    },
+    "flight": {
+      "section": "Itinerary",
+      "flight": "Flight",
+      "terminal": "Terminal {terminal}",
+      "connection": "Connection in {city}",
+      "direct": "Direct",
+      "ticket": "Ticket",
+      "seat": "Seat",
+      "seatPending": "To be assigned",
+      "bagLine": "Cabin {cabin} · Checked {hold}"
+    },
+    "passengers": {
+      "section": "Passengers",
+      "name": "Name on document",
+      "type": "Type",
+      "passport": "Passport",
+      "ticketNumber": "Ticket no."
+    },
+    "fare": {
+      "section": "Fare",
+      "refund": "Refund",
+      "nonRefundable": "Non-refundable",
+      "perFare": "As per the fare",
+      "changes": "Changes",
+      "basis": "Fare basis",
+      "endorsements": "Endorsements: {text}",
+      "validOnly": "{leg} valid only on {date}",
+      "validRange": "{leg} valid from {from} to {to}",
+      "validUntil": "{leg} valid until {date}",
+      "validFrom": "{leg} valid from {date}"
+    },
+    "baggage": {
+      "section": "Baggage included",
+      "passenger": "Passenger",
+      "leg": "Leg",
+      "personal": "Personal item",
+      "cabin": "Cabin",
+      "hold": "Checked",
+      "personalNone": "No personal item",
+      "personalOne": "1 · under the seat",
+      "note": "Maximum weights and sizes are those of {carrier}. Extra baggage can be bought from us or on the airline's website, before the flight and for less than at the airport.",
+      "noteGeneric": "Maximum weights and sizes are those of the airline. Extra baggage can be bought from us or on the airline's website, before the flight and for less than at the airport."
+    },
+    "before": {
+      "title": "Before you travel",
+      "subtitle": "Baggage, check-in, documents and contacts",
+      "section": "Check-in and documents",
+      "checkinCard": "Check-in",
+      "checkinOpen": "Online check-in opens 24 to 48 hours before departure, on the {carrier} website or app. Use the booking reference",
+      "checkinOpenGeneric": "Online check-in opens 24 to 48 hours before departure, on the airline's website or app. Use the booking reference",
+      "checkinSurname": "and your surname.",
+      "checkinAirport": "At the airport, be at the desk 2 hours ahead for regional and European flights, and 3 hours ahead for intercontinental flights.",
+      "eveCard": "The day before",
+      "eveConfirm": "Check the time. Airlines change schedules often and, when that happens, we let you know by email and WhatsApp.",
+      "eveChange": "Need to change something? Talk to us first. A change made directly with the airline can void the conditions of your fare.",
+      "bringCard": "Bring with you",
+      "bring1": "A valid passport. Most destinations ask for six months of validity from the return date.",
+      "bring2": "A visa or entry authorisation, when the destination requires one. This is the traveller's responsibility.",
+      "bring3": "This ticket, on your phone or printed.",
+      "bring4": "Proof of accommodation and a return ticket, which some borders ask for.",
+      "handleCard": "What we take care of for you",
+      "handle1": "Date and name changes, within what the fare allows.",
+      "handle2": "Reissue when the airline changes or cancels the flight.",
+      "handle3": "Special requests: meals, assistance, wheelchair, lap infant.",
+      "handle4": "Support until boarding and after it, if something goes wrong."
+    },
+    "contact": {
+      "section": "Talk to us",
+      "email": "Email",
+      "qr": "Ticket and changes"
+    },
+    "legal": {
+      "section": "Legal notices",
+      "sellerWeefly": "WeeFly Africa",
+      "clause1": "This document confirms that the electronic ticket has been issued in the name of the passengers listed. The contract of carriage is between the passenger and the issuing airline. {seller} acts as an intermediary in the booking and the issuance.",
+      "clause2": "Carriage is subject to the airline's general conditions, to the conditions of the fare applied and to the applicable international conventions, including the 1999 Montreal Convention on liability for damage to persons and baggage.",
+      "clause3": "The change and refund conditions are those of the fare issued and are shown on page 1. A non-refundable fare remains so even if the flight is not used.",
+      "clause4": "Times are local to each airport and may be changed by the airline.",
+      "clause5": "Passport, visas and other entry documents are the passenger's responsibility. Denied boarding for lack of documents does not give the right to a refund.",
+      "clause6": "Personal data is processed under Regulation (EU) 2016/679 and the applicable Cape Verdean law, to carry out the booking and meet legal obligations. The rights of access, rectification and erasure are exercised through {email}."
+    },
+    "meta": {
+      "title": "{brand} · ticket {pnr}",
+      "subject": "Electronic ticket {number}"
+    },
+    "guide": {
+      "fileName": "WeeFly-how-to-read-your-ticket.pdf",
+      "metaTitle": "WeeFly · how to read your ticket",
+      "title": "How to read your ticket",
+      "locatorTitle": "Booking reference",
+      "locatorBody": "Six letters and numbers in the top right corner. It is what the airline asks for at the desk and what opens online check-in on its website. If you only memorise one thing, make it this.",
+      "ticketTitle": "Ticket number",
+      "ticketBody": "Thirteen digits per person: the first three identify the airline, the next ten the document. Each passenger has their own, next to their label.",
+      "tagsTitle": "P1, P2, P3",
+      "tagsBody": "The passenger labels. They appear in the table and again inside each flight, with each person's seat, ticket and baggage on that flight.",
+      "timesTitle": "Times",
+      "timesBody": "They are always local to the airport at each end: departure in the city you leave from, arrival in the city where you land. The duration already accounts for the time difference.",
+      "qrTitle": "Square code",
+      "qrBody": "Opens your page, with the ticket, the itinerary and any changes, always at the same address.",
+      "baggageTitle": "Baggage",
+      "baggageBody": "Page 2 says what your fare includes per passenger and per leg. An extra bag is almost always cheaper before the airport than at the desk.",
+      "flightChangeTitle": "If the flight changes",
+      "flightChangeBody": "Airlines change schedules. When that happens, we let you know by email and WhatsApp, and the notice also appears on your page.",
+      "changeTitle": "If you need to change something",
+      "changeBody": "Talk to us before talking to the airline. A change made elsewhere can void the conditions of the fare."
+    }
   }
 }

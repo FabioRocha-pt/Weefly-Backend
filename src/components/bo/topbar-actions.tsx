@@ -68,7 +68,7 @@ const MARKETS: Market[] = [
   { name: "Portugal", country: "PT", currency: "EUR", lang: "pt" },
   { name: "França", country: "FR", currency: "EUR", lang: "fr" },
   { name: "Estados Unidos", country: "US", currency: "USD", lang: "en" },
-  { name: "Países Baixos", country: "NL", currency: "EUR", lang: "en" },
+  { name: "Países Baixos", country: "NL", currency: "EUR", lang: "nl" },
 ]
 
 /* Os cinco atalhos acima são os mercados onde a WeeFly vende; o seletor de país
@@ -109,6 +109,7 @@ const LANGS = [
   { value: "pt", label: "Português" },
   { value: "en", label: "English" },
   { value: "fr", label: "Français" },
+  { value: "nl", label: "Nederlands" },
 ]
 
 export function BoTopbarActions({
@@ -246,7 +247,9 @@ export function LinkDrawer({
         ? `Olá ${personalName}! Este é o seu link pessoal para nos pedir viagens. Guarde-o: serve sempre, e é só seu.`
         : lang === "fr"
           ? `Bonjour ${personalName} ! Voici votre lien personnel pour nous demander vos voyages. Gardez-le : il sert toujours, et il n'est qu'à vous.`
-          : `Hello ${personalName}! This is your personal link to request trips from us. Keep it: it always works, and it is yours only.`
+          : lang === "nl"
+            ? `Hallo ${personalName}! Dit is uw persoonlijke link om reizen bij ons aan te vragen. Bewaar hem: hij blijft altijd werken en is alleen voor u.`
+            : `Hello ${personalName}! This is your personal link to request trips from us. Keep it: it always works, and it is yours only.`
     return `${body}\n\n${personalUrl}`
   }, [lang, personalName, personalUrl])
 
@@ -256,19 +259,25 @@ export function LinkDrawer({
         ? "Olá! Sou"
         : lang === "fr"
           ? "Bonjour ! Je suis"
-          : "Hello! I'm"
+          : lang === "nl"
+            ? "Hallo! Ik ben"
+            : "Hello! I'm"
     const body =
       lang === "pt"
         ? `${greeting} ${agentName}, da WeeFly. Para eu procurar as melhores tarifas para a sua viagem, preencha aqui os detalhes — leva menos de um minuto e não compromete nada:`
         : lang === "fr"
           ? `${greeting} ${agentName}, de WeeFly. Pour que je puisse chercher les meilleurs tarifs pour votre voyage, remplissez les détails ici — moins d'une minute, sans engagement :`
-          : `${greeting} ${agentName} from WeeFly. So I can search the best fares for your trip, fill in the details here — under a minute, no commitment:`
+          : lang === "nl"
+            ? `${greeting} ${agentName} van WeeFly. Vul hier de gegevens van uw reis in, dan zoek ik de beste tarieven voor u. Het duurt minder dan een minuut en verplicht u tot niets:`
+            : `${greeting} ${agentName} from WeeFly. So I can search the best fares for your trip, fill in the details here — under a minute, no commitment:`
     const closing =
       lang === "pt"
         ? "Respondo por aqui com as ofertas."
         : lang === "fr"
           ? "Je vous réponds ici avec les offres."
-          : "I'll reply here with the offers."
+          : lang === "nl"
+            ? "Ik antwoord u hier met de aanbiedingen."
+            : "I'll reply here with the offers."
     return `${body}\n\n${url}\n\n${closing}`
   }, [lang, agentName, url])
 

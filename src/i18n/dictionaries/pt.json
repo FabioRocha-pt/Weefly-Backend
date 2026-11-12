@@ -690,6 +690,7 @@
     "backToLogin": "Voltar ao login",
     "resetSentTitle": "Email enviado",
     "resetSentBody": "Enviámos um link de recuperação para o seu email. Clique no link para definir uma nova password.",
+    "resetExpired": "O link de recuperação vale 1 hora e este já expirou. Peça um novo.",
     "newPasswordTitle": "Nova password",
     "newPasswordBody": "Defina a nova password da conta nome@empresa.cv",
     "newPasswordLabel": "Nova password",
@@ -1235,7 +1236,8 @@
     "langToast": {
       "pt": "A equipa responde em português",
       "en": "Replies in English",
-      "fr": "L'équipe répond en français"
+      "fr": "L'équipe répond en français",
+      "nl": "Het team antwoordt in het Nederlands"
     },
     "stepper": {
       "trip": "Viagem",
@@ -1915,12 +1917,14 @@
     "signup": {
       "subject": "Confirme o seu email no WeeFly Pro",
       "body": "Obrigado pelo registo no WeeFly Pro. Confirme o seu email para continuar, a seguir, a equipa WeeFly valida a sua conta.",
-      "cta": "Confirmar email"
+      "cta": "Confirmar email",
+      "validity": "Este link é válido durante 24 horas."
     },
     "recovery": {
       "subject": "Recuperar a password do WeeFly Pro",
       "body": "Recebemos um pedido para definir uma password nova na sua conta WeeFly Pro.",
-      "cta": "Definir password nova"
+      "cta": "Definir password nova",
+      "validity": "Este link é válido durante 1 hora."
     },
     "magiclink": {
       "subject": "O seu link de entrada no WeeFly Pro",
@@ -2131,5 +2135,150 @@
     "partnerTitle": "{name} · Passagens aéreas",
     "partnerDescription": "Peça a sua viagem à {name}. Passagens aéreas com o apoio da nossa equipa.",
     "imageAlt": "Logótipo da {name}"
+  },
+  "ticketPdf": {
+    "months": "jan,fev,mar,abr,mai,jun,jul,ago,set,out,nov,dez",
+    "weekdays": "Domingo,Segunda,Terça,Quarta,Quinta,Sexta,Sábado",
+    "rangeTo": "{from} a {to}",
+    "cabin": {
+      "economy": "Económica",
+      "premium_economy": "Económica premium",
+      "business": "Executiva",
+      "first": "Primeira"
+    },
+    "paxType": {
+      "adult": "Adulto",
+      "child": "Criança",
+      "infant": "Bebé",
+      "infant_seat": "Bebé c/ assento",
+      "infant_lap": "Bebé de colo"
+    },
+    "leg": {
+      "ida": "Ida",
+      "volta": "Volta"
+    },
+    "header": {
+      "title": "Bilhete eletrónico",
+      "subtitle": "Itinerário e passageiros",
+      "locator": "Localizador",
+      "issuedAt": "Emitido a {when}",
+      "continued": "Continuação"
+    },
+    "summary": {
+      "roundTrip": "Ida e volta",
+      "multi": "Multidestino",
+      "oneWay": "Só ida",
+      "pax_one": "{count} passageiro",
+      "pax_other": "{count} passageiros",
+      "request": "Pedido",
+      "travelsWith": "Viaja com",
+      "yourPage": "A sua página"
+    },
+    "flight": {
+      "section": "Itinerário",
+      "flight": "Voo",
+      "terminal": "Terminal {terminal}",
+      "connection": "Ligação em {city}",
+      "direct": "Direto",
+      "ticket": "Bilhete",
+      "seat": "Lugar",
+      "seatPending": "A atribuir",
+      "bagLine": "Mão {cabin} · Porão {hold}"
+    },
+    "passengers": {
+      "section": "Passageiros",
+      "name": "Nome no documento",
+      "type": "Tipo",
+      "passport": "Passaporte",
+      "ticketNumber": "Nº de bilhete"
+    },
+    "fare": {
+      "section": "Tarifa",
+      "refund": "Reembolso",
+      "nonRefundable": "Não reembolsável",
+      "perFare": "Conforme a tarifa",
+      "changes": "Alterações",
+      "basis": "Base tarifária",
+      "endorsements": "Endossos: {text}",
+      "validOnly": "{leg} válida só a {date}",
+      "validRange": "{leg} válida de {from} a {to}",
+      "validUntil": "{leg} válida até {date}",
+      "validFrom": "{leg} válida a partir de {date}"
+    },
+    "baggage": {
+      "section": "Bagagem incluída",
+      "passenger": "Passageiro",
+      "leg": "Trecho",
+      "personal": "Artigo pessoal",
+      "cabin": "Mão",
+      "hold": "Porão",
+      "personalNone": "Sem artigo pessoal",
+      "personalOne": "1 · debaixo do banco",
+      "note": "Pesos e medidas máximas são os da {carrier}. Bagagem extra compra-se connosco ou no site da companhia, antes do voo e mais barato do que no aeroporto.",
+      "noteGeneric": "Pesos e medidas máximas são os da companhia. Bagagem extra compra-se connosco ou no site da companhia, antes do voo e mais barato do que no aeroporto."
+    },
+    "before": {
+      "title": "Antes de viajar",
+      "subtitle": "Bagagem, check-in, documentos e contactos",
+      "section": "Check-in e documentos",
+      "checkinCard": "Check-in",
+      "checkinOpen": "O check-in online abre 24 a 48 horas antes da partida, no site ou na app da {carrier}. Use o localizador",
+      "checkinOpenGeneric": "O check-in online abre 24 a 48 horas antes da partida, no site ou na app da companhia. Use o localizador",
+      "checkinSurname": "e o apelido.",
+      "checkinAirport": "No aeroporto, chegue ao balcão com 2 horas de antecedência em voos regionais e europeus, e com 3 horas em voos intercontinentais.",
+      "eveCard": "Na véspera",
+      "eveConfirm": "Confirme o horário. As companhias mudam horas com frequência e, quando isso acontece, avisamos por email e WhatsApp.",
+      "eveChange": "Precisa de alterar alguma coisa? Fale primeiro connosco. Uma alteração feita diretamente na companhia pode anular as condições da sua tarifa.",
+      "bringCard": "Leve consigo",
+      "bring1": "Passaporte válido. A maioria dos destinos pede seis meses de validade a contar do regresso.",
+      "bring2": "Visto ou autorização de entrada, quando o destino o exige. É responsabilidade de quem viaja.",
+      "bring3": "Este bilhete, no telemóvel ou impresso.",
+      "bring4": "Reserva de alojamento e bilhete de regresso, que algumas fronteiras pedem.",
+      "handleCard": "O que tratamos por si",
+      "handle1": "Alterações de data e de nome, dentro do que a tarifa permite.",
+      "handle2": "Nova emissão quando a companhia muda ou cancela o voo.",
+      "handle3": "Pedidos especiais: refeições, assistência, cadeira de rodas, bebé ao colo.",
+      "handle4": "Acompanhamento até ao embarque e depois dele, se algo correr mal."
+    },
+    "contact": {
+      "section": "Falar connosco",
+      "email": "Email",
+      "qr": "Bilhete e alterações"
+    },
+    "legal": {
+      "section": "Avisos legais",
+      "sellerWeefly": "A WeeFly Africa",
+      "clause1": "Este documento comprova a emissão do bilhete eletrónico em nome dos passageiros indicados. O contrato de transporte é celebrado entre o passageiro e a companhia aérea emissora. {seller} atua como intermediária na reserva e na emissão.",
+      "clause2": "O transporte está sujeito às condições gerais da companhia aérea, às condições da tarifa aplicada e às convenções internacionais aplicáveis, incluindo a Convenção de Montreal de 1999 quanto à responsabilidade por danos a pessoas e bagagem.",
+      "clause3": "As condições de alteração e de reembolso são as da tarifa emitida e constam da página 1. Uma tarifa não reembolsável continua a sê-lo mesmo que o voo não seja utilizado.",
+      "clause4": "Os horários são horas locais de cada aeroporto e podem ser alterados pela companhia.",
+      "clause5": "Passaporte, vistos e demais documentos de entrada são da responsabilidade do passageiro. A recusa de embarque por falta de documentação não dá direito a reembolso.",
+      "clause6": "Os dados pessoais são tratados nos termos do Regulamento (UE) 2016/679 e da legislação cabo-verdiana aplicável, para executar a reserva e cumprir obrigações legais. Os direitos de acesso, retificação e eliminação exercem-se através de {email}."
+    },
+    "meta": {
+      "title": "{brand} · bilhete {pnr}",
+      "subject": "Bilhete eletrónico {number}"
+    },
+    "guide": {
+      "fileName": "WeeFly-como-ler-o-bilhete.pdf",
+      "metaTitle": "WeeFly · como ler o seu bilhete",
+      "title": "Como ler o seu bilhete",
+      "locatorTitle": "Localizador",
+      "locatorBody": "Seis letras e números no canto superior direito. É o que a companhia pede ao balcão e o que abre o check-in online no site dela. Se só levar uma coisa de cor, leve esta.",
+      "ticketTitle": "Número de bilhete",
+      "ticketBody": "Treze dígitos por pessoa: os três primeiros identificam a companhia, os dez seguintes o documento. Cada passageiro tem o seu, ao lado da etiqueta de cada um.",
+      "tagsTitle": "P1, P2, P3",
+      "tagsBody": "As etiquetas dos passageiros. Aparecem na tabela e repetidas dentro de cada voo, com o lugar, o bilhete e a bagagem de cada pessoa nesse voo.",
+      "timesTitle": "Horas",
+      "timesBody": "São sempre horas locais do aeroporto de cada ponta: a de partida na cidade de onde parte, a de chegada na cidade onde aterra. A duração já conta com a diferença de fuso.",
+      "qrTitle": "Código quadrado",
+      "qrBody": "Abre a sua página, com o bilhete, o itinerário e as alterações, sempre no mesmo endereço.",
+      "baggageTitle": "Bagagem",
+      "baggageBody": "A página 2 diz o que a sua tarifa inclui por passageiro e por trecho. Uma mala a mais sai quase sempre mais barata antes do aeroporto do que no balcão.",
+      "flightChangeTitle": "Se o voo mudar",
+      "flightChangeBody": "As companhias mudam horários. Quando isso acontecer, avisamos por email e por WhatsApp, e o aviso aparece também na sua página.",
+      "changeTitle": "Se precisar de alterar",
+      "changeBody": "Fale connosco antes de falar com a companhia. Uma alteração feita por fora pode anular condições da tarifa."
+    }
   }
 }

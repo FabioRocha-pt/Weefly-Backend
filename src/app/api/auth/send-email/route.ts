@@ -119,6 +119,9 @@ function render(
   const subject = t(`${k}.subject`)
   const body = t(`${k}.body`)
   const cta = t(`${k}.cta`)
+  /* FIX-01 · quanto tempo vale o link: 24 horas a confirmação, 1 hora a
+     recuperação (o limite de 1 hora mede-se no /auth/callback). */
+  const validity = kind === "signup" || kind === "recovery" ? t(`${k}.validity`) : ""
   const greeting = input.name ? t("authEmail.greeting", { name: input.name }) : t("authEmail.greetingAnon")
 
   const html = `<!doctype html><html><body style="margin:0;background:#F5F7F9;font-family:Arial,Helvetica,sans-serif;color:${INK};">
@@ -129,6 +132,7 @@ ${masthead(null)}
 <p style="margin:0 0 16px;font-size:16px;">${escapeHtml(greeting)}</p>
 <p style="margin:0 0 22px;font-size:15px;line-height:1.55;">${escapeHtml(body)}</p>
 <p style="margin:0 0 22px;"><a href="${escapeHtml(input.link)}" style="display:inline-block;background:${INK};color:#ffffff;text-decoration:none;font-weight:600;border-radius:10px;padding:12px 20px;">${escapeHtml(cta)}</a></p>
+${validity ? `<p style="margin:0 0 6px;font-size:13px;color:${MUTED};">${escapeHtml(validity)}</p>` : ""}
 <p style="margin:0 0 6px;font-size:13px;color:${MUTED};">${escapeHtml(t("authEmail.code", { code: input.code }))}</p>
 <p style="margin:0;font-size:12px;line-height:1.5;color:${MUTED};word-break:break-all;">${escapeHtml(t("authEmail.linkNote"))}<br/><a href="${escapeHtml(input.link)}" style="color:${MUTED};">${escapeHtml(input.link)}</a></p>
 <p style="margin:24px 0 0;font-size:12px;color:${MUTED};">${escapeHtml(t("authEmail.ignore"))}</p>
@@ -140,6 +144,7 @@ ${masthead(null)}
     body,
     "",
     input.link,
+    ...(validity ? [validity] : []),
     "",
     t("authEmail.code", { code: input.code }),
     t("authEmail.ignore"),

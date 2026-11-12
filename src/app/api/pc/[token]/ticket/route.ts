@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 
 import { createAdminClient } from "@/utils/supabase/admin"
 import { loadTicketDocument } from "@/lib/tickets/store"
-import { renderTicketGuidePdf } from "@/lib/tickets/pdf"
+import { caseClientLocale } from "@/lib/tickets/data"
+import { renderTicketGuidePdf, ticketGuideFileName } from "@/lib/tickets/pdf"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -65,11 +66,13 @@ export async function GET(
   }
 
   if (wantsGuide) {
-    const guide = await renderTicketGuidePdf()
+    /* O guia sai na língua do pedido, como o bilhete que acompanha. */
+    const locale = await caseClientLocale(bookingCase.id)
+    const guide = await renderTicketGuidePdf(locale)
     return new NextResponse(Buffer.from(guide), {
       headers: {
         "content-type": "application/pdf",
-        "content-disposition": 'inline; filename="WeeFly-como-ler-o-bilhete.pdf"',
+        "content-disposition": `inline; filename="${ticketGuideFileName(locale)}"`,
         /* O único documento desta rota que pode ficar em cache: é o mesmo para
            toda a gente e não muda de dia para dia. */
         "cache-control": "private, max-age=86400",

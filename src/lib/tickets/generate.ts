@@ -21,7 +21,7 @@
  */
 
 import { loadTicketData } from "./data"
-import { renderTicketGuidePdf, renderTicketPdf } from "./pdf"
+import { renderTicketGuidePdf, renderTicketPdf, ticketGuideFileName } from "./pdf"
 import { storeTicketDocument } from "./store"
 
 export interface GeneratedFile {
@@ -106,8 +106,8 @@ export async function generateTicketDocuments(input: {
     files.push({
       kind: "guide",
       passengerId: null,
-      fileName: "WeeFly-como-ler-o-bilhete.pdf",
-      bytes: Buffer.from(await renderTicketGuidePdf()),
+      fileName: ticketGuideFileName(data.locale),
+      bytes: Buffer.from(await renderTicketGuidePdf(data.locale)),
     })
 
     return { ok: true, documentNumber: data.documentNumber, files }

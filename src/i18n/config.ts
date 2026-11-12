@@ -1,16 +1,20 @@
 /**
  * WeeFly — idiomas.
  *
- * Três, e a ordem não é alfabética: português primeiro porque é a língua de
- * Cabo Verde e da equipa, inglês a seguir porque é a diáspora e o turismo, e
+ * Quatro, e a ordem não é alfabética: português primeiro porque é a língua de
+ * Cabo Verde e da equipa, inglês a seguir porque é a diáspora e o turismo,
  * francês por causa do Senegal, da França e do resto da África ocidental
- * francófona.
+ * francófona, e neerlandês pela diáspora dos Países Baixos (Roterdão).
+ *
+ * Estas são as línguas do CLIENTE (terminal público, emails, bilhete). O
+ * back-office tem as suas, em `bo/index.ts` (`BO_LOCALES`): português, inglês
+ * e francês, sem neerlandês.
  *
  * Sem imports de servidor nem de React — este ficheiro é lido tanto no
  * servidor como no browser.
  */
 
-export const LOCALES = ["pt", "en", "fr"] as const
+export const LOCALES = ["pt", "en", "fr", "nl"] as const
 
 export type Locale = (typeof LOCALES)[number]
 
@@ -21,6 +25,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
   pt: "Português",
   en: "English",
   fr: "Français",
+  nl: "Nederlands",
 }
 
 /** Etiqueta curta para o seletor em ecrãs estreitos. */
@@ -28,6 +33,7 @@ export const LOCALE_SHORT: Record<Locale, string> = {
   pt: "PT",
   en: "EN",
   fr: "FR",
+  nl: "NL",
 }
 
 /** Para o atributo `lang` do <html> e para o Intl. */
@@ -35,6 +41,7 @@ export const LOCALE_TAGS: Record<Locale, string> = {
   pt: "pt-PT",
   en: "en-GB",
   fr: "fr-FR",
+  nl: "nl-NL",
 }
 
 export const LOCALE_COOKIE = "weefly_locale"
@@ -50,7 +57,7 @@ export function isLocale(value: unknown): value is Locale {
  * Lê o cabeçalho Accept-Language e escolhe o melhor idioma que temos.
  *
  * Implementação pequena de propósito: só precisamos de comparar o prefixo de
- * duas letras contra três hipóteses, e uma biblioteca de negociação de
+ * duas letras contra quatro hipóteses, e uma biblioteca de negociação de
  * conteúdo para isso seria uma dependência a mais.
  */
 export function matchAcceptLanguage(header: string | null): Locale | null {

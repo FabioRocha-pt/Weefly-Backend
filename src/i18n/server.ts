@@ -24,11 +24,13 @@ import { createTranslator, type Dictionary, type Translator } from "./translate"
 import pt from "./dictionaries/pt.json"
 import en from "./dictionaries/en.json"
 import fr from "./dictionaries/fr.json"
+import nl from "./dictionaries/nl.json"
 
 const DICTIONARIES: Record<Locale, Dictionary> = {
   pt: pt as Dictionary,
   en: en as Dictionary,
   fr: fr as Dictionary,
+  nl: nl as Dictionary,
 }
 
 export function getDictionary(locale: Locale): Dictionary {

@@ -1541,16 +1541,19 @@ export async function boResendTickets(caseId: string): Promise<BoResult> {
   /* O guia é composto na hora: não tem dados de ninguém e é o mesmo para toda
      a gente, por isso não vive no armazenamento (ver `generateTicketDocuments`).
      O bilhete, esse, vem do disco tal como foi gerado. */
-  const { renderTicketGuidePdf } = await import("@/lib/tickets/pdf")
+  const { renderTicketGuidePdf, ticketGuideFileName } = await import("@/lib/tickets/pdf")
+  const { caseClientLocale } = await import("@/lib/tickets/data")
   const { sendTicketsIssuedEmail } = await import("@/lib/emails/send")
+  /* O guia vai na língua do pedido (a do cliente), não na de quem reenvia. */
+  const clientLocale = await caseClientLocale(caseId)
 
   const sent = await sendTicketsIssuedEmail({
     caseId,
     attachments: [
       { filename: combined.fileName, content: combined.bytes },
       {
-        filename: "WeeFly-como-ler-o-bilhete.pdf",
-        content: Buffer.from(await renderTicketGuidePdf()),
+        filename: ticketGuideFileName(clientLocale),
+        content: Buffer.from(await renderTicketGuidePdf(clientLocale)),
       },
     ],
   })

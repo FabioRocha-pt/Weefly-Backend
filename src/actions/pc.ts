@@ -122,7 +122,7 @@ const requestSchema = z
      */
     specialRequests: z.string().trim().max(1000).optional(),
     consent: z.literal(true),
-    locale: z.enum(["pt", "en", "fr"]).default("en"),
+    locale: z.enum(["pt", "en", "fr", "nl"]).default("en"),
     currency: z.string().refine((v) => CURRENCIES.includes(v), "Moeda"),
     agentSlug: z.string().trim().max(40).nullable().optional(),
     /* MIN-01 · o token do link do ministério. Resolvido no intake. */

@@ -34,6 +34,7 @@ export const OG_LOCALE: Record<Locale, string> = {
   pt: "pt_PT",
   en: "en_GB",
   fr: "fr_FR",
+  nl: "nl_NL",
 }
 
 export interface SiteContext {

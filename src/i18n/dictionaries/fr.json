@@ -690,6 +690,7 @@
     "backToLogin": "Retour à la connexion",
     "resetSentTitle": "E-mail envoyé",
     "resetSentBody": "Nous avons envoyé un lien de réinitialisation à votre adresse e-mail. Cliquez dessus pour définir un nouveau mot de passe.",
+    "resetExpired": "Le lien de récupération est valable 1 heure et celui-ci a expiré. Demandez-en un nouveau.",
     "newPasswordTitle": "Nouveau mot de passe",
     "newPasswordBody": "Définissez le nouveau mot de passe du compte nom@entreprise.cv",
     "newPasswordLabel": "Nouveau mot de passe",
@@ -1235,7 +1236,8 @@
     "langToast": {
       "pt": "A equipa responde em português",
       "en": "Replies in English",
-      "fr": "L'équipe répond en français"
+      "fr": "L'équipe répond en français",
+      "nl": "Het team antwoordt in het Nederlands"
     },
     "stepper": {
       "trip": "Voyage",
@@ -1915,12 +1917,14 @@
     "signup": {
       "subject": "Confirmez votre email pour WeeFly Pro",
       "body": "Merci de votre inscription à WeeFly Pro. Confirmez votre email pour continuer, l'équipe WeeFly validera ensuite votre compte.",
-      "cta": "Confirmer l'email"
+      "cta": "Confirmer l'email",
+      "validity": "Ce lien est valable 24 heures."
     },
     "recovery": {
       "subject": "Réinitialiser votre mot de passe WeeFly Pro",
       "body": "Nous avons reçu une demande pour définir un nouveau mot de passe sur votre compte WeeFly Pro.",
-      "cta": "Définir un nouveau mot de passe"
+      "cta": "Définir un nouveau mot de passe",
+      "validity": "Ce lien est valable 1 heure."
     },
     "magiclink": {
       "subject": "Votre lien de connexion WeeFly Pro",
@@ -2131,5 +2135,150 @@
     "partnerTitle": "{name} · Billets d'avion",
     "partnerDescription": "Demandez votre voyage à {name}. Billets d'avion avec le soutien de notre équipe.",
     "imageAlt": "Logo de {name}"
+  },
+  "ticketPdf": {
+    "months": "janv.,févr.,mars,avr.,mai,juin,juil.,août,sept.,oct.,nov.,déc.",
+    "weekdays": "Dimanche,Lundi,Mardi,Mercredi,Jeudi,Vendredi,Samedi",
+    "rangeTo": "{from} au {to}",
+    "cabin": {
+      "economy": "Économique",
+      "premium_economy": "Économique premium",
+      "business": "Affaires",
+      "first": "Première"
+    },
+    "paxType": {
+      "adult": "Adulte",
+      "child": "Enfant",
+      "infant": "Bébé",
+      "infant_seat": "Bébé + siège",
+      "infant_lap": "Bébé sur genoux"
+    },
+    "leg": {
+      "ida": "Aller",
+      "volta": "Retour"
+    },
+    "header": {
+      "title": "Billet électronique",
+      "subtitle": "Itinéraire et passagers",
+      "locator": "Référence de réservation",
+      "issuedAt": "Émis le {when}",
+      "continued": "Suite"
+    },
+    "summary": {
+      "roundTrip": "Aller-retour",
+      "multi": "Multi-destinations",
+      "oneWay": "Aller simple",
+      "pax_one": "{count} passager",
+      "pax_other": "{count} passagers",
+      "request": "Demande",
+      "travelsWith": "Vous voyagez avec",
+      "yourPage": "Votre page"
+    },
+    "flight": {
+      "section": "Itinéraire",
+      "flight": "Vol",
+      "terminal": "Terminal {terminal}",
+      "connection": "Correspondance à {city}",
+      "direct": "Direct",
+      "ticket": "Billet",
+      "seat": "Siège",
+      "seatPending": "À attribuer",
+      "bagLine": "Cabine {cabin} · Soute {hold}"
+    },
+    "passengers": {
+      "section": "Passagers",
+      "name": "Nom sur le document",
+      "type": "Type",
+      "passport": "Passeport",
+      "ticketNumber": "N° de billet"
+    },
+    "fare": {
+      "section": "Tarif",
+      "refund": "Remboursement",
+      "nonRefundable": "Non remboursable",
+      "perFare": "Selon le tarif",
+      "changes": "Modifications",
+      "basis": "Base tarifaire",
+      "endorsements": "Endossements : {text}",
+      "validOnly": "{leg} valable uniquement le {date}",
+      "validRange": "{leg} valable du {from} au {to}",
+      "validUntil": "{leg} valable jusqu'au {date}",
+      "validFrom": "{leg} valable à partir du {date}"
+    },
+    "baggage": {
+      "section": "Bagages inclus",
+      "passenger": "Passager",
+      "leg": "Trajet",
+      "personal": "Article personnel",
+      "cabin": "Cabine",
+      "hold": "Soute",
+      "personalNone": "Non inclus",
+      "personalOne": "1 · sous le siège",
+      "note": "Les poids et dimensions maximaux sont ceux de {carrier}. Les bagages supplémentaires s'achètent auprès de nous ou sur le site de la compagnie, avant le vol et moins cher qu'à l'aéroport.",
+      "noteGeneric": "Les poids et dimensions maximaux sont ceux de la compagnie. Les bagages supplémentaires s'achètent auprès de nous ou sur le site de la compagnie, avant le vol et moins cher qu'à l'aéroport."
+    },
+    "before": {
+      "title": "Avant de voyager",
+      "subtitle": "Bagages, enregistrement, documents et contacts",
+      "section": "Enregistrement et documents",
+      "checkinCard": "Enregistrement",
+      "checkinOpen": "L'enregistrement en ligne ouvre 24 à 48 heures avant le départ, sur le site ou l'application de {carrier}. Utilisez la référence de réservation",
+      "checkinOpenGeneric": "L'enregistrement en ligne ouvre 24 à 48 heures avant le départ, sur le site ou l'application de la compagnie. Utilisez la référence de réservation",
+      "checkinSurname": "et votre nom de famille.",
+      "checkinAirport": "À l'aéroport, présentez-vous au comptoir 2 heures à l'avance pour les vols régionaux et européens, et 3 heures à l'avance pour les vols intercontinentaux.",
+      "eveCard": "La veille",
+      "eveConfirm": "Vérifiez l'horaire. Les compagnies modifient souvent leurs horaires et, dans ce cas, nous vous prévenons par e-mail et WhatsApp.",
+      "eveChange": "Besoin de modifier quelque chose ? Contactez-nous d'abord. Une modification faite directement auprès de la compagnie peut annuler les conditions de votre tarif.",
+      "bringCard": "À emporter",
+      "bring1": "Un passeport valide. La plupart des destinations exigent six mois de validité à compter du retour.",
+      "bring2": "Un visa ou une autorisation d'entrée, lorsque la destination l'exige. Cela relève de la responsabilité du voyageur.",
+      "bring3": "Ce billet, sur votre téléphone ou imprimé.",
+      "bring4": "Une réservation d'hébergement et un billet de retour, que certaines frontières demandent.",
+      "handleCard": "Ce que nous gérons pour vous",
+      "handle1": "Les changements de date et de nom, dans la limite de ce que le tarif autorise.",
+      "handle2": "La réémission lorsque la compagnie modifie ou annule le vol.",
+      "handle3": "Les demandes spéciales : repas, assistance, fauteuil roulant, bébé sur les genoux.",
+      "handle4": "Un suivi jusqu'à l'embarquement et après, en cas de problème."
+    },
+    "contact": {
+      "section": "Nous contacter",
+      "email": "E-mail",
+      "qr": "Billet et modifications"
+    },
+    "legal": {
+      "section": "Mentions légales",
+      "sellerWeefly": "WeeFly Africa",
+      "clause1": "Ce document atteste l'émission du billet électronique au nom des passagers indiqués. Le contrat de transport est conclu entre le passager et la compagnie aérienne émettrice. {seller} agit en tant qu'intermédiaire pour la réservation et l'émission.",
+      "clause2": "Le transport est soumis aux conditions générales de la compagnie aérienne, aux conditions du tarif appliqué et aux conventions internationales applicables, notamment la Convention de Montréal de 1999 relative à la responsabilité pour les dommages aux personnes et aux bagages.",
+      "clause3": "Les conditions de modification et de remboursement sont celles du tarif émis et figurent en page 1. Un tarif non remboursable le reste même si le vol n'est pas utilisé.",
+      "clause4": "Les horaires sont exprimés en heure locale de chaque aéroport et peuvent être modifiés par la compagnie.",
+      "clause5": "Le passeport, les visas et les autres documents d'entrée relèvent de la responsabilité du passager. Un refus d'embarquement pour défaut de documents ne donne pas droit à un remboursement.",
+      "clause6": "Les données personnelles sont traitées conformément au Règlement (UE) 2016/679 et à la législation cap-verdienne applicable, pour exécuter la réservation et respecter les obligations légales. Les droits d'accès, de rectification et d'effacement s'exercent auprès de {email}."
+    },
+    "meta": {
+      "title": "{brand} · billet {pnr}",
+      "subject": "Billet électronique {number}"
+    },
+    "guide": {
+      "fileName": "WeeFly-comment-lire-votre-billet.pdf",
+      "metaTitle": "WeeFly · comment lire votre billet",
+      "title": "Comment lire votre billet",
+      "locatorTitle": "Référence de réservation",
+      "locatorBody": "Six lettres et chiffres dans le coin supérieur droit. C'est ce que la compagnie demande au comptoir et ce qui ouvre l'enregistrement en ligne sur son site. Si vous ne devez retenir qu'une chose, retenez celle-ci.",
+      "ticketTitle": "Numéro de billet",
+      "ticketBody": "Treize chiffres par personne : les trois premiers identifient la compagnie, les dix suivants le document. Chaque passager a le sien, à côté de son étiquette.",
+      "tagsTitle": "P1, P2, P3",
+      "tagsBody": "Les étiquettes des passagers. Elles figurent dans le tableau et sont reprises dans chaque vol, avec le siège, le billet et les bagages de chaque personne sur ce vol.",
+      "timesTitle": "Horaires",
+      "timesBody": "Ce sont toujours les heures locales de l'aéroport à chaque extrémité : celle du départ dans la ville d'où vous partez, celle de l'arrivée dans la ville où vous atterrissez. La durée tient déjà compte du décalage horaire.",
+      "qrTitle": "Code carré",
+      "qrBody": "Il ouvre votre page, avec le billet, l'itinéraire et les modifications, toujours à la même adresse.",
+      "baggageTitle": "Bagages",
+      "baggageBody": "La page 2 indique ce que votre tarif inclut par passager et par trajet. Une valise supplémentaire coûte presque toujours moins cher avant l'aéroport qu'au comptoir.",
+      "flightChangeTitle": "Si le vol change",
+      "flightChangeBody": "Les compagnies modifient leurs horaires. Dans ce cas, nous vous prévenons par e-mail et par WhatsApp, et l'avis apparaît aussi sur votre page.",
+      "changeTitle": "Si vous devez modifier",
+      "changeBody": "Contactez-nous avant de contacter la compagnie. Une modification faite ailleurs peut annuler les conditions du tarif."
+    }
   }
 }
