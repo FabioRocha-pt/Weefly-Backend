@@ -51,7 +51,9 @@
         "linkNote": "Le lien personnel est créé à l'enregistrement et ne change pas. Désactiver le VIP coupe le lien ; ses demandes sont conservées.",
         "save": "Enregistrer",
         "create": "Créer le VIP",
-        "cancel": "Annuler"
+        "cancel": "Annuler",
+        "phoneCountry": "Pays et indicatif du téléphone",
+        "phoneHint": "Enregistré sous {number}"
       },
       "detail": {
         "edit": "Modifier",
@@ -68,7 +70,7 @@
       "errors": {
         "nameMissing": "Indiquez le nom du client.",
         "emailInvalid": "L'e-mail n'est pas valide.",
-        "phoneInvalid": "Le téléphone n'est pas valide (ex. : +238 991 23 45).",
+        "phoneInvalid": "Le numéro de téléphone n'est pas valide pour le pays choisi. Choisissez le pays et saisissez uniquement le numéro.",
         "notAllowed": "Votre compte ne peut pas gérer les clients VIP, ou le canal VIP n'est pas activé.",
         "invalid": "Vérifiez les données.",
         "unavailable": "Service indisponible. Réessayez plus tard.",
@@ -89,6 +91,38 @@
         "empty": "Il n'y a pas encore de clients VIP.",
         "state": "Statut",
         "active": "actif"
+      },
+      "changes": {
+        "title": "Modifications des données",
+        "subtitle": "Ce que le client a modifié dans Mes données, dans son application. Le passeport est masqué.",
+        "empty": "Le client n'a pas encore modifié ses données.",
+        "when": "Quand",
+        "who": "Qui",
+        "what": "Ce qui a changé",
+        "byClient": "Le client",
+        "byStaff": "L'équipe",
+        "source": {
+          "profile": "dans Mes données",
+          "request": "à partir d'une demande",
+          "backoffice": "dans le back-office"
+        },
+        "from": "avant",
+        "to": "maintenant",
+        "none": "vide",
+        "field": {
+          "phone": "Téléphone",
+          "email": "E-mail",
+          "locale": "Langue",
+          "title": "Civilité",
+          "given_names": "Prénoms",
+          "surname": "Noms",
+          "birth_date": "Date de naissance",
+          "gender": "Sexe",
+          "nationality": "Nationalité",
+          "passport_number": "Passeport",
+          "passport_expiry": "Validité du passeport",
+          "issuing_country": "Pays de délivrance"
+        }
       }
     },
     "linkChannels": {

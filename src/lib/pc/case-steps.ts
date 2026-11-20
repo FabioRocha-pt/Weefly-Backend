@@ -279,7 +279,8 @@ export async function savePassengersForState(
 
   const expected = paxTotal(state.request)
   if (!Array.isArray(rows) || rows.length !== expected) {
-    return { ok: false, error: `We need ${expected} passenger(s).` }
+    /* E4 · na língua do pedido, do dicionário. */
+    return { ok: false, error: ctx.error("passengerCount") }
   }
 
   const parsed = z.array(passengerSchema).safeParse(rows)
@@ -288,10 +289,13 @@ export async function savePassengersForState(
     const at = issue?.path?.[0]
     return {
       ok: false,
+      /* E4 · as mensagens do esquema estão em inglês; o ecrã valida os mesmos
+         campos na língua do cliente. Aqui fica a frase geral, e de que
+         passageiro se trata. */
       error:
         typeof at === "number"
-          ? `Passenger ${at + 1}: ${issue.message}`
-          : (issue?.message ?? "Check the passenger details"),
+          ? `P${at + 1} · ${ctx.error("passengerDetails")}`
+          : ctx.error("passengerDetails"),
     }
   }
 
@@ -308,7 +312,7 @@ export async function savePassengersForState(
     const travelDate = firstTravelDate(state.request)
     for (let i = 0; i < passengers.length; i++) {
       const kind = paxKindFromDob(passengers[i].dob, travelDate)
-      if (!kind) return { ok: false, error: `Passenger ${i + 1}: ${ctx.error("passengerBirthDate")}` }
+      if (!kind) return { ok: false, error: `P${i + 1} · ${ctx.error("passengerBirthDate")}` }
       passengers[i].kind = kind
       if (kind !== "adult") passengers[i].title = null
     }
@@ -549,7 +553,9 @@ export async function notifyAgent(
     | "proof_uploaded"
     | "request_cancelled"
     /** T-18 · o cliente escreveu-nos a partir do ecrã de pagamento. */
-    | "message_sent",
+    | "message_sent"
+    /** E2 · o cliente pediu as instruções de pagamento. */
+    | "pay_details_requested",
   detail?: string
 ): Promise<void> {
   try {

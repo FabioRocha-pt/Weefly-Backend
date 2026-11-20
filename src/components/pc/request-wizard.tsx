@@ -77,6 +77,8 @@ import {
   IcWa,
 } from "@/components/pc/bits"
 import { PcStepper, PcTopbar } from "@/components/pc/chrome"
+import { CityHero } from "@/components/vip/city-hero"
+import { maskEmail, maskPhone } from "@/lib/vip-address"
 import type { Locale } from "@/i18n/config"
 import { useT } from "@/i18n/provider"
 
@@ -135,14 +137,24 @@ export function RequestWizard({
     contact: { name: string; email: string; country: string; phone: string }
   } | null
   /**
-   * B2G-22 · o pedido feito pelo link pessoal de um cliente VIP. O contacto
-   * vem preenchido (e editável); o passo do contacto mantém-se, porque o
-   * consentimento é do cliente. O `token` é resolvido no servidor — o VIP e a
-   * empresa nunca vêm do browser.
+   * B2G-22 · o pedido feito pelo link pessoal de um cliente VIP. O `token` é
+   * resolvido no servidor — o VIP e a empresa nunca vêm do browser.
+   *
+   * E3 · APP-02 · dentro da app do cliente (`appBase`), "o pedido vai do
+   * formulário da viagem diretamente para o resumo": os contactos vêm do
+   * cliente, sem passo próprio, e o consentimento passa para o resumo. Se ao
+   * cliente faltar o telefone ou o email, o passo do contacto continua a
+   * aparecer — sem contacto completo não há como lhe responder.
    */
   vip?: {
     token: string
     contact: { name: string; email: string; country: string; phone: string }
+    /** A raiz da app (`/pc/<nome>-<código>`). Ausente fora da app. */
+    appBase?: string
+    /** APP-02 · o primeiro nome, para a saudação. */
+    firstName?: string
+    /** IMG-01 · a cidade da empresa, para o fundo antes de haver partida. */
+    homeCity?: string
   } | null
 }) {
   const router = useRouter()
@@ -151,6 +163,8 @@ export function RequestWizard({
 
   /* FE-05 · três passos: viagem, contacto e a revisão antes de submeter. */
   const [step, setStep] = useState<1 | 2 | 3>(1)
+  /* E3 · APP-02 · dentro da app do cliente VIP. */
+  const inApp = Boolean(vip?.appBase)
 
   // ── P1 ────────────────────────────────────────────────────────────────────
   const [trip, setTrip] = useState<TripKind>("round")
@@ -451,6 +465,15 @@ export function RequestWizard({
       return
     }
 
+    /* E3 · na app do VIP também: os contactos vêm do cliente. O consentimento
+       não se dá por ele — marca-o no resumo. */
+    if (inApp && ministryContactComplete()) {
+      setServerError(null)
+      setStep(3)
+      window.scrollTo(0, 0)
+      return
+    }
+
     setStep(2)
     window.scrollTo(0, 0)
   }
@@ -513,6 +536,14 @@ export function RequestWizard({
 
     setServerError(null)
 
+    /* E3 · na app o passo do contacto não existe, e é nele que o consentimento
+       se validava: valida-se aqui, no resumo. */
+    if (inApp && !consent) {
+      setBad((b) => ({ ...b, consent: true }))
+      document.getElementById("consentReview")?.scrollIntoView({ block: "center", behavior: "smooth" })
+      return
+    }
+
     startTransition(async () => {
       const result = await submitPcRequest({
         trip,
@@ -566,9 +597,30 @@ export function RequestWizard({
         /* sem storage o link do email continua a servir */
       }
 
+      /* APP-02 · "Ao enviar, a app passa para Minhas passagens, com o pedido
+         novo em cima." O sinal em `sessionStorage` é o que deixa a app
+         convidar a instalar-se, uma vez, depois do primeiro pedido (APP-05). */
+      if (vip?.appBase) {
+        try {
+          window.sessionStorage.setItem("weefly.vip.requested", "1")
+        } catch {
+          /* sem storage não há convite; o pedido está feito */
+        }
+        router.push(`${vip.appBase}/passagens`)
+        router.refresh()
+        return
+      }
+
       router.push(`/pc/${result.token}`)
     })
   }
+
+  /* IMG-01 · a cidade do fundo: a de partida, e a de destino quando esta é
+     escolhida. Num multi-city, as do primeiro voo. */
+  const heroCity =
+    trip === "multi"
+      ? (legs[0]?.destination ?? legs[0]?.origin ?? null)
+      : (destination ?? origin)
 
   const cityName = (iata: string | null) =>
     (iata && (places[iata]?.city || places[iata]?.name)) || iata || ""
@@ -602,16 +654,29 @@ export function RequestWizard({
         lang={lang}
         onLangChange={setLang}
         onCurrencyChange={setCurrency}
+        /* APP-01 · na app a língua é a do cliente, escolhida em Meus dados. */
+        hideLang={inApp}
       />
-      <PcStepper step={step} />
+      {/* E3 · na app são dois ecrãs, a viagem e o resumo: a barra de três
+          passos anunciava um que não existe. */}
+      {!inApp && <PcStepper step={step} />}
 
       {/* ═══ P1 · fare request ═══ */}
       <main className="shell view" hidden={step !== 1}>
-        <section className="hero">
-          <span className="eyebrow">{t("pc.trip.eyebrow")}</span>
-          <h1>{t("pc.trip.title")}</h1>
-          <p>{t("pc.trip.lead")}</p>
-        </section>
+        {inApp ? (
+          /* APP-02 · IMG-01 · a saudação com o primeiro nome, sobre a imagem
+             da cidade de partida (e a de destino, quando é escolhida). */
+          <CityHero code={heroCity} fallbackCode={vip?.homeCity ?? "RAI"} style={{ marginTop: 14 }}>
+            <h1 style={{ fontSize: 25 }}>{t("vipApp.request.hello", { name: vip?.firstName ?? "" })}</h1>
+            <p style={{ fontSize: 14, marginTop: 4, opacity: 0.94 }}>{t("vipApp.request.lead")}</p>
+          </CityHero>
+        ) : (
+          <section className="hero">
+            <span className="eyebrow">{t("pc.trip.eyebrow")}</span>
+            <h1>{t("pc.trip.title")}</h1>
+            <p>{t("pc.trip.lead")}</p>
+          </section>
+        )}
 
         <div className="card">
           <div className="selbar" id="pcTripBar">
@@ -1157,7 +1222,8 @@ export function RequestWizard({
       */}
       <main className="shell view" hidden={step !== 3}>
         <section className="hero">
-          <span className="eyebrow">{t("pc.review.eyebrow")}</span>
+          {/* E3 · na app não há três passos: o "Passo 3 de 3" saía errado. */}
+          {!inApp && <span className="eyebrow">{t("pc.review.eyebrow")}</span>}
           <h1>{t("pc.review.title")}</h1>
           <p>{t("pc.review.lead")}</p>
         </section>
@@ -1216,21 +1282,36 @@ export function RequestWizard({
             }
             onEdit={() => goToStep(1, "pcTripBar")}
           />
-          <ReviewRow
-            label={t("pc.review.rowName")}
-            value={name.trim().replace(/\s+/g, " ")}
-            onEdit={() => goToStep(2, "fullname")}
-          />
-          <ReviewRow
-            label={t("pc.review.rowPhone")}
-            value={toE164(dialCode, phone) ?? `${dialCode} ${phone}`}
-            onEdit={() => goToStep(2, "phone")}
-          />
-          <ReviewRow
-            label={t("pc.review.rowEmail")}
-            value={email.trim()}
-            onEdit={() => goToStep(2, "email")}
-          />
+          {inApp ? (
+            <>
+              {/* E3 · VIP-01 · os contactos vêm do cliente, e aparecem
+                  mascarados. Mudam-se em Meus dados, não neste pedido. */}
+              <ReviewRow label={t("pc.review.rowName")} value={name.trim().replace(/\s+/g, " ")} />
+              <ReviewRow
+                label={t("pc.review.rowPhone")}
+                value={maskPhone(toE164(dialCode, phone) ?? `${dialCode}${phone}`)}
+              />
+              <ReviewRow label={t("pc.review.rowEmail")} value={maskEmail(email)} />
+            </>
+          ) : (
+            <>
+              <ReviewRow
+                label={t("pc.review.rowName")}
+                value={name.trim().replace(/\s+/g, " ")}
+                onEdit={() => goToStep(2, "fullname")}
+              />
+              <ReviewRow
+                label={t("pc.review.rowPhone")}
+                value={toE164(dialCode, phone) ?? `${dialCode} ${phone}`}
+                onEdit={() => goToStep(2, "phone")}
+              />
+              <ReviewRow
+                label={t("pc.review.rowEmail")}
+                value={email.trim()}
+                onEdit={() => goToStep(2, "email")}
+              />
+            </>
+          )}
 
           {/*
             The free-text field. This is where "don't arrive at night",
@@ -1266,6 +1347,30 @@ export function RequestWizard({
             </span>
           </div>
 
+          {/* E3 · APP-02 · "o resumo com os pedidos especiais e o
+              consentimento": sem o passo do contacto, é aqui que ele se dá. */}
+          {inApp && (
+            <>
+              <label className="consent" htmlFor="consentReview">
+                <input
+                  type="checkbox"
+                  id="consentReview"
+                  checked={consent}
+                  onChange={(event) => {
+                    setConsent(event.target.checked)
+                    clear("consent")
+                  }}
+                />
+                <p>{t("pc.contact.consent")}</p>
+              </label>
+              {bad.consent && (
+                <span className="err" style={{ marginTop: 8, display: "block" }}>
+                  {t("pc.contact.consentError")}
+                </span>
+              )}
+            </>
+          )}
+
           {serverError && (
             <span className="err" style={{ marginTop: 10, display: "block" }}>
               {serverError}
@@ -1277,7 +1382,7 @@ export function RequestWizard({
               className="btn btn-ghost"
               type="button"
               aria-label={t("pc.review.back")}
-              onClick={() => goToStep(2)}
+              onClick={() => goToStep(inApp ? 1 : 2)}
             >
               <IcBack />
             </button>
@@ -1327,7 +1432,8 @@ function ReviewRow({
 }: {
   label: string
   value: string
-  onEdit: () => void
+  /** Sem atalho, a linha só se lê (os contactos de um VIP, na app). */
+  onEdit?: () => void
 }) {
   const t = useT()
   return (
@@ -1344,6 +1450,7 @@ function ReviewRow({
       <span style={{ flex: 1, fontWeight: 600 }}>{value || "—"}</span>
       <button
         type="button"
+        hidden={!onEdit}
         onClick={onEdit}
         style={{
           border: 0,

@@ -46,6 +46,7 @@ import {
   savePayInstructions,
 } from "@/lib/pc/payment"
 import { sendPaymentInstructionsEmail } from "@/lib/emails/send"
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
 import { ARCHIVE_REASONS, CLOSED_REASON_LABEL_PT } from "@/lib/pc/archive"
 import {
   METHOD_LABEL_PT,
@@ -720,7 +721,9 @@ export async function boSavePayInstructions(
       title: "Instruções de pagamento enviadas ao cliente",
       detail: [
         METHOD_LABEL_PT[v.method],
-        due ? `prazo ${new Date(due).toLocaleString("pt-PT", { timeZone: "Atlantic/Cape_Verde" })}` : null,
+        /* E8 · este texto fica gravado e é lido por contas em fusos diferentes:
+           a hora leva o fuso escrito, para não se confundir com a da coluna. */
+        due ? `prazo ${new Date(due).toLocaleString("pt-PT", { timeZone: "Atlantic/Cape_Verde" })} (hora de Cabo Verde)` : null,
         autoFilled ? `automático · envio +${PAY_DUE_HOURS}h` : "prazo escrito à mão",
         `por ${identity.label}`,
       ]
@@ -745,7 +748,8 @@ export async function boSavePayInstructions(
               month: "short",
               hour: "2-digit",
               minute: "2-digit",
-              timeZone: "Atlantic/Cape_Verde",
+              /* E8 · o aviso é para quem está a ver: no fuso da conta dele. */
+              timeZone: await getBoTimeZone(),
             }),
             hours: PAY_DUE_HOURS,
           })

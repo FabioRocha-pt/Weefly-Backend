@@ -142,6 +142,33 @@ export function toE164(dial: string, phone: string): string | null {
 }
 
 /**
+ * E7 · um telefone guardado, partido em país e número nacional.
+ *
+ * O inverso do `toE164`, para um formulário voltar a abrir um número já
+ * gravado ("+238 9800700", "+2389800700") com o país certo no seletor. Ganha o
+ * indicativo mais comprido que couber (o +1 684 antes do +1); num indicativo
+ * partilhado fica o primeiro país, e quem edita troca se não for o dele. Um
+ * número sem "+" não diz de onde é: fica no país por omissão, tal como veio.
+ */
+export function splitPhone(
+  raw: string | null | undefined,
+  fallbackIso: string = DEFAULT_COUNTRY
+): { iso: string; national: string } {
+  const text = (raw ?? "").trim()
+  const digits = text.replace(/\D/g, "")
+  if (!text.startsWith("+") || !digits) return { iso: fallbackIso, national: digits }
+
+  let best: Country | null = null
+  for (const country of COUNTRIES) {
+    const prefix = country.dial.replace(/\D/g, "")
+    if (!prefix || !digits.startsWith(prefix)) continue
+    if (!best || prefix.length > best.dial.replace(/\D/g, "").length) best = country
+  }
+  if (!best) return { iso: fallbackIso, national: digits }
+  return { iso: best.iso, national: digits.slice(best.dial.replace(/\D/g, "").length) }
+}
+
+/**
  * O país de um indicativo — o primeiro, quando o indicativo é partilhado.
  *
  * É um palpite e é assim que deve ser lido: serve para os pedidos guardados

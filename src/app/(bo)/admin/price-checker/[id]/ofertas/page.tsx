@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { getBoAccess, listBoSellers } from "@/lib/bo-access"
 import { getCase, type BookingCaseRow } from "@/lib/booking-cases"
 import { loadBoCase } from "@/lib/pc/bo-queue"
+import { VipTag, vipClientHref } from "@/components/channels/vip-tag"
 import { caseInScope, isCrossPartner, scopeForCase } from "@/lib/bo-scope"
 import { createAdminClient } from "@/utils/supabase/admin"
 import {
@@ -180,7 +181,18 @@ export default async function BoCaseOffersPage({
                 origin: bookingCase.trip_request?.origin ?? null,
                 destination: bookingCase.trip_request?.destination ?? null,
               }}
-              brief={<ClientBrief bookingCase={bookingCase} t={t} />}
+              brief={
+                <ClientBrief
+                  bookingCase={bookingCase}
+                  t={t}
+                  /* E6 · FILA-01 · o pedido que veio pelo link de um VIP. */
+                  vip={
+                    detail?.row.channel === "vip"
+                      ? { id: detail.row.vipClientId, name: detail.row.vipName }
+                      : null
+                  }
+                />
+              }
               review={review}
             />
           )}
@@ -260,7 +272,16 @@ const FAILURE_MESSAGE: Record<ProposalFailure, string> = {
  * Renderizado no servidor e passado como filho ao compositor: é conteúdo
  * estático, não tem razão nenhuma para ir em JavaScript para o browser.
  */
-function ClientBrief({ bookingCase, t }: { bookingCase: BookingCaseRow; t: Translator }) {
+function ClientBrief({
+  bookingCase,
+  t,
+  vip = null,
+}: {
+  bookingCase: BookingCaseRow
+  t: Translator
+  /** E6 · o cliente VIP do caso, quando entrou pelo link dele. */
+  vip?: { id: string | null; name: string | null } | null
+}) {
   /* I18N-01 · a mesma língua do resto do ecrã: a do agente. */
   const trip = bookingCase.trip_request
   const link1 = bookingCase.links.find((l) => l.stage === 1)
@@ -333,9 +354,20 @@ function ClientBrief({ bookingCase, t }: { bookingCase: BookingCaseRow; t: Trans
             <Kv
               label={t("admin.briefChannel")}
               value={
-                trip.lead?.source_channel
-                  ? t("channels." + trip.lead.source_channel)
-                  : "—"
+                /* E6 · "Formulário online" era o canal do lead (por onde a
+                   pessoa falou connosco a primeira vez). Num pedido VIP o
+                   canal é o VIP, com o nome do cliente e a ficha dele. */
+                vip ? (
+                  <VipTag
+                    name={vip.name}
+                    href={vipClientHref({ vipClientId: vip.id })}
+                    title={t("bo.vipTag.open")}
+                  />
+                ) : trip.lead?.source_channel ? (
+                  t("channels." + trip.lead.source_channel)
+                ) : (
+                  "—"
+                )
               }
             />
 
@@ -393,7 +425,7 @@ function Kv({
   mono,
 }: {
   label: string
-  value: string
+  value: React.ReactNode
   mono?: boolean
 }) {
   return (

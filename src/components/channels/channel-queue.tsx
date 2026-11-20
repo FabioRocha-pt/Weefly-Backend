@@ -1,10 +1,12 @@
 import Link from "next/link"
 
 import type { BoQueueRow } from "@/lib/pc/bo-queue"
-import { elapsedSince } from "@/lib/case-status"
+import { WAIT_FILTER_CSS, waitSince } from "@/lib/queue-wait"
 import { formatMoney } from "@/lib/proposal-math"
 import type { Translator } from "@/i18n/translate"
 import { ClaimButton } from "@/components/channels/claim-button"
+import { VipTag, vipClientHref } from "@/components/channels/vip-tag"
+import { WaitBadge, WaitFilter, WaitRow } from "@/components/channels/wait"
 
 /* B2G-11 · a etiqueta da urgência (só quando não é Normal). */
 const URGENCY_CLASS: Record<1 | 2, string> = {
@@ -17,6 +19,14 @@ const URGENCY_CLASS: Record<1 | 2, string> = {
  * um VIP, ou de um ministério) dentro do terminal de vendas, com a mesma
  * leitura que a fila do Concierge (`loadBoQueue`). Cada linha abre a ficha
  * do caso no Concierge, onde se trata.
+ *
+ * FILA-01 · um pedido de um cliente VIP leva a etiqueta VIP, com o nome dele,
+ * que abre a ficha dele. Não muda de lugar na fila.
+ *
+ * FILA-02 · cada linha tem a cor do tempo de espera (`lib/queue-wait`), com o
+ * tempo escrito ao lado, a mudar sozinha; e os críticos filtram-se. As cores
+ * juntam-se à ordem que a fila já tem (nos Ministérios, a da urgência): não a
+ * mudam.
  */
 export function ChannelQueue({
   rows,
@@ -26,6 +36,7 @@ export function ChannelQueue({
   showWho = false,
   showPartner = false,
   viewerId,
+  id = "channel-queue",
 }: {
   rows: BoQueueRow[]
   t: Translator
@@ -40,12 +51,21 @@ export function ChannelQueue({
    * ("Seu", "Reclamado por …") e o botão de reclamar nos que não têm.
    */
   viewerId?: string
+  /** O id do contentor, para o filtro dos críticos (um por página chega). */
+  id?: string
 }) {
+  /* FILA-02 · desde quando cada linha espera; nulo = já não espera por nada. */
+  const sinces = rows.map((row) => waitSince(row))
   return (
-    <section className="space-y-3">
-      <div className="flex items-baseline justify-between gap-3">
+    <section className="space-y-3" id={id}>
+      <style>{WAIT_FILTER_CSS}</style>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        <span className="text-sm text-slate-500">{t("bo.channelQueue.count", { count: String(rows.length) })}</span>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* FILA-02 · "os críticos podem ser filtrados". */}
+          {rows.length > 0 && <WaitFilter scope={id} sinces={sinces} />}
+          <span className="text-sm text-slate-500">{t("bo.channelQueue.count", { count: String(rows.length) })}</span>
+        </div>
       </div>
       {rows.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-slate-500">{empty}</p>
@@ -66,8 +86,24 @@ export function ChannelQueue({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {rows.map((row) => (
-                <tr key={row.caseId} className="hover:bg-slate-50 align-top">
+              {rows.map((row, index) => {
+                /* FILA-01 · a etiqueta VIP: na coluna de quem pede quando a
+                   fila a tem, senão por baixo da referência. */
+                const vipTag =
+                  row.channel === "vip" ? (
+                    <VipTag
+                      name={row.vipName}
+                      href={vipClientHref({
+                        vipClientId: row.vipClientId,
+                        vipName: row.vipName,
+                        master: showPartner,
+                        partnerId: row.partnerId,
+                      })}
+                      title={t("bo.vipTag.open")}
+                    />
+                  ) : null
+                return (
+                <WaitRow key={row.caseId} since={sinces[index]} className="align-top">
                   <td className="px-4 py-3">
                     <Link
                       href={`/admin/price-checker/${row.caseId}`}
@@ -75,6 +111,7 @@ export function ChannelQueue({
                     >
                       {row.reference}
                     </Link>
+                    {vipTag && !showWho && <div className="mt-1">{vipTag}</div>}
                     {row.channel === "ministerio" && row.urgency > 0 && (
                       <div>
                         <span
@@ -96,7 +133,7 @@ export function ChannelQueue({
                     <div className="text-xs text-slate-500">{row.clientPhone}</div>
                   </td>
                   {showWho && (
-                    <td className="px-4 py-3 text-slate-600">{row.vipName ?? row.organisationName ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-600">{vipTag ?? row.organisationName ?? "—"}</td>
                   )}
                   <td className="px-4 py-3">
                     <div className="font-mono text-slate-900">
@@ -111,7 +148,9 @@ export function ChannelQueue({
                   <td className="px-4 py-3 text-right tabular-nums">
                     {row.amount ? formatMoney(row.amount, row.currency) : "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{row.closedAt ? "—" : elapsedSince(row.submittedAt)}</td>
+                  <td className="px-4 py-3 text-slate-700">
+                    <WaitBadge since={sinces[index]} />
+                  </td>
                   {viewerId !== undefined && (
                     <td className="px-4 py-3 text-slate-600">
                       {row.ownerId ? (
@@ -127,8 +166,9 @@ export function ChannelQueue({
                       )}
                     </td>
                   )}
-                </tr>
-              ))}
+                </WaitRow>
+                )
+              })}
             </tbody>
           </table>
         </div>

@@ -28,6 +28,16 @@ import type { Translator } from "@/i18n/translate"
 
 export const pad = (n: number) => String(n).padStart(2, "0")
 
+/**
+ * APP-03 · o endereço do pedido: o da app do cliente VIP, quando o pedido está
+ * aberto lá dentro, ou `/pc/<token>`. É por aqui que os ecrãs montam os seus
+ * próprios links, para o cliente não sair da app ao trocar de oferta ou ao
+ * rever os passageiros.
+ */
+export function pcSelfPath(state: { token: string; selfPath?: string }): string {
+  return state.selfPath ?? `/pc/${state.token}`
+}
+
 export const todayISO = () => new Date().toISOString().slice(0, 10)
 
 // ── dinheiro ─────────────────────────────────────────────────────────────────

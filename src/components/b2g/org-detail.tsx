@@ -14,6 +14,7 @@ import {
   ThresholdForm,
 } from "@/components/b2g/b2g-forms"
 import { SecretaryManager } from "@/components/b2g/secretaries"
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
 
 /**
  * WeeFly · B2G · um ministério, por inteiro: saldo, secretárias (B2G-06),
@@ -23,7 +24,7 @@ import { SecretaryManager } from "@/components/b2g/secretaries"
  * B2G do Admin (ADM-08). No Admin é só de leitura, com uma excepção explícita:
  * corrigir o saldo (`AdjustForm`), que pede confirmação e motivo.
  */
-export function OrganisationDetailView({
+export async function OrganisationDetailView({
   detail,
   partner,
   mode,
@@ -48,7 +49,9 @@ export function OrganisationDetailView({
 }) {
   const { org } = detail
   const money = (v: number) => formatAmount(v, org.currency)
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short", timeZone })
   const siteBase = partnerSiteUrl({ slug: partner.slug, isOperator: partner.is_operator })
   /* Decisão 5 · secretárias: qualquer conta do back-office da empresa, ou a WeeFly. */
   const manageSecretaries = viewer.crossPartner || (mode === "partner" && viewer.backoffice)

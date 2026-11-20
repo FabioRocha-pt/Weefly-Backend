@@ -1,0 +1,75 @@
+{
+  "bo": {
+    "cityImages": {
+      "nav": "City images",
+      "title": "City images",
+      "subtitle": "The image the VIP app shows behind the greeting: the departure city first, then the destination. A city without an image shows the brand background with its name. Uploading or replacing takes effect within minutes, with no deploy.",
+      "search": "Search by code, city or airport",
+      "count": "{n} cities · {missing} without an image",
+      "new": "New city",
+      "editTitle": "Image for {city}",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "upload": "Upload",
+      "replace": "Replace",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "empty": "No city found.",
+      "filter": {
+        "all": "All",
+        "missing": "No image",
+        "inactive": "Deactivated"
+      },
+      "fields": {
+        "code": "City code",
+        "codeHint": "Three letters: PAR, LON, RAI.",
+        "name": "City name",
+        "airports": "Airports that use this image",
+        "airportsHint": "Codes separated by commas. CDG and ORY use the Paris image.",
+        "alt": "Alternative text",
+        "altHint": "Empty: the city name.",
+        "image": "Image",
+        "imageHint": "JPG, PNG or WebP, up to 8 MB. Landscape, 4:3, with the important part in the centre; ideally 1600 × 1200 px. It is cropped and converted to WebP automatically.",
+        "removeImage": "Remove the image (the brand background is shown)",
+        "active": "Active (shown in the app)"
+      },
+      "cols": {
+        "image": "Image",
+        "city": "City",
+        "airports": "Airports",
+        "state": "Status",
+        "changed": "Last change",
+        "actions": "Actions"
+      },
+      "state": {
+        "live": "Has image",
+        "missing": "No image · brand background",
+        "inactive": "Deactivated · brand background"
+      },
+      "notice": {
+        "created": "{city} added.",
+        "saved": "{city} saved.",
+        "activated": "{code} activated.",
+        "deactivated": "{code} deactivated."
+      },
+      "errors": {
+        "notAllowed": "Only the WeeFly Admin manages city images.",
+        "code": "The code has three letters (e.g. PAR, RAI).",
+        "name": "Enter the city name.",
+        "airports": "Airports are three-letter codes, separated by commas.",
+        "airportTaken": "Airport {airport} already uses the image of {code}.",
+        "alt": "The alternative text can have at most 160 characters.",
+        "exists": "City {code} already exists. Edit it in the list.",
+        "notFound": "City not found.",
+        "imageType": "The image must be JPG, PNG or WebP.",
+        "imageSize": "The image is larger than 8 MB.",
+        "imageUnreadable": "The image could not be read. Try another file.",
+        "uploadFailed": "The image did not upload. Try again.",
+        "saveFailed": "Could not save.",
+        "migration": "Migration 0044 has not been applied to the database.",
+        "invalid": "Invalid data."
+      }
+    }
+  }
+}

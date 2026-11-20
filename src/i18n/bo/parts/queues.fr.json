@@ -51,6 +51,36 @@
       "empty": "Aucune demande ne correspond à ces filtres.",
       "openCase": "Ouvrir",
       "live": "Mise à jour automatique, sans recharger."
+    },
+    "wait": {
+      "level": {
+        "fresh": "Vient d'arriver",
+        "waiting": "En attente",
+        "late": "En retard",
+        "critical": "Critique"
+      },
+      "ago": {
+        "min_one": "il y a {count} min",
+        "min_other": "il y a {count} min",
+        "hour_one": "il y a {count} h",
+        "hour_other": "il y a {count} h",
+        "day_one": "il y a {count} jour",
+        "day_other": "il y a {count} jours"
+      },
+      "filter": {
+        "critical_one": "Critiques · {count}",
+        "critical_other": "Critiques · {count}"
+      },
+      "byCompany": {
+        "title": "Critiques par entreprise",
+        "none": "aucune demande en attente depuis plus de 3 jours"
+      }
+    },
+    "vipTag": {
+      "open": "Ouvrir la fiche du client VIP",
+      "filter_one": "VIP uniquement · {count}",
+      "filter_other": "VIP uniquement · {count}",
+      "channel": "VIP"
     }
   }
 }

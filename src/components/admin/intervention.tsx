@@ -4,7 +4,8 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { endIntervention, startIntervention } from "@/actions/admin-intervention"
-import { useT } from "@/i18n/provider"
+import { useI18n, useT } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
 
 /**
  * ADM-04 · o botão que tira o Admin WeeFly da leitura: pede o motivo, regista,
@@ -71,7 +72,9 @@ export function InterventionBanner({ caseId, reason, expiresAt }: { caseId: stri
   const t = useT()
   const router = useRouter()
   const [pending, start] = useTransition()
-  const until = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(expiresAt))
+  /* E8 · na língua e no fuso da conta de quem vê, como o resto do back-office. */
+  const { locale, timeZone } = useI18n()
+  const until = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(expiresAt))
 
   return (
     <div

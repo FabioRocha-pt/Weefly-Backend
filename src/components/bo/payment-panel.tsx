@@ -44,9 +44,9 @@ import { translateOr, type Translator } from "@/i18n/translate"
 /* C-33 · a ordem é a do catálogo, e o catálogo é o único sítio onde ela vive. */
 const METHODS: PayMethodId[] = PAY_METHOD_IDS
 
-/** I18N-01 · a data na língua do agente; o fuso continua o de Cabo Verde. */
+/** I18N-01 · a data na língua do agente. E8 · no fuso da conta de quem vê. */
 function useDt() {
-  const { locale } = useI18n()
+  const { locale, timeZone } = useI18n()
   const tag = LOCALE_TAGS[locale]
   return (iso: string | null | undefined) =>
     iso
@@ -55,7 +55,7 @@ function useDt() {
           month: "short",
           hour: "2-digit",
           minute: "2-digit",
-          timeZone: "Atlantic/Cape_Verde",
+          timeZone,
         })
       : "—"
 }

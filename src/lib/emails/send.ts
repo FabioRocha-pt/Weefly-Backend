@@ -523,6 +523,26 @@ async function alsoToPartner(input: NotifyInput): Promise<void> {
   })
 }
 
+/**
+ * E6 · o cliente VIP de um caso, quando o pedido entrou pelo link dele. Uma
+ * leitura à parte, e sem falhar: numa base sem a 0033, ou num caso público, o
+ * aviso sai como sempre saiu.
+ */
+async function vipNameOfCase(caseId: string): Promise<string | null> {
+  const admin = createAdminClient()
+  if (!admin) return null
+  const { data, error } = await admin
+    .from("booking_cases")
+    .select("channel, vip:vip_clients (name)")
+    .eq("id", caseId)
+    .maybeSingle()
+  if (error || !data) return null
+  const row = data as { channel?: string; vip?: unknown }
+  if (row.channel !== "vip") return null
+  const vip = (Array.isArray(row.vip) ? row.vip[0] : row.vip) as { name?: string } | null | undefined
+  return vip?.name ?? "VIP"
+}
+
 export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome> {
   const ctx = await context(caseId)
   if (!ctx) {
@@ -542,7 +562,9 @@ export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome
       ? `sem vendedor atribuído · link de ${ctx.agentSlug}`
       : "SEM VENDEDOR ATRIBUÍDO: ninguém está a tratar deste pedido"
 
-  const subject = `Pedido novo · ${route} · ${ctx.clientName}${seller ? "" : " · sem vendedor"}`
+  const vipName = await vipNameOfCase(caseId)
+
+  const subject = `Pedido novo${vipName ? " VIP" : ""} · ${route} · ${ctx.clientName}${seller ? "" : " · sem vendedor"}`
 
   const meta = [
     ctx.reference,
@@ -551,7 +573,13 @@ export async function sendNewRequestAlert(caseId: string): Promise<NotifyOutcome
     ctx.currency,
     ctx.clientPhone,
     ctx.clientEmail,
-    ctx.intake === "price_checker" ? "entrada: link" : `entrada: ${ctx.intake}`,
+    /* E6 · um pedido feito pelo link pessoal de um VIP diz que é VIP, e de
+       quem: no aviso à equipa também. */
+    vipName
+      ? `entrada: VIP · ${vipName}`
+      : ctx.intake === "price_checker"
+        ? "entrada: link"
+        : `entrada: ${ctx.intake}`,
     ownership,
   ]
     .filter(Boolean)
@@ -1322,6 +1350,8 @@ export type ClientAction =
   | "request_cancelled"
   /** T-18 · escreveu-nos do ecrã de pagamento. */
   | "message_sent"
+  /** E2 · pediu as instruções de pagamento da via que escolheu. */
+  | "pay_details_requested"
 
 const AGENT_SUBJECT: Record<ClientAction, string> = {
   offer_selected: "escolheu uma oferta",
@@ -1329,6 +1359,7 @@ const AGENT_SUBJECT: Record<ClientAction, string> = {
   proof_uploaded: "enviou o comprovativo",
   request_cancelled: "cancelou o pedido",
   message_sent: "escreveu-nos",
+  pay_details_requested: "pediu os dados de pagamento",
 }
 
 /**

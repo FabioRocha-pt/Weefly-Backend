@@ -1340,7 +1340,7 @@
       "paidSendProof": "Já paguei · enviar o comprovativo",
       "confirmedByPerson": "Um pagamento só é confirmado por uma pessoa do nosso lado, depois de o ver na conta. Verificamos dentro de {hours} horas, em horário de expediente.",
       "sendMeDetails": "Enviem-me os dados do {method}",
-      "preparingDetails": "Estamos a preparar os dados do {method} e enviamo-los aqui",
+      "preparingDetails": "Pedido recebido: estamos a preparar os dados do {method} e enviamo-los aqui. O seu pedido continua à espera de pagamento.",
       "byHand": "Uma pessoa nossa trata disto à mão, por isso não é imediato. Receberá os dados por email e neste link, normalmente em horário de expediente.",
       "proofReceived": "Comprovativo recebido: estamos a verificar",
       "detailsComing": "Obrigado: estamos a preparar os seus dados de pagamento",
@@ -1374,7 +1374,9 @@
           "sub": "Referência de pagamento"
         }
       },
-      "worldwide": "Aceitamos todo o tipo de pagamento, em qualquer parte do mundo."
+      "worldwide": "Aceitamos todo o tipo de pagamento, em qualquer parte do mundo.",
+      "alreadyPaid": "Já paguei",
+      "paidDeclared": "Obrigado: vamos confirmar o seu pagamento"
     },
     "pax": {
       "eyebrow": "Passo 5 · passageiros",
@@ -1800,7 +1802,12 @@
       "uploadFailed": "Não conseguimos guardar o ficheiro. Tente outra vez.",
       "ministrySession": "A sua sessão terminou. Introduza o PIN outra vez para enviar o pedido.",
       "ministryFlood": "Já enviou muitos pedidos na última hora. Espere um pouco, ou fale com a empresa de viagens pelo WhatsApp.",
-      "passengerBirthDate": "verifique a data de nascimento"
+      "passengerBirthDate": "verifique a data de nascimento",
+      "payDetailsFirst": "Ainda não lhe enviámos os dados de pagamento desta via. Peça-os primeiro e pague por eles.",
+      "checkForm": "Verifique os dados do pedido e tente outra vez.",
+      "tooManyRequests": "Enviou-nos vários pedidos seguidos. Dê-nos uns minutos para os vermos, ou fale connosco pelo WhatsApp.",
+      "passengerCount": "O número de passageiros não corresponde ao do pedido.",
+      "passengerDetails": "Verifique os dados deste passageiro."
     }
   },
   "pro": {
@@ -2279,6 +2286,120 @@
       "flightChangeBody": "As companhias mudam horários. Quando isso acontecer, avisamos por email e por WhatsApp, e o aviso aparece também na sua página.",
       "changeTitle": "Se precisar de alterar",
       "changeBody": "Fale connosco antes de falar com a companhia. Uma alteração feita por fora pode anular condições da tarifa."
+    }
+  },
+  "vipApp": {
+    "tabs": {
+      "label": "Áreas da aplicação",
+      "pedido": "Fazer pedido",
+      "passagens": "Minhas passagens",
+      "dados": "Meus dados",
+      "attention_one": "{count} pedido à sua espera",
+      "attention_other": "{count} pedidos à sua espera"
+    },
+    "request": {
+      "hello": "Olá, {name}",
+      "lead": "Para onde quer ir? Diga-nos a viagem e nós tratamos do resto."
+    },
+    "trips": {
+      "title": "Minhas passagens",
+      "lead": "Os seus pedidos, as ofertas e os bilhetes, num só sítio.",
+      "open": "Em curso",
+      "booked": "Viagens marcadas",
+      "history": "Histórico",
+      "emptyTitle": "Ainda não tem pedidos",
+      "emptyBody": "Quando fizer o primeiro pedido, ele aparece aqui, com as ofertas e o bilhete.",
+      "newRequest": "Fazer um pedido",
+      "oneway": "só ida",
+      "multi": "várias cidades",
+      "continue": "Continuar",
+      "see": "Ver",
+      "openRequest": "Abrir o pedido {reference}",
+      "openTicket": "Abrir o bilhete em PDF",
+      "backToList": "Voltar a Minhas passagens",
+      "status": {
+        "received": "Pedido recebido · a preparar as ofertas",
+        "offers_one": "{count} oferta recebida · escolha",
+        "offers_other": "{count} ofertas recebidas · escolha uma",
+        "passengers": "Faltam os dados dos passageiros",
+        "payment": "À espera de pagamento",
+        "checking": "Pagamento em verificação",
+        "paid": "Pago · o bilhete está a ser emitido",
+        "issued": "Bilhete emitido",
+        "expired": "Expirado",
+        "cancelled": "Cancelado",
+        "closed": "Fechado"
+      }
+    },
+    "data": {
+      "title": "Meus dados",
+      "lead": "{name}, estes dados preenchem a sua passagem em cada pedido. Pode alterá-los quando quiser.",
+      "contact": "Contacto",
+      "phone": "Telefone",
+      "phoneCountry": "País do telefone",
+      "phoneHint": "Só o número, sem o indicativo {dial}",
+      "email": "Email",
+      "forTicket": "Para a passagem",
+      "asInPassport": "como no passaporte",
+      "names": "Nomes e apelidos",
+      "birthDate": "Data de nascimento",
+      "sex": "Sexo",
+      "nationality": "Nacionalidade",
+      "passport": "Número do passaporte",
+      "passportExpiry": "Validade do passaporte",
+      "issuingCountry": "País emissor",
+      "missing": "Por preencher",
+      "fillsTicket": "No próximo pedido, o primeiro passageiro vem preenchido com estes dados. Se os mudar só nesse pedido, estes não se alteram.",
+      "edit": "Alterar os meus dados",
+      "save": "Guardar",
+      "saving": "A guardar…",
+      "cancel": "Cancelar",
+      "saved": "Dados guardados",
+      "nothingChanged": "Nada mudou",
+      "consent": "Autorizo a guardar os dados do meu passaporte, para preencherem a minha passagem em cada pedido.",
+      "preferences": "Preferências",
+      "language": "Língua da aplicação",
+      "languageHint": "A aplicação, os avisos e os emails dos próximos pedidos passam a sair nesta língua.",
+      "languages": {
+        "pt": "Português",
+        "en": "English",
+        "fr": "Français",
+        "nl": "Nederlands"
+      },
+      "company": "A empresa que o acompanha",
+      "companyNote": "Para qualquer dúvida sobre os seus pedidos, fale com a equipa.",
+      "passportWarn": {
+        "soonTitle": "O passaporte expira em menos de seis meses",
+        "soonBody": "Muitos países exigem seis meses de validade à chegada. Trate da renovação antes da próxima viagem.",
+        "expiredTitle": "O passaporte está expirado",
+        "expiredBody": "Atualize os dados quando tiver o passaporte novo: com este não é possível emitir a passagem."
+      },
+      "keepTitle": "Guardar em Meus dados?",
+      "keepBody": "Os dados do primeiro passageiro são diferentes dos que tem em Meus dados. Quer guardá-los, para preencherem os próximos pedidos?",
+      "keepConsent": "Ao guardar, autoriza-nos a manter os dados do seu passaporte em Meus dados. Se escolher só neste pedido, Meus dados fica como estava.",
+      "keepYes": "Guardar em Meus dados",
+      "keepNo": "Só neste pedido",
+      "savedFromRequest": "Guardado em Meus dados"
+    },
+    "install": {
+      "title": "Guarde {name} no seu telemóvel",
+      "body": "Fica com um ícone no ecrã principal, e abre os seus pedidos sem procurar o link.",
+      "install": "Instalar",
+      "notNow": "Agora não",
+      "done": "{name} está guardada no seu telemóvel."
+    },
+    "errors": {
+      "notFound": "Este link já não está disponível.",
+      "invalid": "Verifique os dados e tente outra vez.",
+      "saveFailed": "Não conseguimos guardar. Tente outra vez dentro de momentos.",
+      "phone": "Esse número não é válido para o país escolhido.",
+      "email": "Verifique o email.",
+      "contactNeeded": "Precisamos de um telefone ou de um email para falar consigo.",
+      "names": "Escreva os nomes e os apelidos como estão no passaporte.",
+      "birthDate": "Verifique a data de nascimento.",
+      "passport": "O número do passaporte tem 5 a 12 letras ou algarismos.",
+      "passportExpiry": "Verifique a validade do passaporte.",
+      "consent": "Para guardarmos os dados do passaporte, marque a autorização."
     }
   }
 }

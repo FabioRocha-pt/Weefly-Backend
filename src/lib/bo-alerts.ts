@@ -67,6 +67,8 @@ const ALERT_KINDS = [
   "offer_selected",
   "passengers_submitted",
   "pay_method_chosen",
+  /* E2 · o cliente pediu as instruções de pagamento: há trabalho para nós. */
+  "pay_details_requested",
   "proof_uploaded",
   "client_declared_paid",
   /* T-18 · a mensagem que o cliente escreve no ecrã de pagamento. */

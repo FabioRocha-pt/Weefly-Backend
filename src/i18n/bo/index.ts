@@ -69,6 +69,9 @@ import activityFr from "./parts/activity.fr.json"
 import airlinesPt from "./parts/airlines.pt.json"
 import airlinesEn from "./parts/airlines.en.json"
 import airlinesFr from "./parts/airlines.fr.json"
+import cityImagesPt from "./parts/cityImages.pt.json"
+import cityImagesEn from "./parts/cityImages.en.json"
+import cityImagesFr from "./parts/cityImages.fr.json"
 import rolesPt from "./parts/roles.pt.json"
 import rolesEn from "./parts/roles.en.json"
 import rolesFr from "./parts/roles.fr.json"
@@ -97,9 +100,9 @@ function merge(target: Record<string, unknown>, source: Record<string, unknown>)
 }
 
 const PARTS: Record<BoLocale, Dictionary[]> = {
-  pt: [shellPt, queuePt, caseViewPt, paymentsPt, issuancePt, composerPt, proPt, actionsPt, b2gPt, financePt, adminCasesPt, travellersPt, vipPt, ministriesPt, queuesPt, offersPt, activityPt, airlinesPt, rolesPt],
-  en: [shellEn, queueEn, caseViewEn, paymentsEn, issuanceEn, composerEn, proEn, actionsEn, b2gEn, financeEn, adminCasesEn, travellersEn, vipEn, ministriesEn, queuesEn, offersEn, activityEn, airlinesEn, rolesEn],
-  fr: [shellFr, queueFr, caseViewFr, paymentsFr, issuanceFr, composerFr, proFr, actionsFr, b2gFr, financeFr, adminCasesFr, travellersFr, vipFr, ministriesFr, queuesFr, offersFr, activityFr, airlinesFr, rolesFr],
+  pt: [shellPt, queuePt, caseViewPt, paymentsPt, issuancePt, composerPt, proPt, actionsPt, b2gPt, financePt, adminCasesPt, travellersPt, vipPt, ministriesPt, queuesPt, offersPt, activityPt, airlinesPt, cityImagesPt, rolesPt],
+  en: [shellEn, queueEn, caseViewEn, paymentsEn, issuanceEn, composerEn, proEn, actionsEn, b2gEn, financeEn, adminCasesEn, travellersEn, vipEn, ministriesEn, queuesEn, offersEn, activityEn, airlinesEn, cityImagesEn, rolesEn],
+  fr: [shellFr, queueFr, caseViewFr, paymentsFr, issuanceFr, composerFr, proFr, actionsFr, b2gFr, financeFr, adminCasesFr, travellersFr, vipFr, ministriesFr, queuesFr, offersFr, activityFr, airlinesFr, cityImagesFr, rolesFr],
 }
 
 const BO_DICTIONARIES: Record<BoLocale, Dictionary> = {

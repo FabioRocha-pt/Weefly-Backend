@@ -8,6 +8,8 @@ import { LOCALE_TAGS } from "@/i18n/config"
 import { translateOr } from "@/i18n/translate"
 import { InterveneForm } from "@/components/admin/intervention"
 
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
+
 /**
  * ADM-04 · um caso de qualquer parceiro, em leitura: o pedido, a oferta
  * escolhida, os passageiros, o pagamento, a emissão e o histórico. Não há um
@@ -58,7 +60,9 @@ export default async function AdminCaseReadPage({ params }: { params: { caseId: 
   const events = (evData ?? []) as { id: string; kind: string; title: string; detail: string | null; actor_email: string | null; created_at: string }[]
 
   const own = c.partner_id === scope.partnerId
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short", timeZone })
   const currency = String(payments[0]?.currency ?? trip?.currency ?? "EUR")
 
   const fact = (label: string, value: React.ReactNode) => (

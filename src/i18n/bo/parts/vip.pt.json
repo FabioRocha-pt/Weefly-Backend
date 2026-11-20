@@ -51,7 +51,9 @@
         "linkNote": "O link pessoal é criado ao guardar e não muda. Desactivar o VIP desliga-o; os pedidos dele ficam.",
         "save": "Guardar",
         "create": "Criar VIP",
-        "cancel": "Cancelar"
+        "cancel": "Cancelar",
+        "phoneCountry": "País e indicativo do telefone",
+        "phoneHint": "Fica guardado como {number}"
       },
       "detail": {
         "edit": "Editar",
@@ -68,7 +70,7 @@
       "errors": {
         "nameMissing": "Escreva o nome do cliente.",
         "emailInvalid": "O email não é válido.",
-        "phoneInvalid": "O telefone não é válido (ex.: +238 991 23 45).",
+        "phoneInvalid": "O telefone não é válido para o país escolhido. Escolha o país e escreva só o número.",
         "notAllowed": "A sua conta não pode gerir clientes VIP, ou o canal VIP não está ligado.",
         "invalid": "Verifique os dados.",
         "unavailable": "Serviço indisponível. Tente mais tarde.",
@@ -89,6 +91,38 @@
         "empty": "Ainda não há clientes VIP.",
         "state": "Estado",
         "active": "activo"
+      },
+      "changes": {
+        "title": "Alterações aos dados",
+        "subtitle": "O que o cliente mudou em Meus dados, na app dele. O passaporte aparece mascarado.",
+        "empty": "O cliente ainda não alterou os seus dados.",
+        "when": "Quando",
+        "who": "Quem",
+        "what": "O que mudou",
+        "byClient": "O cliente",
+        "byStaff": "A equipa",
+        "source": {
+          "profile": "em Meus dados",
+          "request": "a partir de um pedido",
+          "backoffice": "no backoffice"
+        },
+        "from": "antes",
+        "to": "agora",
+        "none": "vazio",
+        "field": {
+          "phone": "Telefone",
+          "email": "Email",
+          "locale": "Língua",
+          "title": "Título",
+          "given_names": "Nomes",
+          "surname": "Apelidos",
+          "birth_date": "Data de nascimento",
+          "gender": "Sexo",
+          "nationality": "Nacionalidade",
+          "passport_number": "Passaporte",
+          "passport_expiry": "Validade do passaporte",
+          "issuing_country": "País emissor"
+        }
       }
     },
     "linkChannels": {

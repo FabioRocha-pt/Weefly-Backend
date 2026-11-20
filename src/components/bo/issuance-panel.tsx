@@ -343,7 +343,7 @@ export function BoIssuancePanel({
   hasDocument: boolean
 }) {
   const router = useRouter()
-  const { t, locale } = useI18n()
+  const { t, locale, timeZone } = useI18n()
   const [pending, startTransition] = useTransition()
 
   const paidOut = Boolean(payment?.admin_confirmed) || payment?.status === "COMPLETED"
@@ -713,7 +713,7 @@ export function BoIssuancePanel({
               <span className="kv-k">{t("bo.issuance.summary.issuedAt")}</span>
               <span className="kv-v">
                 {new Date(issuance.issuedAt!).toLocaleString(LOCALE_TAGS[locale], {
-                  timeZone: "Atlantic/Cape_Verde",
+                  timeZone,
                 })}
               </span>
             </div>

@@ -25,6 +25,9 @@ import { countryName } from "@/lib/countries"
 import { useI18n } from "@/i18n/provider"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { translateOr, type Translator } from "@/i18n/translate"
+import { WAIT_FILTER_CSS, waitSince } from "@/lib/queue-wait"
+import { VipTag, vipClientHref } from "@/components/channels/vip-tag"
+import { WaitBadge, WaitFilter, WaitRow } from "@/components/channels/wait"
 
 /* A coluna é estreita: fica o código do país, que é o que a equipa lê de
    relance, com o nome inteiro no title. */
@@ -42,10 +45,14 @@ export function BoQueueTable({
   viewerId: string
 }) {
   const router = useRouter()
-  const { t, locale } = useI18n()
+  const { t, locale, timeZone } = useI18n()
   const tag = LOCALE_TAGS[locale]
   const [pending, startTransition] = useTransition()
   const [query, setQuery] = useState(search)
+  /* FILA-01 · "os pedidos VIP podem ser filtrados na fila". Filtra, não
+     reordena: os VIP ficam onde estavam. */
+  const [onlyVip, setOnlyVip] = useState(false)
+  const vipCount = useMemo(() => rows.filter((row) => row.channel === "vip").length, [rows])
   const [claiming, setClaiming] = useState<string | null>(null)
   /* B2G-13 · quem perde a corrida fica a saber quem ganhou. */
   const [claimMsg, setClaimMsg] = useState<{ caseId: string; text: string } | null>(null)
@@ -69,14 +76,15 @@ export function BoQueueTable({
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((row) =>
-      [row.reference, row.clientName, row.clientPhone, row.origin, row.destination, row.pnr ?? ""]
+    const pool = onlyVip ? rows.filter((row) => row.channel === "vip") : rows
+    if (!q) return pool
+    return pool.filter((row) =>
+      [row.reference, row.clientName, row.clientPhone, row.origin, row.destination, row.pnr ?? "", row.vipName ?? ""]
         .join(" ")
         .toLowerCase()
         .includes(q)
     )
-  }, [rows, query])
+  }, [rows, query, onlyVip])
 
   return (
     <>
@@ -92,12 +100,26 @@ export function BoQueueTable({
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
+        {/* FILA-01 · só os pedidos de clientes VIP. */}
+        {(vipCount > 0 || onlyVip) && (
+          <button
+            type="button"
+            className={`btn btn-sm${onlyVip ? " btn-primary" : ""}`}
+            aria-pressed={onlyVip}
+            onClick={() => setOnlyVip((value) => !value)}
+          >
+            {t("bo.vipTag.filter", { count: vipCount })}
+          </button>
+        )}
+        {/* FILA-02 · só os críticos (mais de 3 dias à espera). */}
+        {rows.length > 0 && <WaitFilter scope="bo-queue-table" sinces={rows.map((row) => waitSince(row))} />}
         <span className="tcount">
           {t("bo.queue.table.cases", { count: visible.length })}
         </span>
       </div>
 
-      <div className="tablewrap">
+      <style>{WAIT_FILTER_CSS}</style>
+      <div className="tablewrap" id="bo-queue-table">
         {visible.length === 0 ? (
           <div className="panel-b">
             <p className="note">{t(`bo.queue.empty.${bucket}`)}</p>
@@ -127,9 +149,11 @@ export function BoQueueTable({
                   Date.parse(row.deadlineAt) < Date.now() + 6 * 3600_000
 
                 const archiveOpen = archiving?.caseId === row.caseId
+                /* FILA-02 · desde quando espera; nulo = já não espera por nada. */
+                const since = waitSince(row)
                 return (
                   <Fragment key={row.caseId}>
-                  <tr>
+                  <WaitRow since={since}>
                     <td>
                       <div className="ref mono">{row.reference}</div>
                       <div className="ref-sub">
@@ -147,24 +171,32 @@ export function BoQueueTable({
                       )}
                     </td>
                     <td>
+                      {/* FILA-01 · E6 · um pedido VIP diz que é VIP e de quem, e
+                          a etiqueta abre a ficha do cliente. */}
+                      {row.channel === "vip" ? (
+                        <VipTag
+                          name={row.vipName}
+                          href={vipClientHref({ vipClientId: row.vipClientId })}
+                          title={t("bo.vipTag.open")}
+                        />
+                      ) : (
                       <span
                         className="chan"
                         title={row.market ? countryName(row.market, tag) : ""}
                       >
-                        {/* B2G-21 · o canal do pedido: WEB (Público), VIP ou MIN. */}
-                        <i>{row.channel === "vip" ? "VIP" : row.channel === "ministerio" ? "MIN" : "WEB"}</i>
+                        {/* B2G-21 · o canal do pedido: WEB (Público) ou MIN. */}
+                        <i>{row.channel === "ministerio" ? "MIN" : "WEB"}</i>
                         {/* B2G-11 · a urgência do pedido do ministério. */}
                         {row.channel === "ministerio" && row.urgency > 0 && (
                           <i style={{ color: row.urgency === 2 ? "var(--ember)" : "var(--warn)" }}>
                             {t(`bo.urgency.${row.urgency}`)}
                           </i>
                         )}
-                        {row.channel === "vip"
-                          ? row.vipName ?? "VIP"
-                          : row.channel === "ministerio"
-                            ? row.organisationName ?? t("bo.channels.ministerio")
-                            : `Link · ${MARKET_NAME(row.market)}`}
+                        {row.channel === "ministerio"
+                          ? row.organisationName ?? t("bo.channels.ministerio")
+                          : `Link · ${MARKET_NAME(row.market)}`}
                       </span>
+                      )}
                     </td>
                     <td>
                       <span className={`state ${BO_STATE_CLASS[row.state]}`}>
@@ -187,10 +219,17 @@ export function BoQueueTable({
                       {row.amount ? formatMoney(row.amount, row.currency) : "—"}
                     </td>
                     <td>
-                      <div className={`age${late ? " late" : row.waiting === "us" ? " hot" : ""}`}>
-                        {elapsedSince(row.submittedAt)}
-                      </div>
-                      <div className="age-sub">{deadlineNote(row, t, tag)}</div>
+                      {/* FILA-02 · a cor do tempo de espera e o tempo escrito. Uma
+                          entrada que já não espera (emitida, fechada, cancelada)
+                          fica com o tempo de sempre, sem cor. */}
+                      {since ? (
+                        <WaitBadge since={since} />
+                      ) : (
+                        <div className={`age${late ? " late" : row.waiting === "us" ? " hot" : ""}`}>
+                          {elapsedSince(row.submittedAt)}
+                        </div>
+                      )}
+                      <div className="age-sub">{deadlineNote(row, t, tag, timeZone)}</div>
                     </td>
                     <td>
                       <div className="rowacts">
@@ -243,7 +282,7 @@ export function BoQueueTable({
                         </Link>
                       </div>
                     </td>
-                  </tr>
+                  </WaitRow>
                   {claimMsg?.caseId === row.caseId && (
                     <tr>
                       <td colSpan={9}>
@@ -321,14 +360,14 @@ export function BoQueueTable({
  * Distinguir os dois é o ponto. "prazo nosso" é uma dívida da equipa; "prazo do
  * cliente" é uma espera normal.
  */
-function deadlineNote(row: BoQueueRow, t: Translator, tag: string): string {
+function deadlineNote(row: BoQueueRow, t: Translator, tag: string, timeZone: string): string {
   /* T-21 · num caso fechado o prazo já não é notícia; quem o fechou e quando é
      que é. É a única pergunta que se faz sobre um caso arquivado. */
   if (row.closedAt) {
     const when = new Date(row.closedAt).toLocaleDateString(tag, {
       day: "2-digit",
       month: "short",
-      timeZone: "Atlantic/Cape_Verde",
+      timeZone,
     })
     /* PRO-10 · o motivo, quando foi arquivado e não emitido. */
     const why =
@@ -352,7 +391,7 @@ function deadlineNote(row: BoQueueRow, t: Translator, tag: string): string {
               month: "short",
               hour: "2-digit",
               minute: "2-digit",
-              timeZone: "Atlantic/Cape_Verde",
+              timeZone,
             }),
           })
     return label
@@ -366,7 +405,7 @@ function deadlineNote(row: BoQueueRow, t: Translator, tag: string): string {
       when: new Date(row.offerValidUntil).toLocaleString(tag, {
         hour: "2-digit",
         minute: "2-digit",
-        timeZone: "Atlantic/Cape_Verde",
+        timeZone,
       }),
     })
   }

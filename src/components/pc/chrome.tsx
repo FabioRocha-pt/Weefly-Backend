@@ -167,7 +167,13 @@ export function PcTopbar({
   token,
   onLangChange,
   onCurrencyChange,
+  hideLang = false,
+  hideCurrency = false,
 }: {
+  /** APP-01 · os ecrãs da app sem pedido (Minhas passagens, Meus dados) não têm moeda. */
+  hideCurrency?: boolean
+  /** APP-01 · na app do VIP a língua escolhe-se em Meus dados, não aqui. */
+  hideLang?: boolean
   reference?: string | null
   currency: string
   lang: Locale
@@ -259,6 +265,7 @@ export function PcTopbar({
           <button
             className="pref"
             type="button"
+            hidden={hideLang}
             disabled={pending}
             title={t("pc.topbar.languageHint")}
             onClick={switchLanguage}
@@ -268,6 +275,7 @@ export function PcTopbar({
           <button
             className="pref"
             type="button"
+            hidden={hideCurrency}
             title={
               onCurrencyChange ? undefined : t("pc.topbar.currencyFixed", { currency })
             }

@@ -8,6 +8,8 @@ import { getBoI18n } from "@/i18n/bo-server"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { translateOr } from "@/i18n/translate"
 
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
+
 /**
  * DAT-01 · a ficha de um viajante do ministério: editável, com o histórico de
  * alterações por baixo (quem, quando, de onde, e o antes e o depois).
@@ -31,7 +33,9 @@ export default async function TravellerPage({ params }: { params: { id: string; 
   const { traveller: tr, changes } = loaded
 
   const { t, locale } = await getBoI18n()
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short", timeZone })
   const soon = passportExpiringSoon(tr.passportExpiry)
   const show = (v: unknown) => (v == null || v === "" ? "—" : String(v))
 

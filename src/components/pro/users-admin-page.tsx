@@ -7,6 +7,8 @@ import { getBoI18n } from "@/i18n/bo-server"
 import { accessProfileLabel } from "@/lib/access-roles"
 import type { Translator } from "@/i18n/translate"
 
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
+
 /**
  * ADM-02 · o ecrã de Utilizadores e permissões, para as duas portas por onde
  * se chega a ele: o Admin (`/gestao/utilizadores`, Admin WeeFly) e o Agente
@@ -18,7 +20,9 @@ export async function UsersAdminPage({ title, subtitle }: { title: string; subti
   if (!data) notFound()
   const { t, locale } = await getBoI18n()
 
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short", timeZone })
   const partnerName = new Map(data.partners.map((p) => [p.id, p.commercialName]))
   const roleName = new Map(data.roles.map((r) => [r.id, accessProfileLabel(r, locale, t)]))
   const orgName = new Map(data.organisations.map((o) => [o.id, o.name]))

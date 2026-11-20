@@ -65,7 +65,8 @@
           "client_declared_paid": "O cliente diz que pagou",
           "client_message": "Mensagem do cliente",
           "request_cancelled": "O cliente cancelou o pedido",
-          "payment_expired": "O prazo de pagamento expirou"
+          "payment_expired": "O prazo de pagamento expirou",
+          "pay_details_requested": "O cliente pediu as instruções de pagamento"
         }
       },
       "live": {
@@ -104,6 +105,13 @@
         "close": "Fechar",
         "copy": "Copiar",
         "copied": "Copiado"
+      },
+      "timeZone": {
+        "title": "Fuso das horas",
+        "body": "Todas as horas do back-office aparecem neste fuso. Fica guardado na sua conta e só muda o que vê no ecrã.",
+        "thisDevice": "o deste dispositivo",
+        "note": "Horas de {zone}",
+        "invalid": "Fuso horário desconhecido."
       }
     },
     "tutorial": {

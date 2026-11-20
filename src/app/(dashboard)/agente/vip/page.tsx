@@ -4,11 +4,13 @@ import { notFound } from "next/navigation"
 import { getBoAccess } from "@/lib/bo-access"
 import { getBoScope } from "@/lib/bo-scope"
 import { loadBoQueue } from "@/lib/pc/bo-queue"
-import { listVipClients } from "@/lib/vip"
+import { listVipClients, vipClientPath } from "@/lib/vip"
 import { pcSiteUrl } from "@/lib/site-url"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { getBoI18n } from "@/i18n/bo-server"
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
 import { ChannelQueue } from "@/components/channels/channel-queue"
+import { QueueLive } from "@/components/channels/queue-live"
 import { CopyField, NewVipClient, VipActiveToggle } from "@/components/vip/vip-forms"
 
 /**
@@ -31,7 +33,9 @@ export default async function VipPage() {
     loadBoQueue(scope, { bucket: "tudo", channel: "vip" }, access.identity.userId),
   ])
   const base = pcSiteUrl({ slug: tenant.partnerSlug, isOperator: tenant.isOperator })
-  const date = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const date = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium", timeZone })
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -40,7 +44,11 @@ export default async function VipPage() {
           <h1 className="text-2xl font-bold text-slate-900">{t("bo.vip.list.title")}</h1>
           <p className="text-slate-500 mt-1">{t("bo.vip.list.subtitle")}</p>
         </div>
-        <NewVipClient />
+        <div className="flex flex-wrap items-center gap-3">
+          {/* E5 · um pedido novo aparece na fila sem recarregar, em menos de 5 s. */}
+          <QueueLive label={t("bo.masterConcierge.live")} />
+          <NewVipClient />
+        </div>
       </div>
 
       {vips.length === 0 ? (
@@ -77,7 +85,8 @@ export default async function VipPage() {
                   </td>
                   <td className="px-4 py-3 min-w-[18rem]">
                     {v.active ? (
-                      <CopyField value={`${base}/vip/${v.token}`} />
+                      /* VIP-01 · o endereço novo: `/pc/<nome>-<código>`. */
+                      <CopyField value={`${base}${vipClientPath(v)}`} />
                     ) : (
                       <span className="text-xs">{t("bo.vip.list.linkOff")}</span>
                     )}

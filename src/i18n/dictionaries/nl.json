@@ -1340,7 +1340,7 @@
       "paidSendProof": "Ik heb betaald · betalingsbewijs versturen",
       "confirmedByPerson": "Een betaling wordt pas bevestigd door een van onze medewerkers, nadat deze haar op de rekening heeft gezien. Wij controleren binnen {hours} uur, tijdens kantooruren.",
       "sendMeDetails": "Stuur mij de gegevens voor {method}",
-      "preparingDetails": "Wij bereiden de gegevens voor {method} voor en sturen ze hier naartoe",
+      "preparingDetails": "Verzoek ontvangen: wij bereiden de gegevens voor {method} voor en sturen ze hier naartoe. Uw aanvraag wacht nog op betaling.",
       "byHand": "Een van onze medewerkers regelt dit handmatig, het gebeurt dus niet onmiddellijk. U ontvangt de gegevens per e-mail en via deze link, doorgaans tijdens kantooruren.",
       "proofReceived": "Betalingsbewijs ontvangen: wij zijn het aan het controleren",
       "detailsComing": "Bedankt: wij bereiden uw betaalgegevens voor",
@@ -1374,7 +1374,9 @@
           "sub": "Betalingsreferentie"
         }
       },
-      "worldwide": "Wij accepteren alle betaalmethoden wereldwijd."
+      "worldwide": "Wij accepteren alle betaalmethoden wereldwijd.",
+      "alreadyPaid": "Ik heb betaald",
+      "paidDeclared": "Bedankt: wij gaan uw betaling bevestigen"
     },
     "pax": {
       "eyebrow": "Stap 5 · passagiers",
@@ -1800,7 +1802,12 @@
       "uploadFailed": "Wij konden het bestand niet opslaan. Probeer het opnieuw.",
       "ministrySession": "Uw sessie is beëindigd. Voer de pincode opnieuw in om de aanvraag te versturen.",
       "ministryFlood": "U heeft het afgelopen uur al veel aanvragen verstuurd. Wacht even, of neem via WhatsApp contact op met het reisbureau.",
-      "passengerBirthDate": "controleer de geboortedatum"
+      "passengerBirthDate": "controleer de geboortedatum",
+      "payDetailsFirst": "Wij hebben u de betaalgegevens voor deze methode nog niet gestuurd. Vraag ze eerst aan en betaal daarmee.",
+      "checkForm": "Controleer de gegevens van uw aanvraag en probeer het opnieuw.",
+      "tooManyRequests": "U heeft ons meerdere aanvragen achter elkaar gestuurd. Geef ons een paar minuten om ze te bekijken, of stuur ons een bericht via WhatsApp.",
+      "passengerCount": "Het aantal passagiers komt niet overeen met de aanvraag.",
+      "passengerDetails": "Controleer de gegevens van deze passagier."
     }
   },
   "pro": {
@@ -2279,6 +2286,120 @@
       "flightChangeBody": "Luchtvaartmaatschappijen wijzigen vluchttijden. Als dat gebeurt, laten wij het u weten per e-mail en WhatsApp, en de melding verschijnt ook op uw pagina.",
       "changeTitle": "Als u iets wilt wijzigen",
       "changeBody": "Neem contact met ons op voordat u de luchtvaartmaatschappij benadert. Een wijziging buiten ons om kan de voorwaarden van het tarief ongeldig maken."
+    }
+  },
+  "vipApp": {
+    "tabs": {
+      "label": "Onderdelen van de app",
+      "pedido": "Nieuwe aanvraag",
+      "passagens": "Mijn reizen",
+      "dados": "Mijn gegevens",
+      "attention_one": "{count} aanvraag wacht op u",
+      "attention_other": "{count} aanvragen wachten op u"
+    },
+    "request": {
+      "hello": "Hallo, {name}",
+      "lead": "Waar wilt u naartoe? Vertel ons de reis en wij regelen de rest."
+    },
+    "trips": {
+      "title": "Mijn reizen",
+      "lead": "Uw aanvragen, aanbiedingen en tickets op één plek.",
+      "open": "Lopend",
+      "booked": "Geboekte reizen",
+      "history": "Geschiedenis",
+      "emptyTitle": "U heeft nog geen aanvragen",
+      "emptyBody": "Zodra u uw eerste aanvraag doet, verschijnt die hier, met de aanbiedingen en het ticket.",
+      "newRequest": "Een aanvraag doen",
+      "oneway": "enkele reis",
+      "multi": "meerdere steden",
+      "continue": "Verdergaan",
+      "see": "Bekijken",
+      "openRequest": "Aanvraag {reference} openen",
+      "openTicket": "Ticket openen (pdf)",
+      "backToList": "Terug naar Mijn reizen",
+      "status": {
+        "received": "Aanvraag ontvangen · wij bereiden uw aanbiedingen voor",
+        "offers_one": "{count} aanbieding ontvangen · kies",
+        "offers_other": "{count} aanbiedingen ontvangen · kies er één",
+        "passengers": "Passagiersgegevens nodig",
+        "payment": "Wacht op betaling",
+        "checking": "Betaling wordt gecontroleerd",
+        "paid": "Betaald · uw ticket wordt uitgegeven",
+        "issued": "Ticket uitgegeven",
+        "expired": "Verlopen",
+        "cancelled": "Geannuleerd",
+        "closed": "Gesloten"
+      }
+    },
+    "data": {
+      "title": "Mijn gegevens",
+      "lead": "{name}, met deze gegevens wordt uw ticket bij elke aanvraag ingevuld. U kunt ze altijd wijzigen.",
+      "contact": "Contact",
+      "phone": "Telefoon",
+      "phoneCountry": "Land van het telefoonnummer",
+      "phoneHint": "Alleen het nummer, zonder het landnummer {dial}",
+      "email": "E-mail",
+      "forTicket": "Voor het ticket",
+      "asInPassport": "zoals in het paspoort",
+      "names": "Voornamen en achternamen",
+      "birthDate": "Geboortedatum",
+      "sex": "Geslacht",
+      "nationality": "Nationaliteit",
+      "passport": "Paspoortnummer",
+      "passportExpiry": "Geldigheid van het paspoort",
+      "issuingCountry": "Land van afgifte",
+      "missing": "Nog niet ingevuld",
+      "fillsTicket": "Bij uw volgende aanvraag is de eerste passagier al ingevuld met deze gegevens. Wijzigt u ze alleen voor die aanvraag, dan blijven deze ongewijzigd.",
+      "edit": "Mijn gegevens wijzigen",
+      "save": "Opslaan",
+      "saving": "Bezig met opslaan…",
+      "cancel": "Annuleren",
+      "saved": "Gegevens opgeslagen",
+      "nothingChanged": "Er is niets gewijzigd",
+      "consent": "Ik geef toestemming om mijn paspoortgegevens te bewaren, zodat mijn ticket bij elke aanvraag wordt ingevuld.",
+      "preferences": "Voorkeuren",
+      "language": "Taal van de app",
+      "languageHint": "De app, de meldingen en de e-mails van uw volgende aanvragen zijn in deze taal.",
+      "languages": {
+        "pt": "Português",
+        "en": "English",
+        "fr": "Français",
+        "nl": "Nederlands"
+      },
+      "company": "Het bedrijf dat u begeleidt",
+      "companyNote": "Heeft u een vraag over uw aanvragen? Neem contact op met het team.",
+      "passportWarn": {
+        "soonTitle": "Uw paspoort verloopt binnen zes maanden",
+        "soonBody": "Veel landen eisen zes maanden geldigheid bij aankomst. Vernieuw het vóór uw volgende reis.",
+        "expiredTitle": "Uw paspoort is verlopen",
+        "expiredBody": "Werk uw gegevens bij zodra u het nieuwe paspoort heeft: met dit paspoort kan geen ticket worden uitgegeven."
+      },
+      "keepTitle": "Opslaan in Mijn gegevens?",
+      "keepBody": "De gegevens van de eerste passagier wijken af van die in Mijn gegevens. Wilt u ze opslaan, zodat uw volgende aanvragen ermee worden ingevuld?",
+      "keepConsent": "Door op te slaan geeft u ons toestemming om uw paspoortgegevens in Mijn gegevens te bewaren. Kiest u alleen deze aanvraag, dan blijft Mijn gegevens ongewijzigd.",
+      "keepYes": "Opslaan in Mijn gegevens",
+      "keepNo": "Alleen deze aanvraag",
+      "savedFromRequest": "Opgeslagen in Mijn gegevens"
+    },
+    "install": {
+      "title": "Bewaar {name} op uw telefoon",
+      "body": "U krijgt een pictogram op uw startscherm en opent uw aanvragen zonder de link te zoeken.",
+      "install": "Installeren",
+      "notNow": "Nu niet",
+      "done": "{name} staat op uw telefoon."
+    },
+    "errors": {
+      "notFound": "Deze link is niet meer beschikbaar.",
+      "invalid": "Controleer de gegevens en probeer het opnieuw.",
+      "saveFailed": "Opslaan is niet gelukt. Probeer het zo meteen opnieuw.",
+      "phone": "Dit nummer is niet geldig voor het gekozen land.",
+      "email": "Controleer het e-mailadres.",
+      "contactNeeded": "Wij hebben een telefoonnummer of e-mailadres nodig om u te bereiken.",
+      "names": "Schrijf de voornamen en achternamen zoals in het paspoort.",
+      "birthDate": "Controleer de geboortedatum.",
+      "passport": "Het paspoortnummer bestaat uit 5 tot 12 letters of cijfers.",
+      "passportExpiry": "Controleer de geldigheid van het paspoort.",
+      "consent": "Vink de toestemming aan om de paspoortgegevens te bewaren."
     }
   }
 }

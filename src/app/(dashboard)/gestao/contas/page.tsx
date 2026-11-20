@@ -6,6 +6,8 @@ import { loadAccountsReview } from "@/lib/pro-admin"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { getBoI18n } from "@/i18n/bo-server"
 
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
+
 /**
  * PRO-09 · contas à espera de validação, no módulo Admin da conta master.
  *
@@ -26,7 +28,9 @@ export default async function ContasPage() {
     )
   }
 
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium", timeStyle: "short" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium", timeStyle: "short", timeZone })
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">

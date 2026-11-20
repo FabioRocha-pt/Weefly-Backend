@@ -7,6 +7,8 @@ import { loadProClients } from "@/lib/pro-clients"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { getBoI18n } from "@/i18n/bo-server"
 
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
+
 /**
  * PRO-05 · os clientes da empresa: nome, contactos, número de pedidos e data do
  * último. Construída a partir dos casos — ver `lib/pro-clients.ts`.
@@ -38,7 +40,9 @@ export default async function ClientesPage() {
     )
   }
 
-  const date = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const date = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium", timeZone })
 
   return (
     <div className="max-w-6xl mx-auto space-y-4">

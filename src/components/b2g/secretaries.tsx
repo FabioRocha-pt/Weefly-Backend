@@ -83,14 +83,15 @@ export function SecretaryManager({
   viewer: { email: string; isManager: boolean; crossPartner: boolean }
   canManage: boolean
 }) {
-  const { t, locale } = useI18n()
+  const { t, locale, timeZone } = useI18n()
   const router = useRouter()
   const [pending, start] = useTransition()
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [reveal, setReveal] = useState<{ name: string; pin: string; link?: string } | null>(null)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ name: "", email: "", phone: "", whatsapp: "", sendWelcome: true })
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short" })
+  /* E8 · no fuso da conta de quem vê. */
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short", timeZone })
 
   const run = (action: () => Promise<SecretaryResult>, name: string, after?: () => void) =>
     start(async () => {

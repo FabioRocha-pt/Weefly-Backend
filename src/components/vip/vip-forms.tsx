@@ -8,11 +8,13 @@
  * já na língua do agente. Quem pode escrever decide-o o servidor.
  */
 
-import { useEffect, useState, useTransition } from "react"
+import { useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/i18n/provider"
+import { LOCALE_TAGS } from "@/i18n/config"
+import { COUNTRIES, COUNTRY_BY_ISO, DEFAULT_COUNTRY, countryName, flagOf, splitPhone, toE164 } from "@/lib/countries"
 import { createVipClient, setVipActive, updateVipClient, type VipResult } from "@/actions/vip"
 
 const field =
@@ -57,10 +59,49 @@ export function VipForm({
   initial?: Partial<VipFormValues>
   onDone?: () => void
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const tag = LOCALE_TAGS[locale]
   const { pending, run, note } = useAction()
   const [v, setV] = useState<VipFormValues>({ name: "", phone: "", email: "", level: "", ...initial })
   const set = <K extends keyof VipFormValues>(k: K, value: VipFormValues[K]) => setV((c) => ({ ...c, [k]: value }))
+
+  /*
+   * E7 · o telefone deixou de ser texto livre: o país e o indicativo
+   * escolhem-se da lista (a mesma do registo, `lib/countries`), escreve-se o
+   * número nacional, e o que se guarda é o internacional (E.164). Um número
+   * já gravado ("+238 9800700") volta a abrir com o país dele no seletor.
+   */
+  const [phone, setPhone] = useState(() => splitPhone(initial?.phone))
+  const [phoneError, setPhoneError] = useState(false)
+  const countryOptions = useMemo(
+    () =>
+      COUNTRIES.map((c) => ({ iso: c.iso, dial: c.dial, name: countryName(c.iso, tag) })).sort((a, b) =>
+        a.iso === DEFAULT_COUNTRY ? -1 : b.iso === DEFAULT_COUNTRY ? 1 : a.name.localeCompare(b.name, tag)
+      ),
+    [tag]
+  )
+  const dial = COUNTRY_BY_ISO[phone.iso]?.dial ?? "+238"
+
+  const submit = () => {
+    const national = phone.national.trim()
+    const e164 = national ? toE164(dial, national) : ""
+    if (e164 === null) {
+      setPhoneError(true)
+      return
+    }
+    setPhoneError(false)
+    const values = { ...v, phone: e164 }
+    run(
+      () => (id ? updateVipClient(id, values) : createVipClient(values)),
+      () => {
+        if (!id) {
+          setV({ name: "", phone: "", email: "", level: "" })
+          setPhone({ iso: DEFAULT_COUNTRY, national: "" })
+        }
+        onDone?.()
+      }
+    )
+  }
 
   return (
     <div className="rounded-2xl border border-orange-200 bg-orange-50/40 p-5 space-y-4">
@@ -79,17 +120,49 @@ export function VipForm({
             placeholder={t("bo.vip.form.levelHint")}
           />
         </label>
-        <label className="text-sm space-y-1">
-          <span className="text-slate-600">{t("bo.vip.form.phone")}</span>
-          <input
-            className={field}
-            value={v.phone}
-            onChange={(e) => set("phone", e.target.value)}
-            maxLength={40}
-            placeholder="+238 991 23 45"
-            inputMode="tel"
-          />
-        </label>
+        <div className="text-sm space-y-1">
+          <label className="text-slate-600" htmlFor={`vip-phone-${id ?? "new"}`}>
+            {t("bo.vip.form.phone")}
+          </label>
+          <div className="flex gap-2">
+            <select
+              className={`${field} w-[46%] min-w-0`}
+              aria-label={t("bo.vip.form.phoneCountry")}
+              value={phone.iso}
+              onChange={(e) => {
+                setPhone((c) => ({ ...c, iso: e.target.value }))
+                setPhoneError(false)
+              }}
+            >
+              {countryOptions.map((c) => (
+                <option key={c.iso} value={c.iso}>
+                  {flagOf(c.iso)} {c.name} ({c.dial})
+                </option>
+              ))}
+            </select>
+            <input
+              id={`vip-phone-${id ?? "new"}`}
+              className={`${field} flex-1 min-w-0`}
+              value={phone.national}
+              onChange={(e) => {
+                setPhone((c) => ({ ...c, national: e.target.value }))
+                setPhoneError(false)
+              }}
+              maxLength={24}
+              placeholder="991 23 45"
+              inputMode="tel"
+              autoComplete="tel-national"
+              aria-invalid={phoneError}
+            />
+          </div>
+          {phoneError ? (
+            <p className="text-xs text-red-600">{t("bo.vip.errors.phoneInvalid")}</p>
+          ) : (
+            <p className="text-xs text-slate-500">
+              {t("bo.vip.form.phoneHint", { number: toE164(dial, phone.national) ?? `${dial} …` })}
+            </p>
+          )}
+        </div>
         <label className="text-sm space-y-1">
           <span className="text-slate-600">{t("bo.vip.form.email")}</span>
           <input
@@ -103,18 +176,7 @@ export function VipForm({
       </div>
       <p className="text-xs text-slate-500">{t("bo.vip.form.linkNote")}</p>
       <div className="flex flex-wrap items-center gap-3">
-        <Button
-          disabled={pending}
-          onClick={() =>
-            run(
-              () => (id ? updateVipClient(id, v) : createVipClient(v)),
-              () => {
-                if (!id) setV({ name: "", phone: "", email: "", level: "" })
-                onDone?.()
-              }
-            )
-          }
-        >
+        <Button disabled={pending} onClick={submit}>
           {id ? t("bo.vip.form.save") : t("bo.vip.form.create")}
         </Button>
         {onDone && (

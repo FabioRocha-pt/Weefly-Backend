@@ -353,7 +353,8 @@
       "ministry_ready_to_issue": "Prêt à émettre · confirmer le paiement externe",
       "admin_intervention": "Intervention de l'Admin WeeFly",
       "admin_intervention_ended": "Intervention de l'Admin WeeFly terminée",
-      "tickets_whatsapp": "Billet envoyé par WhatsApp"
+      "tickets_whatsapp": "Billet envoyé par WhatsApp",
+      "pay_details_requested": "Le client a demandé les données de paiement"
     }
   }
 }

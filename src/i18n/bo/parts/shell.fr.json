@@ -65,7 +65,8 @@
           "client_declared_paid": "Le client déclare avoir payé",
           "client_message": "Message du client",
           "request_cancelled": "Le client a annulé la demande",
-          "payment_expired": "Le délai de paiement a expiré"
+          "payment_expired": "Le délai de paiement a expiré",
+          "pay_details_requested": "Le client a demandé les données de paiement"
         }
       },
       "live": {
@@ -104,6 +105,13 @@
         "close": "Fermer",
         "copy": "Copier",
         "copied": "Copié"
+      },
+      "timeZone": {
+        "title": "Fuseau horaire",
+        "body": "Toutes les heures du back-office s'affichent dans ce fuseau. Il est enregistré dans votre compte et ne change que ce que vous voyez à l'écran.",
+        "thisDevice": "celui de cet appareil",
+        "note": "Heures de {zone}",
+        "invalid": "Fuseau horaire inconnu."
       }
     },
     "tutorial": {

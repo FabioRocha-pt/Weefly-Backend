@@ -178,6 +178,35 @@ export interface PcState {
     appPath: string | null
     fundsCover: boolean | null
   } | null
+  /**
+   * APP-03 · o endereço deste pedido, quando não é `/pc/<token>`: dentro da
+   * app de um cliente VIP é `/pc/<nome>-<código>/passagens/<token>`. Os
+   * ecrãs usam-no para os seus próprios links (trocar de oferta, rever os
+   * passageiros), para o cliente nunca sair da app. Ver `pcSelfPath`, em
+   * `lib/pc/format`.
+   */
+  selfPath?: string
+  /**
+   * APP-04 · o pedido aberto dentro da app de um cliente VIP: os dados dele
+   * (Meus dados) preenchem o primeiro passageiro, e o que ele mudar no pedido
+   * pode ser guardado de volta. Posto pela página da app, nunca pelo token do
+   * caso sozinho.
+   */
+  vip?: {
+    /** O endereço da app (`/pc/<nome>-<código>`), para as ações de Meus dados. */
+    handle: string
+    profile: {
+      title: string | null
+      givenNames: string | null
+      surname: string | null
+      birthDate: string | null
+      gender: string | null
+      nationality: string | null
+      passportNumber: string | null
+      passportExpiry: string | null
+      issuingCountry: string | null
+    }
+  } | null
 }
 
 export type PcLookup =
@@ -224,7 +253,7 @@ export async function loadPcState(
        trip_request:trip_requests (
          id, reference, trip_type, origin, destination, depart_date, return_date,
          adults, children, infants, infants_in_seat, infants_on_lap,
-         cabin_class, currency, agent_slug, created_at,
+         cabin_class, currency, agent_slug, created_at, baggage_hold,
          lead:leads (full_name, email, phone_prefix, phone, phone_country, phone_e164, locale),
          legs:trip_request_legs (position, origin, destination, depart_date)
        )`

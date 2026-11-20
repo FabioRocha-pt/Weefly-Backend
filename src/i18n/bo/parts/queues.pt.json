@@ -51,6 +51,36 @@
       "empty": "Não há pedidos com estes filtros.",
       "openCase": "Abrir",
       "live": "Actualiza sozinho, sem recarregar."
+    },
+    "wait": {
+      "level": {
+        "fresh": "Acabou de chegar",
+        "waiting": "A aguardar",
+        "late": "Atrasado",
+        "critical": "Crítico"
+      },
+      "ago": {
+        "min_one": "há {count} min",
+        "min_other": "há {count} min",
+        "hour_one": "há {count} h",
+        "hour_other": "há {count} h",
+        "day_one": "há {count} dia",
+        "day_other": "há {count} dias"
+      },
+      "filter": {
+        "critical_one": "Críticos · {count}",
+        "critical_other": "Críticos · {count}"
+      },
+      "byCompany": {
+        "title": "Críticos por empresa",
+        "none": "nenhum pedido há mais de 3 dias à espera"
+      }
+    },
+    "vipTag": {
+      "open": "Abrir a ficha do cliente VIP",
+      "filter_one": "Só VIP · {count}",
+      "filter_other": "Só VIP · {count}",
+      "channel": "VIP"
     }
   }
 }

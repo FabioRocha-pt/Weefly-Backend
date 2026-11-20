@@ -17,6 +17,7 @@ import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { savePcPassengers, type PcPassengerInput } from "@/actions/pc"
+import { saveVipProfileFromRequest } from "@/actions/vip-app"
 import type { PcState } from "@/lib/pc/state"
 import { NATIONALITIES } from "@/lib/pc/catalog"
 import {
@@ -25,6 +26,7 @@ import {
   fmtDateY,
   paxKindFromDob,
   paxShort,
+  pcSelfPath,
   todayISO,
 } from "@/lib/pc/format"
 import { Sentence } from "@/components/pc/bits"
@@ -49,6 +51,29 @@ interface PaxRow {
   /* MIN-03 · só num caso de ministério, e só para apoio operacional. */
   phone: string
   email: string
+}
+
+/**
+ * APP-04 · o primeiro passageiro ficou diferente de Meus dados? Compara só os
+ * campos da passagem, sem olhar a maiúsculas nem a espaços a mais.
+ */
+function differsFromProfile(
+  row: PcPassengerInput,
+  profile: NonNullable<PcState["vip"]>["profile"] | null
+): boolean {
+  const norm = (v: string | null | undefined) => (v ?? "").trim().replace(/\s+/g, " ").toLowerCase()
+  if (!profile) return true
+  return (
+    norm(row.title) !== norm(profile.title) ||
+    norm(row.given) !== norm(profile.givenNames) ||
+    norm(row.surname) !== norm(profile.surname) ||
+    norm(row.dob) !== norm(profile.birthDate) ||
+    norm(row.sex) !== norm(profile.gender) ||
+    norm(row.nationality) !== norm(profile.nationality) ||
+    norm(row.passportNumber) !== norm(profile.passportNumber) ||
+    norm(row.passportExpiry) !== norm(profile.passportExpiry) ||
+    norm(row.issuingCountry) !== norm(profile.issuingCountry)
+  )
 }
 
 const KIND_KEY: Record<Kind, string> = {
@@ -168,6 +193,27 @@ export function ScreenP7({
         issuingCountry: "",
         phone: "",
         email: "",
+      }
+      /*
+       * APP-04 · "o primeiro passageiro vem preenchido com estes dados". Na
+       * app de um cliente VIP, o que ele guardou em Meus dados entra aqui —
+       * e fica editável: o que mudar neste pedido não altera Meus dados, a
+       * não ser que ele escolha guardar (a pergunta vem depois de gravar).
+       */
+      const mine = index === 0 && kind === "adult" ? state.vip?.profile : null
+      if (mine && (mine.givenNames || mine.surname || mine.passportNumber)) {
+        return {
+          ...blank,
+          title: mine.title ?? "",
+          given: mine.givenNames ?? "",
+          surname: mine.surname ?? "",
+          dob: mine.birthDate ?? "",
+          sex: mine.gender === "f" || mine.gender === "m" ? mine.gender : "",
+          nationality: mine.nationality ?? "",
+          passportNumber: mine.passportNumber ?? "",
+          passportExpiry: mine.passportExpiry ?? "",
+          issuingCountry: mine.issuingCountry ?? "",
+        }
       }
       /* Num ministério quem preenche é a secretária, não o viajante. */
       if (index === 0 && state.contact.fullName && !ministry) {
@@ -357,12 +403,69 @@ export function ScreenP7({
       }
 
       toast(t("pc.pax.saved"))
-      /* `replace` e não `refresh`: quem chegou aqui por `?view=p7` (a corrigir um
-         nome) tem de sair do parâmetro, ou continuaria a ver o formulário depois
-         de o gravar. Sem o parâmetro, o ecrã volta a ser o que o estado manda. */
-      router.replace(afterSave ?? `/pc/${state.token}`)
-      router.refresh()
+
+      /*
+       * APP-04 · "Se mudar os dados no pedido, a app pergunta se quer guardar
+       * a alteração em Meus dados." Só quando o primeiro passageiro ficou
+       * diferente do que lá está (ou quando ainda lá não está nada): sem
+       * diferença não há pergunta. O pedido já está gravado; a resposta só
+       * decide o que acontece a Meus dados.
+       */
+      const first = payload[0]
+      const mine = state.vip?.profile
+      if (state.vip && first && first.kind === "adult" && differsFromProfile(first, mine ?? null)) {
+        setAskKeep(true)
+        return
+      }
+
+      leave()
     })
+  }
+
+  /* `replace` e não `refresh`: quem chegou aqui por `?view=p7` (a corrigir um
+     nome) tem de sair do parâmetro, ou continuaria a ver o formulário depois
+     de o gravar. Sem o parâmetro, o ecrã volta a ser o que o estado manda. */
+  function leave() {
+    router.replace(afterSave ?? pcSelfPath(state))
+    router.refresh()
+  }
+
+  /* APP-04 · a pergunta de depois de gravar: guardar em Meus dados, ou não. */
+  const [askKeep, setAskKeep] = useState(false)
+
+  function keepInProfile() {
+    if (!state.vip) return leave()
+    const handle = state.vip.handle
+    startTransition(async () => {
+      const result = await saveVipProfileFromRequest(handle, state.token)
+      toast(result.ok ? t("vipApp.data.savedFromRequest") : result.error)
+      leave()
+    })
+  }
+
+  if (askKeep) {
+    return (
+      <main className="shell view">
+        <div className="card" style={{ marginTop: 18 }}>
+          <div className="sechead">
+            <h3>{t("vipApp.data.keepTitle")}</h3>
+          </div>
+          <p className="mnote">{t("vipApp.data.keepBody")}</p>
+          <p className="subnote" style={{ marginTop: 8 }}>
+            {t("vipApp.data.keepConsent")}
+          </p>
+          <div className="actions" style={{ marginTop: 14 }}>
+            <button className="btn btn-ghost" type="button" disabled={pending} onClick={leave}>
+              {t("vipApp.data.keepNo")}
+            </button>
+            <button className="btn btn-primary" type="button" disabled={pending} onClick={keepInProfile}>
+              {pending ? t("pc.pax.saving") : t("vipApp.data.keepYes")}
+            </button>
+          </div>
+        </div>
+        <div className="spacer" />
+      </main>
+    )
   }
 
   return (

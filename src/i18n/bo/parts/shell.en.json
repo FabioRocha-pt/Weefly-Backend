@@ -65,7 +65,8 @@
           "client_declared_paid": "The client says they paid",
           "client_message": "Message from the client",
           "request_cancelled": "The client cancelled the request",
-          "payment_expired": "The payment deadline expired"
+          "payment_expired": "The payment deadline expired",
+          "pay_details_requested": "The client asked for the payment details"
         }
       },
       "live": {
@@ -104,6 +105,13 @@
         "close": "Close",
         "copy": "Copy",
         "copied": "Copied"
+      },
+      "timeZone": {
+        "title": "Time zone",
+        "body": "Every time in the back office is shown in this time zone. It is saved to your account and only changes what you see on screen.",
+        "thisDevice": "this device",
+        "note": "Times in {zone}",
+        "invalid": "Unknown time zone."
       }
     },
     "tutorial": {

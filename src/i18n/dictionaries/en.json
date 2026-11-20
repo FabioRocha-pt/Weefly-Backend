@@ -1340,7 +1340,7 @@
       "paidSendProof": "I have paid · send the proof",
       "confirmedByPerson": "A payment is only confirmed by a person on our side, after seeing it in the account. We check within {hours} hours in business hours.",
       "sendMeDetails": "Send me the {method} details",
-      "preparingDetails": "We are preparing your {method} details and will send them here",
+      "preparingDetails": "Request received: we are preparing your {method} details and will send them here. Your request is still awaiting payment.",
       "byHand": "One of us sets this up by hand, so it is not instant. You will get the details by email and in this link, usually within business hours.",
       "proofReceived": "Proof received: we are checking it",
       "detailsComing": "Thanks: we are preparing your payment details",
@@ -1374,7 +1374,9 @@
           "sub": "Payment reference"
         }
       },
-      "worldwide": "We accept every kind of payment, from anywhere in the world."
+      "worldwide": "We accept every kind of payment, from anywhere in the world.",
+      "alreadyPaid": "I have paid",
+      "paidDeclared": "Thank you: we will confirm your payment"
     },
     "pax": {
       "eyebrow": "Step 5 · passengers",
@@ -1800,7 +1802,12 @@
       "uploadFailed": "We could not store the file. Please try again.",
       "ministrySession": "Your session has ended. Enter your PIN again to send the request.",
       "ministryFlood": "You have sent many requests in the last hour. Please wait a little, or contact the travel company on WhatsApp.",
-      "passengerBirthDate": "check the date of birth"
+      "passengerBirthDate": "check the date of birth",
+      "payDetailsFirst": "We have not sent you the payment details for this method yet. Ask for them first and pay with them.",
+      "checkForm": "Check the details of your request and try again.",
+      "tooManyRequests": "You have sent us several requests in a row. Give us a few minutes to look at them, or message us on WhatsApp.",
+      "passengerCount": "The number of passengers does not match the request.",
+      "passengerDetails": "Check this passenger's details."
     }
   },
   "pro": {
@@ -2279,6 +2286,120 @@
       "flightChangeBody": "Airlines change schedules. When that happens, we let you know by email and WhatsApp, and the notice also appears on your page.",
       "changeTitle": "If you need to change something",
       "changeBody": "Talk to us before talking to the airline. A change made elsewhere can void the conditions of the fare."
+    }
+  },
+  "vipApp": {
+    "tabs": {
+      "label": "App sections",
+      "pedido": "New request",
+      "passagens": "My trips",
+      "dados": "My details",
+      "attention_one": "{count} request waiting for you",
+      "attention_other": "{count} requests waiting for you"
+    },
+    "request": {
+      "hello": "Hello, {name}",
+      "lead": "Where would you like to go? Tell us the trip and we take care of the rest."
+    },
+    "trips": {
+      "title": "My trips",
+      "lead": "Your requests, offers and tickets in one place.",
+      "open": "In progress",
+      "booked": "Booked trips",
+      "history": "History",
+      "emptyTitle": "You have no requests yet",
+      "emptyBody": "Once you make your first request, it appears here with its offers and ticket.",
+      "newRequest": "Make a request",
+      "oneway": "one way",
+      "multi": "multi-city",
+      "continue": "Continue",
+      "see": "View",
+      "openRequest": "Open request {reference}",
+      "openTicket": "Open the ticket (PDF)",
+      "backToList": "Back to My trips",
+      "status": {
+        "received": "Request received · preparing your offers",
+        "offers_one": "{count} offer received · choose",
+        "offers_other": "{count} offers received · choose one",
+        "passengers": "Passenger details needed",
+        "payment": "Awaiting payment",
+        "checking": "Payment being verified",
+        "paid": "Paid · your ticket is being issued",
+        "issued": "Ticket issued",
+        "expired": "Expired",
+        "cancelled": "Cancelled",
+        "closed": "Closed"
+      }
+    },
+    "data": {
+      "title": "My details",
+      "lead": "{name}, these details fill in your ticket on every request. You can change them at any time.",
+      "contact": "Contact",
+      "phone": "Phone",
+      "phoneCountry": "Phone country",
+      "phoneHint": "Number only, without the {dial} code",
+      "email": "Email",
+      "forTicket": "For the ticket",
+      "asInPassport": "as in the passport",
+      "names": "Given names and surnames",
+      "birthDate": "Date of birth",
+      "sex": "Sex",
+      "nationality": "Nationality",
+      "passport": "Passport number",
+      "passportExpiry": "Passport expiry",
+      "issuingCountry": "Issuing country",
+      "missing": "Not filled in",
+      "fillsTicket": "On your next request, the first passenger comes filled in with these details. If you change them for that request only, these stay as they are.",
+      "edit": "Change my details",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "saved": "Details saved",
+      "nothingChanged": "Nothing changed",
+      "consent": "I authorise you to keep my passport details, to fill in my ticket on every request.",
+      "preferences": "Preferences",
+      "language": "App language",
+      "languageHint": "The app, the notices and the emails for your next requests will be in this language.",
+      "languages": {
+        "pt": "Português",
+        "en": "English",
+        "fr": "Français",
+        "nl": "Nederlands"
+      },
+      "company": "The company looking after you",
+      "companyNote": "For any question about your requests, talk to the team.",
+      "passportWarn": {
+        "soonTitle": "Your passport expires in less than six months",
+        "soonBody": "Many countries require six months of validity on arrival. Renew it before your next trip.",
+        "expiredTitle": "Your passport has expired",
+        "expiredBody": "Update your details once you have the new passport: a ticket cannot be issued with this one."
+      },
+      "keepTitle": "Save to My details?",
+      "keepBody": "The first passenger's details are different from the ones in My details. Do you want to save them, to fill in your next requests?",
+      "keepConsent": "By saving, you authorise us to keep your passport details in My details. If you choose this request only, My details stays as it was.",
+      "keepYes": "Save to My details",
+      "keepNo": "This request only",
+      "savedFromRequest": "Saved to My details"
+    },
+    "install": {
+      "title": "Keep {name} on your phone",
+      "body": "You get an icon on your home screen and open your requests without looking for the link.",
+      "install": "Install",
+      "notNow": "Not now",
+      "done": "{name} is saved on your phone."
+    },
+    "errors": {
+      "notFound": "This link is no longer available.",
+      "invalid": "Check the details and try again.",
+      "saveFailed": "We could not save. Please try again in a moment.",
+      "phone": "That number is not valid for the chosen country.",
+      "email": "Check the email address.",
+      "contactNeeded": "We need a phone number or an email to reach you.",
+      "names": "Write the given names and surnames as they appear in the passport.",
+      "birthDate": "Check the date of birth.",
+      "passport": "The passport number has 5 to 12 letters or digits.",
+      "passportExpiry": "Check the passport expiry date.",
+      "consent": "To keep your passport details, please tick the authorisation."
     }
   }
 }

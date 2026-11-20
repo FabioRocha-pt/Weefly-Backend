@@ -3,6 +3,8 @@ import Link from "next/link"
 import type { ActivityRow } from "@/lib/b2g-activity"
 import { LOCALE_TAGS } from "@/i18n/config"
 import type { Translator } from "@/i18n/translate"
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
+import { timeZoneLabel } from "@/lib/bo-timezone"
 
 /**
  * B2G-19 · o registo: a tabela e o filtro, partilhados entre o backoffice do
@@ -12,7 +14,7 @@ import type { Translator } from "@/i18n/translate"
  * vive no endereço, e por isso a exportação (que lê o mesmo endereço) nunca
  * mostra outra coisa que o ecrã.
  */
-export function ActivityLog({
+export async function ActivityLog({
   rows,
   t,
   locale,
@@ -35,7 +37,9 @@ export function ActivityLog({
   partners?: { id: string; commercial_name: string }[]
   exportHref: string
 }) {
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeStyle: "short", timeZone })
   const orgNames = new Map((organisations ?? []).map((o) => [o.id, o.name]))
   const field =
     "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -110,6 +114,10 @@ export function ActivityLog({
         </p>
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto">
+          {/* E8 · "O fuso aparece indicado onde houver dúvida." */}
+          <p className="px-4 pt-3 text-xs text-slate-500">
+            {t("bo.shell.timeZone.note", { zone: timeZoneLabel(timeZone, LOCALE_TAGS[locale]) })}
+          </p>
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
               <tr>

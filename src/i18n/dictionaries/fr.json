@@ -1340,7 +1340,7 @@
       "paidSendProof": "J'ai payé · envoyer le justificatif",
       "confirmedByPerson": "Un paiement n'est confirmé que par une personne de notre côté, après l'avoir vu sur le compte. Nous vérifions sous {hours} heures, aux heures ouvrables.",
       "sendMeDetails": "Envoyez-moi les données {method}",
-      "preparingDetails": "Nous préparons vos données {method} et vous les enverrons ici",
+      "preparingDetails": "Demande reçue : nous préparons vos données {method} et vous les enverrons ici. Votre demande reste en attente de paiement.",
       "byHand": "Une personne de chez nous s'en occupe à la main, ce n'est donc pas instantané. Vous recevrez les données par e-mail et dans ce lien, généralement aux heures ouvrables.",
       "proofReceived": "Justificatif reçu: nous le vérifions",
       "detailsComing": "Merci: nous préparons vos données de paiement",
@@ -1374,7 +1374,9 @@
           "sub": "Référence de paiement"
         }
       },
-      "worldwide": "Nous acceptons tous les types de paiement, partout dans le monde."
+      "worldwide": "Nous acceptons tous les types de paiement, partout dans le monde.",
+      "alreadyPaid": "J'ai payé",
+      "paidDeclared": "Merci : nous allons confirmer votre paiement"
     },
     "pax": {
       "eyebrow": "Étape 5 · passagers",
@@ -1800,7 +1802,12 @@
       "uploadFailed": "Nous n'avons pas pu enregistrer le fichier. Réessayez.",
       "ministrySession": "Votre session a expiré. Saisissez à nouveau votre PIN pour envoyer la demande.",
       "ministryFlood": "Vous avez envoyé beaucoup de demandes au cours de la dernière heure. Patientez un peu, ou contactez l’agence de voyages sur WhatsApp.",
-      "passengerBirthDate": "vérifiez la date de naissance"
+      "passengerBirthDate": "vérifiez la date de naissance",
+      "payDetailsFirst": "Nous ne vous avons pas encore envoyé les données de paiement pour ce mode. Demandez-les d'abord, puis payez avec.",
+      "checkForm": "Vérifiez les données de votre demande et réessayez.",
+      "tooManyRequests": "Vous nous avez envoyé plusieurs demandes à la suite. Laissez-nous quelques minutes pour les examiner, ou écrivez-nous sur WhatsApp.",
+      "passengerCount": "Le nombre de passagers ne correspond pas à celui de la demande.",
+      "passengerDetails": "Vérifiez les données de ce passager."
     }
   },
   "pro": {
@@ -2279,6 +2286,120 @@
       "flightChangeBody": "Les compagnies modifient leurs horaires. Dans ce cas, nous vous prévenons par e-mail et par WhatsApp, et l'avis apparaît aussi sur votre page.",
       "changeTitle": "Si vous devez modifier",
       "changeBody": "Contactez-nous avant de contacter la compagnie. Une modification faite ailleurs peut annuler les conditions du tarif."
+    }
+  },
+  "vipApp": {
+    "tabs": {
+      "label": "Rubriques de l'application",
+      "pedido": "Nouvelle demande",
+      "passagens": "Mes voyages",
+      "dados": "Mes données",
+      "attention_one": "{count} demande vous attend",
+      "attention_other": "{count} demandes vous attendent"
+    },
+    "request": {
+      "hello": "Bonjour, {name}",
+      "lead": "Où souhaitez-vous aller ? Indiquez-nous le voyage, nous nous occupons du reste."
+    },
+    "trips": {
+      "title": "Mes voyages",
+      "lead": "Vos demandes, vos offres et vos billets, au même endroit.",
+      "open": "En cours",
+      "booked": "Voyages réservés",
+      "history": "Historique",
+      "emptyTitle": "Vous n'avez pas encore de demande",
+      "emptyBody": "Dès votre première demande, elle apparaît ici, avec les offres et le billet.",
+      "newRequest": "Faire une demande",
+      "oneway": "aller simple",
+      "multi": "plusieurs villes",
+      "continue": "Continuer",
+      "see": "Voir",
+      "openRequest": "Ouvrir la demande {reference}",
+      "openTicket": "Ouvrir le billet (PDF)",
+      "backToList": "Retour à Mes voyages",
+      "status": {
+        "received": "Demande reçue · nous préparons vos offres",
+        "offers_one": "{count} offre reçue · à choisir",
+        "offers_other": "{count} offres reçues · choisissez-en une",
+        "passengers": "Données des passagers à compléter",
+        "payment": "En attente de paiement",
+        "checking": "Paiement en cours de vérification",
+        "paid": "Payé · votre billet est en cours d'émission",
+        "issued": "Billet émis",
+        "expired": "Expirée",
+        "cancelled": "Annulée",
+        "closed": "Clôturée"
+      }
+    },
+    "data": {
+      "title": "Mes données",
+      "lead": "{name}, ces données remplissent votre billet à chaque demande. Vous pouvez les modifier à tout moment.",
+      "contact": "Contact",
+      "phone": "Téléphone",
+      "phoneCountry": "Pays du téléphone",
+      "phoneHint": "Le numéro seul, sans l'indicatif {dial}",
+      "email": "E-mail",
+      "forTicket": "Pour le billet",
+      "asInPassport": "comme sur le passeport",
+      "names": "Prénoms et noms",
+      "birthDate": "Date de naissance",
+      "sex": "Sexe",
+      "nationality": "Nationalité",
+      "passport": "Numéro de passeport",
+      "passportExpiry": "Validité du passeport",
+      "issuingCountry": "Pays de délivrance",
+      "missing": "À compléter",
+      "fillsTicket": "À la prochaine demande, le premier passager est prérempli avec ces données. Si vous les modifiez pour cette demande seulement, celles-ci ne changent pas.",
+      "edit": "Modifier mes données",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "cancel": "Annuler",
+      "saved": "Données enregistrées",
+      "nothingChanged": "Rien n'a changé",
+      "consent": "J'autorise la conservation des données de mon passeport, pour remplir mon billet à chaque demande.",
+      "preferences": "Préférences",
+      "language": "Langue de l'application",
+      "languageHint": "L'application, les avis et les e-mails de vos prochaines demandes seront dans cette langue.",
+      "languages": {
+        "pt": "Português",
+        "en": "English",
+        "fr": "Français",
+        "nl": "Nederlands"
+      },
+      "company": "L'entreprise qui vous accompagne",
+      "companyNote": "Pour toute question sur vos demandes, contactez l'équipe.",
+      "passportWarn": {
+        "soonTitle": "Votre passeport expire dans moins de six mois",
+        "soonBody": "De nombreux pays exigent six mois de validité à l'arrivée. Renouvelez-le avant votre prochain voyage.",
+        "expiredTitle": "Votre passeport a expiré",
+        "expiredBody": "Mettez vos données à jour dès que vous avez le nouveau passeport : le billet ne peut pas être émis avec celui-ci."
+      },
+      "keepTitle": "Enregistrer dans Mes données ?",
+      "keepBody": "Les données du premier passager sont différentes de celles de Mes données. Voulez-vous les enregistrer, pour remplir vos prochaines demandes ?",
+      "keepConsent": "En enregistrant, vous nous autorisez à conserver les données de votre passeport dans Mes données. Si vous choisissez cette demande seulement, Mes données reste inchangé.",
+      "keepYes": "Enregistrer dans Mes données",
+      "keepNo": "Cette demande seulement",
+      "savedFromRequest": "Enregistré dans Mes données"
+    },
+    "install": {
+      "title": "Gardez {name} sur votre téléphone",
+      "body": "Vous avez une icône sur l'écran d'accueil et ouvrez vos demandes sans chercher le lien.",
+      "install": "Installer",
+      "notNow": "Pas maintenant",
+      "done": "{name} est enregistrée sur votre téléphone."
+    },
+    "errors": {
+      "notFound": "Ce lien n'est plus disponible.",
+      "invalid": "Vérifiez les données et réessayez.",
+      "saveFailed": "Nous n'avons pas pu enregistrer. Réessayez dans un instant.",
+      "phone": "Ce numéro n'est pas valide pour le pays choisi.",
+      "email": "Vérifiez l'adresse e-mail.",
+      "contactNeeded": "Il nous faut un téléphone ou un e-mail pour vous joindre.",
+      "names": "Écrivez les prénoms et les noms comme sur le passeport.",
+      "birthDate": "Vérifiez la date de naissance.",
+      "passport": "Le numéro de passeport comporte 5 à 12 lettres ou chiffres.",
+      "passportExpiry": "Vérifiez la validité du passeport.",
+      "consent": "Pour conserver les données du passeport, cochez l'autorisation."
     }
   }
 }

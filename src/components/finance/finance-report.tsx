@@ -13,6 +13,8 @@ import {
 import { LOCALE_TAGS } from "@/i18n/config"
 import type { Translator } from "@/i18n/translate"
 
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
+
 /**
  * PAR-08 e ADM-03 · o mesmo relatório, com dois âmbitos. As somas vêm todas de
  * `lib/finance`, sobre as mesmas linhas — é o que faz "os números baterem".
@@ -95,7 +97,7 @@ function sum(totals: MoneyTotals[], key: "cases" | "tickets"): number {
   return totals.reduce((s, x) => s + x[key], 0)
 }
 
-export function FinanceReport({
+export async function FinanceReport({
   rows,
   range,
   mode,
@@ -118,7 +120,9 @@ export function FinanceReport({
   const byMinistry = groupBy(rows, "organisation", t("bo.finance.noMinistry"))
   const line = timeline(rows, range)
   const peak = Math.max(1, ...line.map((b) => b.tickets))
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeZone })
   const missingCost = totals.reduce((s, x) => s + x.missingCost, 0)
   const missingCharged = totals.reduce((s, x) => s + x.missingCharged, 0)
 

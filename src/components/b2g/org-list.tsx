@@ -4,6 +4,7 @@ import { formatAmount } from "@/lib/case-status"
 import type { OrganisationSummary } from "@/lib/b2g"
 import { LOCALE_TAGS } from "@/i18n/config"
 import type { Translator } from "@/i18n/translate"
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
 
 /**
  * PAR-02 · ADM-08 · a lista dos ministérios: secretárias, saldo, limite,
@@ -12,7 +13,7 @@ import type { Translator } from "@/i18n/translate"
  * B2G-05 · B2G-24 · cada ministério com o brasão (ou o logótipo) **e** o nome:
  * os brasões são todos iguais, sozinhos não distinguem nada.
  */
-export function OrganisationList({
+export async function OrganisationList({
   orgs,
   hrefFor,
   t,
@@ -23,7 +24,9 @@ export function OrganisationList({
   t: Translator
   locale: "pt" | "en" | "fr"
 }) {
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeZone })
   if (orgs.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-slate-500">

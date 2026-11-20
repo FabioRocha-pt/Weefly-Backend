@@ -35,7 +35,10 @@ export function PcScreenRouter({
   state,
   forceView,
   locale,
+  hideLang = false,
 }: {
+  /** APP-01 · na app do VIP a língua é a do cliente (Meus dados), não a do pedido. */
+  hideLang?: boolean
   state: PcState
   forceView?: string
   /**
@@ -84,6 +87,7 @@ export function PcScreenRouter({
         currency={state.request.currency}
         lang={locale}
         token={state.token}
+        hideLang={hideLang}
       />
 
       {screen === "p3" && <ScreenP3 state={state} />}

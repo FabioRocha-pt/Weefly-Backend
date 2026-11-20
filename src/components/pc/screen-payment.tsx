@@ -28,6 +28,7 @@ import { useRouter } from "next/navigation"
 
 import {
   declarePcPaid,
+  requestPcPayDetails,
   sendPcMessage,
   setPcPayMethod,
   uploadPcProof,
@@ -35,6 +36,7 @@ import {
 import type { PcState } from "@/lib/pc/state"
 import {
   PAY_METHODS,
+  PROOFLESS_METHODS,
   PROOF_MAX_BYTES,
   PROOF_REVIEW_HOURS,
   type PayMethod,
@@ -42,7 +44,7 @@ import {
 } from "@/lib/pc/catalog"
 import type { PcPayment } from "@/lib/pc/payment"
 import { countryName } from "@/lib/countries"
-import { money } from "@/lib/pc/format"
+import { money, pcSelfPath } from "@/lib/pc/format"
 import { IcFile, IcWa, MethodIcon, Rows, Sentence } from "@/components/pc/bits"
 import { CopyButton, WaButton, useToast } from "@/components/pc/chrome"
 import { PickedOption } from "@/components/pc/picked-option"
@@ -72,7 +74,12 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
       : methods[0].id
   })
   const [provider, setProvider] = useState<string | null>(payment?.pay_provider ?? null)
-  const [declared, setDeclared] = useState(Boolean(payment?.client_declared_paid_at))
+  /* E2 · "pedi as instruções" e "declarei que paguei" são dois estados, e só
+     o primeiro vive aqui: o segundo muda o ecrã inteiro (o servidor passa a
+     mostrar a verificação), pelo que não precisa de memória local. */
+  const [requested, setRequested] = useState(
+    Boolean(payment?.pay_details_requested_at) && payment?.method === method
+  )
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -107,7 +114,7 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
     if (next === method) return
     setMethod(next)
     setProvider(null)
-    setDeclared(false)
+    setRequested(false)
     setError(null)
     /* Gravado à medida que ele escolhe, e não só no fim: se o cliente
        desaparecer a meio, o back-office sabe por onde ele ia pagar. */
@@ -158,19 +165,42 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
     })
   }
 
-  function declare() {
+  /*
+   * E2 · pedir as instruções. Não declara nada: o caso fica à espera de
+   * pagamento, e do nosso lado alguém fica a saber que tem de as preparar.
+   */
+  function requestDetails() {
+    setError(null)
+    startTransition(async () => {
+      const result = await requestPcPayDetails(state.token, method)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      setRequested(true)
+      /* C-33 · as cinco vias acabam todas no mesmo sítio: alguém do nosso lado
+         monta o link ou a referência à mão. Prometer "página segura aberta" ou
+         "pedido enviado para o seu telefone" era descrever automatismos que não
+         existem. */
+      toast(t("pc.pay.detailsComing"))
+      router.refresh()
+    })
+  }
+
+  /*
+   * E2 · "Já paguei", o botão próprio das vias que dispensam comprovativo. É o
+   * único gesto sem ficheiro que muda o estado, e só existe depois de o agente
+   * ter fornecido o link (o servidor recusa-o antes disso).
+   */
+  function declarePaid() {
+    setError(null)
     startTransition(async () => {
       const result = await declarePcPaid(state.token, method, provider)
       if (!result.ok) {
         setError(result.error)
         return
       }
-      setDeclared(true)
-      /* C-33 · as cinco vias acabam todas no mesmo sítio: alguém do nosso lado
-         monta o link ou a referência à mão. Prometer "página segura aberta" ou
-         "pedido enviado para o seu telefone" era descrever automatismos que não
-         existem. */
-      toast(t("pc.pay.detailsComing"))
+      toast(t("pc.pay.paidDeclared"))
       router.refresh()
     })
   }
@@ -246,8 +276,9 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
                     total={total}
                     currency={currency}
                     reference={state.request.reference}
-                    declared={declared}
-                    onDeclare={declare}
+                    requested={requested}
+                    onRequestDetails={requestDetails}
+                    onDeclarePaid={declarePaid}
                     pending={pending}
                     file={file}
                     dragging={dragging}
@@ -311,7 +342,7 @@ export function ScreenP7Pay({ state }: { state: PcState }) {
         <a
           className="btn btn-ghost btn-sm"
           style={{ width: "100%" }}
-          href={`/pc/${state.token}?view=p7`}
+          href={`${pcSelfPath(state)}?view=p7`}
         >
           {t("pc.pay.checkPassengers")}
         </a>
@@ -451,8 +482,9 @@ function MethodBody({
   total,
   currency,
   reference,
-  declared,
-  onDeclare,
+  requested,
+  onRequestDetails,
+  onDeclarePaid,
   pending,
   file,
   dragging,
@@ -467,8 +499,11 @@ function MethodBody({
   total: number
   currency: string
   reference: string
-  declared: boolean
-  onDeclare: () => void
+  /** E2 · o cliente já pediu as instruções desta via. */
+  requested: boolean
+  onRequestDetails: () => void
+  /** E2 · "Já paguei", sem comprovativo. Só nas vias que o dispensam. */
+  onDeclarePaid: () => void
   pending: boolean
   file: File | null
   dragging: boolean
@@ -519,12 +554,12 @@ function MethodBody({
             className="btn btn-primary btn-sm"
             type="button"
             disabled={pending}
-            onClick={onDeclare}
+            onClick={onRequestDetails}
           >
             {t("pc.pay.sendMeDetails", { method: methodName })}
           </button>
         </div>
-        {declared && (
+        {requested && (
           <div className="mdone">
             ✓ {t("pc.pay.preparingDetails", { method: methodName })}
           </div>
@@ -647,6 +682,26 @@ function MethodBody({
           {pending ? t("pc.pay.sending") : t("pc.pay.paidSendProof")}
         </button>
       </div>
+
+      {/*
+        E2 · "Se o Stripe dispensa comprovativo, o cliente tem um botão
+        próprio, Já paguei, e só esse muda o estado." O cartão pelo link do
+        Stripe deixa rasto do lado de quem recebe; as outras vias continuam a
+        pedir o ficheiro. Separado do envio do comprovativo de propósito: são
+        dois gestos, e nenhum deles é "pedir as instruções".
+      */}
+      {PROOFLESS_METHODS.includes(method.id) && (
+        <div className="mrow">
+          <button
+            className="btn btn-ghost btn-sm"
+            type="button"
+            disabled={pending}
+            onClick={onDeclarePaid}
+          >
+            {t("pc.pay.alreadyPaid")}
+          </button>
+        </div>
+      )}
 
       <p className="mfoot">
         {t("pc.pay.confirmedByPerson", { hours: PROOF_REVIEW_HOURS })}

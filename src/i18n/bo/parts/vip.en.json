@@ -51,7 +51,9 @@
         "linkNote": "The personal link is created on save and never changes. Deactivating the VIP switches it off; their requests stay.",
         "save": "Save",
         "create": "Create VIP",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "phoneCountry": "Phone country and dial code",
+        "phoneHint": "Saved as {number}"
       },
       "detail": {
         "edit": "Edit",
@@ -68,7 +70,7 @@
       "errors": {
         "nameMissing": "Enter the client's name.",
         "emailInvalid": "The email is not valid.",
-        "phoneInvalid": "The phone is not valid (e.g. +238 991 23 45).",
+        "phoneInvalid": "The phone number is not valid for the chosen country. Choose the country and type the number only.",
         "notAllowed": "Your account cannot manage VIP clients, or the VIP channel is off.",
         "invalid": "Check the details.",
         "unavailable": "Service unavailable. Try again later.",
@@ -89,6 +91,38 @@
         "empty": "No VIP clients yet.",
         "state": "Status",
         "active": "active"
+      },
+      "changes": {
+        "title": "Changes to details",
+        "subtitle": "What the client changed in My details, in their app. The passport is shown masked.",
+        "empty": "The client has not changed their details yet.",
+        "when": "When",
+        "who": "Who",
+        "what": "What changed",
+        "byClient": "The client",
+        "byStaff": "The team",
+        "source": {
+          "profile": "in My details",
+          "request": "from a request",
+          "backoffice": "in the back office"
+        },
+        "from": "before",
+        "to": "now",
+        "none": "empty",
+        "field": {
+          "phone": "Phone",
+          "email": "Email",
+          "locale": "Language",
+          "title": "Title",
+          "given_names": "Given names",
+          "surname": "Surnames",
+          "birth_date": "Date of birth",
+          "gender": "Sex",
+          "nationality": "Nationality",
+          "passport_number": "Passport",
+          "passport_expiry": "Passport expiry",
+          "issuing_country": "Issuing country"
+        }
       }
     },
     "linkChannels": {

@@ -2265,7 +2265,7 @@ function PublishPanel({
   review?: ProposalReview | null
   t: Translator
 }) {
-  const { locale } = useI18n()
+  const { locale, timeZone } = useI18n()
   const published = proposal.status === "publicada"
   const [included, setIncluded] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
@@ -2351,7 +2351,7 @@ function PublishPanel({
                     when: new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
                       dateStyle: "short",
                       timeStyle: "short",
-                      timeZone: "Atlantic/Cape_Verde",
+                      timeZone,
                     }).format(new Date(proposal.published_at)),
                   })
                 : "",
@@ -2428,7 +2428,7 @@ function PublishPanel({
                       ? new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
                           dateStyle: "short",
                           timeStyle: "short",
-                          timeZone: "Atlantic/Cape_Verde",
+                          timeZone,
                         }).format(new Date(review.requestedAt))
                       : "—",
                   })

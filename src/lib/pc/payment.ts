@@ -136,6 +136,8 @@ export interface PcPayment {
   proof_status: ProofStatus
   proof_rejected_reason: string | null
   client_declared_paid_at: string | null
+  /** E2 · quando o cliente pediu as instruções da via escolhida (0043). Não é uma declaração. */
+  pay_details_requested_at?: string | null
   paid_at: string | null
   created_at: string
 }
@@ -147,7 +149,8 @@ const PAYMENT_COLUMNS = `
   value_date, proof_status, proof_rejected_reason, client_declared_paid_at,
   paid_at, created_at,
   pay_link, pay_reference, pay_due_at,
-  pay_instructions_sent_at, pay_instructions_sent_by_email
+  pay_instructions_sent_at, pay_instructions_sent_by_email,
+  pay_details_requested_at
 `
 
 const hoursFromNow = (h: number) =>

@@ -7,6 +7,8 @@ import { CASE_CHANNEL_OF, PARTNER_CHANNELS, type CaseChannel } from "@/lib/chann
 import { getBoI18n } from "@/i18n/bo-server"
 import { ChannelQueue } from "@/components/channels/channel-queue"
 import { QueueLive } from "@/components/channels/queue-live"
+import { WaitByCompany } from "@/components/channels/wait"
+import { waitSince } from "@/lib/queue-wait"
 
 /**
  * B2G-14 · D-12 · o concierge do master.
@@ -73,6 +75,10 @@ export default async function MasterConciergePage({
     },
     scope.identity.userId
   )
+  /* FILA-02 · "o master vê quantos [críticos] há em cada empresa": contados
+     sobre todas as empresas e canais, mesmo com a fila filtrada. */
+  const everything =
+    partnerId || channel ? await loadBoQueue(scope, { bucket: "tudo", order: "urgency" }, scope.identity.userId) : queue
   const rows = queue.rows.filter((row) =>
     show === "unclaimed" ? !row.ownerId : show === "mine" ? row.ownerId === scope.identity.userId : true
   )
@@ -150,6 +156,15 @@ export default async function MasterConciergePage({
           </Link>
         ))}
       </div>
+
+      <WaitByCompany
+        rows={everything.rows.map((row) => ({
+          partnerId: row.partnerId,
+          partnerName: row.partnerName,
+          since: waitSince(row),
+        }))}
+        hrefFor={Object.fromEntries(partners.map((p) => [p.id, href({ empresa: p.id, canal: "" })]))}
+      />
 
       <ChannelQueue
         rows={rows}

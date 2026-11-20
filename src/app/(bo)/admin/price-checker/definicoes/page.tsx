@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { getBoAccess } from "@/lib/bo-access"
 import { BoLanguageSetting } from "@/components/bo/language-setting"
+import { BoTimeZoneSetting } from "@/components/bo/time-zone"
 import { getBoI18n } from "@/i18n/bo-server"
 
 /**
@@ -80,6 +81,10 @@ export default async function BoSettingsPage() {
           {/* I18N-01 · a língua do back-office. As outras preferências (avisos,
               nota de contexto) continuam por construir. */}
           <BoLanguageSetting />
+          {/* E8 · o fuso em que se leem as horas. */}
+          <div style={{ marginTop: 18 }}>
+            <BoTimeZoneSetting />
+          </div>
         </div>
       </div>
     </div>

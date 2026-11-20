@@ -1,5 +1,6 @@
 import type { MinistryTravellerChange } from "@/lib/travellers"
 import type { Translator } from "@/i18n/translate"
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
 
 /**
  * B2G-25 · D-11 · "Cada registo e cada alteração ficam no Admin, com quem fez
@@ -7,7 +8,7 @@ import type { Translator } from "@/i18n/translate"
  * (a secretária pelo nome, ou o email do back-office), quando, que ficha, e se
  * foi um registo novo ou que campos mudaram. Só leitura.
  */
-export function TravellerChangeLog({
+export async function TravellerChangeLog({
   changes,
   t,
   locale,
@@ -16,11 +17,13 @@ export function TravellerChangeLog({
   t: Translator
   locale: string
 }) {
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
   const stamp = (iso: string) =>
     new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale === "fr" ? "fr-FR" : "pt-PT", {
       dateStyle: "short",
       timeStyle: "short",
-      timeZone: "Atlantic/Cape_Verde",
+      timeZone,
     }).format(new Date(iso))
 
   return (

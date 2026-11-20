@@ -6,6 +6,8 @@ import { getBoI18n } from "@/i18n/bo-server"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { translateOr } from "@/i18n/translate"
 
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
+
 /**
  * ADM-04 · um parceiro, organizado por ministério: cada ministério com os
  * seus casos, e os casos sem ministério (o retalho) no fim. Só leitura.
@@ -53,7 +55,9 @@ export default async function AdminPartnerCasesPage({ params }: { params: { part
     { key: "none", label: t("bo.adminCases.noMinistry"), inactive: false, rows: cases.filter((c) => !c.organisationId) },
   ].filter((g) => g.rows.length > 0 || g.key !== "none")
 
-  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const dt = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "short", timeZone })
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

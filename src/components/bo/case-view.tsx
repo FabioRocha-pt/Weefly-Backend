@@ -37,6 +37,7 @@ import {
   type BoTabId,
 } from "@/components/bo/case-header"
 import { useI18n, useT } from "@/i18n/provider"
+import { BoTimeZoneNote } from "@/components/bo/time-zone"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { translateOr, type Translator } from "@/i18n/translate"
 
@@ -103,25 +104,26 @@ const LINK_STATE_TONE: Record<LinkState, string> = {
   fechado: "var(--muted)",
 }
 
-const formatDt = (tag: string, iso: string | null | undefined, withTime = true): string => {
+const formatDt = (tag: string, zone: string, iso: string | null | undefined, withTime = true): string => {
   if (!iso) return "—"
   /* Uma data sem hora ("2026-11-16") é lida como meia-noite UTC: na hora de
      Cabo Verde (UTC−1) caía no dia anterior. Fica no dia que foi pedido. */
+  /* E8 · tudo o resto no fuso da conta de quem vê (`lib/bo-timezone`). */
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso)
   return new Date(iso).toLocaleString(tag, {
     day: "2-digit",
     month: "short",
     year: "numeric",
     ...(withTime && !dateOnly ? { hour: "2-digit", minute: "2-digit" } : {}),
-    timeZone: dateOnly ? "UTC" : "Atlantic/Cape_Verde",
+    timeZone: dateOnly ? "UTC" : zone,
   })
 }
 
-/** As datas na língua do agente, sempre na hora de Cabo Verde. */
+/** As datas na língua do agente, no fuso da conta dele (E8). */
 function useDt() {
-  const { locale } = useI18n()
+  const { locale, timeZone } = useI18n()
   return (iso: string | null | undefined, withTime = true) =>
-    formatDt(LOCALE_TAGS[locale], iso, withTime)
+    formatDt(LOCALE_TAGS[locale], timeZone, iso, withTime)
 }
 
 export function BoCaseView({
@@ -795,9 +797,8 @@ export function BoCaseView({
           <main className="panel">
             <div className="panel-h">
               <h3>{t("bo.caseView.log.history")}</h3>
-              <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-                {t("bo.caseView.log.cvTime")}
-              </span>
+              {/* E8 · o fuso das horas do registo, à vista: o da conta de quem lê. */}
+              <BoTimeZoneNote style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }} />
             </div>
             <div className="panel-b">
               <div className="log">
@@ -939,7 +940,7 @@ function NotificationRow({ entry }: { entry: CaseNotification }) {
 
 function LogRow({ event }: { event: CaseEvent }) {
   const t = useT()
-  const { locale } = useI18n()
+  const { locale, timeZone } = useI18n()
   return (
     <div className="logrow">
       <span className="t mono">
@@ -948,7 +949,7 @@ function LogRow({ event }: { event: CaseEvent }) {
           month: "2-digit",
           hour: "2-digit",
           minute: "2-digit",
-          timeZone: "Atlantic/Cape_Verde",
+          timeZone,
         })}
       </span>
       <div>

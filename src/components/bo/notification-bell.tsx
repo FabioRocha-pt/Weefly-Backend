@@ -47,13 +47,14 @@ import { translateOr } from "@/i18n/translate"
 
 /* O que cada acontecimento é, escrito para quem atende: `bo.shell.alerts.kind.<kind>`. */
 
-const when = (iso: string, tag: string) =>
+/* E8 · no fuso da conta de quem vê (`lib/bo-timezone`). */
+const when = (iso: string, tag: string, timeZone: string) =>
   new Date(iso).toLocaleString(tag, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "Atlantic/Cape_Verde",
+    timeZone,
   })
 
 export function BoNotificationBell({
@@ -64,7 +65,7 @@ export function BoNotificationBell({
   unread: number
 }) {
   const router = useRouter()
-  const { t, locale } = useI18n()
+  const { t, locale, timeZone } = useI18n()
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   /* O que foi lido neste separador e o servidor ainda não devolveu. Faz o
@@ -250,7 +251,7 @@ export function BoNotificationBell({
                     {alert.clientName ? ` · ${alert.clientName}` : ""}
                   </span>
                   <span className="alert-meta">
-                    {when(alert.createdAt, LOCALE_TAGS[locale])}
+                    {when(alert.createdAt, LOCALE_TAGS[locale], timeZone)}
                     {" · "}
                     {/* Quem o provocou. Um acontecimento do cliente não tem
                         email — tem o cliente, e dizer "sistema" ali era mentir

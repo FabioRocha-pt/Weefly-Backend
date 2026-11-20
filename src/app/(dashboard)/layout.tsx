@@ -10,6 +10,9 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import type { SidebarModule } from "@/components/dashboard/sidebar"
 import { I18nProvider } from "@/i18n/provider"
 import { getBoI18n } from "@/i18n/bo-server"
+import { BO_DEFAULT_TIME_ZONE } from "@/lib/bo-timezone"
+import { getStoredBoTimeZone } from "@/lib/bo-timezone-server"
+import { BoTimeZoneSync } from "@/components/bo/time-zone"
 
 /**
  * WeeFly Pro · a moldura dos módulos.
@@ -43,9 +46,17 @@ export default async function DashboardLayout({
   /* I18N-01 · o WeeFly Pro é back-office: fala a língua que o utilizador
      escolheu nas Definições (PT ou EN), e não a do cookie do site público. */
   const i18n = await getBoI18n()
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const storedZone = await getStoredBoTimeZone()
 
   return (
-    <I18nProvider locale={i18n.locale} dictionary={i18n.dictionary} fallback={i18n.fallback}>
+    <I18nProvider
+      locale={i18n.locale}
+      dictionary={i18n.dictionary}
+      fallback={i18n.fallback}
+      timeZone={storedZone ?? BO_DEFAULT_TIME_ZONE}
+    >
+      <BoTimeZoneSync needed={!storedZone} />
       <DashboardShell
         user={menuUser}
         modules={modules}

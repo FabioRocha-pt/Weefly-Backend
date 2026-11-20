@@ -69,7 +69,7 @@ export function BoDatesPanel({
   locked: boolean
   lockedReason: string
 }) {
-  const { t, locale } = useI18n()
+  const { t, locale, timeZone } = useI18n()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [depart, setDepart] = useState(day(departDate))
@@ -192,7 +192,7 @@ export function BoDatesPanel({
                   month: "short",
                   hour: "2-digit",
                   minute: "2-digit",
-                  timeZone: "Atlantic/Cape_Verde",
+                  timeZone,
                 }) })}`
               : ""}
             {original.reason ? ` — “${original.reason}”` : ""}

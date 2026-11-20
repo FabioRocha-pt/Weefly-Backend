@@ -8,7 +8,16 @@ import { createTranslator, type Dictionary, type Translator } from "./translate"
 interface I18nValue {
   locale: Locale
   t: Translator
+  /**
+   * E8 · o fuso em que quem está a ver lê as horas. Só o back-office o passa
+   * (o da conta — ver `lib/bo-timezone`); fora dele é o de Cabo Verde.
+   */
+  timeZone: string
 }
+
+/* O mesmo valor de `BO_DEFAULT_TIME_ZONE`, escrito aqui para o provider não
+   depender de nada do back-office. */
+const DEFAULT_TIME_ZONE = "Atlantic/Cape_Verde"
 
 const I18nContext = createContext<I18nValue | null>(null)
 
@@ -24,20 +33,24 @@ export function I18nProvider({
   locale,
   dictionary,
   fallback,
+  timeZone = DEFAULT_TIME_ZONE,
   children,
 }: {
   locale: Locale
   dictionary: Dictionary
   /** O dicionário português, para chaves ainda por traduzir. */
   fallback?: Dictionary
+  /** E8 · o fuso da conta de quem está a ver (back-office). */
+  timeZone?: string
   children: React.ReactNode
 }) {
   const value = useMemo<I18nValue>(
     () => ({
       locale,
       t: createTranslator(dictionary, fallback, locale),
+      timeZone,
     }),
-    [locale, dictionary, fallback]
+    [locale, dictionary, fallback, timeZone]
   )
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
@@ -56,7 +69,13 @@ export function useI18n(): I18nValue {
   return {
     locale: DEFAULT_LOCALE,
     t: (key: string) => key,
+    timeZone: DEFAULT_TIME_ZONE,
   }
+}
+
+/** E8 · o fuso em que este ecrã escreve as horas. */
+export function useTimeZone(): string {
+  return useI18n().timeZone
 }
 
 export function useT(): Translator {

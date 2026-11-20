@@ -51,6 +51,36 @@
       "empty": "No requests match these filters.",
       "openCase": "Open",
       "live": "Updates by itself, no reload needed."
+    },
+    "wait": {
+      "level": {
+        "fresh": "Just arrived",
+        "waiting": "Waiting",
+        "late": "Late",
+        "critical": "Critical"
+      },
+      "ago": {
+        "min_one": "{count} min ago",
+        "min_other": "{count} min ago",
+        "hour_one": "{count} h ago",
+        "hour_other": "{count} h ago",
+        "day_one": "{count} day ago",
+        "day_other": "{count} days ago"
+      },
+      "filter": {
+        "critical_one": "Critical · {count}",
+        "critical_other": "Critical · {count}"
+      },
+      "byCompany": {
+        "title": "Critical by company",
+        "none": "no request waiting for more than 3 days"
+      }
+    },
+    "vipTag": {
+      "open": "Open the VIP client's file",
+      "filter_one": "VIP only · {count}",
+      "filter_other": "VIP only · {count}",
+      "channel": "VIP"
     }
   }
 }

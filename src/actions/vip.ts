@@ -66,7 +66,15 @@ const vipSchema = z.object({
     .optional()
     .transform((v) => v || null)
     .refine((v) => v === null || z.string().email().safeParse(v).success, "bo.vip.errors.emailInvalid"),
-  phone: optional(40).refine((v) => v === null || /^\+?[0-9 ()-]{6,40}$/.test(v), "bo.vip.errors.phoneInvalid"),
+  /*
+   * E7 · "Guarda-se no formato internacional." O formulário manda o número já
+   * em E.164 (o país e o indicativo vêm da lista, a mesma do registo); aqui
+   * volta a ser limpo e verificado, porque um pedido chega a esta função por
+   * fetch tão facilmente como por clique. Texto livre deixou de entrar.
+   */
+  phone: optional(40)
+    .transform((v) => (v === null ? null : v.replace(/[\s().-]+/g, "")))
+    .refine((v) => v === null || /^\+[1-9][0-9]{7,14}$/.test(v), "bo.vip.errors.phoneInvalid"),
   level: optional(60),
 })
 

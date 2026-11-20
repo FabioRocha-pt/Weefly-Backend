@@ -24,7 +24,7 @@ export function BoNoteForm({
   notes: { id: string; body: string; author_email: string | null; created_at: string }[]
 }) {
   const router = useRouter()
-  const { t, locale } = useI18n()
+  const { t, locale, timeZone } = useI18n()
   const [pending, startTransition] = useTransition()
   const [body, setBody] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -87,7 +87,7 @@ export function BoNoteForm({
                     month: "2-digit",
                     hour: "2-digit",
                     minute: "2-digit",
-                    timeZone: "Atlantic/Cape_Verde",
+                    timeZone,
                   })}
                 </span>
                 <div>

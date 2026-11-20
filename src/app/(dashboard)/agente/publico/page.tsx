@@ -6,6 +6,7 @@ import { loadBoQueue } from "@/lib/pc/bo-queue"
 import { pcSiteUrl } from "@/lib/site-url"
 import { getBoI18n } from "@/i18n/bo-server"
 import { ChannelQueue } from "@/components/channels/channel-queue"
+import { QueueLive } from "@/components/channels/queue-live"
 import { CopyField } from "@/components/vip/vip-forms"
 
 /**
@@ -42,9 +43,13 @@ export default async function PublicoPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t("bo.publico.title")}</h1>
-        <p className="text-slate-500 mt-1">{t("bo.publico.subtitle")}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{t("bo.publico.title")}</h1>
+          <p className="text-slate-500 mt-1">{t("bo.publico.subtitle")}</p>
+        </div>
+        {/* E5 · um pedido novo aparece na fila sem recarregar, em menos de 5 s. */}
+        <QueueLive label={t("bo.masterConcierge.live")} />
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">

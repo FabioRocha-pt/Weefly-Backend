@@ -27,6 +27,7 @@ import {
   fmtRange,
   money,
   paxShort,
+  pcSelfPath,
 } from "@/lib/pc/format"
 
 export function PickedOption({
@@ -99,7 +100,7 @@ export function PickedOption({
           {/* B2G-16 · no espaço do ministério o caso não tem token no browser: o
               "trocar de opção" é um link da própria página do caso. */}
           {payment?.status !== "COMPLETED" && state.token && (
-            <Link className="chg" href={`/pc/${state.token}?view=p5`}>
+            <Link className="chg" href={`${pcSelfPath(state)}?view=p5`}>
               {t("pc.picked.change")}
             </Link>
           )}

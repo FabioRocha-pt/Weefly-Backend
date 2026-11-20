@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation"
 import { choosePcOffer } from "@/actions/pc"
 import type { PcState } from "@/lib/pc/state"
 import { customerDeadline, priceNature } from "@/lib/proposal-math"
-import { cabinLabel, cityOf, countdown, fmtDate, fmtRange, paxFull, paxTotalOf } from "@/lib/pc/format"
+import { cabinLabel, cityOf, countdown, fmtDate, fmtRange, paxFull, paxTotalOf, pcSelfPath } from "@/lib/pc/format"
 import { OfferCard } from "@/components/pc/offer-view"
 import { IcWa, Sentence } from "@/components/pc/bits"
 import { WaButton, useToast } from "@/components/pc/chrome"
@@ -155,7 +155,7 @@ export function ScreenP5({
                  * ecrã de onde a pessoa veio, e não outra vez à lista.
                  */
                 toast(t("pc.options.updated"))
-                router.replace(afterChoose ?? `/pc/${state.token}`)
+                router.replace(afterChoose ?? pcSelfPath(state))
                 router.refresh()
               })
             }}

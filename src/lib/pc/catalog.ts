@@ -218,6 +218,13 @@ export const CURRENCIES = Object.keys(CUR)
 /* L-06 · quatro métodos: Stripe, InstaPay, Vinti4, Revolut. O PayPal saiu. */
 export type PayMethodId = "stripe" | "vinti4" | "revolut" | "instapay"
 
+/**
+ * E2 · as vias que dispensam comprovativo: o cliente tem o botão "Já paguei".
+ * Hoje só o cartão pelo link do Stripe — o pagamento fica registado do lado
+ * de quem recebe, e quem valida confirma-o lá. As outras pedem o ficheiro.
+ */
+export const PROOFLESS_METHODS: readonly PayMethodId[] = ["stripe"]
+
 /** O que o agente fornece: um endereço, uma referência, ou qualquer dos dois. */
 export type PaySupply = "link" | "reference" | "either"
 

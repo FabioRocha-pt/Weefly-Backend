@@ -7,6 +7,7 @@ import { getProAccount } from "@/lib/pro-account"
 import { loadProClients } from "@/lib/pro-clients"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { getBoI18n } from "@/i18n/bo-server"
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
 
 /**
  * OCT-17 · os clientes de todos os parceiros, no Admin.
@@ -49,7 +50,9 @@ export default async function AdminClientesPage({
     )
   }
 
-  const date = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const date = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium", timeZone })
   const field =
     "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
 

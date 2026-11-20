@@ -243,8 +243,12 @@ export async function submitPcRequest(
 ): Promise<PcResultWith<{ token: string; reference: string }>> {
   const parsed = requestSchema.safeParse(input)
   if (!parsed.success) {
-    const first = parsed.error.issues[0]
-    return { ok: false, error: first?.message ?? "Check the form" }
+    /* E4 · "nenhum texto escrito no código". As mensagens do esquema estão em
+       português e servem para o registo; o ecrã já validou os mesmos campos na
+       língua do cliente, e quem chega aqui com dados inválidos recebe a frase
+       geral, na língua dele. */
+    console.warn("[pc] pedido inválido:", parsed.error.issues[0]?.path?.join("."), parsed.error.issues[0]?.message)
+    return { ok: false, error: pcError("checkForm", { stored: (input as { locale?: string })?.locale }) }
   }
 
   const v = parsed.data
@@ -308,11 +312,8 @@ export async function submitPcRequest(
    * seria também uma caixa de correio inundada.
    */
   if (!ministrySecretaryId && (await countRecentSubmissions(ip)) >= RATE_LIMIT.max) {
-    return {
-      ok: false,
-      error:
-        "You have sent us several requests in a row. Give us a few minutes to look at them, or message us on WhatsApp.",
-    }
+    /* E4 · era uma frase em inglês escrita aqui, num fluxo em português. */
+    return { ok: false, error: pcError("tooManyRequests", { stored: input.locale }) }
   }
 
   const created = await createPriceCheckerCase({
@@ -567,11 +568,85 @@ export async function uploadPcProof(
 }
 
 /**
- * Métodos sem comprovativo (cartão, link, mobile money) — o cliente diz que fez
- * a sua parte.
+ * E2 · o cliente pede as instruções da via que escolheu. **Não é uma
+ * declaração de pagamento.**
+ *
+ * No teste de 19 de novembro (WF-2611-0094) o cliente carregou em "Enviem-me
+ * os dados do Stripe" e o caso passou a *comprovativo por validar*, sem
+ * ninguém ter pago: este botão chamava `declarePcPaid`. Eram dois gestos
+ * diferentes atrás da mesma ação, e o primeiro mexia no estado que só o
+ * segundo pode mexer.
+ *
+ * Agora este gesto grava a via, marca a hora do pedido
+ * (`pay_details_requested_at`, 0043) e avisa quem atende — e mais nada. O
+ * caso continua **à espera de pagamento**, até o cliente declarar (com
+ * comprovativo, ou com "Já paguei") ou o agente confirmar.
+ */
+export async function requestPcPayDetails(
+  token: string,
+  method: string
+): Promise<PcResult> {
+  if (!METHODS.includes(method as PayMethodId)) {
+    return { ok: false, error: pcError("unknownMethod", { token }) }
+  }
+
+  const lookup = await loadPcState(token)
+  const payment = lookup.ok ? lookup.state.payment : null
+  if (!lookup.ok || !payment) {
+    return { ok: false, error: pcError("nothingToPay", { token }) }
+  }
+
+  const state = lookup.state
+  const admin = createAdminClient()
+  if (!admin) return { ok: false, error: pcError("unavailable", { token, stored: state.contact.locale }) }
+
+  const { error } = await admin
+    .from("case_payments")
+    .update({ method, pay_details_requested_at: new Date().toISOString() })
+    .eq("id", payment.id)
+  if (error) {
+    /* Numa base sem a 0043 a coluna não existe: a via fica gravada à mesma,
+       e o registo abaixo diz o resto. O estado não muda em nenhum dos casos. */
+    console.error("[pc] pedido de instruções não marcado:", error.message)
+    await recordChosenMethod(payment.id, method as PayMethodId, null)
+  }
+
+  /* Um pedido por pagamento e por via: carregar duas vezes não põe duas
+     linhas na campainha nem dois emails na caixa do agente. */
+  const fresh = await logCaseEvent({
+    caseId: state.caseId,
+    kind: "pay_details_requested",
+    title: "O cliente pediu as instruções de pagamento",
+    detail: methodLabelPt(method),
+    actorKind: "client",
+    payload: { method },
+    once: `pay_details_requested:${payment.id}:${method}`,
+  })
+
+  if (fresh.written) {
+    await notifyAgent(state.caseId, "pay_details_requested", methodLabelPt(method))
+  }
+
+  revalidatePath(`/pc/${token}`)
+  revalidatePath("/admin/price-checker")
+  revalidatePath(`/admin/price-checker/${state.caseId}`)
+
+  return { ok: true }
+}
+
+/**
+ * "Já paguei" — o cliente declara que pagou, numa via que dispensa
+ * comprovativo (o cartão pelo link do Stripe).
  *
  * Continua a ser uma declaração e não uma confirmação: o que muda é o
- * back-office passar a ver que há alguém à espera.
+ * back-office passar a ver que há alguém à espera de validação.
+ *
+ * E2 · só é aceite depois de o agente ter fornecido as instruções **desta**
+ * via. Sem link nem referência não há como ter pago, e uma declaração nessa
+ * altura era precisamente o defeito do teste: um caso em *comprovativo por
+ * validar* sem pagamento nenhum. O ecrã já não mostra o botão antes disso;
+ * esta verificação existe porque um pedido chega aqui por fetch tão
+ * facilmente como por clique.
  */
 export async function declarePcPaid(
   token: string,
@@ -588,6 +663,12 @@ export async function declarePcPaid(
   const admin = createAdminClient()
   if (!admin) return { ok: false, error: pcError("unavailable", { token, stored: state.contact.locale }) }
 
+  const hasInstructions =
+    payment.method === method && Boolean(payment.pay_link || payment.pay_reference)
+  if (!METHODS.includes(method as PayMethodId) || !hasInstructions) {
+    return { ok: false, error: pcError("payDetailsFirst", { token, stored: state.contact.locale }) }
+  }
+
   const now = new Date().toISOString()
 
   await admin
@@ -601,7 +682,6 @@ export async function declarePcPaid(
       review_deadline_at: new Date(
         Date.now() + PROOF_REVIEW_HOURS * 3600_000
       ).toISOString(),
-      ...(METHODS.includes(method as PayMethodId) ? { method } : {}),
       ...(provider ? { pay_provider: provider } : {}),
     })
     .eq("id", payment.id)
@@ -621,6 +701,7 @@ export async function declarePcPaid(
 
   revalidatePath(`/pc/${token}`)
   revalidatePath("/admin/price-checker")
+  revalidatePath(`/admin/price-checker/${state.caseId}`)
 
   return { ok: true }
 }

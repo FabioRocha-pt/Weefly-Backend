@@ -3,6 +3,9 @@ import { notFound, redirect } from "next/navigation"
 
 import { loadPcState, touchLink } from "@/lib/pc/state"
 import { ministryCaseRedirect } from "@/lib/ministry-case"
+import { resolveVipHandle } from "@/lib/vip"
+import { vipCodeOfHandle } from "@/lib/vip-address"
+import { loadVipTrips, vipCaseAppPath } from "@/lib/vip-trips"
 import { pcLocale } from "@/lib/pc/locale"
 import { PcBrandProvider, PcFab, PcFooter, ToastHost } from "@/components/pc/chrome"
 import { brandCssVars, clientBrandForCase, toClientBrand } from "@/lib/brand"
@@ -53,6 +56,32 @@ export default async function PriceCheckerCasePage({
      antigos leva ao link pessoal da secretária que o pediu. */
   const ministryPath = await ministryCaseRedirect(params.token)
   if (ministryPath) redirect(ministryPath)
+
+  /*
+   * VIP-01 · APP-01 · `/pc/<nome>-<código>` é o link pessoal de um cliente
+   * VIP, e abre a app dele: "em Minhas passagens se houver um pedido em curso,
+   * e em Fazer pedido se não houver". A forma do endereço distingue-o do token
+   * de um pedido (32 caracteres); quem decide de vez é a base. Um VIP
+   * desativado não resolve, e cai no "não encontrado" de baixo.
+   */
+  if (vipCodeOfHandle(params.token)) {
+    const vip = await resolveVipHandle(params.token)
+    if (vip.ok) {
+      const trips = await loadVipTrips(vip.context.vip.id)
+      redirect(`/pc/${params.token}/${trips.open.length > 0 ? "passagens" : "pedido"}`)
+    }
+  }
+
+  /*
+   * APP-03 · "O link do email continua a funcionar, e leva ao mesmo sítio."
+   * O pedido de um cliente VIP ativo abre dentro da app dele. (Desativado, o
+   * pedido continua aqui, no seu `/pc/<token>`: o histórico fica.)
+   */
+  const vipAppPath = await vipCaseAppPath(params.token)
+  if (vipAppPath) {
+    const asked = Array.isArray(searchParams.view) ? searchParams.view[0] : searchParams.view
+    redirect(asked ? `${vipAppPath}?view=${encodeURIComponent(asked)}` : vipAppPath)
+  }
 
   const lookup = await loadPcState(params.token)
 

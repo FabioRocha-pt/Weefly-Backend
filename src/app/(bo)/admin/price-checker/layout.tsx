@@ -17,6 +17,9 @@ import { LinkBaseProvider } from "@/components/bo/link-base"
 import { PoweredByWeefly } from "@/components/powered-by"
 import { I18nProvider } from "@/i18n/provider"
 import { getBoI18n } from "@/i18n/bo-server"
+import { BO_DEFAULT_TIME_ZONE } from "@/lib/bo-timezone"
+import { getStoredBoTimeZone } from "@/lib/bo-timezone-server"
+import { BoTimeZoneSync } from "@/components/bo/time-zone"
 import type { Translator } from "@/i18n/translate"
 import { pcSiteUrl } from "@/lib/site-url"
 import { hostPartnerSlug } from "@/lib/host-partner"
@@ -25,7 +28,7 @@ import { PRO_MODULES, getProAccount, moduleState, visibleAgentMenus } from "@/li
 import { hasChannel, normaliseChannels, type PartnerChannel } from "@/lib/channels"
 import { partnerChannels } from "@/lib/channel-gate"
 import { getBoScope, isCrossPartner } from "@/lib/bo-scope"
-import { listVipClients } from "@/lib/vip"
+import { listVipClients, vipClientPath } from "@/lib/vip"
 import { listLinkMinistries } from "@/lib/b2g"
 
 /**
@@ -111,7 +114,8 @@ export default async function BoPriceCheckerLayout({
           id: v.id,
           name: v.name,
           level: v.level,
-          path: `/vip/${v.token}`,
+          /* VIP-01 · `/pc/<nome>-<código>`. */
+          path: vipClientPath(v),
         }))
       : []
 
@@ -126,6 +130,8 @@ export default async function BoPriceCheckerLayout({
 
   /* I18N-01 · a língua do agente, escolhida nas Definições. */
   const i18n = await getBoI18n()
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const storedZone = await getStoredBoTimeZone()
 
   /* OCT-19 · o menu lateral do WeeFly Pro também aqui, recolhido em ícones:
      Passagens é um menu do Agente, e o resto do Agente tem de continuar à
@@ -150,7 +156,13 @@ export default async function BoPriceCheckerLayout({
       : null
 
   return (
-    <I18nProvider locale={i18n.locale} dictionary={i18n.dictionary} fallback={i18n.fallback}>
+    <I18nProvider
+      locale={i18n.locale}
+      dictionary={i18n.dictionary}
+      fallback={i18n.fallback}
+      timeZone={storedZone ?? BO_DEFAULT_TIME_ZONE}
+    >
+      {access.ok && <BoTimeZoneSync needed={!storedZone} />}
       <style>{`:root{--font-jakarta:${jakarta.style.fontFamily};--font-plex-mono:${plexMono.style.fontFamily}}`}</style>
       <RoutePreloader background="#141A24" label={i18n.t("bo.shell.loading")} />
 

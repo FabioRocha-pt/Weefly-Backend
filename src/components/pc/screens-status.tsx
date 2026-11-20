@@ -22,6 +22,7 @@ import {
   money,
   paxFull,
   paxShort,
+  pcSelfPath,
   phoneDisplay,
   whenLabel,
 } from "@/lib/pc/format"
@@ -450,7 +451,7 @@ export function ScreenP7b({ state }: { state: PcState }) {
             <a
               className="btn btn-ghost btn-sm"
               style={{ width: "100%" }}
-              href={`/pc/${state.token}?view=p7`}
+              href={`${pcSelfPath(state)}?view=p7`}
             >
               {t("pc.status.goBackCorrect")}
             </a>
@@ -559,7 +560,7 @@ export function ScreenP8({ state }: { state: PcState }) {
           <a
             className="btn btn-ghost btn-sm"
             style={{ width: "100%" }}
-            href="/pc"
+            href={state.vip ? `/pc/${state.vip.handle}/pedido` : "/pc"}
           >
             {t("pc.status.changeDates")}
           </a>
@@ -914,7 +915,7 @@ function ContactCard({
           <a
             className="btn btn-ghost btn-sm"
             style={{ width: "100%", marginTop: 11 }}
-            href="/pc"
+            href={state.vip ? `/pc/${state.vip.handle}/pedido` : "/pc"}
           >
             {t("pc.status.startNew")}
           </a>

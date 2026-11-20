@@ -47,6 +47,7 @@ import { ARCHIVE_REASONS } from "@/lib/pc/archive"
 import { BoWhatsappLink } from "@/components/bo/whatsapp-link"
 import { countryName, flagOf } from "@/lib/countries"
 import { useI18n } from "@/i18n/provider"
+import { VipTag, vipClientHref } from "@/components/channels/vip-tag"
 import { LOCALE_TAGS } from "@/i18n/config"
 
 export type BoTabId =
@@ -73,14 +74,14 @@ export interface BoSellerOption {
   label: string
 }
 
-const formatDt = (tag: string, iso: string | null | undefined, withTime = true): string => {
+const formatDt = (tag: string, timeZone: string, iso: string | null | undefined, withTime = true): string => {
   if (!iso) return "—"
   return new Date(iso).toLocaleString(tag, {
     day: "2-digit",
     month: "short",
     year: "numeric",
     ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
-    timeZone: "Atlantic/Cape_Verde",
+    timeZone,
   })
 }
 
@@ -111,9 +112,10 @@ export function BoCaseHeader({
    */
   onSelect?: (tab: BoTabId) => void
 }) {
-  const { t, locale } = useI18n()
+  const { t, locale, timeZone } = useI18n()
+  /* E8 · no fuso da conta de quem vê (`lib/bo-timezone`). */
   const dt = (iso: string | null | undefined, withTime = true) =>
-    formatDt(LOCALE_TAGS[locale], iso, withTime)
+    formatDt(LOCALE_TAGS[locale], timeZone, iso, withTime)
   const router = useRouter()
   const row = detail.row
   const [pending, startTransition] = useTransition()
@@ -171,11 +173,30 @@ export function BoCaseHeader({
               <span className={`dot ${row.waiting === "bad" ? "bad" : row.waiting}`} />
               {t(`bo.queue.state.${row.state}`)}
             </span>
+            {/* FILA-01 · a etiqueta VIP na ficha do caso, com o nome do cliente
+                VIP, que abre a ficha dele. */}
+            {row.channel === "vip" && (
+              <>
+                {" "}
+                <VipTag
+                  name={row.vipName}
+                  href={vipClientHref({ vipClientId: row.vipClientId })}
+                  title={t("bo.vipTag.open")}
+                />
+              </>
+            )}
           </h2>
           <div className="case-meta">
             <div className="cm">
               <span className="cm-k">{t("bo.caseView.header.intake")}</span>
-              {detail.trip.intake === "price_checker" ? t("bo.caseView.header.intakeLink") : detail.trip.intake} ·{" "}
+              {/* E6 · um pedido feito pelo link de um VIP entrou pelo canal VIP,
+                  e é isso que aqui se lê. */}
+              {row.channel === "vip"
+                ? t("bo.vipTag.channel")
+                : detail.trip.intake === "price_checker"
+                  ? t("bo.caseView.header.intakeLink")
+                  : detail.trip.intake}{" "}
+              ·{" "}
               <span className="mono">
                 {row.agentSlug ? `agent=${row.agentSlug}` : t("bo.caseView.header.noAgent")}
               </span>

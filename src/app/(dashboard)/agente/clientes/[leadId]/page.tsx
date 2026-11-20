@@ -7,6 +7,8 @@ import { loadProClient } from "@/lib/pro-clients"
 import { LOCALE_TAGS } from "@/i18n/config"
 import { getBoI18n } from "@/i18n/bo-server"
 
+import { getBoTimeZone } from "@/lib/bo-timezone-server"
+
 /**
  * PRO-05 · um cliente e os casos dele. Um cliente de outra empresa, aberto
  * pelo endereço, não existe (TEN-03: not-found, não forbidden).
@@ -19,7 +21,11 @@ export default async function ClientePage({ params }: { params: { leadId: string
   const client = account ? await loadProClient(account, params.leadId) : null
   if (!client) notFound()
 
-  const date = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium" })
+  /* E8 · as horas no fuso da conta de quem está a ver (`lib/bo-timezone`). */
+  const timeZone = await getBoTimeZone()
+  const date = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium", timeZone })
+  /* A data da viagem não tem hora nem fuso: é o dia que foi pedido. */
+  const day = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { dateStyle: "medium", timeZone: "UTC" })
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -71,7 +77,7 @@ export default async function ClientePage({ params }: { params: { leadId: string
                   {c.origin && c.destination ? `${c.origin} → ${c.destination}` : "—"}
                 </td>
                 <td className="px-5 py-3">
-                  {c.departDate ? date.format(new Date(c.departDate)) : "—"}
+                  {c.departDate ? day.format(new Date(c.departDate)) : "—"}
                 </td>
                 <td className="px-5 py-3">
                   {c.closed ? t("pro.caseClosed") : t(`caseStages.${c.stage}`)}

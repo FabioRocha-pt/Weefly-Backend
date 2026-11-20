@@ -18,6 +18,7 @@ import {
   UserCog,
   Compass,
   Home,
+  Image as ImageIcon,
   Inbox,
   Lock,
   Plane,
@@ -97,6 +98,8 @@ const ADMIN_NAV: NavItem[] = [
   { labelKey: "pro.adminPartners", href: "/gestao/parceiros", icon: <Handshake className="w-5 h-5" /> },
   /* As companhias aéreas: nome, logótipo e prefixo, sem deploy. */
   { labelKey: "bo.airlines.nav", href: "/gestao/companhias", icon: <Plane className="w-5 h-5" /> },
+  /* IMG-01 · as imagens das cidades da app VIP. */
+  { labelKey: "bo.cityImages.nav", href: "/gestao/imagens", icon: <ImageIcon className="w-5 h-5" /> },
   /* OCT-17 · os clientes de todos os parceiros. */
   { labelKey: "bo.adminClients.nav", href: "/gestao/clientes", icon: <Users className="w-5 h-5" /> },
   /* B2G-22 · os VIP de todas as empresas. */
